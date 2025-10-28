@@ -1,0 +1,36 @@
+﻿# Build outputs
+bin
+obj
+.vs
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build results
+Debug
+Release
+x64
+x86
+
+# .NET artifacts
+*.dll
+*.exe
+*.pdb
+*.cache
+!build.sh
+
+# Keep appsettings
+!appsettings.json
+!appsettings.Development.json
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

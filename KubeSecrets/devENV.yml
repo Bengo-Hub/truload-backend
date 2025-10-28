@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: truload-backend-env
+  namespace: truload
+type: Opaque
+stringData:
+  # =====================================================================
+  # ASP.NET Core
+  # =====================================================================
+  ASPNETCORE_ENVIRONMENT: "Production"
+  AllowedHosts: "api.truload.example.com,localhost,127.0.0.1,*.truload.example.com"
+
+  # =====================================================================
+  # Database (PostgreSQL)
+  # =====================================================================
+  ConnectionStrings__DefaultConnection: "Host=postgresql.truload.svc.cluster.local;Port=5432;Database=truload;Username=postgres;Password=__DYNAMIC_PG_PASSWORD__"
+  DB_HOST: "postgresql.truload.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "truload"
+  DB_USER: "postgres"
+  DB_PASSWORD: "__DYNAMIC_PG_PASSWORD__"
+
+  # =====================================================================
+  # Redis
+  # =====================================================================
+  Redis__ConnectionString: "redis-master.truload.svc.cluster.local:6379,password=__DYNAMIC_REDIS_PASSWORD__,ssl=False,abortConnect=False"
+  REDIS_HOST: "redis-master.truload.svc.cluster.local"
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: "__DYNAMIC_REDIS_PASSWORD__"
+
+  # =====================================================================
+  # RabbitMQ
+  # =====================================================================
+  RabbitMQ__Host: "rabbitmq.truload.svc.cluster.local"
+  RabbitMQ__Username: "__DYNAMIC_RABBIT_USER__"
+  RabbitMQ__Password: "__DYNAMIC_RABBIT_PASSWORD__"
+
+  # =====================================================================
+  # Security
+  # =====================================================================
+  JWT__Secret: "__DYNAMIC_JWT_SECRET__"
+
+  # =====================================================================
+  # CORS / Frontend
+  # =====================================================================
+  CORS__AllowedOrigins: "https://app.truload.example.com,http://localhost:3000"
+
+  # =====================================================================
+  # Feature Flags / Settings
+  # =====================================================================
+  Weighing__GvwToleranceKg: "200"
+  Weighing__AxleToleranceKg: "200"
+  Acts__Default: "TRAFFIC"  # EAC or TRAFFIC
+  TruConnect__BaseUrl: "http://localhost:59623"  # Local microservice endpoint
+
+
