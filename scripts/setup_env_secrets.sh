@@ -179,7 +179,7 @@ kubectl -n "$NAMESPACE" create secret generic "$ENV_SECRET_NAME" \
   --from-literal=Jwt__Audience="truload-frontend" \
   --from-literal=AspNetCore__Secret="${ASPNET_SECRET}" \
   --from-literal=ASPNETCORE_ENVIRONMENT="Production" \
-  --from-literal=ASPNETCORE_URLS="http://+:8080" \
+  --from-literal=ASPNETCORE_URLS="http://+:4000" \
   --from-literal=Cors__AllowedOrigins="${ALLOWED_ORIGINS}" \
   --from-literal=Cors__AllowCredentials="true" \
   --from-literal=Logging__LogLevel__Default="Information" \
