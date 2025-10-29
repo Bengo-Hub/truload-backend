@@ -89,6 +89,32 @@ builder.Services.AddHealthChecks()
 // ===== App Configuration =====
 var app = builder.Build();
 
+// Apply pending migrations automatically on startup
+try
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
+        var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
+        
+        if (pendingMigrations.Any())
+        {
+            Log.Information("Applying {Count} pending migrations...", pendingMigrations.Count);
+            dbContext.Database.Migrate();
+            Log.Information("✓ Migrations applied successfully");
+        }
+        else
+        {
+            Log.Information("✓ Database is up to date (no pending migrations)");
+        }
+    }
+}
+catch (Exception ex)
+{
+    Log.Error(ex, "Failed to apply database migrations");
+    // Don't fail startup if migrations fail - let health check handle it
+}
+
 // Swagger (all environments for now; restrict to dev/staging later)
 app.UseSwagger();
 app.UseSwaggerUI(c =>
