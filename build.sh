@@ -152,52 +152,27 @@ else
       --dry-run=client -o yaml | kubectl apply -f - || log_warning "Pull secret creation failed"
   fi
 
-  # Databases are managed by devops-k8s infrastructure
-  # Shared PostgreSQL and Redis in 'erp' namespace, RabbitMQ in 'truload' namespace
-  log_info "Databases are managed centrally by devops-k8s infrastructure"
-  log_info "PostgreSQL and Redis: Shared with ERP apps in 'erp' namespace"
-  log_info "RabbitMQ: Dedicated instance in 'truload' namespace"
-  
-  # Retrieve credentials from K8s secrets and create app environment secret
+  # Setup environment secrets from existing databases (managed by devops-k8s)
   if [[ "${SETUP_DATABASES}" == "true" ]]; then
-    log_step "Retrieving database credentials from K8s secrets..."
+    log_info "Databases are managed by devops-k8s infrastructure"
+    log_info "PostgreSQL and Redis: Shared with ERP apps in 'erp' namespace"
+    log_info "RabbitMQ: Dedicated instance in 'truload' namespace"
+    log_info "Retrieving credentials from existing secrets and setting up app environment"
     
-    # PostgreSQL (shared with ERP in 'erp' namespace)
-    PG_PASS=$(kubectl -n erp get secret postgresql -o jsonpath='{.data.postgres-password}' 2>/dev/null | base64 -d || echo "")
-    if [[ -z "$PG_PASS" ]]; then
-      log_error "PostgreSQL secret not found in 'erp' namespace"
-      log_error "Run devops-k8s provision workflow first to install databases"
+    if [[ -f "scripts/setup_env_secrets.sh" ]]; then
+      chmod +x scripts/setup_env_secrets.sh
+      VALIDATION_OUTPUT=$(./scripts/setup_env_secrets.sh) || { log_error "Environment secret setup failed"; exit 1; }
+      
+      # Parse output for validated credentials
+      export EFFECTIVE_PG_PASS=$(echo "$VALIDATION_OUTPUT" | grep "^EFFECTIVE_PG_PASS=" | cut -d= -f2-)
+      export EFFECTIVE_REDIS_PASS=$(echo "$VALIDATION_OUTPUT" | grep "^EFFECTIVE_REDIS_PASS=" | cut -d= -f2-)
+      export EFFECTIVE_RABBITMQ_PASS=$(echo "$VALIDATION_OUTPUT" | grep "^EFFECTIVE_RABBITMQ_PASS=" | cut -d= -f2-)
+      
+      log_success "Environment secrets configured successfully"
+    else
+      log_error "scripts/setup_env_secrets.sh not found"
       exit 1
     fi
-    
-    # Redis (shared with ERP in 'erp' namespace)
-    REDIS_PASS=$(kubectl -n erp get secret redis -o jsonpath='{.data.redis-password}' 2>/dev/null | base64 -d || echo "")
-    if [[ -z "$REDIS_PASS" ]]; then
-      log_error "Redis secret not found in 'erp' namespace"
-      log_error "Run devops-k8s provision workflow first to install databases"
-      exit 1
-    fi
-    
-    # RabbitMQ (dedicated to truload namespace)
-    RMQ_PASS=$(kubectl -n "$NAMESPACE" get secret rabbitmq -o jsonpath='{.data.rabbitmq-password}' 2>/dev/null | base64 -d || echo "")
-    if [[ -z "$RMQ_PASS" ]]; then
-      log_warning "RabbitMQ secret not found in '$NAMESPACE' namespace"
-      log_warning "Will be installed by devops-k8s provision workflow"
-      RMQ_PASS="${RABBITMQ_PASSWORD:-rabbitmq}"
-    fi
-    
-    log_success "Database credentials retrieved successfully"
-    
-    # Create app environment secret with verified credentials
-    kubectl -n "$NAMESPACE" create secret generic "$ENV_SECRET_NAME" \
-      --from-literal=ConnectionStrings__DefaultConnection="Host=postgresql.erp.svc.cluster.local;Port=5432;Database=truload;Username=postgres;Password=${PG_PASS}" \
-      --from-literal=Redis__ConnectionString="redis-master.erp.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False" \
-      --from-literal=RabbitMQ__Host="rabbitmq.${NAMESPACE}.svc.cluster.local" \
-      --from-literal=RabbitMQ__Username="user" \
-      --from-literal=RabbitMQ__Password="${RMQ_PASS}" \
-      --dry-run=client -o yaml | kubectl apply -f - || log_warning "ENV secret creation failed"
-    
-    log_success "Environment secret created with verified database credentials"
   fi
 
   # Export variables for migration/seeding scripts
