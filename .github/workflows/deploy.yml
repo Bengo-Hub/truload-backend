@@ -100,6 +100,52 @@ jobs:
         docker tag "${IMAGE_REPO}:${SHORT_SHA}" "${IMAGE_REPO}:latest"
         docker push "${IMAGE_REPO}:latest"
 
+    - name: Trigger ArgoCD sync and wait for deployment
+      if: success()
+      env:
+        KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG }}
+        NS: truload
+        APP_NAME: truload-backend
+      run: |
+        if [ -z "${KUBE_CONFIG_B64}" ]; then
+          echo "⏭️ Skipping ArgoCD sync - no KUBE_CONFIG available"
+          exit 0
+        fi
+        
+        echo "::group::ArgoCD Sync"
+        mkdir -p ~/.kube
+        echo "$KUBE_CONFIG_B64" | base64 -d > ~/.kube/config
+        
+        # Check if ArgoCD Application exists
+        if kubectl get application ${APP_NAME} -n argocd >/dev/null 2>&1; then
+          echo "✓ ArgoCD Application '${APP_NAME}' found"
+          
+          # Refresh to detect values.yaml changes
+          kubectl patch application ${APP_NAME} -n argocd --type merge -p '{"metadata":{"annotations":{"argocd.argoproj.io/refresh":"hard"}}}' || true
+          
+          echo "Waiting for ArgoCD to sync (up to 120 seconds)..."
+          for i in {1..24}; do
+            SYNC_STATUS=$(kubectl get application ${APP_NAME} -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
+            HEALTH_STATUS=$(kubectl get application ${APP_NAME} -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
+            
+            echo "  Sync: ${SYNC_STATUS}, Health: ${HEALTH_STATUS}"
+            
+            if [[ "$SYNC_STATUS" == "Synced" && "$HEALTH_STATUS" == "Healthy" ]]; then
+              echo "✅ Application synced and healthy"
+              break
+            fi
+            
+            sleep 5
+          done
+          
+          # Verify deployment exists after sync
+          kubectl get deployment ${APP_NAME}-app -n ${NS} || echo "⚠️ Deployment not found yet"
+        else
+          echo "⚠️ ArgoCD Application '${APP_NAME}' not found"
+          echo "Run provision workflow to create ArgoCD Applications"
+        fi
+        echo "::endgroup::"
+
     - name: Verify API health
       if: success()
       env:
