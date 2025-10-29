@@ -123,10 +123,13 @@ else
   # Namespace
   kubectl get ns "$NAMESPACE" >/dev/null 2>&1 || kubectl create ns "$NAMESPACE"
 
-  # Apply environment secrets manifest if provided
-  if [[ -f "KubeSecrets/devENV.yml" ]]; then
-    log_step "Applying KubeSecrets/devENV.yml"
+  # CRITICAL: Do NOT apply KubeSecrets/devENV.yml in CI/CD
+  # It may contain outdated credentials. Skip in CI/CD, only apply locally.
+  if [[ -z "${CI:-}${GITHUB_ACTIONS:-}" && -f "KubeSecrets/devENV.yml" ]]; then
+    log_info "Local deployment detected - applying KubeSecrets/devENV.yml"
     kubectl apply -n "$NAMESPACE" -f KubeSecrets/devENV.yml || log_warning "Failed to apply devENV.yml"
+  elif [[ -f "KubeSecrets/devENV.yml" ]]; then
+    log_info "CI/CD deployment - skipping KubeSecrets/devENV.yml (managed by deployment workflow)"
   fi
 
   # Ensure JWT secret present
@@ -149,52 +152,52 @@ else
       --dry-run=client -o yaml | kubectl apply -f - || log_warning "Pull secret creation failed"
   fi
 
-  # Optional database setup
+  # Databases are managed by devops-k8s infrastructure
+  # Shared PostgreSQL and Redis in 'erp' namespace, RabbitMQ in 'truload' namespace
+  log_info "Databases are managed centrally by devops-k8s infrastructure"
+  log_info "PostgreSQL and Redis: Shared with ERP apps in 'erp' namespace"
+  log_info "RabbitMQ: Dedicated instance in 'truload' namespace"
+  
+  # Retrieve credentials from K8s secrets and create app environment secret
   if [[ "${SETUP_DATABASES}" == "true" ]]; then
-    log_step "Setting up databases: ${DB_TYPES}"
-    helm repo add bitnami https://charts.bitnami.com/bitnami >/dev/null 2>&1 || true
-    helm repo update >/dev/null 2>&1 || true
-
-    IFS=',' read -r -a types <<<"$DB_TYPES"
-    for raw in "${types[@]}"; do
-      db=$(echo "$raw" | xargs)
-      case "$db" in
-        postgres)
-          log_info "Installing/Upgrading PostgreSQL..."
-          helm upgrade --install postgresql bitnami/postgresql -n "$NAMESPACE" \
-            --set global.postgresql.auth.postgresPassword="${POSTGRES_PASSWORD:-postgres}" \
-            --set global.postgresql.auth.database="truload" \
-            --wait --timeout=300s || log_warning "PostgreSQL install warning"
-          ;;
-        redis)
-          log_info "Installing/Upgrading Redis..."
-          helm upgrade --install redis bitnami/redis -n "$NAMESPACE" \
-            --set global.redis.password="${REDIS_PASSWORD:-redis}" \
-            --wait --timeout=300s || log_warning "Redis install warning"
-          ;;
-        rabbitmq)
-          log_info "Installing/Upgrading RabbitMQ..."
-          helm upgrade --install rabbitmq bitnami/rabbitmq -n "$NAMESPACE" \
-            --set auth.username="${RABBITMQ_USERNAME:-user}" \
-            --set auth.password="${RABBITMQ_PASSWORD:-rabbitmq}" \
-            --wait --timeout=300s || log_warning "RabbitMQ install warning"
-          ;;
-        *) log_warning "Unknown DB type: $db";;
-      esac
-    done
-
-    # Seed a minimal env secret for app connection strings
-    PG_PASS="${POSTGRES_PASSWORD:-postgres}"
-    RD_PASS="${REDIS_PASSWORD:-redis}"
-    RMQ_USER="${RABBITMQ_USERNAME:-user}"
-    RMQ_PASS="${RABBITMQ_PASSWORD:-rabbitmq}"
+    log_step "Retrieving database credentials from K8s secrets..."
+    
+    # PostgreSQL (shared with ERP in 'erp' namespace)
+    PG_PASS=$(kubectl -n erp get secret postgresql -o jsonpath='{.data.postgres-password}' 2>/dev/null | base64 -d || echo "")
+    if [[ -z "$PG_PASS" ]]; then
+      log_error "PostgreSQL secret not found in 'erp' namespace"
+      log_error "Run devops-k8s provision workflow first to install databases"
+      exit 1
+    fi
+    
+    # Redis (shared with ERP in 'erp' namespace)
+    REDIS_PASS=$(kubectl -n erp get secret redis -o jsonpath='{.data.redis-password}' 2>/dev/null | base64 -d || echo "")
+    if [[ -z "$REDIS_PASS" ]]; then
+      log_error "Redis secret not found in 'erp' namespace"
+      log_error "Run devops-k8s provision workflow first to install databases"
+      exit 1
+    fi
+    
+    # RabbitMQ (dedicated to truload namespace)
+    RMQ_PASS=$(kubectl -n "$NAMESPACE" get secret rabbitmq -o jsonpath='{.data.rabbitmq-password}' 2>/dev/null | base64 -d || echo "")
+    if [[ -z "$RMQ_PASS" ]]; then
+      log_warning "RabbitMQ secret not found in '$NAMESPACE' namespace"
+      log_warning "Will be installed by devops-k8s provision workflow"
+      RMQ_PASS="${RABBITMQ_PASSWORD:-rabbitmq}"
+    fi
+    
+    log_success "Database credentials retrieved successfully"
+    
+    # Create app environment secret with verified credentials
     kubectl -n "$NAMESPACE" create secret generic "$ENV_SECRET_NAME" \
-      --from-literal=ConnectionStrings__DefaultConnection="Host=postgresql.${NAMESPACE}.svc.cluster.local;Port=5432;Database=truload;Username=postgres;Password=${PG_PASS}" \
-      --from-literal=Redis__ConnectionString="redis-master.${NAMESPACE}.svc.cluster.local:6379,password=${RD_PASS},ssl=False,abortConnect=False" \
+      --from-literal=ConnectionStrings__DefaultConnection="Host=postgresql.erp.svc.cluster.local;Port=5432;Database=truload;Username=postgres;Password=${PG_PASS}" \
+      --from-literal=Redis__ConnectionString="redis-master.erp.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False" \
       --from-literal=RabbitMQ__Host="rabbitmq.${NAMESPACE}.svc.cluster.local" \
-      --from-literal=RabbitMQ__Username="${RMQ_USER}" \
+      --from-literal=RabbitMQ__Username="user" \
       --from-literal=RabbitMQ__Password="${RMQ_PASS}" \
-      --dry-run=client -o yaml | kubectl apply -f - || log_warning "ENV secret seed failed"
+      --dry-run=client -o yaml | kubectl apply -f - || log_warning "ENV secret creation failed"
+    
+    log_success "Environment secret created with verified database credentials"
   fi
 
   # Update Helm values in centralized devops repo (if path exists)
