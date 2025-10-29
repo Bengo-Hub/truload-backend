@@ -3,8 +3,8 @@
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 USER app
 WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
+EXPOSE 4000
+EXPOSE 4001
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
@@ -36,10 +36,14 @@ COPY --from=publish /app/publish .
 RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
 USER appuser
 
-EXPOSE 8080
-EXPOSE 8081
+EXPOSE 4000
+EXPOSE 4001
+
+# Configure ASP.NET Core to listen on port 4000 (standardized across all backend apps)
+ENV ASPNETCORE_URLS=http://+:4000
+ENV ASPNETCORE_HTTP_PORTS=4000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -fsS http://localhost:8080/health || exit 1
+  CMD curl -fsS http://localhost:4000/health || exit 1
 
 ENTRYPOINT ["dotnet", "truload-backend.dll"]
