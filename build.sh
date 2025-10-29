@@ -200,6 +200,23 @@ else
     log_success "Environment secret created with verified database credentials"
   fi
 
+  # Export variables for migration/seeding scripts
+  export APP_NAME IMAGE_REPO GIT_COMMIT_ID NAMESPACE ENV_SECRET_NAME
+
+  # Run database migrations if enabled and scripts exist
+  if [[ "${SETUP_DATABASES}" == "true" && -f "scripts/run_migrations.sh" ]]; then
+    log_step "Running database migrations..."
+    chmod +x scripts/run_migrations.sh
+    ./scripts/run_migrations.sh || { log_error "Migration failed"; exit 1; }
+  fi
+
+  # Run database seeding if enabled and scripts exist
+  if [[ "${SETUP_DATABASES}" == "true" && -f "scripts/run_seeding.sh" ]]; then
+    log_step "Running database seeding..."
+    chmod +x scripts/run_seeding.sh
+    SEED_MODE=${SEED_MODE:-minimal} ./scripts/run_seeding.sh || log_warning "Seeding failed (non-critical)"
+  fi
+
   # Update Helm values in centralized devops repo (if path exists)
   if [[ -n "${KUBE_CONFIG:-}" ]]; then
     log_step "Updating devops-k8s values (if app manifest exists)"
