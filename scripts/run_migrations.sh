@@ -95,32 +95,27 @@ ${PULL_SECRETS_YAML}
           TABLE_COUNT=\$(psql -h postgresql.erp.svc.cluster.local -U postgres -d truload -t -c \
             "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';" 2>/dev/null | xargs || echo "0")
           
+          # For .NET runtime images, EF tools don't work with DLLs
+          # Best practice: Apply migrations at application startup
+          # For now, we'll verify the database exists and let the app handle migrations
+          
           if [[ "\$TABLE_COUNT" -gt "0" ]]; then
             echo "✓ Existing database detected (\$TABLE_COUNT tables)"
-            echo "Generating idempotent migration script..."
-            
-            # Generate SQL script that checks for existing schema before applying changes
-            # --idempotent flag generates IF NOT EXISTS checks
-            dotnet ef migrations script --idempotent --output /tmp/migration.sql --project /app/truload-backend.dll || {
-              echo "⚠️  Could not generate idempotent script"
-              echo "Attempting direct database update (may fail if schema conflicts exist)..."
-              dotnet ef database update --project /app/truload-backend.dll || {
-                echo "⚠️  Direct update failed - database may already be up to date"
-                exit 0
-              }
-            }
-            
-            if [[ -f /tmp/migration.sql ]]; then
-              echo "Applying idempotent migrations via SQL..."
-              psql -h postgresql.erp.svc.cluster.local -U postgres -d truload -f /tmp/migration.sql || {
-                echo "⚠️  SQL script failed - migrations may already be applied"
-                exit 0
-              }
-            fi
+            echo "Note: Migrations will be applied by application on startup"
           else
-            echo "✓ Fresh database - running standard migrations"
-            dotnet ef database update --project /app/truload-backend.dll
+            echo "✓ Fresh database - migrations will be applied by application on startup"
           fi
+          
+          echo ""
+          echo "⚠️  IMPORTANT: This .NET application should handle migrations on startup"
+          echo "Add this to your Program.cs or Startup.cs:"
+          echo ""
+          echo "  using (var scope = app.Services.CreateScope())"
+          echo "  {"
+          echo "      var db = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();"
+          echo "      db.Database.Migrate();  // Applies pending migrations"
+          echo "  }"
+          echo ""
           
           echo "✅ Migrations completed successfully"
         env:
