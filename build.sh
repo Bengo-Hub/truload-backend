@@ -209,7 +209,7 @@ else
       git checkout main || git checkout -b main || true
       if [[ -f "$VALUES_FILE_PATH" ]]; then
         IMAGE_REPO_ENV="$IMAGE_REPO" IMAGE_TAG_ENV="$GIT_COMMIT_ID" \
-          yq e -i '.image.repository = env(IMAGE_REPO_ENV) | .image.tag = env(IMAGE_TAG_ENV)' "$VALUES_FILE_PATH"
+          yq e -i '.image.repository = strenv(IMAGE_REPO_ENV) | .image.tag = strenv(IMAGE_TAG_ENV)' "$VALUES_FILE_PATH"
         git add "$VALUES_FILE_PATH" && git commit -m "${APP_NAME}:${GIT_COMMIT_ID} released" || true
         if [[ -n "$TOKEN" ]]; then
           git push origin HEAD:main || log_warning "devops-k8s push failed"
