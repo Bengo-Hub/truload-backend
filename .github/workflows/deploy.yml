@@ -25,9 +25,8 @@ jobs:
       run: |
         echo "Checking which tokens are available..."
         [[ -n "${{ secrets.GH_PAT }}" ]] && echo "✅ GH_PAT is set" || echo "❌ GH_PAT not found"
-        [[ -n "${{ secrets.GITHUB_SECRET }}" ]] && echo "✅ GITHUB_SECRET is set" || echo "❌ GITHUB_SECRET not found"
-        [[ -n "${{ secrets.GITHUB_TOKEN }}" ]] && echo "✅ GITHUB_TOKEN is set (default, may lack cross-repo write)" || echo "❌ GITHUB_TOKEN not found"
-        echo "Note: At least GH_PAT or GITHUB_SECRET must be set for cross-repo push to devops-k8s"
+        [[ -n "${{ secrets.GIT_SECRET }}" ]] && echo "✅ GITHUB_SECRET is set" || echo "❌ GITHUB_SECRET not found"
+        [[ -n "${{ secrets.GIT_TOKEN }}" ]] && echo "✅ GIT_TOKEN is set (default)" || echo "❌ GIT_TOKEN not found"
 
     - name: Set deployment variables
       run: |
@@ -39,17 +38,14 @@ jobs:
         echo "REGISTRY_SERVER=docker.io" >> $GITHUB_ENV
         echo "REGISTRY_NAMESPACE=codevertex" >> $GITHUB_ENV
         echo "VALUES_FILE_PATH=apps/truload-backend/values.yaml" >> $GITHUB_ENV
-        echo "DEPLOYMENT_SUMMARY_TITLE=TruLoad Backend Deployment Summary" >> $GITHUB_ENV
-        echo "DEPLOYMENT_SUCCESS_MESSAGE=TruLoad Backend deployment completed! The API should be accessible via the URLs above." >> $GITHUB_ENV
-        echo "APPLICATION_DISPLAY_NAME=TruLoad Backend" >> $GITHUB_ENV
+        echo "APP_NAME=truload-backend" >> $GITHUB_ENV
 
     - name: Run production deployment
       env:
-        DOCKER_SSH_KEY: ${{ secrets.DOCKER_SSH_KEY }}
         KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
         GH_PAT: ${{ secrets.GH_PAT }}
-        GITHUB_SECRET: ${{ secrets.GITHUB_SECRET }}
+        GIT_SECRET: ${{ secrets.GIT_SECRET }}
         REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
         REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
         GITHUB_SHA: ${{ github.sha }}
@@ -61,32 +57,24 @@ jobs:
         REGISTRY_SERVER: docker.io
         REGISTRY_NAMESPACE: codevertex
         VALUES_FILE_PATH: apps/truload-backend/values.yaml
-        GIT_USER: ${{ secrets.GIT_USER }}
-        GIT_EMAIL: ${{ secrets.GIT_EMAIL }}
-        PROVIDER: contabo
-        CONTABO_API: true
-        # Database secrets and configuration
+        APP_NAME: truload-backend
+        GIT_USER: ${{ secrets.GIT_USER || 'TruLoad Bot' }}
+        GIT_EMAIL: ${{ secrets.GIT_EMAIL || 'dev@truload.io' }}
+        # Shared database passwords from ERP namespace
         POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-        RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME }}
+        # TruLoad-specific
         RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
-        PG_DATABASE: truload
-        # Contabo secrets
-        CONTABO_CLIENT_ID: ${{ secrets.CONTABO_CLIENT_ID }}
-        CONTABO_CLIENT_SECRET: ${{ secrets.CONTABO_CLIENT_SECRET }}
-        CONTABO_API_USERNAME: ${{ secrets.CONTABO_API_USERNAME }}
-        CONTABO_API_PASSWORD: ${{ secrets.CONTABO_API_PASSWORD }}
-        # Deployment variables
-        DEPLOYMENT_SUMMARY_TITLE: TruLoad Backend Deployment Summary
-        DEPLOYMENT_SUCCESS_MESSAGE: TruLoad Backend deployment completed!
-        APPLICATION_DISPLAY_NAME: TruLoad Backend
+        RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME || 'user' }}
+        # .NET secrets
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        ASPNET_SECRET: ${{ secrets.ASPNET_SECRET }}
       run: |
         chmod +x build.sh
+        # Export shared database passwords (used by setup_env_secrets.sh)
         export POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
         export REDIS_PASSWORD="${REDIS_PASSWORD}"
-        export RABBITMQ_USERNAME="${RABBITMQ_USERNAME:-user}"
-        export RABBITMQ_PASSWORD="${RABBITMQ_PASSWORD:-rabbitmq}"
-        export PG_DATABASE="${PG_DATABASE:-truload}"
+        export RABBITMQ_PASSWORD="${RABBITMQ_PASSWORD}"
         ./build.sh
 
     - name: Tag and push :latest
@@ -100,7 +88,7 @@ jobs:
         : "${REGISTRY_NAMESPACE:=codevertex}"
         IMAGE_REPO="${REGISTRY_SERVER}/${REGISTRY_NAMESPACE}/truload-backend"
         SHORT_SHA=${GITHUB_SHA::8}
-        echo "Tagging ${IMAGE_REPO}:${SHORT_SHA} as :latest and pushing"
+        echo "Tagging ${IMAGE_REPO}:${SHORT_SHA} as :latest"
         echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_SERVER" -u "$REGISTRY_USERNAME" --password-stdin
         docker pull "${IMAGE_REPO}:${SHORT_SHA}" || true
         docker tag "${IMAGE_REPO}:${SHORT_SHA}" "${IMAGE_REPO}:latest"
@@ -122,15 +110,15 @@ jobs:
         echo "$KUBE_CONFIG_B64" | base64 -d > ~/.kube/config
 
         # Ensure deployment is rolled out
-        kubectl rollout status deployment/truload-backend -n ${NS} --timeout=300s || true
+        kubectl rollout status deployment/truload-backend-app -n ${NS} --timeout=300s
 
-        # Try ingress health endpoint(s)
-        HOSTS=$(kubectl get ingress -n ${NS} -o jsonpath='{.items[*].spec.rules[*].host}' | tr ' ' '\n' | grep -E 'api.*truload' || true)
+        # Try ingress health endpoint
+        HOSTS=$(kubectl get ingress -n ${NS} -o jsonpath='{.items[*].spec.rules[*].host}' | tr ' ' '\n' | grep -E '^truloadapitest' || true)
         if [ -n "$HOSTS" ]; then
           STATUS=1
           for H in $HOSTS; do
             echo "Checking https://$H/health ..."
-            if curl -sk --max-time 10 "https://$H/health" | grep -Ei "ok|healthy" >/dev/null; then
+            if curl -sk --max-time 10 "https://$H/health" | grep -Ei "healthy" >/dev/null; then
               echo "✅ Health OK for $H"
               STATUS=0
               break
@@ -143,5 +131,3 @@ jobs:
           echo "No ingress host found; skipping external health probe"
         fi
         echo "::endgroup::"
-
-
