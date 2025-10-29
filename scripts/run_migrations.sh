@@ -64,6 +64,12 @@ ${PULL_SECRETS_YAML}
           echo "EF Core Migrations - Smart Mode"
           echo "================================"
           
+          # Ensure database 'truload' exists
+          echo "Ensuring database 'truload' exists..."
+          export PGPASSWORD=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Password=\K[^;]+' || echo "")
+          psql -h postgresql.erp.svc.cluster.local -U postgres -d postgres -c "CREATE DATABASE truload;" 2>&1 | grep -v "already exists" || true
+          echo "✓ Database 'truload' ready"
+          
           # Extract password from connection string for testing
           # Connection string format: Host=...;Username=postgres;Password=XXX;Database=truload
           DB_PASS=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Password=\K[^;]+' || echo "")

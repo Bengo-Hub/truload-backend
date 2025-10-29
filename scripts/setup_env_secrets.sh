@@ -108,13 +108,13 @@ log_step "Verifying PostgreSQL password by testing connection..."
 # Clean up any existing test pod first
 kubectl delete pod -n "$NAMESPACE" pg-test-conn --ignore-not-found >/dev/null 2>&1
 
-# Run connection test with detailed error capture
+# Run connection test with detailed error capture (use 'postgres' db which always exists)
 log_info "Testing connection to postgresql.erp.svc.cluster.local:5432..."
 TEST_OUTPUT=$(mktemp)
 set +e
 kubectl run -n "$NAMESPACE" pg-test-conn --rm -i --restart=Never --image=postgres:15-alpine --timeout=30s \
   --env="PGPASSWORD=$APP_DB_PASS" \
-  --command -- psql -h postgresql.erp.svc.cluster.local -U postgres -d truload -c "SELECT 1;" >$TEST_OUTPUT 2>&1
+  --command -- psql -h postgresql.erp.svc.cluster.local -U postgres -d postgres -c "SELECT 1;" >$TEST_OUTPUT 2>&1
 TEST_RC=$?
 set -e
 
@@ -131,7 +131,7 @@ else
     log_error "DIAGNOSIS: Password mismatch or connectivity issue"
     log_error "- Secret password length: ${#APP_DB_PASS} chars"
     log_error "- Database host: postgresql.erp.svc.cluster.local:5432"
-    log_error "- Database: truload"
+    log_error "- Test database: postgres"
     log_error ""
     log_error "FIX OPTIONS:"
     log_error "Option A: Reset PostgreSQL password to match the K8s secret (recommended)"
