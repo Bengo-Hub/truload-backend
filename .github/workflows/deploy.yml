@@ -71,10 +71,16 @@ jobs:
         ASPNET_SECRET: ${{ secrets.ASPNET_SECRET }}
       run: |
         chmod +x build.sh
-        # Export shared database passwords (used by setup_env_secrets.sh)
+        # Export all required environment variables for build.sh and child scripts
         export POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
         export REDIS_PASSWORD="${REDIS_PASSWORD}"
         export RABBITMQ_PASSWORD="${RABBITMQ_PASSWORD}"
+        export RABBITMQ_USERNAME="${RABBITMQ_USERNAME}"
+        export JWT_SECRET="${JWT_SECRET}"
+        export ASPNET_SECRET="${ASPNET_SECRET}"
+        export NAMESPACE="${NAMESPACE}"
+        export ENV_SECRET_NAME="${ENV_SECRET_NAME}"
+        export APP_NAME="${APP_NAME}"
         ./build.sh
 
     - name: Tag and push :latest
