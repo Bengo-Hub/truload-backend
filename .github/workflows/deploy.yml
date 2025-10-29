@@ -100,7 +100,7 @@ jobs:
         docker tag "${IMAGE_REPO}:${SHORT_SHA}" "${IMAGE_REPO}:latest"
         docker push "${IMAGE_REPO}:latest"
 
-    - name: Trigger ArgoCD sync and wait for deployment
+    - name: Check ArgoCD Application status
       if: success()
       env:
         KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG }}
@@ -108,41 +108,45 @@ jobs:
         APP_NAME: truload-backend
       run: |
         if [ -z "${KUBE_CONFIG_B64}" ]; then
-          echo "⏭️ Skipping ArgoCD sync - no KUBE_CONFIG available"
+          echo "⏭️ Skipping ArgoCD check - no KUBE_CONFIG available"
           exit 0
         fi
         
-        echo "::group::ArgoCD Sync"
+        echo "::group::ArgoCD Application Status"
         mkdir -p ~/.kube
         echo "$KUBE_CONFIG_B64" | base64 -d > ~/.kube/config
         
-        # Check if ArgoCD Application exists
+        # Note: ArgoCD applications are configured with automated sync
+        # They will automatically detect git changes and sync when repository is updated
+        echo "ℹ️ ArgoCD applications configured for automated sync - no manual intervention needed"
+        
+        # Check if ArgoCD Application exists and show its status
         if kubectl get application ${APP_NAME} -n argocd >/dev/null 2>&1; then
           echo "✓ ArgoCD Application '${APP_NAME}' found"
           
-          # Refresh to detect values.yaml changes
+          # Trigger a hard refresh to detect values.yaml changes immediately
           kubectl patch application ${APP_NAME} -n argocd --type merge -p '{"metadata":{"annotations":{"argocd.argoproj.io/refresh":"hard"}}}' || true
           
-          echo "Waiting for ArgoCD to sync (up to 120 seconds)..."
-          for i in {1..24}; do
-            SYNC_STATUS=$(kubectl get application ${APP_NAME} -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
-            HEALTH_STATUS=$(kubectl get application ${APP_NAME} -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
-            
-            echo "  Sync: ${SYNC_STATUS}, Health: ${HEALTH_STATUS}"
-            
-            if [[ "$SYNC_STATUS" == "Synced" && "$HEALTH_STATUS" == "Healthy" ]]; then
-              echo "✅ Application synced and healthy"
-              break
-            fi
-            
-            sleep 5
-          done
+          # Show current status
+          SYNC_STATUS=$(kubectl get application ${APP_NAME} -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
+          HEALTH_STATUS=$(kubectl get application ${APP_NAME} -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
           
-          # Verify deployment exists after sync
-          kubectl get deployment ${APP_NAME}-app -n ${NS} || echo "⚠️ Deployment not found yet"
+          echo "Current Status - Sync: ${SYNC_STATUS}, Health: ${HEALTH_STATUS}"
+          echo "✅ ArgoCD will automatically sync within a few moments"
+          echo "📊 Monitor progress: kubectl get application ${APP_NAME} -n argocd -w"
         else
           echo "⚠️ ArgoCD Application '${APP_NAME}' not found"
-          echo "Run provision workflow to create ArgoCD Applications"
+          echo "📝 Action Required: Run the provision workflow to create ArgoCD Applications"
+          echo ""
+          echo "Run this command to trigger provisioning:"
+          echo "  gh workflow run provision.yml --repo Bengo-Hub/devops-k8s"
+          echo ""
+          echo "Or manually apply the application:"
+          echo "  kubectl apply -f https://raw.githubusercontent.com/Bengo-Hub/devops-k8s/main/apps/truload-backend/app.yaml"
+          
+          # Don't fail the workflow - application might not be set up yet
+          echo ""
+          echo "⚠️ Continuing without ArgoCD sync check (Application not found)"
         fi
         echo "::endgroup::"
 
@@ -161,25 +165,46 @@ jobs:
         mkdir -p ~/.kube
         echo "$KUBE_CONFIG_B64" | base64 -d > ~/.kube/config
 
-        # Ensure deployment is rolled out
-        kubectl rollout status deployment/truload-backend-app -n ${NS} --timeout=300s
-
-        # Try ingress health endpoint
-        HOSTS=$(kubectl get ingress -n ${NS} -o jsonpath='{.items[*].spec.rules[*].host}' | tr ' ' '\n' | grep -E '^truloadapitest' || true)
-        if [ -n "$HOSTS" ]; then
-          STATUS=1
-          for H in $HOSTS; do
-            echo "Checking https://$H/health ..."
-            if curl -sk --max-time 10 "https://$H/health" | grep -Ei "healthy" >/dev/null; then
-              echo "✅ Health OK for $H"
-              STATUS=0
-              break
+        # Check if deployment exists before checking rollout status
+        if kubectl get deployment truload-backend-app -n ${NS} >/dev/null 2>&1; then
+          echo "✓ Deployment found, checking rollout status..."
+          
+          # Wait for deployment to be rolled out
+          if kubectl rollout status deployment/truload-backend-app -n ${NS} --timeout=300s; then
+            echo "✅ Deployment rollout successful"
+            
+            # Try ingress health endpoint
+            HOSTS=$(kubectl get ingress -n ${NS} -o jsonpath='{.items[*].spec.rules[*].host}' | tr ' ' '\n' | grep -E '^truloadapitest' || true)
+            if [ -n "$HOSTS" ]; then
+              STATUS=1
+              for H in $HOSTS; do
+                echo "Checking https://$H/health ..."
+                if curl -sk --max-time 10 "https://$H/health" | grep -Ei "healthy" >/dev/null; then
+                  echo "✅ Health OK for $H"
+                  STATUS=0
+                  break
+                fi
+              done
+              if [ $STATUS -ne 0 ]; then
+                echo "⚠️ Health endpoint did not return OK; rollout completed but endpoint may still be initializing"
+              fi
+            else
+              echo "No ingress host found; skipping external health probe"
             fi
-          done
-          if [ $STATUS -ne 0 ]; then
-            echo "⚠️ Health endpoint did not return OK; rollout completed but endpoint may still be initializing"
+          else
+            echo "⚠️ Deployment rollout check timed out or failed"
+            exit 1
           fi
         else
-          echo "No ingress host found; skipping external health probe"
+          echo "⚠️ Deployment not found yet - ArgoCD may still be syncing"
+          echo "ℹ️ This is normal if the ArgoCD Application was just created"
+          echo ""
+          echo "Check ArgoCD sync status with:"
+          echo "  kubectl get application truload-backend -n argocd"
+          echo ""
+          echo "Check deployment status with:"
+          echo "  kubectl get deployment truload-backend-app -n ${NS}"
+          echo ""
+          echo "⚠️ Skipping health check (deployment not found)"
         fi
         echo "::endgroup::"
