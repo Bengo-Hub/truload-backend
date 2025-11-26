@@ -1,177 +1,651 @@
-## TruLoad Backend Plan (C#/.NET 8, PostgreSQL, Redis, RabbitMQ)
+# TruLoad Backend - Implementation Plan
 
-### 1. Overview
-Cloud-hosted enforcement and weighing backend with offline-aware clients. Core flows and legal rules follow the KURAWEIGH specification and prosecution narration provided, applying either EAC Act or Traffic Act. Backend exposes REST APIs (and WebSockets/SignalR where applicable), integrates with TruConnect for weight acquisition, supports high concurrency, rate limiting, caching, resilient messaging, and auditable workflows.
+## Table of Contents
+1. [Executive Summary](#executive-summary)
+2. [Technology Stack](#technology-stack)
+3. [System Architecture](#system-architecture)
+4. [Module Workflows (FRD-Aligned)](#module-workflows-frd-aligned)
+5. [Database Schema](#database-schema)
+6. [Legal Computation Rules](#legal-computation-rules)
+7. [Data Analytics Integration](#data-analytics-integration)
+8. [Performance & Concurrency](#performance--concurrency)
+9. [Integrations](#integrations)
+10. [Security & Compliance](#security--compliance)
+11. [DevOps & Deployment](#devops--deployment)
+12. [Sprint Delivery Plan](#sprint-delivery-plan)
+13. [References](#references)
 
-### 2. Tech Stack
-- C#, .NET 8 Web API (vertical slices per module)
-- PostgreSQL (Npgsql, EF Core 8, JSONB where beneficial)
-- Redis (caching, distributed locks)
-- RabbitMQ (domain events, async tasks)
-- Swagger/OpenAPI, Serilog, FluentValidation, MediatR (CQRS), Polly (resiliency)
-- Identity: ASP.NET Identity + JWT (HS256)
+---
 
-### 3. Architecture
-- Modular monolith with microservice-like boundaries for: User/Role/Shift, Weighing, Prosecution, Special Release, Vehicle Inspection, Tags/Yard, Reporting, Settings, Security, Technical.
-- Domain events (RabbitMQ): `weighing.recorded`, `vehicle.tagged`, `vehicle.sent_to_yard`, `prosecution.case_opened`, `invoice.paid`, `vehicle.compliant`.
-- Background services: sync jobs, document generation, notifications, cleanup.
-- API rate limiting: ingress (Nginx annotations) + AspNetCoreRateLimit.
-- Caching: per-entity read models; query caching for heavy reports; response caching for public metadata.
-- Observability: structured logging (Serilog), OpenTelemetry traces/metrics, health endpoints.
+## Executive Summary
 
-### 4. Data Model (high level)
-Key conventions: surrogate primary keys (bigserial), natural keys indexed, foreign keys with ON UPDATE/DELETE rules, created_at/updated_at, soft-delete where necessary. Composite indexes for hot paths; partitioning for large tables.
+**System Purpose:** Cloud-hosted intelligent weighing and enforcement solution enabling roadside officers to capture vehicle weights, verify compliance with EAC Vehicle Load Control Act (2016) or Kenya Traffic Act (Cap 403), and manage enforcement actions (prosecution, redistribution, special release).
 
-#### 4.1 User Management & Security
-- `users` (id, email, phone, password_hash, status, last_login_at)
-- `roles` (id, name, description)
-- `user_roles` (user_id, role_id, unique)
-- `shifts` (id, name, start_time, end_time, days_mask, rotation_group)
-- `user_shifts` (user_id, shift_id, starts_on, ends_on)
-- `audit_logs` (id, actor_id, action, entity, entity_id, data_json, ip, at)
-- Indexes: unique(email), idx_user_roles_user, idx_user_shifts_active, btree on audit (actor_id, at desc)
+**Key Capabilities:**
+- Multi-mode weighing: Static (multi-deck), WIM (Weigh-In-Motion), Mobile/Axle weighing
+- Real-time weight acquisition via TruConnect microservice
+- Offline-aware client systems with automatic cloud sync
+- Legal compliance enforcement with automated charge computation
+- Integration with eCitizen/Road Authority payment gateways
+- Court case tracking (NTAC, OB numbers)
+- Comprehensive audit trails and reporting
+- Natural language query processing with AI-powered vector search
+- Advanced analytics and BI dashboards via Apache Superset integration
 
-#### 4.2 Reference & Settings
-- `stations` (id, code, name, route_id, cluster_id, bound, default_camera_id)
-- `routes` (id, code, name)
-- `transporters` (id, name, address, phone)
-- `vehicles` (id, reg_no unique, make_id, trailer_no, transporter_id, permit_no, permit_issued_at, permit_expires_at)
-- `drivers` (id, id_no_or_passport, license_no, full_names, gender, nationality, address, ntac_no)
-- `currencies` (code, name, rate_to_usd, as_of)
-- `system_settings` (key unique, value)
-- `prosecution_settings` (station_default_id, court_default_id, tolerance_gvw_kg default 200, tolerance_axle_kg default 200, act_default)
-- Indexes: unique(reg_no), idx_currencies_as_of, idx_settings_key
+---
 
-#### 4.3 Axle Configurations and Acts
-- `axle_configurations` (id, code e.g. 2A/3A/…, axle_count, base_gvw_kg)
-- `axle_groups` (id, name A/B/C/D, position_range json: [start_axle,end_axle])
-- `axle_configuration_groups` (axle_configuration_id, group_id, group_order)
-- `axle_group_limits` (axle_configuration_id, group_id, permissible_kg)
-- `act_definitions` (id, name: EAC|TRAFFIC, notes)
-- `eac_fee_bands_gvw` (id, overload_kg_from, overload_kg_to, fee_usd)
-- `eac_fee_bands_axle` (id, axle_type, overload_kg_from, overload_kg_to, fee_usd)
-- `traffic_fee_bands_gvw` (id, overload_kg_from, overload_kg_to, fee_usd)
-- Permits: `permit_rules` (vehicle_class_code, extra_axle_kg, extra_gvw_kg)
-- Indexes: unique(axle_configuration_id, group_id), btree on bands ranges, partial indexes for active rules
+## Technology Stack
 
-#### 4.4 Weighing (Core)
-- `weighings` (id, station_id, vehicle_id, driver_id, weighing_type enum: static|wim|axle, act_id, bound, ticket_no, weighed_at, origin_id, destination_id, cargo_id, gvw_measured_kg, gvw_permissible_kg, gvw_overload_kg, tolerance_applied_bool, has_permit_bool, is_sent_to_yard_bool, reweigh_cycle_no, reweigh_limit default 8)
-- `weighing_axles` (id, weighing_id, axle_no, measured_kg, permissible_kg, overload_kg, group_name A/B/C/D)
-- `weight_stream_events` (id, weighing_id, scale_id, raw_json, recorded_at)  // streaming snapshots from TruConnect
-- `scale_tests` (id, station_id, carried_at, result, details)
-- Indexes: (vehicle_id, weighed_at desc), (station_id, weighed_at desc), partial idx on is_sent_to_yard, btree on ticket_no unique
-- Partitioning: monthly on `weighings(weighed_at)` for high write/read performance
+### Core Framework
+- **Language:** C# 12
+- **Framework:** .NET 8 (LTS) Web API
+- **Architecture Pattern:** Modular Monolith with CQRS (MediatR), Vertical Slice Architecture
 
-#### 4.5 Yard, Tags & Enforcement
-- `vehicle_tags` (id, reg_no, tag_type auto|manual, reason, station_code, status open|closed, created_by, closed_by, closed_reason, opened_at, closed_at)
-- `yard_entries` (id, weighing_id, station_id, reason redistrib|gvw_overload|permit_check|offload)
-- `prohibition_orders` (id, yard_entry_id, doc_no, issued_at, inspector_name, yard_location, offload_truck_id nullable)
-- Indexes: (reg_no, status), (yard_entry_id)
+### Data & Caching
+- **Primary Database:** PostgreSQL 16+ (Npgsql, Entity Framework Core 8) with pgvector extension
+- **Caching:** Redis 7+ (StackExchange.Redis)
+- **Message Broker:** RabbitMQ 3.13+ (MassTransit for .NET)
+- **Search (Optional):** Elasticsearch for advanced report queries
 
-#### 4.6 Prosecution
-- `prosecution_cases` (id, yard_entry_id, act_id, case_no, ntac_no, ob_no, court_id, complainant_officer_id, investigating_officer_id, created_at)
-- `prosecution_parties` (id, case_id, party_type driver|owner|transporter, identity fields…)
-- `charge_breakdowns` (id, case_id, basis axle|gvw|permit, overload_kg, fee_usd, fee_kes, forex_rate, rule_ref)
-- `invoices` (id, case_id, invoice_no, total_usd, total_kes, issued_at, ext_ref)
-- `receipts` (id, case_id, invoice_id, amount_usd, amount_kes, paid_at, ext_ref)
-- `load_corrections` (id, case_id, memo_text, created_at)
-- `compliance_certificates` (id, case_id, issued_at)
-- `charge_summaries` (materialized view): pre-join of the highest charge per EAC rule
-- Indexes: (case_id), (yard_entry_id unique), (issued_at), MV refreshed on invoice/receipt
+### Supporting Libraries
+- **Authentication:** ASP.NET Core Identity + JWT (System.IdentityModel.Tokens.Jwt)
+- **Validation:** FluentValidation
+- **Resilience:** Polly (circuit breaker, retry, timeout policies)
+- **API Documentation:** Swashbuckle (Swagger/OpenAPI 3.0)
+- **Logging:** Serilog (structured logging to Seq/ELK)
+- **Mapping:** AutoMapper or Mapster
+- **Testing:** xUnit, FluentAssertions, Moq, Testcontainers
+- **Background Jobs:** Hangfire (dashboard for monitoring)
+- **AI/ML:** ONNX Runtime for text-to-vector embeddings
+- **Vector Database:** pgvector extension for PostgreSQL
 
-#### 4.7 Special Release & Permits
-- `special_releases` (id, weighing_id or case_id, reason tolerance|permit|redistribution, issued_at, officer_id, details)
-- `permits` (id, vehicle_id, permit_no, permit_class, extra_axle_kg, extra_gvw_kg, valid_from, valid_to, issuer)
+### DevOps & Observability
+- **Containerization:** Docker multi-stage builds
+- **Orchestration:** Kubernetes (via centralized devops-k8s)
+- **CI/CD:** GitHub Actions → ArgoCD
+- **Monitoring:** Prometheus + Grafana, OpenTelemetry
+- **APM:** Application Insights or Jaeger distributed tracing
+- **Scaling:** HPA (Horizontal Pod Autoscaling) and VPA (Vertical Pod Autoscaling) for DA services
 
-#### 4.8 Vehicle Inspection (Dimensions)
-- `vehicle_inspections` (id, vehicle_id, station_id, height_m, width_m, length_m, side_projection_m, front_rear_projection_m, act_id, result pass|fail, inspector_id, inspected_at, permit_no_nullable)
+---
 
-### 5. Legal Computation Rules (summary)
-- EAC (Vehicle Load Control Act 2016; Enforcement Regs 2018):
-  - Charging basis: higher of GVW overload vs any axle overload.
-  - Tolerance: 5% axle tolerance (statutory) on permissible axle loads; GVW has no statutory tolerance. Additionally, road authorities may operate an absolute tolerance (e.g., ≤200 kg) for auto special release; store as policy.
-  - Fee bands: GVW bands in 500 kg increments (e.g., 1–500 kg = 90.95 USD; 501–1000 kg = 186.00 USD; 1001–1500 kg = 289.35 USD; …). Axle fee bands per axle type (steering/single/tandem/tridem). Persist into `eac_fee_bands_gvw` and `eac_fee_bands_axle` with gazette/version.
-  - Bridge formula / max GVW (e.g., 56 t for ≤7 axles) enforced via configuration tables.
-- Kenya Traffic Act (Cap 403) / KeNHA schedules:
-  - Charging basis: GVW overload only (axle overloads recorded but not charged for fee computation).
-  - Tolerance: no statutory GVW tolerance; axle tolerances mirror EAC (5%). Operational absolute tolerance (≤200 kg) may be configured for auto special release where policy allows.
-  - Fee bands: KSh schedule per GVW excess band (e.g., 1–500 kg ≈ $235.90; 501–1000 kg ≈ $482.50; 1001–1500 kg ≈ $750.55). Store USD with KSh reference and schedule version.
-- Permit vehicles (wide/excess load): apply permit-extended limits per class (e.g., 2A: +3,000 kg axle, +1,000 kg GVW; 3A: +3,000 kg axle, +2,000 kg GVW). If measured exceeds permit-extended limits, prosecute; otherwise special permit release.
+## System Architecture
 
-5.1 Tolerance & Policy Tables
-- `tolerance_policies` (id, act_id, type axle|gvw, value_kg, percent_nullable, enabled_bool, applies_to permit|non_permit|both, authority_ref, effective_from, effective_to). Use policy engine to resolve applicable tolerance at evaluation time.
+### Architectural Principles
+1. **Modular Boundaries:** Each module (User, Weighing, Prosecution, etc.) is a vertical slice with its own controllers, commands/queries, validators, and domain logic
+2. **Domain Events:** Cross-module communication via RabbitMQ (e.g., `WeighingCompleted`, `VehicleSentToYard`, `InvoicePaid`)
+3. **API-First:** REST endpoints with versioning (`/api/v1/...`); SignalR hubs for real-time weight streaming
+4. **Offline Resilience:** Idempotent operations; client-generated correlation IDs; conflict resolution strategies
+5. **Performance:** Read/write separation via materialized views; Redis caching for hot data; partitioned tables
+6. **Security:** RBAC with claims-based authorization; audit logs for all mutations; encrypted sensitive fields
+| **Inspection** | Dimensional compliance (wide load) | VehicleInspections |
+| **Reporting & Analytics** | Registers, analytics, exports, BI dashboards | Dynamic report generation, Superset dashboards |
+| **Settings** | System config, stations, cameras, I/O, prosecution defaults | Stations, Cameras, IoDevices, SystemSettings |
+| **Security** | Audit logs, backups, password policies | AuditLogs, PasswordHistory |
 
-5.2 Computation Flow
-1) Determine applicable Act: road/station default + user override if permitted.
-2) Resolve permissible limits from `axle_group_limits` and `axle_configurations` (+ permit rules if any).
-3) Compute per-axle overloads and GVW overload; apply tolerance policies to classify auto release vs enforcement.
-4) Under EAC: compute GVW fee and axle fee, select higher; under Traffic: compute GVW fee only.
-5) Convert USD↔KES using `currencies` snapshot (store both values in `charge_breakdowns`).
+---
 
-5.3 Seed Data (from provided SQL and research)
-- Import axle configuration codes (2A, 3A, …), groups (A/B/C/D), and permissible limits.
-- Seed EAC GVW bands (sample given: 1–500=90.95, 501–1000=186.00, 1001–1500=289.35, …) and axle bands per axle type.
-- Seed Traffic GVW bands per KeNHA schedule (store USD with KSh reference), mark schedule version and source.
-- Seed permit rules for common classes (2A, 3A) and allow organization overrides.
+## Module Workflows (FRD-Aligned)
 
+### A.1 - Weighing Process Workflow
 
-### 6. Performance & Concurrency
-- Hot-path indexes: `weighings(vehicle_id, weighed_at desc)`, `weighings(station_id, weighed_at desc)`, partial idx for `is_sent_to_yard`, GIN on JSONB where used.
-- Partition `weighings` by month; archive strategy with retention.
-- Redis caching: permissible tables, fee bands, station config; sliding TTL with cache bust on updates.
-- Idempotency keys on weighing ticket generation and case creation.
-- Advisory locks during reweigh cycles per vehicle to prevent race conditions.
+**Service Initiation:** Frontend (PWA) - Weighing screen / Station dashboard
 
-### 7. Integrations
-- TruConnect: local endpoint, polled/streamed to UI; backend validates/reconciles final saved weights and stores stream in `weight_stream_events` for audit.
-- Payments: eCitizen/Road Authority (invoice/receipt webhooks) → update `receipts` and trigger release flow.
-- Case Management (NTAC/OB/Court) references mapped in `prosecution_cases` and parties.
+**Pre-conditions:**
+- Officer logged in (or PWA has offline credentials cached)
+- PWA service-worker registered and IndexedDB initialized
+- TruConnect running and connected to attached scale(s)
+- Scale calibration certificate valid and scale test completed for the day
+- Permissions: officer role authorizes weighing/prosecution actions
 
-### 8. Offline & Sync
-- Clients cache drafts in IndexedDB (frontend); upon submit, backend persists `weighings` atomically with axles.
-- Device sync queues: `device_sync_events` (id, device_id, payload, status), replay-safe via idempotency.
+**Process Flow:**
 
-### 9. API Surface (selected)
-- Auth: /auth/login, /auth/refresh
-- Users/Roles/Shifts: CRUD endpoints with RBAC
-- Weighing: /weighings (create), /weighings/{id}, /weighings/{id}/axles, /weighings/{id}/send-to-yard
-- Tags: /tags (list/create/close)
-- Yard: /yard (list), /yard/{id}/prohibit
-- Prosecution: /cases (create from yard), /cases/{id}/charges, /cases/{id}/invoice, /cases/{id}/receipt, /cases/{id}/escalate
-- Special Release: /releases (create)
-- Inspections: /inspections (create)
-- Settings/Acts/Axle Configs: CRUD, import tables (seeders)
+1. **Vehicle Entry & ANPR**
+   - Officer selects bound (A/B) and clicks "Weigh" → open entry boom (send signal to I/O device)
+   - Vehicle enters deck; ANPR camera auto-captures number plate and front/overview images
+   - System queries `vehicles` table by `reg_no`
+   - Operator verifies/corrects plate (edit action logged in audit)
 
-### 10. DevOps
-- Dockerfile (present); build.sh created to integrate with centralized devops-k8s; KubeSecrets/devENV.yml holds runtime env (Kubernetes encodes to base64 automatically).
-- HPA/VPA: chart values tuned per module; liveness/readiness; PodDisruptionBudgets; Nginx rate limiting.
-- ArgoCD: `devops-k8s/apps/truload-backend/{app.yaml,values.yaml}` used by build.sh to update image tag.
+2. **Axle Config & Details Capture**
+   - Auto-detect or prompt for axle configuration selection
+   - Capture: origin, destination, cargo type, driver details, transporter
+   - Select road and applicable Act (EAC or Traffic) based on station default
 
-### 11. Sprints (by priority)
-1) User Management & Security
-   - Auth/JWT, roles, shifts; audit logging; RBAC gates. Seed admin.
-2) Weighing (Static, WIM, Mobile(Axle by Axle Weighing)) + Station/Vehicle/Driver/Transporter
-   - TruConnect contract, data capture, tolerance evaluation, ticketing; send-to-yard; reweigh loop (limit 8).
-3) Prosecution Core
-   - Case intake, prohibition orders, charge computation (EAC/Traffic), invoices/receipts, load correction, compliance certificate, court escalation.
-4) Special Release & Permits
-   - Auto/manual special release; permit validation; permit rules CRUD.
-5) Inspection (Dimensions)
-   - Capture, validate, linkage to releases/prosecution.
-6) Reporting & Analytics
-   - Registers, overload & reweigh, charged reports, scale tests, statements; exports.
-7) Settings/Technical
-   - Cameras, I/O, health checks, calibration certificates; organization look & feel.
+3. **Weight Capture (3 modes)**
+   - **Static (Multi-Deck):** TruConnect streams live weights per deck; operator locks each deck when stable
+   - **WIM (Weigh-In-Motion):** Auto-captures highest stable weight per axle as vehicle moves
+   - **Mobile/Axle-by-Axle:** Operator manually assigns weight per axle as vehicle advances
 
-### 12. Indexing & Views (examples)
-- MV `charge_summaries(case_id, best_basis, fee_usd, fee_kes)` refreshed on charge changes.
-- Partial index on `vehicle_tags(status='open')`.
-- Composite index `weighing_axles(weighing_id, axle_no)`.
+4. **Compliance Evaluation**
+   - Sum axle weights → `gvw_measured_kg`
+   - Lookup `gvw_permissible_kg` from axle configuration or permit-extended value
+   - Compare each axle measured vs permissible
+   - Apply tolerance policies
+   - Decision: Compliant → Ticket | Overload ≤200kg → Auto Special Release | Overload >200kg → Send to Yard
 
-### 13. Data Seeding
-- Axle configs, groups, group limits; EAC & Traffic fee bands; tolerance defaults; permit rules (2A, 3A samples).
+5. **Reweigh Loop**
+   - Max 8 cycles (tracked via `reweigh_cycle_no`)
+   - Upon zero overload, generate compliance certificate
 
-### 14. Compliance Notes
-- Keep fee bands traceable to gazetted schedules; store source/version in band tables.
-- Store daily forex in `currencies` and snapshot into `charge_breakdowns` for audit.
+**Post-conditions:**
+- Weight Ticket generated for compliant vehicles
+- Prohibition Order generated and case queued for prosecution for non-compliant vehicles
+- Invoice generated when applicable and queued for eCitizen submission/payment
+- Local IndexedDB updated with synced statuses
 
+**Documents Generated:**
+- Weight Ticket
+- Permit Document (if applicable)
+- Special release certificate (in case of open previous manual tag)
+
+**Third Party Integrations:**
+- ANPR & Camera system
+- KeNHA Tags API
+- KeNHA Permit API
+- NTSA APIs (vehicle search)
+- eCitizen payment gateway
+- Media/file storage (cloud blob)
+- GPS/location service
+
+---
+
+### A.2 - Tags Process Workflow
+
+**Service Initiation:** Frontend (PWA) - Tags Screen
+
+**Process Flow:**
+1. System automatically tags vehicles based on predefined rules (e.g., repeated offenses, overload history)
+2. Officers can manually create tags with reason and category
+3. Tags can be associated with stations and time periods
+4. Tag lifecycle: open → closed (with reason and closure timestamp)
+5. Tags exported to external systems (KeNHA) when applicable
+
+**Tag Types:**
+- **Automatic:** System-generated based on violation patterns
+- **Manual:** Officer-created with justification
+
+**Tag Status:**
+- **Open:** Active tag requiring attention
+- **Closed:** Resolved tag with closure reason
+
+---
+
+### A.3 - Scale Test Workflow
+
+**Process Flow:**
+1. Daily calibration check required before weighing operations
+2. Operator places known test weight on scale
+3. System records measured weight, expected weight, deviation
+4. Test result: Pass/Fail based on tolerance thresholds
+5. Failed tests block weighing operations until resolved
+6. Test history maintained for compliance and audit
+
+---
+
+### B.1 - Case Register / Special Release Process Workflow
+
+**Service Initiation:** Frontend (PWA) - Case Register screen triggered from weighing or yard entry
+
+**Process Flow:**
+
+1. **Case Initialization**
+   - System auto-creates case entry from Prohibition Order and Weighing Data
+   - Officer verifies/edits/captures vehicle, driver, owner, prohibition id, location, time, officer details
+
+2. **Case Processing Paths**
+   - **Special Release:** Request admin authorization → Create conditional Load Correction Memo → Redistribute & schedule reweigh (optional) → Compliance certificate (optional) → Special release certificate
+   - **Pay Now:** Push to Prosecution Module (compute charges, raise Traffic Act Charge Sheet, Generate invoice) → On payment confirmation attach receipt → Generate Load Correction Memo → Schedule reweigh → Generate Compliance certificate
+   - **Court Process:** Escalate to Court → Case Manager with required subfiles
+
+3. **Case Finalization**
+   - Update case status with required checklist for finalisation
+   - Log all closing actions to Subfile J (Minute sheet & correspondences)
+
+**Printable Outputs:**
+- Load Correction Memo
+- Compliance Certificate
+- Special release certificate
+
+**Case Register Requirements:**
+- All violations must first be recorded in the Case Register module before any further action
+- Module tracks all case outcomes (settled, escalated, special release)
+- Maintains initial case details (Driver, Owner, Transporter, Prohibition Order)
+- Case status changes automatically when closed in prosecution/case manager modules
+- Produces relevant reports (Special Releases, Pending vs Finalised, Redistribution Vs Original Weights)
+
+---
+
+### B.2 - Prosecution Process Workflow
+
+**Service Initiation:** Frontend (PWA) - Prosecution screen, triggered from Case Register "Pay Now" action
+
+**Process Flow:**
+
+1. **Case Intake**
+   - System pre-fills from Case Register and Weighing Data
+   - Capture Prosecution Officer Details (synced from logged in user)
+   - Verify Driver, Owner, Transporter details
+   - Select applicable Act (EAC or Traffic)
+
+2. **Charge Computation**
+   - **EAC Act:** Compute GVW overload fee and axle overload fees; select higher; apply penalty multipliers if applicable
+   - **Traffic Act:** Compute GVW overload fee only (axles recorded but not charged)
+   - Store charge breakdowns with fee bands references
+   - Generate EAC Certificate or Traffic Act Certificate (PDF)
+
+3. **Invoice Generation**
+   - Create invoice record linked to eCitizen API
+   - Invoice includes total USD and KES (using daily forex rate)
+
+4. **Payment Processing**
+   - Receive payment confirmation via eCitizen webhook
+   - Insert receipt record
+   - Update invoice status to 'paid'
+
+5. **Load Correction & Reweigh**
+   - Generate Load Correction Memo
+   - Schedule reweigh vehicle until zero overload
+   - Generate Compliance Certificate upon compliance confirmation
+
+6. **Court Escalation (if applicable)**
+   - Assign NTAC number
+   - Update case status to 'escalated'
+   - Link to external Case Management System via API or manual OB entry
+
+**Prosecution Requirements:**
+- Generate Charge Sheet where GVW is exceeded or as configured per Kenya Traffic Act
+- Generate onsite invoice for charges settlement
+- Generate Receipt for invoices paid
+- Generate Load correction memo and reweigh vehicle to confirm compliance
+- Generate Compliance Certificates for compliant vehicles after re-weigh
+- Develop prosecuted vehicle database and offender's database including outcomes of past
+- Link in case management module to follow up on habitual offenders/previous convictions
+- Produce Management Reports (Daily/Periodic Overload reports, Prosecution Status reports, Court Case status report, Prosecutions per Weighbridge or Cluster, Summary of Prosecutions per vehicle)
+
+---
+
+### Case Management Module Workflow
+
+**Process Flow:**
+
+1. **Case Tracking**
+   - Track cases from inception to final ruling
+   - Create and track cases related to vehicle overloads and other violations
+   - Maintain violation history tracking for repeat offenders
+
+2. **Court Case Tracking**
+   - Track court cases right from case inception to final ruling in court
+   - Maintain case subfiles from A-J (following legal document organization standards)
+   - Link NTAC numbers and OB numbers
+
+3. **Yard Integration**
+   - Integrates with Yard sub-module to manage the real status of vehicles in yard
+   - Keep count of each vehicle status (pending, processing, released, escalated)
+
+**Case Subfiles (A-J):**
+- Subfile A: Initial case details and violation information
+- Subfile B: Driver details
+- Subfile C: Owner details
+- Subfile D: Transporter details
+- Subfile E: Prohibition Order
+- Subfile F: Charge Sheets and Invoices
+- Subfile G: Receipts and Payment Records
+- Subfile H: Load Correction Memos
+- Subfile I: Compliance Certificates and Special Releases
+- Subfile J: Minute sheet & correspondences (audit trail)
+
+---
+
+## Database Schema
+
+For detailed database schema including all entities, properties, indexes, relationships, views, and vector columns, refer to [erd.md](./erd.md).
+
+**Key Schema Highlights:**
+- **Naming Conventions:** snake_case for tables and columns
+- **Primary Keys:** BIGSERIAL `id` columns
+- **Timestamps:** `created_at`, `updated_at`, `deleted_at` (soft delete)
+- **Partitioning:** Monthly partitions on `weighings(weighed_at)` for high write/read performance
+- **Vector Support:** pgvector extension enabled for natural language query embeddings
+- **Materialized Views:** Pre-aggregated data for dashboards and reports
+
+---
+
+## Legal Computation Rules
+
+### EAC Vehicle Load Control Act (2016) - Enforcement Regulations (2018)
+
+**Axle Load Limits:**
+- Single (steering): 8,000 kg
+- Single (non-steering): 10,000 kg
+- Tandem (2-axle unit): 16,000-24,000 kg (depending on tyre configuration)
+- Tridem (3-axle unit): 22,500 kg
+
+**GVW Limit:** 56,000 kg max for vehicles ≤ 7 axles
+
+**Tolerance:**
+- **Statutory:** 5% overload margin on axle limits
+- **Operational (configurable):** ≤200 kg on GVW/axle for auto special release
+
+**Charging Logic:**
+1. Compute GVW overload fee using `eac_fee_bands_gvw`
+2. Compute each axle overload fee using `eac_fee_bands_axle` (by axle type)
+3. **Charge the higher** of GVW fee vs. maximum axle fee
+4. Apply penalty multipliers: Overload 201–1500 kg (redistributable): 1× standard fee; Overload >1500 kg (non-redistributable): 5× standard fee
+5. All fees in USD; convert to KES using daily `currencies.rate_to_usd`
+
+### Kenya Traffic Act (Cap 403) - KeNHA Schedules
+
+**GVW Limits:**
+- 2-axle rigid: 18,000 kg
+- 3-axle rigid: 26,000 kg
+- 3-axle tractor + semi: 28,000 kg
+- 4-axle rigid: 30,000 kg
+- 4-axle tractor + semi: 36,000 kg
+- 5-axle: 42,000-44,000 kg
+
+**Tolerance:**
+- **Axle:** 5% on permissible axle loads
+- **GVW:** No statutory tolerance; configurable operational tolerance (≤200 kg) for auto release
+
+**Charging Logic:**
+1. Compute GVW overload only (axles recorded but not charged)
+2. Lookup fee in `traffic_fee_bands_gvw` by overload band
+3. Convert USD to KES (daily forex)
+
+### Permit Vehicles (Extended Limits)
+
+**Permit Rules:**
+- 2A: +3,000 kg axle, +1,000 kg GVW
+- 3A: +3,000 kg axle, +2,000 kg GVW
+
+**Enforcement Workflow:**
+1. Detect active permit via `permits` table
+2. Apply permit-extended limits
+3. If measured ≤ permit-extended limits: **Special Permit Release** (auto)
+4. If beyond permit allowance: **Prohibit and Prosecute** (charge based on exceedance above base limits)
+
+---
+
+## Data Analytics Integration
+
+### Overview
+
+The TruLoad system integrates with a centralized Data Analytics (DA) platform using Apache Superset for BI dashboards, advanced analytics, and natural language query processing. The DA services are deployed as a centralized platform with VPA and HPA scaling based on demand and traffic.
+
+### Natural Language Query Processing
+
+**Architecture:**
+- **Text-to-Vector Mapping:** ONNX Runtime with lightweight embedding model (e.g., `all-MiniLM-L12-v2`) for semantic search.
+- **Generative AI (SLM):** Integration of a Small Language Model (e.g., Phi-3, Llama-3-8B-Quantized) via ONNX Runtime or local inference server for **Intent-to-SQL/JSON** translation.
+- **Vector Database:** PostgreSQL with pgvector extension for efficient similarity search of *existing* dashboards and datasets.
+- **Query Processing Flow:**
+  1. User submits natural language query (e.g., "fetch trucks with repeated offenses over the past month. display in table format and a summary donut chart")
+  2. **Semantic Search:** Backend uses embedding model to find relevant *existing* dashboards or datasets in `pgvector`.
+  3. **Intent Translation:** If no exact dashboard exists, the SLM (Generative AI) parses the query to construct:
+     - SQL Query (for data retrieval)
+     - Superset Visualization Config (JSON)
+  4. **Execution:**
+     - SQL is executed against the read-replica.
+     - Superset API is called to create a temporary "Ad-hoc" dashboard/chart.
+  5. **Response:** Backend returns the embedded URL of the newly created (or found) dashboard.
+
+**ONNX Runtime & AI Stack:**
+- **Embedding Model:** `all-MiniLM-L12-v2` (Quantized) - Fast, low memory.
+- **Generative Model (SLM):** `Phi-3-mini-4k-instruct` (ONNX) - Capable of basic SQL generation and JSON structuring.
+- **Vector Database:** pgvector for storing embeddings of:
+  - Dashboard Titles/Descriptions
+  - Dataset Column Names/Descriptions
+  - Report Metadata
+
+### Apache Superset Integration
+
+**Centralized DA Platform Architecture:**
+- Apache Superset deployed as centralized service within `devops-k8s`.
+- Service accessible to all BengoBox services via internal network.
+- Scaling configured with HPA (Horizontal Pod Autoscaling) and VPA (Vertical Pod Autoscaling).
+- Service URL configured via environment variables (`SUPERSET_BASE_URL`).
+
+**Backend Integration Methods:**
+- **REST API Client:** .NET HttpClient configured for Superset REST API calls.
+- **Dynamic Dashboard Generation:** Backend uses the SLM's output to call Superset APIs (`POST /api/v1/dashboard/`, `POST /api/v1/chart/`) to create visualizations on-the-fly.
+- **Guest Token Management:** Secure embedding via `POST /api/v1/security/guest_token/` with RLS (Row Level Security) clauses to ensure data isolation (e.g., Station A cannot see Station B's data).
+
+**Integration Approach:**
+1. **Initialization:** On application startup, backend syncs metadata (datasets, roles) to Superset.
+2. **Ad-Hoc Query:**
+   - User asks "Show me overload trends".
+   - SLM determines "Line Chart" + "Group By Month" + "Sum(OverloadKg)".
+   - Backend calls Superset API to create this chart.
+   - Backend returns embedded URL.
+3. **Pre-built Dashboards:** Standard dashboards are created during deployment and linked via the "Semantic Search" layer.
+
+**Superset REST API Endpoints Used:**
+- `/api/v1/security/login` - Authentication
+- `/api/v1/database/` - Data source management
+- `/api/v1/dashboard/` - Dashboard CRUD operations
+- `/api/v1/chart/` - Chart CRUD operations
+- `/api/v1/dataset/` - Dataset management
+- `/api/v1/security/guest_token/` - Guest token generation for embedded dashboards
+
+**Data Flow:**
+- Natural language query → Frontend → Backend API
+- Backend: Embedding Model → Vector Search (Find existing?)
+- Backend: SLM → Intent Translation (Generate new?)
+- Backend: Superset API → Create/Get Dashboard
+- Backend: Embedded URL generation → Frontend → Superset SDK rendering
+
+**Error Handling:**
+- Retry logic for Superset API calls using Polly policies
+- Circuit breaker pattern for Superset connectivity issues
+- Fallback to static dashboards if dynamic creation fails
+- Comprehensive logging of all Superset API interactions
+
+### Vector Database Setup
+
+**PostgreSQL pgvector Extension:**
+- Enable pgvector extension: `CREATE EXTENSION IF NOT EXISTS vector;`
+- Add vector columns to relevant tables for semantic search
+- Create vector indexes using HNSW or IVFFlat indexes for efficient similarity search
+- Vector columns store embeddings for searchable text fields (vehicle descriptions, violation reasons, case notes, etc.)
+
+**Vector Indexes:**
+- HNSW index for high-dimensional vectors (recommended for production)
+- IVFFlat index for lower-dimensional or smaller datasets
+- Index creation: `CREATE INDEX ON table_name USING hnsw (embedding_column vector_cosine_ops);`
+
+### Centralized DA Platform
+
+**Deployment Strategy:**
+- Apache Superset deployed as centralized service within devops-k8s
+- Service accessible to all BengoBox services
+- Scaling configured with:
+  - **HPA (Horizontal Pod Autoscaling):** Scale pods based on CPU/memory metrics
+  - **VPA (Vertical Pod Autoscaling):** Adjust pod resource requests/limits based on usage patterns
+
+**Service Integration:**
+- All services in BengoBox folder can integrate with centralized DA platform
+- Superset SDK used to bootstrap DA dashboards on service-specific frontends
+- Shared dashboard templates for common analytics patterns
+
+For detailed integration instructions, refer to [integration.md](./integration.md).
+
+---
+
+## Performance & Concurrency
+
+### Indexing Strategy
+
+**Hot Query Paths:**
+- `weighings(vehicle_id, weighed_at DESC)` → vehicle history
+- `weighings(station_id, weighed_at DESC)` → station activity
+- `weighings(ticket_no)` → unique lookup
+- Partial index on `weighings(is_sent_to_yard)` WHERE TRUE → yard list queries
+- GIN index on JSONB columns if heavy filtering
+- Vector indexes (HNSW/IVFFlat) on embedding columns for semantic search
+
+### Partitioning
+- Monthly partitions on `weighings(weighed_at)` → archive old partitions after retention period
+- Detach and drop partitions older than 2 years (configurable)
+
+### Caching (Redis)
+**Cache Keys:**
+- `axle:configs` → all axle configurations (refresh on update)
+- `fee:bands:eac:gvw` → EAC GVW fee bands
+- `fee:bands:traffic:gvw` → Traffic GVW fee bands
+- `station:config:{stationId}` → station settings (cameras, I/O, defaults)
+- `currency:usd:kes:latest` → latest forex rate
+- `vector:embeddings:{text_hash}` → cached query embeddings
+
+**Cache TTL:**
+- Static reference data: 24 hours (sliding, bust on CRUD)
+- Dynamic data (forex): 1 hour
+- Vector embeddings: 7 days (query result caching)
+
+### Concurrency & Locking
+- **Idempotency:** Client generates `correlation_id` (UUID); backend checks `device_sync_events` for duplicates
+- **Advisory Locks:** During reweigh cycles, acquire PostgreSQL advisory lock on `vehicle_id` to prevent simultaneous reweighs
+- **Optimistic Concurrency:** EF Core row versioning (timestamp) on `weighings`, `prosecution_cases`
+
+---
+
+## Integrations
+
+### TruConnect Microservice
+- **Type:** Node.js/Electron service running on client machine
+- **Function:** Connects to scale indicator via Serial/RF/Ethernet, reads weights, exposes HTTP endpoint
+- **Backend Handling:** Poll or SignalR stream from TruConnect; validate and store in `weight_stream_events`; lock stable values into `weighing_axles`
+
+### eCitizen / Road Authority Payment Gateway
+- **Invoice Creation:** POST to external API with case details, amount
+- **Webhook Callback:** Receive payment confirmation → update `invoices.status`, insert `receipts`
+- **Retry Logic:** Polly retry policy (3 attempts, exponential backoff)
+
+### Case Management System (NTAC/OB)
+- **NTAC Assignment:** Auto-generate or manual entry
+- **OB Integration:** API call to police system (if available) or manual OB number entry
+- **Data Exchange:** JSON over HTTPS with mutual TLS
+
+### Apache Superset (DA Platform)
+- **Connection:** Direct PostgreSQL read-only connection + REST API for dashboard management
+- **Authentication:** SSO via JWT tokens from backend
+- **Dashboard Generation:** Programmatic dashboard creation via Superset SDK
+
+For detailed integration instructions, refer to [integration.md](./integration.md).
+
+---
+
+## Security & Compliance
+
+### Authentication & Authorization
+
+**Centralized SSO Integration:**
+- TruLoad services utilize centralized `auth-service` for authentication
+- Authentication requests routed to `auth-service` via HTTP client
+- JWT tokens validated against `auth-service` public keys
+- Token refresh handled via `auth-service` refresh endpoint
+- Single Sign-On (SSO) enables seamless authentication across BengoBox services
+
+**Application-Level User Management:**
+- Local user entities maintained for app-specific data (shifts, station assignments, preferences)
+- User synchronization with `auth-service` via background jobs
+- Sync strategy: One-way sync from `auth-service` for user identity, two-way sync for app-specific attributes
+- RBAC roles and permissions managed locally but synchronized with `auth-service` where applicable
+- Avoid duplicate user entities by maintaining `auth_service_user_id` foreign key reference
+
+**User Entity Relationship:**
+- `users` table includes `auth_service_user_id` (UUID) referencing centralized auth service
+- Local user management includes: shifts, station assignments, role mappings, app preferences
+- Sync jobs run periodically to reconcile user data between services
+- User creation/deactivation events published to auth-service for cross-service synchronization
+
+**JWT Token Handling:**
+- Access tokens from `auth-service` validated on each request
+- Token claims include: user ID, email, roles, station ID (if assigned)
+- Token refresh via `auth-service` refresh endpoint before expiry
+- Token caching in Redis to reduce validation overhead
+
+**RBAC Policies:**
+- Application-specific policies: `CanProsecute`, `CanReleaseVehicle`, `CanManageStation`, etc.
+- Policy definitions stored locally but respect centralized role hierarchy
+- Permission checks combine centralized roles with local app permissions
+
+### Data Encryption
+- **At Rest:** PostgreSQL transparent data encryption (TDE) or disk-level encryption
+- **In Transit:** TLS 1.3 for all API calls
+- **Sensitive Fields:** Encrypt camera passwords, PLC credentials using AES-256 (store key in K8s secret)
+
+### Audit Trail
+- **Middleware:** Intercept all POST/PUT/DELETE requests → log to `audit_logs`
+- **Immutable Logs:** Append-only; never delete (retention: 7 years per compliance)
+
+### Backup & Restore
+- **Database:** Daily PostgreSQL backups via CronJob (pg_dump)
+- **Media/Docs:** S3-compatible storage (MinIO or AWS S3) with versioning
+
+---
+
+## DevOps & Deployment
+
+### Docker Build
+- Multi-stage Dockerfile:
+  - Stage 1: `mcr.microsoft.com/dotnet/sdk:8.0` → restore, build, publish
+  - Stage 2: `mcr.microsoft.com/dotnet/aspnet:8.0` → runtime
+- Health endpoint: `/health` (returns 200 OK if DB connectable, Redis pingable)
+
+### Kubernetes Manifests (via centralized devops-k8s)
+- ArgoCD app: `devops-k8s/apps/truload-backend/app.yaml`
+- Helm values: `devops-k8s/apps/truload-backend/values.yaml`
+- Chart: `devops-k8s/charts/app` (shared template)
+
+### CI/CD Pipeline (GitHub Actions)
+- **Trigger:** Push to `main` branch under `TruLoad/truload-backend/**`
+- **Steps:**
+  1. Checkout code
+  2. Install devops tools (via central action)
+  3. Run `build.sh` (Trivy scan, Docker build/push, K8s apply, Helm values update)
+  4. Tag `:latest` image
+  5. Health check via ingress
+
+### Observability
+- **Logs:** Serilog → Seq or ELK
+- **Metrics:** Prometheus scrape `/metrics` endpoint (app.UsePrometheusMetrics)
+- **Traces:** OpenTelemetry → Jaeger
+- **Dashboards:** Grafana with pre-built panels (request rate, error rate, DB query duration)
+
+---
+
+## Sprint Delivery Plan
+
+For detailed sprint tasks and deliverables, refer to the [sprints](./sprints/) folder.
+
+**Sprint Overview:**
+- **Sprint 1:** User Management & Security (Weeks 1-2)
+- [ ] Seed Axle Configurations from `AXLECONFIG_DATA.csv`
+- [ ] Seed Fee Bands (EAC/Traffic Act) from research data
+- **Sprint 2:** Data Analytics (ONNX, Vector DB, Superset) (Weeks 3-4)
+- **Sprint 3:** Weighing Setup (Weeks 5-6)
+- **Sprint 4:** Weighing Core (Weeks 7-8)
+- **Sprint 5:** Yard & Tags (Weeks 9-10)
+- **Sprint 6:** Case Register & Special Release (Weeks 11-12)
+- **Sprint 7:** Prosecution EAC (Weeks 13-14)
+- **Sprint 8:** Prosecution Traffic & Court Escalation (Weeks 15-16)
+- **Sprint 9:** Case Management (Weeks 17-18)
+- **Sprint 10:** Inspection (Week 19)
+- **Sprint 11:** Reporting & Analytics Integration (Weeks 20-21)
+- **Sprint 12:** Settings & Technical (Week 22)
+- **Sprint 13:** Polish & Testing (Week 23-24)
+
+Each sprint document in the [sprints](./sprints/) folder contains:
+- Detailed task breakdown with checkboxes
+- Acceptance criteria
+- Dependencies
+- Estimated effort
+
+---
+
+## References
+
+- [Database Schema (ERD)](./erd.md)
+- [Integration Guide](./integration.md)
+- [Sprint Plans](./sprints/)
+- [FRD Document](../../resources/Master%20FRD%20KURAWEIGH.docx.md)

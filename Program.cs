@@ -46,18 +46,23 @@ builder.Services.AddStackExchangeRedisCache(options =>
 });
 
 // Authentication & JWT
-var jwtSecret = builder.Configuration["JWT:Secret"]
-    ?? throw new InvalidOperationException("JWT Secret not configured.");
+var authority = builder.Configuration["Authentication:Authority"]
+    ?? throw new InvalidOperationException("Authentication Authority not configured.");
+var audience = builder.Configuration["Authentication:Audience"]
+    ?? throw new InvalidOperationException("Authentication Audience not configured.");
+var requireHttpsMetadata = bool.Parse(builder.Configuration["Authentication:RequireHttpsMetadata"] ?? "true");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.Authority = authority;
+        options.Audience = audience;
+        options.RequireHttpsMetadata = requireHttpsMetadata;
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-            ValidateIssuer = false,
-            ValidateAudience = false,
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
     });
