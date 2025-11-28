@@ -7,13 +7,17 @@ Cloud-hosted enforcement and weighing backend with offline-aware clients. Core f
 ## 📚 Documentation
 
 ### Implementation & Architecture
-- **[Implementation Plan](docs/implementation-plan.md)** - Comprehensive technical specification, database schema, modules, sprints, and API design
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Build and deployment instructions
-- **[API Documentation](docs/API.md)** - Endpoint reference (also available via Swagger at `/swagger`)
+- **[Implementation Plan](docs/plan.md)** - Comprehensive technical specification, database schema, modules, sprints, and API design
+- **[Entity Relationship Diagram (ERD)](docs/erd.md)** - Complete database schema with entities, relationships, indexes, and vector columns
+- **[Integration Guide](docs/integration.md)** - External service integrations (Superset, pgvector, ONNX, auth-service, TruConnect, eCitizen)
+- **[Sprint Documentation](docs/sprints/)** - Detailed sprint plans and implementation guides
 
 ### Code Structure
 - **[Data Layer Guide](Data/README.md)** - DbContext, migrations, entity configurations, seed data
 - **[Modules Guide](Modules/README.md)** - Module structure, design principles, inter-module communication
+
+### API Documentation
+- **Swagger UI:** Available at `/swagger` when running the application
 
 ## 🚀 Quick Start
 
