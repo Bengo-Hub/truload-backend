@@ -46,18 +46,23 @@ builder.Services.AddStackExchangeRedisCache(options =>
 });
 
 // Authentication & JWT
-var jwtSecret = builder.Configuration["JWT:Secret"]
-    ?? throw new InvalidOperationException("JWT Secret not configured.");
+var authority = builder.Configuration["Authentication:Authority"]
+    ?? throw new InvalidOperationException("Authentication Authority not configured.");
+var audience = builder.Configuration["Authentication:Audience"]
+    ?? throw new InvalidOperationException("Authentication Audience not configured.");
+var requireHttpsMetadata = bool.Parse(builder.Configuration["Authentication:RequireHttpsMetadata"] ?? "true");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.Authority = authority;
+        options.Audience = audience;
+        options.RequireHttpsMetadata = requireHttpsMetadata;
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-            ValidateIssuer = false,
-            ValidateAudience = false,
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
     });
@@ -88,6 +93,32 @@ builder.Services.AddHealthChecks()
 
 // ===== App Configuration =====
 var app = builder.Build();
+
+// Apply pending migrations automatically on startup
+try
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
+        var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
+        
+        if (pendingMigrations.Any())
+        {
+            Log.Information("Applying {Count} pending migrations...", pendingMigrations.Count);
+            dbContext.Database.Migrate();
+            Log.Information("✓ Migrations applied successfully");
+        }
+        else
+        {
+            Log.Information("✓ Database is up to date (no pending migrations)");
+        }
+    }
+}
+catch (Exception ex)
+{
+    Log.Error(ex, "Failed to apply database migrations");
+    // Don't fail startup if migrations fail - let health check handle it
+}
 
 // Swagger (all environments for now; restrict to dev/staging later)
 app.UseSwagger();
