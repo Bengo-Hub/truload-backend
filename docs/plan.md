@@ -115,6 +115,7 @@
    - **Static (Multi-Deck):** TruConnect streams live weights per deck; operator locks each deck when stable
    - **WIM (Weigh-In-Motion):** Auto-captures highest stable weight per axle as vehicle moves
    - **Mobile/Axle-by-Axle:** Operator manually assigns weight per axle as vehicle advances
+   - **Offline Resilience:** Client generates `weighing_id` (UUID) locally to ensure consistent identification before sync
 
 4. **Compliance Evaluation**
    - Sum axle weights → `gvw_measured_kg`
@@ -283,16 +284,45 @@
    - Keep count of each vehicle status (pending, processing, released, escalated)
 
 **Case Subfiles (A-J):**
-- Subfile A: Initial case details and violation information
-- Subfile B: Driver details
-- Subfile C: Owner details
-- Subfile D: Transporter details
-- Subfile E: Prohibition Order
-- Subfile F: Charge Sheets and Invoices
-- Subfile G: Receipts and Payment Records
-- Subfile H: Load Correction Memos
-- Subfile I: Compliance Certificates and Special Releases
-- Subfile J: Minute sheet & correspondences (audit trail)
+- Subfile A: Initial case details and violation information (= case_registers table)
+- Subfile B: Document Evidence (weight tickets, photos, ANPR footage, permit documents)
+- Subfile C: Expert Reports (engineering/forensic reports)
+- Subfile D: Witness Statements (inspector/driver/witnesses)
+- Subfile E: Accused Statements & Reweigh/Compliance documents
+- Subfile F: Investigation Diary (investigation steps, timelines)
+- Subfile G: Charge Sheets, Bonds, NTAC, Arrest Warrants
+- Subfile H: Accused Records (prior offences, identification documents)
+- Subfile I: Covering Report (prosecutorial summary memo)
+- Subfile J: Minute Sheets & Correspondences (court minutes, adjournments, correspondence)
+
+- Subfile J: Minute Sheets & Correspondences (court minutes, adjournments, correspondence)
+
+---
+
+### Technical Module Workflows
+
+#### C.1 - Hardware Health Monitoring
+**Process Flow:**
+1. **Background Polling:** Hangfire job polls registered devices (`weighbridge_hardware`) every minute.
+2. **Status Check:** Pings IP/Port or queries device status API (e.g., Zedem indicator).
+3. **Logging:** Updates `weighbridge_hardware.status` and inserts log into `hardware_health_logs`.
+4. **Alerting:** If critical device (Indicator/Camera) goes offline, trigger alert to station manager dashboard.
+
+#### C.2 - Calibration Management
+**Process Flow:**
+1. **Validity Check:** System checks `calibration_certificates` validity during weighing initiation.
+2. **Expiry Warning:** Notify admins 30 days before certificate expiry.
+3. **Lockout:** If certificate expired (`valid_to` < Today), block weighing operations for that station/scale.
+4. **Renewal:** Admin uploads new certificate PDF → System updates validity dates → Unlocks station.
+
+#### C.3 - System Configuration & Bidirectional Logic
+**Configuration Loading:**
+1. **Startup:** Backend loads `system_settings` (Look & Feel, Core) and `api_configurations` into Redis cache.
+2. **Station Context:** Frontend fetches `station_bounds` for the current station.
+3. **Bidirectional Weighing:**
+   - If `stations.supports_bidirectional` is TRUE, operator selects Bound (A/B).
+   - System resolves `virtual_station_code` (e.g., ROKSA) from `station_bounds` based on selection.
+   - Ticket is generated using the Virtual Station Code.
 
 ---
 
@@ -502,7 +532,7 @@ For detailed integration instructions, refer to [integration.md](./integration.m
 - Vector embeddings: 7 days (query result caching)
 
 ### Concurrency & Locking
-- **Idempotency:** Client generates `correlation_id` (UUID); backend checks `device_sync_events` for duplicates
+- **Idempotency:** Client generates `weighing_id` (UUID) directly; backend uses this as Primary Key to prevent duplicates
 - **Advisory Locks:** During reweigh cycles, acquire PostgreSQL advisory lock on `vehicle_id` to prevent simultaneous reweighs
 - **Optimistic Concurrency:** EF Core row versioning (timestamp) on `weighings`, `prosecution_cases`
 
