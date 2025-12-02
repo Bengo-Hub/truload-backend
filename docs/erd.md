@@ -59,7 +59,7 @@ TruLoad backend integrates with the centralized `auth-service` for authenticatio
 - Eliminates duplicate user entities across services
 - Single source of truth for authentication and identity
 - Application-specific user data remains within service boundaries
-- Seamless SSO across all BengoBox services
+- Seamless SSO across all micro services
 - Flexible role and permission management per service
 
 ---
