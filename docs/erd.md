@@ -28,7 +28,7 @@ This document defines all database entities, properties (fields), indexes, relat
 
 ### Overview
 
-TruLoad backend integrates with the centralized `auth-service` for authentication while maintaining application-level user management (roles, shifts, permissions) locally. This approach avoids entity redundancy while ensuring seamless Single Sign-On (SSO) across BengoBox services.
+TruLoad backend integrates with the centralized `auth-service` for authentication while maintaining application-level user management (roles, shifts, permissions) locally. This approach avoids entity redundancy while ensuring seamless Single Sign-On (SSO) across micro-services.
 
 ### Integration Strategy
 
