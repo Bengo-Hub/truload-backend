@@ -13,6 +13,7 @@ Implement the centralized Data Analytics pipeline, enabling natural language que
 - [ ] **Superset Integration:** Backend service to manage Superset assets (dashboards, datasets) via API.
 - [ ] **Query Engine:** Logic to translate NL intent into SQL or Superset visualizations (using SLM or structured parser).
 - [ ] **Dashboard Embedding:** Secure generation of guest tokens for frontend embedding.
+- [ ] **Deployment Readiness:** Superset base URL/credentials wired from devops-k8s Helm values; health checks green post-deploy.
 
 ## Tasks
 
@@ -33,6 +34,7 @@ Implement the centralized Data Analytics pipeline, enabling natural language que
 - [ ] Implement `DashboardManager` to programmatically create/update dashboards. <!-- id: 10 -->
 - [ ] Implement `SecurityManager` to handle Superset Guest Tokens (RLS). <!-- id: 11 -->
 - [ ] Create "Template Dashboards" in Superset for common scenarios (Weighing, Prosecution). <!-- id: 12 -->
+- [ ] Pull Superset host/credentials from configuration (Kubernetes secrets/Helm values) and use Kubernetes DNS for service discovery. <!-- id: 12a -->
 
 ### 4. API Endpoints
 - [ ] `POST /api/v1/analytics/query`: Accepts NL text, returns embedded dashboard URL or data. <!-- id: 13 -->

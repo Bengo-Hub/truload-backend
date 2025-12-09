@@ -37,6 +37,7 @@ Implement foundation for user management, authentication integration with centra
 - [ ] Configure CORS for frontend integration
 - [ ] Set up health check endpoint
 - [ ] Configure environment variables and secrets management
+- [ ] Configure shared HTTP client with Polly policies (retry, circuit breaker, timeout) for cross-service REST calls
 
 ### Database Schema
 
@@ -61,6 +62,8 @@ Implement foundation for user management, authentication integration with centra
 - [ ] Implement background sync job for user data reconciliation
 - [ ] Create user profile endpoint (`GET /api/v1/auth/user`)
 - [ ] Handle auth-service unavailability gracefully
+- [ ] Cache JWKS from auth-service and handle `kid` rotation; allow short offline validation window
+- [ ] Publish `truload.user.synced.v1` events via outbox after successful sync
 
 ### User Management
 
@@ -101,6 +104,7 @@ Implement foundation for user management, authentication integration with centra
 - [ ] Intercept all POST/PUT/DELETE requests
 - [ ] Log actor, action, entity, and changes (before/after)
 - [ ] Include IP address and user agent in audit logs
+- [ ] Record auth-service integration failures and retry metadata for observability
 - [ ] Create audit log repository pattern
 - [ ] Implement audit log query endpoints
 - [ ] Create audit log filtering and search
@@ -116,6 +120,7 @@ Implement foundation for user management, authentication integration with centra
 - [ ] Configure password policies (if applicable)
 - [ ] Implement rate limiting for authentication endpoints
 - [ ] Set up secure cookie configuration
+- [ ] Enforce presence of `auth_service_user_id` on user records; reject orphan identities
 
 ### API Documentation
 
@@ -148,6 +153,7 @@ Implement foundation for user management, authentication integration with centra
 - [ ] Role-based access control (RBAC) implemented and tested
 - [ ] Shift management functionality complete
 - [ ] Audit logging middleware intercepts all mutations
+- [ ] JWKS caching with rotation handling validated; orphaned users blocked when auth-service deactivates them
 - [ ] Default admin user and roles seeded in database
 - [ ] Health check endpoint returns 200 OK when database is connected
 - [ ] All tests passing (unit, integration)
