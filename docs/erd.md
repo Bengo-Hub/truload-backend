@@ -105,6 +105,43 @@ Application-level user management with synchronization to centralized auth-servi
 - One-to-many with `weighings` (weighed_by_id)
 - One-to-many with `audit_logs` (actor_id)
 
+#### organizations
+Organizations/companies (transporters, government agencies, etc.).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Organization ID |
+| code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Organization code |
+| name | VARCHAR(255) | NOT NULL | Organization name |
+| org_type | VARCHAR(50) | CHECK | Type: government, transporter, contractor |
+| contact_email | VARCHAR(255) | | Contact email |
+| contact_phone | VARCHAR(50) | | Contact phone |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_organizations_code` ON organizations(code)
+- `idx_organizations_active` ON organizations(is_active) WHERE is_active = TRUE
+
+#### departments
+Departments within organizations.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Department ID |
+| organization_id | UUID | FK → organizations(id), NOT NULL, INDEX | Parent organization |
+| code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Department code |
+| name | VARCHAR(255) | NOT NULL | Department name |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_departments_code` ON departments(code)
+- `idx_departments_org` ON departments(organization_id)
+
+**Relationships:**
+- Many-to-one with `organizations`
+
 #### roles
 Application-specific roles and permissions.
 
@@ -132,6 +169,61 @@ Junction table for user-role assignments.
 
 **Relationships:**
 - Many-to-many between `users` and `roles`
+
+#### permissions
+Fine-grained permissions model for RBAC.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Permission ID |
+| code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Permission code (e.g., "weighing.create") |
+| name | VARCHAR(255) | NOT NULL | Display name (e.g., "Create Weighing") |
+| category | VARCHAR(50) | NOT NULL, INDEX | Category: weighing, case, prosecution, user, station, config, report, system |
+| description | TEXT | | Detailed description |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation time |
+
+**Indexes:**
+- `idx_permissions_code` ON permissions(code) UNIQUE
+- `idx_permissions_category` ON permissions(category) WHERE is_active = TRUE
+- `idx_permissions_active` ON permissions(is_active)
+
+**Seed Data (77 Total Permissions):**
+- **Weighing (12):** weighing.{create, read, read_own, update, approve, override, send_to_yard, scale_test, export, delete, webhook, audit}
+- **Case (15):** case.{create, read, read_own, update, assign, close, escalate, special_release, subfile_manage, closure_review, arrest_warrant, court_hearing, reweigh_schedule, export, audit}
+- **Prosecution (8):** prosecution.{create, read, read_own, update, compute_charges, generate_certificate, export, audit}
+- **User (10):** user.{create, read, read_own, update, update_own, delete, assign_roles, manage_permissions, manage_shifts, audit}
+- **Station (12):** station.{read, read_own, create, update, update_own, delete, manage_staff, manage_devices, manage_io, configure_defaults, export, audit}
+- **Configuration (8):** config.{read, manage_axle, manage_permits, manage_fees, manage_acts, manage_taxonomy, manage_references, audit}
+- **Analytics (8):** report.{read, read_own, export, schedule, custom_query, manage_dashboards, superset, audit}
+- **System (6):** system.{admin, audit_logs, cache_management, integration_management, backup_restore, security_policy}
+
+**Relationships:**
+- One-to-many with `role_permissions`
+
+#### role_permissions
+Junction table linking roles to permissions (supports fine-grained RBAC).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| role_id | UUID | FK → roles(id), PRIMARY KEY | Role ID |
+| permission_id | UUID | FK → permissions(id), PRIMARY KEY | Permission ID |
+| assigned_at | TIMESTAMPTZ | DEFAULT NOW() | Assignment timestamp |
+
+**Indexes:**
+- `idx_role_permissions_permission` ON role_permissions(permission_id)
+- `idx_role_permissions_role_permission` ON role_permissions(role_id, permission_id) UNIQUE
+
+**Relationships:**
+- Many-to-many between `roles` and `permissions`
+
+**Role-Permission Mappings (Seeded):**
+- **SuperAdmin:** All 77 permissions
+- **Admin:** 65 permissions (exclude system.*)
+- **StationManager:** 45 permissions (station, weighing, case, prosecution [limited], user [limited], report)
+- **Prosecutor:** 30 permissions (prosecution, case, user [limited], report)
+- **ScaleOperator:** 12 permissions (weighing: create, read_own, scale_test, audit)
+- **Inspector:** 18 permissions (weighing, case [limited], report [read_own])
 
 #### work_shifts
 Work shift definitions (e.g., "Morning Shift", "Night Shift").
@@ -217,6 +309,22 @@ User assignments to specific shifts or rotations.
 **Indexes:**
 - `idx_user_shifts_active` ON user_shifts(user_id) WHERE ends_on IS NULL OR ends_on > CURRENT_DATE
 
+---
+
+### Vehicle & Driver Management Module
+
+#### drivers
+Driver master data with NTAC tracking.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Driver ID |
+| id_no_or_passport | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | ID/Passport number |
+| full_name | VARCHAR(255) | NOT NULL | Full name |
+| license_no | VARCHAR(50) | INDEX | Driver's license number |
+| license_expiry_date | DATE | | License expiry date |
+| phone | VARCHAR(50) | | Contact phone |
+| email | VARCHAR(255) | | Email address |
 | nationality | VARCHAR(100) | | Nationality |
 | age | INTEGER | | Age |
 | address | TEXT | | Physical address |
@@ -226,7 +334,257 @@ User assignments to specific shifts or rotations.
 
 **Indexes:**
 - `idx_drivers_id_no` ON drivers(id_no_or_passport)
+- `idx_drivers_license` ON drivers(license_no) WHERE license_no IS NOT NULL
 - `idx_drivers_ntac` ON drivers(ntac_no) WHERE ntac_no IS NOT NULL
+
+**Relationships:**
+- One-to-many with `weighings`
+- One-to-many with `case_registers`
+
+#### vehicles
+Vehicle master data with semantic search support.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Vehicle ID |
+| reg_no | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Registration number |
+| make | VARCHAR(100) | | Vehicle make |
+| model | VARCHAR(100) | | Vehicle model |
+| vehicle_type | VARCHAR(50) | | Type: truck, trailer, bus, etc. |
+| color | VARCHAR(50) | | Vehicle color |
+| year_of_manufacture | INTEGER | | Manufacturing year |
+| chassis_no | VARCHAR(100) | | Chassis number |
+| engine_no | VARCHAR(100) | | Engine number |
+| owner_id | UUID | FK → vehicle_owners(id), INDEX | Vehicle owner |
+| transporter_id | UUID | FK → transporters(id), INDEX | Operating transporter |
+| axle_configuration_id | UUID | FK → axle_configurations(id), INDEX | Axle configuration |
+| description | TEXT | | Additional description |
+| is_flagged | BOOLEAN | DEFAULT FALSE | Flagged for violations |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Record update |
+
+**Indexes:**
+- `idx_vehicles_reg_no` ON vehicles(reg_no)
+- `idx_vehicles_owner` ON vehicles(owner_id) WHERE owner_id IS NOT NULL
+- `idx_vehicles_transporter` ON vehicles(transporter_id) WHERE transporter_id IS NOT NULL
+- `idx_vehicles_flagged` ON vehicles(is_flagged) WHERE is_flagged = TRUE
+
+**Vector Columns:**
+- `description_embedding` VECTOR(384) - Vector embedding for vehicle descriptions
+
+**Vector Indexes:**
+- `idx_vehicles_description_embedding` ON vehicles USING hnsw (description_embedding vector_cosine_ops)
+
+**Relationships:**
+- Many-to-one with `vehicle_owners`
+- Many-to-one with `transporters`
+- Many-to-one with `axle_configurations`
+- One-to-many with `weighings`
+- One-to-many with `permits`
+- One-to-many with `case_registers`
+- One-to-many with `prohibition_orders`
+
+#### vehicle_owners
+Vehicle owner master data with NTAC tracking.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Owner ID |
+| id_no_or_passport | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | ID/Passport number |
+| full_name | VARCHAR(255) | NOT NULL | Full name |
+| phone | VARCHAR(50) | | Contact phone |
+| email | VARCHAR(255) | | Email address |
+| address | TEXT | | Physical address |
+| ntac_no | VARCHAR(50) | INDEX | NTAC tracking number |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Record update |
+
+**Indexes:**
+- `idx_vehicle_owners_id_no` ON vehicle_owners(id_no_or_passport)
+- `idx_vehicle_owners_ntac` ON vehicle_owners(ntac_no) WHERE ntac_no IS NOT NULL
+
+**Relationships:**
+- One-to-many with `vehicles`
+
+#### transporters
+Transporter/logistics company master data with NTAC tracking.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Transporter ID |
+| code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Transporter code |
+| name | VARCHAR(255) | NOT NULL | Company name |
+| registration_no | VARCHAR(100) | | Business registration |
+| phone | VARCHAR(50) | | Contact phone |
+| email | VARCHAR(255) | | Email address |
+| address | TEXT | | Physical address |
+| ntac_no | VARCHAR(50) | INDEX | NTAC tracking for company |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Record update |
+
+**Indexes:**
+- `idx_transporters_code` ON transporters(code)
+- `idx_transporters_ntac` ON transporters(ntac_no) WHERE ntac_no IS NOT NULL
+- `idx_transporters_active` ON transporters(is_active) WHERE is_active = TRUE
+
+**Relationships:**
+- One-to-many with `vehicles`
+
+#### tyre_types
+Master reference for tyre configurations (S, D, W).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Tyre type ID |
+| code | VARCHAR(1) | UNIQUE, NOT NULL, INDEX | S (Single), D (Dual), W (Wide) |
+| name | VARCHAR(50) | NOT NULL | Display name |
+| description | TEXT | | Detailed description |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_tyre_types_code` ON tyre_types(code) UNIQUE
+- `idx_tyre_types_active` ON tyre_types(is_active) WHERE is_active = TRUE
+
+**Seed Data:**
+- (S, Single Tyre, "Single tyre per axle end")
+- (D, Dual Tyre, "Dual/twin tyres per axle end")
+- (W, Wide Single, "Wide single super tyre")
+
+#### axle_groups
+Master reference for axle group classifications with spacing rules.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Axle group ID |
+| code | VARCHAR(20) | UNIQUE, NOT NULL, INDEX | S1, SA4, SA6, TAG8, TAG8B, TAG12, QAG16, WWW, SSS, S4 |
+| name | VARCHAR(100) | NOT NULL | Full name |
+| description | TEXT | | Detailed description |
+| typical_weight_kg | INTEGER | NOT NULL | Typical permissible weight |
+| min_spacing_ft | DECIMAL(4,1) | | Minimum axle spacing (feet) |
+| max_spacing_ft | DECIMAL(4,1) | | Maximum axle spacing (feet) |
+| axle_count_in_group | INTEGER | DEFAULT 1 | Number of axles |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_axle_groups_code` ON axle_groups(code) UNIQUE
+- `idx_axle_groups_active` ON axle_groups(is_active) WHERE is_active = TRUE
+
+**Seed Data:** S1(8000kg), SA4(10000kg), SA6(6000kg), TAG8(9000kg), TAG8B(7000kg), TAG12(8000kg), QAG16(8000kg), WWW(7500kg), SSS(6000kg), S4(6000kg)
+
+#### axle_configurations
+**UNIFIED TABLE**: Master configuration for both standard (EAC-defined) and derived (custom) axle patterns.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Configuration ID |
+| axle_code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Standard: "2*", "3A", "4B" / Derived: "5*S\|DD\|DD\|" |
+| axle_name | VARCHAR(255) | NOT NULL | Display name |
+| axle_number | INTEGER | NOT NULL | Total number of axles |
+| gvw_permissible_kg | INTEGER | DEFAULT 0 | GVW limit (0 if not specified) |
+| is_standard | BOOLEAN | DEFAULT FALSE | TRUE for EAC standard, FALSE for user-derived |
+| legal_framework | VARCHAR(20) | DEFAULT 'BOTH' | EAC, TRAFFIC_ACT, or BOTH |
+| visual_diagram_url | TEXT | | URL to axle diagram |
+| notes | TEXT | | Additional notes or rules |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Last update |
+| created_by_user_id | UUID | FK → users(id), NULL | Creator (NULL for standard configs) |
+
+**Indexes:**
+- `idx_axle_configurations_code` ON axle_configurations(axle_code) UNIQUE
+- `idx_axle_configurations_standard` ON axle_configurations(is_standard) WHERE is_standard = TRUE
+- `idx_axle_configurations_axles` ON axle_configurations(axle_number)
+- `idx_axle_configurations_framework` ON axle_configurations(legal_framework)
+- `idx_axle_configurations_active` ON axle_configurations(is_active) WHERE is_active = TRUE
+
+**Business Rules:**
+- Standard configs (is_standard=TRUE): Cannot be modified, created_by_user_id must be NULL
+- Derived configs (is_standard=FALSE): User-created custom patterns, created_by_user_id tracks creator
+- Standard codes: Simple pattern "2*", "3A", "4B", "5C", "6D", "7A", etc
+- Derived codes: Pipe notation "5*S|DD|DD|", "3*S|DW||", etc encoding tyre types per position
+- All configs use flat table - no separate derived_axle_configurations table needed
+
+**Relationships:**
+- One-to-many with `axle_weight_references`
+- One-to-many with `weighing_axles`
+- Many-to-one with `users` (for derived configs)
+
+#### axle_weight_references
+Individual axle weight specifications within each configuration (standard or derived).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Reference ID |
+| axle_configuration_id | UUID | FK → axle_configurations(id), NOT NULL, INDEX | Parent configuration |
+| axle_position | INTEGER | NOT NULL | Axle position (1, 2, 3...) |
+| axle_legal_weight_kg | INTEGER | NOT NULL | Permissible weight for this axle |
+| axle_group_id | UUID | FK → axle_groups(id), NOT NULL | Axle group type (S1, TAG8, etc) |
+| axle_grouping | VARCHAR(10) | NOT NULL | Deck grouping: A, B, C, or D |
+| tyre_type_id | UUID | FK → tyre_types(id), NULL | Tyre type (S, D, W) |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_axle_weight_ref_config` ON axle_weight_references(axle_configuration_id)
+- `idx_axle_weight_ref_config_position` UNIQUE ON axle_weight_references(axle_configuration_id, axle_position)
+- `idx_axle_weight_ref_group` ON axle_weight_references(axle_group_id)
+
+**Relationships:**
+- Many-to-one with `axle_configurations`
+- Many-to-one with `axle_groups`
+- Many-to-one with `tyre_types`
+
+#### axle_fee_schedules
+Fee calculation tiers for overload penalties per legal framework.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Fee schedule ID |
+| legal_framework | VARCHAR(20) | NOT NULL, INDEX | EAC or TRAFFIC_ACT |
+| fee_type | VARCHAR(20) | NOT NULL | GVW or AXLE |
+| overload_min_kg | INTEGER | NOT NULL | Minimum overload (kg) |
+| overload_max_kg | INTEGER | | Maximum overload (NULL = no limit) |
+| fee_per_kg_usd | DECIMAL(10,4) | NOT NULL | Fee per kg in USD |
+| flat_fee_usd | DECIMAL(10,2) | DEFAULT 0 | Flat fee component |
+| demerit_points | INTEGER | DEFAULT 0 | Demerit points |
+| penalty_description | TEXT | | Penalty description |
+| effective_from | DATE | NOT NULL | Effective start date |
+| effective_to | DATE | | Effective end date (NULL = current) |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_axle_fee_schedules_framework_type` ON axle_fee_schedules(legal_framework, fee_type)
+- `idx_axle_fee_schedules_effective` ON axle_fee_schedules(effective_from, effective_to)
+
+**Relationships:**
+- Referenced by weighing fee calculations
+
+#### permits
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Permit ID |
+| permit_no | VARCHAR(100) | UNIQUE, NOT NULL, INDEX | Permit number |
+| vehicle_id | UUID | FK → vehicles(id), NOT NULL, INDEX | Vehicle |
+| permit_type | VARCHAR(10) | CHECK (permit_type IN ('2A', '3A')) | Permit type |
+| axle_extension_kg | INTEGER | | Axle weight extension (e.g., +3000) |
+| gvw_extension_kg | INTEGER | | GVW extension (e.g., +1000, +2000) |
+| valid_from | DATE | NOT NULL | Validity start date |
+| valid_to | DATE | NOT NULL, INDEX | Validity end date |
+| issuing_authority | VARCHAR(255) | | Issuing authority |
+| status | VARCHAR(20) | DEFAULT 'active', CHECK | Status: active, expired, revoked |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_permits_no` ON permits(permit_no)
+- `idx_permits_vehicle` ON permits(vehicle_id, valid_to DESC)
+- `idx_permits_status` ON permits(status, valid_to DESC)
+
+**Relationships:**
+- Many-to-one with `vehicles`
 
 ---
 
@@ -260,7 +618,9 @@ Main weighing transaction table (partitioned by month).
 | original_weighing_id | UUID | FK → weighings(id) | Original weighing if reweigh |
 | weighed_at | TIMESTAMPTZ | DEFAULT NOW(), INDEX | Weighing timestamp (partition key) |
 | weighed_by_id | UUID | FK → users(id) | Officer who weighed |
-| sync_status | VARCHAR(20) | DEFAULT 'synced' | Sync status for offline operations |
+| client_local_id | UUID | UNIQUE, INDEX | Client-generated UUID for idempotency |
+| sync_status | VARCHAR(20) | DEFAULT 'synced', CHECK | Sync status: queued, synced, failed |
+| sync_at | TIMESTAMPTZ | | Last sync timestamp |
 | created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation time |
 | updated_at | TIMESTAMPTZ | DEFAULT NOW() | Record update time |
 
@@ -292,15 +652,26 @@ Individual axle weights for each weighing.
 | measured_kg | INTEGER | NOT NULL | Measured weight in kg |
 | permissible_kg | INTEGER | NOT NULL | Permissible weight in kg |
 | overload_kg | INTEGER | GENERATED ALWAYS AS (measured_kg - permissible_kg) STORED | Overload amount |
-| group_name | VARCHAR(10) | | Axle group (A, B, C, D) |
-| group_grouping | VARCHAR(10) | | Deck grouping reference |
-| tyre_type | VARCHAR(10) | | Tyre type (S, D, W) |
+| axle_configuration_id | UUID | FK → axle_configurations(id), NOT NULL, INDEX | Configuration template |
+| axle_weight_reference_id | UUID | FK → axle_weight_references(id), NULL, INDEX | Reference specification |
+| axle_group_id | UUID | FK → axle_groups(id), NOT NULL | Axle group (S1, SA4, TAG8, etc) |
+| axle_grouping | VARCHAR(10) | NOT NULL | Deck grouping: A, B, C, D |
+| tyre_type_id | UUID | FK → tyre_types(id), NULL, INDEX | Tyre type (S, D, W) |
 | fee_usd | DECIMAL(18,2) | DEFAULT 0 | Fee in USD |
 | captured_at | TIMESTAMPTZ | DEFAULT NOW() | Capture timestamp |
 | UNIQUE (weighing_id, axle_number) | | | |
 
 **Indexes:**
 - `idx_weighing_axles_weighing` ON weighing_axles(weighing_id, axle_number)
+- `idx_weighing_axles_configuration` ON weighing_axles(axle_configuration_id)
+- `idx_weighing_axles_group` ON weighing_axles(axle_group_id)
+
+**Relationships:**
+- Many-to-one with `weighings`
+- Many-to-one with `axle_configurations`
+- Many-to-one with `axle_weight_references`
+- Many-to-one with `axle_groups`
+- Many-to-one with `tyre_types`
 
 #### scale_tests
 Daily scale calibration tests.
@@ -321,7 +692,199 @@ Daily scale calibration tests.
 
 ---
 
+### Taxonomy & Configuration Module
+
+#### violation_types
+Violation type taxonomy.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Violation type ID |
+| code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Violation code |
+| name | VARCHAR(255) | NOT NULL | Violation name |
+| description | TEXT | | Description |
+| severity | VARCHAR(20) | CHECK | Severity: low, medium, high, critical |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_violation_types_code` ON violation_types(code)
+- `idx_violation_types_active` ON violation_types(is_active) WHERE is_active = TRUE
+
+#### tag_categories
+Tag category taxonomy.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Category ID |
+| code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Category code |
+| name | VARCHAR(255) | NOT NULL | Category name |
+| description | TEXT | | Description |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_tag_categories_code` ON tag_categories(code)
+- `idx_tag_categories_active` ON tag_categories(is_active) WHERE is_active = TRUE
+
+#### cpc_sections
+Criminal Procedure Code (CPC) sections for case closure.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Section ID |
+| section_no | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Section number |
+| title | VARCHAR(255) | NOT NULL | Section title |
+| description | TEXT | | Full description |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_cpc_sections_no` ON cpc_sections(section_no)
+
+#### pc_sections
+Penal Code (PC) sections for case closure.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Section ID |
+| section_no | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Section number |
+| title | VARCHAR(255) | NOT NULL | Section title |
+| description | TEXT | | Full description |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_pc_sections_no` ON pc_sections(section_no)
+
+---
+
 ### Reference Data Module
+
+#### stations
+Weighbridge station master data with bidirectional support.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Station ID |
+| code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Station code |
+| name | VARCHAR(255) | NOT NULL | Station name |
+| station_type | VARCHAR(30) | CHECK | Type: fixed, mobile, temporary |
+| location | VARCHAR(255) | | Physical location |
+| road_id | UUID | FK → roads(id), INDEX | Road location |
+| county_id | UUID | FK → counties(id), INDEX | County |
+| latitude | DECIMAL(10, 8) | | GPS latitude |
+| longitude | DECIMAL(11, 8) | | GPS longitude |
+| supports_bidirectional | BOOLEAN | DEFAULT FALSE | Supports A/B bounds |
+| bound_a_code | VARCHAR(20) | | Virtual station code for Bound A |
+| bound_b_code | VARCHAR(20) | | Virtual station code for Bound B |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Record update |
+
+**Indexes:**
+- `idx_stations_code` ON stations(code)
+- `idx_stations_road` ON stations(road_id) WHERE road_id IS NOT NULL
+- `idx_stations_county` ON stations(county_id) WHERE county_id IS NOT NULL
+- `idx_stations_active` ON stations(is_active) WHERE is_active = TRUE
+
+**Relationships:**
+- Many-to-one with `roads`
+- Many-to-one with `counties`
+- One-to-many with `weighings`
+- One-to-many with `scale_tests`
+- One-to-many with `yard_entries`
+- One-to-many with `users` (assigned station)
+
+#### roads
+Road master data with district linkage.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Road ID |
+| code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Road code |
+| name | VARCHAR(255) | NOT NULL | Road name |
+| road_class | VARCHAR(30) | | Road class: A, B, C, D, E |
+| district_id | UUID | FK → districts(id), INDEX | District |
+| total_length_km | DECIMAL(10, 2) | | Total road length in km |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_roads_code` ON roads(code)
+- `idx_roads_district` ON roads(district_id) WHERE district_id IS NOT NULL
+- `idx_roads_active` ON roads(is_active) WHERE is_active = TRUE
+
+**Relationships:**
+- Many-to-one with `districts`
+- One-to-many with `stations`
+- One-to-many with `case_registers`
+
+#### act_definitions
+Legal act definitions (EAC Vehicle Load Control Act, Kenya Traffic Act).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Act ID |
+| code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Act code |
+| name | VARCHAR(255) | NOT NULL | Short name |
+| act_type | VARCHAR(20) | CHECK (act_type IN ('EAC', 'Traffic')) | Act type |
+| full_name | TEXT | | Full legal name |
+| description | TEXT | | Act description |
+| effective_date | DATE | | Effective date |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_act_definitions_code` ON act_definitions(code)
+- `idx_act_definitions_type` ON act_definitions(act_type)
+- `idx_act_definitions_active` ON act_definitions(is_active) WHERE is_active = TRUE
+
+**Relationships:**
+- One-to-many with `weighings`
+- One-to-many with `case_registers`
+- One-to-many with `prosecution_cases`
+
+#### origins_destinations
+Origin and destination master data for cargo routes.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Location ID |
+| code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Location code |
+| name | VARCHAR(255) | NOT NULL | Location name |
+| location_type | VARCHAR(30) | CHECK | Type: city, town, port, border, warehouse |
+| country | VARCHAR(100) | DEFAULT 'Kenya' | Country |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_origins_destinations_code` ON origins_destinations(code)
+- `idx_origins_destinations_type` ON origins_destinations(location_type)
+- `idx_origins_destinations_active` ON origins_destinations(is_active) WHERE is_active = TRUE
+
+**Relationships:**
+- One-to-many with `weighings` (origin_id)
+- One-to-many with `weighings` (destination_id)
+
+#### cargo_types
+Cargo type taxonomy.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Cargo type ID |
+| code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Cargo code |
+| name | VARCHAR(255) | NOT NULL | Cargo name |
+| category | VARCHAR(100) | | Category: General, Hazardous, Perishable |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+
+**Indexes:**
+- `idx_cargo_types_code` ON cargo_types(code)
+- `idx_cargo_types_active` ON cargo_types(is_active) WHERE is_active = TRUE
+
+**Relationships:**
+- One-to-many with `weighings`
 
 #### counties
 County master data for geographic organization.
@@ -810,6 +1373,54 @@ Violation tags (automatic or manual).
 
 ---
 
+### Prosecution Module
+
+#### prosecution_cases
+Detailed prosecution workflow tracking with charge computation.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Prosecution case ID |
+| case_register_id | UUID | FK → case_registers(id), UNIQUE, NOT NULL, INDEX | Related case register |
+| weighing_id | UUID | FK → weighings(id), INDEX | Related weighing |
+| prosecution_officer_id | UUID | FK → users(id), NOT NULL, INDEX | Prosecuting officer |
+| act_id | UUID | FK → act_definitions(id), NOT NULL | Applicable Act (EAC or Traffic) |
+| gvw_overload_kg | INTEGER | | GVW overload amount |
+| gvw_fee_usd | DECIMAL(18,2) | DEFAULT 0 | GVW overload fee USD |
+| gvw_fee_kes | DECIMAL(18,2) | DEFAULT 0 | GVW overload fee KES |
+| max_axle_overload_kg | INTEGER | | Maximum axle overload |
+| max_axle_fee_usd | DECIMAL(18,2) | DEFAULT 0 | Maximum axle fee USD |
+| max_axle_fee_kes | DECIMAL(18,2) | DEFAULT 0 | Maximum axle fee KES |
+| best_charge_basis | VARCHAR(10) | CHECK | Basis: gvw, axle (higher charge) |
+| penalty_multiplier | DECIMAL(3,1) | DEFAULT 1.0 | Penalty multiplier (1x or 5x) |
+| total_fee_usd | DECIMAL(18,2) | NOT NULL | Total charge USD |
+| total_fee_kes | DECIMAL(18,2) | NOT NULL | Total charge KES |
+| forex_rate | DECIMAL(10,4) | NOT NULL | USD to KES conversion rate |
+| certificate_no | VARCHAR(100) | UNIQUE, INDEX | Certificate number |
+| case_notes | TEXT | | Prosecution notes |
+| status | VARCHAR(30) | DEFAULT 'pending', CHECK, INDEX | Status: pending, invoiced, paid, court |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Record update |
+
+**Indexes:**
+- `idx_prosecution_cases_case` ON prosecution_cases(case_register_id)
+- `idx_prosecution_cases_weighing` ON prosecution_cases(weighing_id)
+- `idx_prosecution_cases_status` ON prosecution_cases(status)
+- `idx_prosecution_cases_officer` ON prosecution_cases(prosecution_officer_id)
+
+**Vector Columns:**
+- `case_notes_embedding` VECTOR(384) - Vector embedding for prosecution case notes
+
+**Vector Indexes:**
+- `idx_prosecution_cases_notes_embedding` ON prosecution_cases USING hnsw (case_notes_embedding vector_cosine_ops)
+
+**Relationships:**
+- One-to-one with `case_registers`
+- Many-to-one with `weighings`
+- One-to-many with `invoices`
+
+---
+
 ### Financial Module
 
 #### invoices
@@ -820,6 +1431,7 @@ Generated invoices for violations or services.
 | id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Invoice ID |
 | invoice_no | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Invoice number |
 | case_register_id | UUID | FK → case_registers(id), INDEX | Related case (optional) |
+| prosecution_case_id | UUID | FK → prosecution_cases(id), INDEX | Related prosecution case (optional) |
 | weighing_id | UUID | FK → weighings(id), INDEX | Related weighing (optional) |
 | amount_due | DECIMAL(18,2) | NOT NULL | Amount due |
 | currency | VARCHAR(3) | DEFAULT 'USD' | Currency code |
@@ -859,8 +1471,9 @@ Payment receipts with idempotency support.
 
 **Relationships:**
 - One-to-many with `invoices`
-- `invoices` ↔ `case_registers` (many-to-one)
-- `invoices` ↔ `weighings` (many-to-one)
+- `invoices` ↔ `case_registers` (many-to-one, optional)
+- `invoices` ↔ `prosecution_cases` (many-to-one, optional)
+- `invoices` ↔ `weighings` (many-to-one, optional)
 
 ---
 
@@ -948,21 +1561,43 @@ Vector columns are used for semantic search of text fields using pgvector. All v
 
 **User Management:**
 - `users` ↔ `roles` (many-to-many via `user_roles`)
-- `users` ↔ `shifts` (many-to-many via `user_shifts`)
+- `users` ↔ `work_shifts` (many-to-many via `user_shifts`)
+- `users` ↔ `organizations` (many-to-one)
+- `users` ↔ `departments` (many-to-one)
+- `users` ↔ `stations` (many-to-one, assigned station)
 - `users` ↔ `weighings` (one-to-many, weighed_by_id)
 - `users` ↔ `case_managers` (one-to-many)
+- `users` ↔ `auth_service_sync_logs` (one-to-many)
+
+**Vehicle & Driver Management:**
+- `vehicles` ↔ `vehicle_owners` (many-to-one)
+- `vehicles` ↔ `transporters` (many-to-one)
+- `vehicles` ↔ `axle_configurations` (many-to-one)
+- `vehicles` ↔ `weighings` (one-to-many)
+- `vehicles` ↔ `permits` (one-to-many)
+- `vehicles` ↔ `case_registers` (one-to-many)
+- `vehicles` ↔ `prohibition_orders` (one-to-many)
+- `drivers` ↔ `weighings` (one-to-many)
+- `drivers` ↔ `case_registers` (one-to-many)
 
 **Weighing Flow:**
-- `vehicles` ↔ `weighings` (one-to-many)
+- `stations` ↔ `weighings` (one-to-many)
+- `stations` ↔ `scale_tests` (one-to-many)
+- `stations` ↔ `yard_entries` (one-to-many)
+- `stations` ↔ `roads` (many-to-one)
+- `stations` ↔ `counties` (many-to-one)
 - `weighings` ↔ `weighing_axles` (one-to-many)
 - `weighings` ↔ `prohibition_orders` (one-to-one)
 - `weighings` ↔ `yard_entries` (one-to-one)
-- `stations` ↔ `weighings` (one-to-many)
-- `stations` ↔ `scale_tests` (one-to-many)
+- `weighings` ↔ `act_definitions` (many-to-one)
+- `weighings` ↔ `origins_destinations` (many-to-one, origin_id)
+- `weighings` ↔ `origins_destinations` (many-to-one, destination_id)
+- `weighings` ↔ `cargo_types` (many-to-one)
 
 **Case Management Flow (case_registers is central hub):**
 - `weighings` → `prohibition_orders` → `case_registers` (chain for violation cases)
 - `yard_entries` → `case_registers` (one-to-one)
+- `case_registers` ↔ `prosecution_cases` (one-to-one)
 - `case_registers` ↔ `special_releases` (one-to-many)
 - `case_registers` ↔ `case_subfiles` (one-to-many, Subfiles B-J)
 - `case_registers` ↔ `arrest_warrants` (one-to-many)
@@ -972,12 +1607,30 @@ Vector columns are used for semantic search of text fields using pgvector. All v
 - `case_registers` ↔ `compliance_certificates` (one-to-many)
 - `case_managers` ↔ `case_registers` (one-to-many)
 
+**Prosecution Flow:**
+- `case_registers` → `prosecution_cases` (one-to-one)
+- `prosecution_cases` ↔ `weighings` (many-to-one)
+- `prosecution_cases` ↔ `invoices` (one-to-many)
+- `invoices` ↔ `receipts` (one-to-many)
+
+**Taxonomy Relationships:**
+- `case_registers` ↔ `violation_types` (many-to-one)
+- `vehicle_tags` ↔ `tag_categories` (many-to-one)
+- `case_closure_checklists` ↔ `cpc_sections` (many-to-one)
+- `case_closure_checklists` ↔ `pc_sections` (many-to-one)
+
 **Geographic & Reference Data:**
 - `counties` ↔ `districts` (one-to-many)
 - `districts` ↔ `subcounties` (one-to-many)
 - `districts` ↔ `roads` (one-to-many)
+- `roads` ↔ `stations` (one-to-many)
+- `roads` ↔ `case_registers` (one-to-many)
+- `organizations` ↔ `departments` (one-to-many)
+- `organizations` ↔ `users` (one-to-many)
+- `departments` ↔ `users` (one-to-many)
+
+**Taxonomy Relationships:**
 - `case_registers` ↔ `violation_types` (many-to-one)
-- `case_registers` ↔ `roads` (many-to-one, optional)
 - `case_registers` ↔ `counties` (many-to-one, optional)
 - `case_registers` ↔ `districts` (many-to-one, optional)
 - `case_registers` ↔ `subcounties` (many-to-one, optional)
@@ -985,10 +1638,15 @@ Vector columns are used for semantic search of text fields using pgvector. All v
 - `case_closure_checklists` ↔ `cpc_sections` (many-to-one)
 - `case_closure_checklists` ↔ `pc_sections` (many-to-one)
 - `vehicle_tags` ↔ `tag_categories` (many-to-one)
+- `axle_configurations` ↔ `vehicles` (one-to-many)
 
 **Court Management:**
 - `courts` ↔ `court_hearings` (one-to-many)
 - `courts` ↔ `case_registers` (one-to-many)
+
+**Offline & Sync:**
+- `device_sync_events` - Polymorphic references to synced entities
+- `auth_service_sync_logs` ↔ `users` (many-to-one)
 
 ---
 
@@ -1012,11 +1670,66 @@ Vector columns are used for semantic search of text fields using pgvector. All v
 
 ---
 
+### Offline Support Module
+
+#### device_sync_events
+Queue for offline submissions and synchronization tracking.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Event ID |
+| device_id | VARCHAR(100) | NOT NULL, INDEX | Device identifier |
+| entity_type | VARCHAR(50) | NOT NULL, CHECK | Entity: weighing, case_register, etc. |
+| entity_id | UUID | INDEX | Target entity ID (after sync) |
+| correlation_id | UUID | UNIQUE, NOT NULL, INDEX | Client-generated correlation ID |
+| operation | VARCHAR(20) | NOT NULL, CHECK | Operation: create, update, delete |
+| payload | JSONB | NOT NULL | Full entity payload |
+| sync_status | VARCHAR(20) | DEFAULT 'queued', CHECK, INDEX | Status: queued, processing, synced, failed |
+| sync_attempts | INTEGER | DEFAULT 0 | Number of sync attempts |
+| last_sync_attempt_at | TIMESTAMPTZ | | Last attempt timestamp |
+| error_message | TEXT | | Error details if failed |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Event creation |
+| synced_at | TIMESTAMPTZ | | Successful sync timestamp |
+
+**Indexes:**
+- `idx_device_sync_device_status` ON device_sync_events(device_id, sync_status)
+- `idx_device_sync_correlation` ON device_sync_events(correlation_id)
+- `idx_device_sync_status` ON device_sync_events(sync_status, created_at) WHERE sync_status IN ('queued', 'failed')
+- `idx_device_sync_entity` ON device_sync_events(entity_type, entity_id) WHERE entity_id IS NOT NULL
+
+**Relationships:**
+- Polymorphic references to synced entities via entity_type and entity_id
+
+#### auth_service_sync_logs
+Audit trail for auth-service synchronization events.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Log ID |
+| sync_type | VARCHAR(30) | CHECK | Type: user_sync, user_create, user_deactivate |
+| auth_service_user_id | UUID | INDEX | Auth-service user ID |
+| local_user_id | UUID | FK → users(id), INDEX | Local user ID |
+| status | VARCHAR(20) | CHECK | Status: success, failed, partial |
+| changes | JSONB | | Changes applied (JSON) |
+| error_message | TEXT | | Error details if failed |
+| synced_at | TIMESTAMPTZ | DEFAULT NOW(), INDEX | Sync timestamp |
+
+**Indexes:**
+- `idx_auth_sync_logs_user` ON auth_service_sync_logs(auth_service_user_id)
+- `idx_auth_sync_logs_local` ON auth_service_sync_logs(local_user_id) WHERE local_user_id IS NOT NULL
+- `idx_auth_sync_logs_status` ON auth_service_sync_logs(status, synced_at DESC)
+
+**Relationships:**
+- Many-to-one with `users`
+
+---
+
 ## Sync & Offline Support
 
 **Tables Supporting Offline Sync:**
 - `weighings` - Includes `client_local_id` (UUID) and `sync_status`
 - `device_sync_events` - Queue for offline submissions
+- `auth_service_sync_logs` - Audit trail for auth-service sync
 
 **Sync Metadata:**
 - `client_local_id` - Client-generated UUID for idempotency
@@ -1027,4 +1740,3 @@ Vector columns are used for semantic search of text fields using pgvector. All v
 - Client-generated UUIDs prevent duplicate submissions
 - Backend validates `client_local_id` uniqueness
 - Duplicate detection via correlation_id in `device_sync_events`
-

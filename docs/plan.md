@@ -1,19 +1,48 @@
 # TruLoad Backend - Implementation Plan
 
 ## Table of Contents
-1. [Executive Summary](#executive-summary)
-2. [Technology Stack](#technology-stack)
-3. [System Architecture](#system-architecture)
-4. [Module Workflows (FRD-Aligned)](#module-workflows-frd-aligned)
-5. [Database Schema](#database-schema)
-6. [Legal Computation Rules](#legal-computation-rules)
-7. [Data Analytics Integration](#data-analytics-integration)
-8. [Performance & Concurrency](#performance--concurrency)
-9. [Integrations](#integrations)
-10. [Security & Compliance](#security--compliance)
-11. [DevOps & Deployment](#devops--deployment)
-12. [Sprint Delivery Plan](#sprint-delivery-plan)
-13. [References](#references)
+1. [Development Status](#development-status)
+2. [Executive Summary](#executive-summary)
+3. [Technology Stack](#technology-stack)
+4. [System Architecture](#system-architecture)
+5. [Module Workflows (FRD-Aligned)](#module-workflows-frd-aligned)
+6. [Database Schema](#database-schema)
+7. [Legal Computation Rules](#legal-computation-rules)
+8. [Data Analytics Integration](#data-analytics-integration)
+9. [Performance & Concurrency](#performance--concurrency)
+10. [Integrations](#integrations)
+11. [Security & Compliance](#security--compliance)
+12. [DevOps & Deployment](#devops--deployment)
+13. [Sprint Delivery Plan](#sprint-delivery-plan)
+14. [References](#references)
+
+---
+
+## Development Status
+
+**Last Updated:** December 9, 2025, 19:30 UTC
+
+### Current Phase: Sprint 1 - Phase 2 (Authorization & Enforcement)
+
+**Build Status:** ✅ **HEALTHY** (0 errors, 13 warnings)  
+**Application Status:** ✅ **RUNNING** (localhost:4000)  
+**Database:** ✅ **UP-TO-DATE** (All pending migrations applied)
+
+**Phase 2 Completions (Dec 9, 2025):**
+- ✅ Audit logging middleware fully operational
+- ✅ Audit log repository with 9 query methods implemented
+- ✅ Repository structure refactored (consistent namespace pattern across all modules)
+- ✅ DbContext configuration corrected for audit log properties
+- ✅ Test files updated to reflect repository structure changes
+- ✅ AuditLogSummaryDto created for audit statistics and reporting
+
+**Next Priority Tasks (Recommended Sequence):**
+1. **Authorization Policy Implementation** - Create [Authorize(Policy="...")] handlers for permission-based access
+2. **Auth-Service Integration Completion** - Implement JWKS caching, token validation, user sync service
+3. **Security & Authorization Phase** - Add [Authorize] attributes to all 90+ endpoints
+4. **User Management Endpoints** - Implement user CRUD operations and filtering
+5. **Role Management Endpoints** - Implement role CRUD and user-role assignment
+6. **Shift Management** - Complete shift CRUD and user-shift assignment endpoints
 
 ---
 
@@ -669,8 +698,18 @@ For detailed sprint tasks and deliverables, refer to the [sprints](./sprints/) f
 
 **Sprint Overview:**
 - **Sprint 1:** User Management & Security (Weeks 1-2) — complete auth-service SSO, user/shift, audit foundation first.
-- [ ] Seed Axle Configurations from `AXLECONFIG_DATA.csv`
-- [ ] Seed Fee Bands (EAC/Traffic Act) from research data
+- **Sprint 1.5 (Current):** Axle System Foundation — implement simplified axle configuration system with reference tables and seeding
+  - [ ] Create models: `TyreType`, `AxleGroup`, `AxleConfiguration` (unified, is_standard flag), `AxleWeightReference`, `AxleLoadLimit`, `AxleFeeSchedule`
+  - [ ] Update `DbContext` with entity configurations, indexes, relationships
+  - [ ] Generate EF Core migration `AddAxleSystem`
+  - [ ] Implement modular `WeighingOperationsSeeder` (manual CSV parsing, no CsvHelper dependency)
+    - Seed 3 tyre types (S, D, W)
+    - Seed 10 axle groups (S1, SA4, SA6, TAG8, TAG8B, TAG12, QAG16, WWW, SSS, S4)
+    - Parse and seed ~612 standard axle configurations from `AXLECONFIG_DATA.csv` (is_standard=TRUE)
+    - Parse and seed ~1233 axle weight references from CSV
+    - Seed axle fee schedules for EAC and Traffic Act frameworks
+  - [ ] Implement modular validation service for axle compliance checks (EAC vs Traffic Act tolerance)
+  - [ ] Test seeding idempotency and relationship integrity
 - **Sprint 2:** Data Analytics (ONNX, Vector DB, Superset) (Weeks 3-4) — deliver Superset guest-token API and embed readiness before heavier modules.
 - **Sprint 3:** Weighing Setup (Weeks 5-6)
 - **Sprint 4:** Weighing Core (Weeks 7-8)
@@ -684,6 +723,39 @@ For detailed sprint tasks and deliverables, refer to the [sprints](./sprints/) f
 - **Sprint 12:** Settings & Technical (Week 22)
 - **Sprint 13:** Polish & Testing (Week 23-24)
 
+### Axle System Design (Sprint 1.5)
+
+**Key Principle:** Single unified `axle_configurations` table (not separate `derived_axle_configurations`).
+
+**Axle Configuration Types:**
+- **Standard (is_standard=TRUE):** EAC-defined immutable patterns (e.g., "2*", "3A", "4B", "5C")
+  - Simple codes, created during seeding, created_by_user_id = NULL
+  - Cannot be modified or deleted, always available for weighing
+- **Derived (is_standard=FALSE):** User-created custom patterns (e.g., "5*S|DD|DD|", "3*S|DW||")
+  - Complex pipe notation encoding tyre types per position
+  - created_by_user_id tracks creator, guided frontend validation ensures compliance
+  - Users can create derived configs from frontend with compliance checks enforced on backend
+
+**Data Flow:**
+1. **CSV Parsing:** `WeighingOperationsSeeder` reads `AXLECONFIG_DATA.csv` (~898 rows)
+   - Splits into AXLEWEIGHTCONFIG section (~612 standard configs) → insert as is_standard=TRUE
+   - Splits into AXLEWEIGHTREFF section (~1233 references) → insert into axle_weight_references
+   - Manual parsing (no CsvHelper dependency to avoid build errors)
+
+2. **Reference Tables:** Seed tyre_types (3), axle_groups (10), and axle_fee_schedules per legal framework
+
+3. **Weighing Operations:** When weighing a vehicle:
+   - Lookup axle_configuration by vehicle_class axle_pattern
+   - Load axle_weight_references for that configuration
+   - Apply legal framework (EAC vs Traffic Act) via axle_fee_schedules
+   - Calculate compliance status using tolerance settings
+
+**Validation Rules:**
+- Standard configs: Use EAC tolerance (5%) for compliance checks
+- Derived configs: Validate user input against vehicle class constraints before creation
+- Fee Calculation: max(GVW_fee, sum(per_axle_fees)) from applicable fee schedule
+- Demerit Points: Track separately for prosecution decisions
+
 Each sprint document in the [sprints](./sprints/) folder contains:
 - Detailed task breakdown with checkboxes
 - Acceptance criteria
@@ -694,7 +766,9 @@ Each sprint document in the [sprints](./sprints/) folder contains:
 
 ## References
 
-- [Database Schema (ERD)](./erd.md)
+- [Database Schema (ERD)](./erd.md) - Updated with Permission and RolePermission entities
+- [RBAC Implementation Plan](./RBAC_IMPLEMENTATION_PLAN.md) - **NEW:** Complete 5-phase roadmap with production auth-service integration and 77-permission model
 - [Integration Guide](./integration.md)
 - [Sprint Plans](./sprints/)
+  - [Sprint 1: User Management & Security](./sprints/sprint-01-user-management-security.md) - Updated with Permission Model (Phase 1) and Authorization Policies (Phase 2)
 - [FRD Document](../../resources/Master%20FRD%20KURAWEIGH.docx.md)
