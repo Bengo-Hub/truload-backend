@@ -78,6 +78,13 @@
 4. **Offline Resilience:** Idempotent operations; client-generated correlation IDs; conflict resolution strategies
 5. **Performance:** Read/write separation via materialized views; Redis caching for hot data; partitioned tables
 6. **Security:** RBAC with claims-based authorization; audit logs for all mutations; encrypted sensitive fields
+
+### Communication & Integration Patterns
+- **Synchronous:** REST via shared HTTP client with retries/circuit breaker; service discovery via Kubernetes DNS (e.g., `auth-service.auth.svc.cluster.local`).
+- **Async:** Domain events published through RabbitMQ outbox with versioned subjects (e.g., `truload.user.synced.v1`), DLQ configured.
+- **Real-time:** SignalR reserved for TruConnect weight streaming; avoid ad-hoc websocket use elsewhere.
+- **Webhooks:** eCitizen payment callbacks and any external partner notifications; validate HMAC and idempotency keys.
+- **Avoid Duplication:** Only store foreign IDs for external systems (auth-service user IDs, NTSA references) and keep `auth_service_user_id` as the identity link.
 | **Inspection** | Dimensional compliance (wide load) | VehicleInspections |
 | **Reporting & Analytics** | Registers, analytics, exports, BI dashboards | Dynamic report generation, Superset dashboards |
 | **Settings** | System config, stations, cameras, I/O, prosecution defaults | Stations, Cameras, IoDevices, SystemSettings |
@@ -540,6 +547,18 @@ For detailed integration instructions, refer to [integration.md](./integration.m
 
 ## Integrations
 
+### Auth-Service (SSO)
+- Validate JWTs against auth-service JWKS (cache keys, refresh on kid rotation).
+- Keep `auth_service_user_id` on local `users`; never duplicate identity fields.
+- Proxy login/refresh via backend (`/api/v1/auth/*`) to auth-service with retries and backoff.
+- Background user sync job to reconcile roles/status; emit `truload.user.synced.v1` via outbox.
+- Deny access when auth-service reports deactivation; cache last-known claims to allow offline verification for short windows.
+
+### Notifications-Service
+- Send user-facing alerts (payments, yard actions, device health) via notifications-service REST API with idempotency keys.
+- Prefer templated notifications; include station/tenant context in payload.
+- Record notification requests/responses for audit; retry via Polly with DLQ fallback.
+
 ### TruConnect Microservice
 - **Type:** Node.js/Electron service running on client machine
 - **Function:** Connects to scale indicator via Serial/RF/Ethernet, reads weights, exposes HTTP endpoint
@@ -649,10 +668,10 @@ For detailed integration instructions, refer to [integration.md](./integration.m
 For detailed sprint tasks and deliverables, refer to the [sprints](./sprints/) folder.
 
 **Sprint Overview:**
-- **Sprint 1:** User Management & Security (Weeks 1-2)
+- **Sprint 1:** User Management & Security (Weeks 1-2) — complete auth-service SSO, user/shift, audit foundation first.
 - [ ] Seed Axle Configurations from `AXLECONFIG_DATA.csv`
 - [ ] Seed Fee Bands (EAC/Traffic Act) from research data
-- **Sprint 2:** Data Analytics (ONNX, Vector DB, Superset) (Weeks 3-4)
+- **Sprint 2:** Data Analytics (ONNX, Vector DB, Superset) (Weeks 3-4) — deliver Superset guest-token API and embed readiness before heavier modules.
 - **Sprint 3:** Weighing Setup (Weeks 5-6)
 - **Sprint 4:** Weighing Core (Weeks 7-8)
 - **Sprint 5:** Yard & Tags (Weeks 9-10)
