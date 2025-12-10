@@ -156,12 +156,23 @@ else
   if [[ "${SETUP_DATABASES}" == "true" ]]; then
     log_info "Databases are managed by devops-k8s infrastructure"
     log_info "PostgreSQL and Redis: Shared services in 'infra' namespace"
-    log_info "RabbitMQ: Dedicated instance in 'truload' namespace"
+    log_info "RabbitMQ: Shared service in 'infra' namespace (per devops-k8s)"
     log_info "Retrieving credentials from existing secrets and setting up app environment"
     
     if [[ -f "scripts/setup_env_secrets.sh" ]]; then
       chmod +x scripts/setup_env_secrets.sh
-      VALIDATION_OUTPUT=$(./scripts/setup_env_secrets.sh) || { log_error "Environment secret setup failed"; exit 1; }
+      log_step "Running setup_env_secrets.sh with full logging (tee)"
+      LOG_FILE=$(mktemp)
+      set +e
+      ./scripts/setup_env_secrets.sh | tee "$LOG_FILE"
+      SETUP_RC=${PIPESTATUS[0]}
+      set -e
+      VALIDATION_OUTPUT=$(cat "$LOG_FILE")
+      rm -f "$LOG_FILE"
+      if [[ $SETUP_RC -ne 0 ]]; then
+        log_error "Environment secret setup failed (exit $SETUP_RC)"
+        exit $SETUP_RC
+      fi
       
       # Parse output for validated credentials
       export EFFECTIVE_PG_PASS=$(echo "$VALIDATION_OUTPUT" | grep "^EFFECTIVE_PG_PASS=" | cut -d= -f2-)

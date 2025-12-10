@@ -34,6 +34,7 @@ jobs:
         echo "SETUP_DATABASES=true" >> $GITHUB_ENV
         echo "DB_TYPES=postgres,redis,rabbitmq" >> $GITHUB_ENV
         echo "NAMESPACE=truload" >> $GITHUB_ENV
+        echo "RABBITMQ_NAMESPACE=infra" >> $GITHUB_ENV
         echo "ENV_SECRET_NAME=truload-backend-env" >> $GITHUB_ENV
         echo "REGISTRY_SERVER=docker.io" >> $GITHUB_ENV
         echo "REGISTRY_NAMESPACE=codevertex" >> $GITHUB_ENV
@@ -53,6 +54,7 @@ jobs:
         SETUP_DATABASES: true
         DB_TYPES: postgres,redis,rabbitmq
         NAMESPACE: truload
+        RABBITMQ_NAMESPACE: infra
         ENV_SECRET_NAME: truload-backend-env
         REGISTRY_SERVER: docker.io
         REGISTRY_NAMESPACE: codevertex
@@ -63,7 +65,7 @@ jobs:
         # Shared database passwords from INFRA namespace (PostgreSQL and Redis)
         POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-        # TruLoad-specific (RabbitMQ in truload namespace)
+        # Shared RabbitMQ in infra namespace
         RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
         RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME || 'user' }}
         # .NET secrets

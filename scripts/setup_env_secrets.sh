@@ -5,7 +5,7 @@
 # IMPORTANT: This script retrieves credentials from:
 #   - PostgreSQL: 'infra' namespace (shared across all services)
 #   - Redis: 'infra' namespace (shared across all services)
-#   - RabbitMQ: 'truload' namespace (dedicated to TruLoad)
+#   - RabbitMQ: 'infra' namespace (shared across all services, including Superset)
 #
 # DO NOT look in 'erp' namespace - databases are in 'infra'
 
@@ -25,8 +25,14 @@ ENV_SECRET_NAME=${ENV_SECRET_NAME:-truload-backend-env}
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-}
 REDIS_PASSWORD=${REDIS_PASSWORD:-}
 RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-}
+RABBITMQ_NAMESPACE=${RABBITMQ_NAMESPACE:-infra}
 
 log_step "Setting up environment secrets for TruLoad Backend..."
+
+log_info "Namespaces -> app: ${NAMESPACE}, infra(shared): infra, rabbitmq: ${RABBITMQ_NAMESPACE}"
+log_info "Secret inventory (names only):"
+kubectl get secret -n infra --no-headers 2>/dev/null | awk '{print "infra/"$1}' || true
+kubectl get secret -n "${RABBITMQ_NAMESPACE}" --no-headers 2>/dev/null | awk '{print "'"'"'${RABBITMQ_NAMESPACE}'"'"'/"$1}' || true
 
 # Ensure kubectl is available
 if ! command -v kubectl &> /dev/null; then
@@ -115,10 +121,10 @@ fi
 
 log_info "Redis password retrieved and verified (length: ${#REDIS_PASS} chars)"
 
-# Get RabbitMQ password from dedicated 'truload' namespace
-log_info "Retrieving RabbitMQ password from 'truload' namespace..."
-if kubectl -n "$NAMESPACE" get secret rabbitmq >/dev/null 2>&1; then
-    RABBITMQ_PASS=$(kubectl -n "$NAMESPACE" get secret rabbitmq -o jsonpath='{.data.rabbitmq-password}' 2>/dev/null | base64 -d || true)
+# Get RabbitMQ password from shared 'infra' namespace
+log_info "Retrieving RabbitMQ password from '${RABBITMQ_NAMESPACE}' namespace..."
+if kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq >/dev/null 2>&1; then
+    RABBITMQ_PASS=$(kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq -o jsonpath='{.data.rabbitmq-password}' 2>/dev/null | base64 -d || true)
     if [[ -n "$RABBITMQ_PASS" ]]; then
         log_info "Retrieved RabbitMQ password from secret (source of truth)"
         
@@ -132,14 +138,14 @@ if kubectl -n "$NAMESPACE" get secret rabbitmq >/dev/null 2>&1; then
         exit 1
     fi
 else
-    log_warning "RabbitMQ secret not found in '$NAMESPACE' namespace"
+    log_warning "RabbitMQ secret not found in '${RABBITMQ_NAMESPACE}' namespace"
     log_warning "Using fallback password or will be installed by provisioning"
     RABBITMQ_PASS="${RABBITMQ_PASSWORD:-rabbitmq}"
 fi
 
 log_info "RabbitMQ password retrieved (length: ${#RABBITMQ_PASS} chars)"
 
-log_info "Database credentials retrieved: PostgreSQL (shared), Redis (shared), RabbitMQ (dedicated)"
+log_info "Database credentials retrieved: PostgreSQL (shared), Redis (shared), RabbitMQ (shared in infra)"
 
 # CRITICAL: Test database connectivity to verify password is correct
 log_step "Verifying PostgreSQL password by testing connection..."
@@ -209,7 +215,7 @@ kubectl -n "$NAMESPACE" delete secret "$ENV_SECRET_NAME" --ignore-not-found
 kubectl -n "$NAMESPACE" create secret generic "$ENV_SECRET_NAME" \
   --from-literal=ConnectionStrings__DefaultConnection="Host=postgresql.infra.svc.cluster.local;Port=5432;Database=truload;Username=postgres;Password=${APP_DB_PASS}" \
   --from-literal=Redis__ConnectionString="redis-master.infra.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False" \
-  --from-literal=RabbitMQ__Host="rabbitmq.${NAMESPACE}.svc.cluster.local" \
+    --from-literal=RabbitMQ__Host="rabbitmq.${RABBITMQ_NAMESPACE}.svc.cluster.local" \
   --from-literal=RabbitMQ__Port="5672" \
   --from-literal=RabbitMQ__Username="user" \
   --from-literal=RabbitMQ__Password="${RABBITMQ_PASS}" \
@@ -250,7 +256,7 @@ stringData:
     Redis__ConnectionString: "redis-master.infra.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False"
   
   # RabbitMQ credentials (verified from K8s secrets)
-  RabbitMQ__Host: "rabbitmq.${NAMESPACE}.svc.cluster.local"
+  RabbitMQ__Host: "rabbitmq.${RABBITMQ_NAMESPACE}.svc.cluster.local"
   RabbitMQ__Port: "5672"
   RabbitMQ__Username: "user"
   RabbitMQ__Password: "${RABBITMQ_PASS}"
@@ -298,7 +304,7 @@ stringData:
     Redis__ConnectionString: "redis-master.infra.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False"
   
   # RabbitMQ credentials (verified from K8s secrets)
-  RabbitMQ__Host: "rabbitmq.${NAMESPACE}.svc.cluster.local"
+  RabbitMQ__Host: "rabbitmq.${RABBITMQ_NAMESPACE}.svc.cluster.local"
   RabbitMQ__Port: "5672"
   RabbitMQ__Username: "user"
   RabbitMQ__Password: "${RABBITMQ_PASS}"
