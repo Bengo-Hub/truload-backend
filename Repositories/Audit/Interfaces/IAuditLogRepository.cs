@@ -1,7 +1,7 @@
 using TruLoad.Backend.DTOs;
 using TruLoad.Backend.Models;
 
-namespace TruLoad.Backend.Repositories.Interfaces;
+namespace TruLoad.Backend.Repositories.Audit.Interfaces;
 
 /// <summary>
 /// Repository interface for audit log persistence and querying.

@@ -31,6 +31,11 @@ public static class DatabaseSeeder
             await PermissionSeeder.SeedAsync(context);
             await RolePermissionSeeder.SeedAsync(context);
 
+            // Seed users (requires organizations and roles to exist first)
+            logger.LogInformation("Seeding users...");
+            var userSeeder = new UserSeeder(context);
+            await userSeeder.SeedAsync();
+
             // Seed weighing operations data (axle configurations, axle weight references)
             logger.LogInformation("Seeding weighing operations data...");
             var seedDataPath = Path.Combine(AppContext.BaseDirectory, "Data", "Seeders", "WeighingOperations");

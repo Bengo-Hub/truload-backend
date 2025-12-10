@@ -19,27 +19,6 @@ public class CreateRoleRequestValidator : AbstractValidator<CreateRoleRequest>
             .MaximumLength(500)
             .WithMessage("Description must not exceed 500 characters")
             .When(x => !string.IsNullOrWhiteSpace(x.Description));
-
-        RuleFor(x => x.Permissions)
-            .Must(BeValidJson)
-            .WithMessage("Permissions must be valid JSON")
-            .When(x => !string.IsNullOrWhiteSpace(x.Permissions));
-    }
-
-    private bool BeValidJson(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json))
-            return true;
-
-        try
-        {
-            System.Text.Json.JsonDocument.Parse(json);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
     }
 }
 
@@ -51,26 +30,5 @@ public class UpdateRoleRequestValidator : AbstractValidator<UpdateRoleRequest>
             .MaximumLength(500)
             .WithMessage("Description must not exceed 500 characters")
             .When(x => !string.IsNullOrWhiteSpace(x.Description));
-
-        RuleFor(x => x.Permissions)
-            .Must(BeValidJson)
-            .WithMessage("Permissions must be valid JSON")
-            .When(x => !string.IsNullOrWhiteSpace(x.Permissions));
-    }
-
-    private bool BeValidJson(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json))
-            return true;
-
-        try
-        {
-            System.Text.Json.JsonDocument.Parse(json);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
     }
 }

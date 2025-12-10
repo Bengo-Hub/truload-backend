@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.DTOs.User;
 using TruLoad.Backend.Models;
-using TruLoad.Backend.Repositories.Interfaces;
+using TruLoad.Backend.Repositories.UserManagement.Interfaces;
 
 namespace TruLoad.Controllers;
 

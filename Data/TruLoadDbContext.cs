@@ -227,10 +227,6 @@ public class TruLoadDbContext : DbContext
                 .HasColumnName("description")
                 .HasMaxLength(500);
             
-            entity.Property(e => e.Permissions)
-                .HasColumnName("permissions")
-                .HasColumnType("jsonb");
-            
             entity.Property(e => e.CreatedAt)
                 .HasColumnName("created_at");
             

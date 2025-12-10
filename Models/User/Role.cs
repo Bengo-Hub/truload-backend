@@ -2,6 +2,7 @@ namespace TruLoad.Backend.Models;
 
 /// <summary>
 /// Role entity - Application-specific roles and permissions
+/// Permissions are managed via the RolePermissions junction table in a many-to-many relationship.
 /// </summary>
 public class Role
 {
@@ -16,11 +17,6 @@ public class Role
     
     public string? Description { get; set; }
     
-    /// <summary>
-    /// Permission definitions stored as JSON
-    /// Example: {"weighing": ["create", "read"], "prosecution": ["read"]}
-    /// </summary>
-    public string? Permissions { get; set; }
     public bool IsActive { get; set; } = true;
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -28,5 +24,10 @@ public class Role
 
     // Navigation properties
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+    
+    /// <summary>
+    /// Many-to-many relationship to permissions through RolePermissions junction table.
+    /// Use this to access all permissions assigned to this role.
+    /// </summary>
     public ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
 }

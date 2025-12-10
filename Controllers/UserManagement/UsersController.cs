@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.DTOs.User;
 using TruLoad.Backend.Models;
-using TruLoad.Backend.Repositories.Interfaces;
+using TruLoad.Backend.Repositories.UserManagement.Interfaces;
 
 namespace TruLoad.Controllers;
 
@@ -206,7 +206,6 @@ public class UsersController : ControllerBase
                 Id = ur.Role.Id,
                 Name = ur.Role.Name,
                 Description = ur.Role.Description,
-                Permissions = ur.Role.Permissions,
                 IsActive = ur.Role.IsActive,
                 CreatedAt = ur.Role.CreatedAt
             }).ToList() ?? new List<RoleDto>()

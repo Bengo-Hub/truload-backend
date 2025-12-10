@@ -144,7 +144,7 @@ public class DatabaseSchemaVerification
         {
             Name = "Test_Role",
             Description = "Test role for verification",
-            Permissions = "{\"read\": true, \"write\": false}"
+            IsActive = true
         };
 
         context.Roles.Add(role);

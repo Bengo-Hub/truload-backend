@@ -764,10 +764,77 @@ Each sprint document in the [sprints](./sprints/) folder contains:
 
 ---
 
+## Password Hashing & Cross-Service Compatibility
+
+### Overview
+
+**Implemented:** December 10, 2025
+
+All BengoBox services now use **Argon2id password hashing** with **identical parameters** to ensure password hashes can be verified across services. This is critical for bidirectional user sync between TruLoad backend and the centralized auth-service.
+
+### Hash Format Specification
+
+```
+$argon2id$v=19$m=65536,t=3,p=2$<base64-salt>$<base64-hash>
+```
+
+**Parameters:**
+- **Algorithm**: Argon2id (memory-hard, side-channel resistant)
+- **Version**: 19 (Argon2 v1.3)
+- **Memory (m)**: 65536 KB (64 MiB)
+- **Iterations (t)**: 3 (time cost)
+- **Parallelism (p)**: 2 threads
+- **Key Length**: 32 bytes
+- **Salt Length**: 16 bytes (cryptographically random)
+- **Encoding**: Base64 without padding (RFC 4648 base64url)
+
+### Implementation
+
+#### Go Services (Auth-Service, Ordering, Notifications)
+
+```go
+import passwordhasher "github.com/Bengo-Hub/shared-password-hasher"
+
+hasher := passwordhasher.NewHasher()
+hash, _ := hasher.Hash("ChangeMe123!")
+```
+
+#### .NET Services (TruLoad Backend)
+
+```csharp
+using TruLoad.Backend.Infrastructure.Security;
+
+var hasher = new PasswordHasher();
+string hash = hasher.HashPassword("ChangeMe123!");
+```
+
+**Location**: `Infrastructure/Security/PasswordHasher.cs`
+
+### Bidirectional User Sync Pattern
+
+#### Scenario 1: User Exists Locally but NOT in Auth-Service
+
+1. TruLoad backend checks local database → user found
+2. Queries auth-service → user not found
+3. **Sync TO auth-service:** Hash password, create tenant, create user with pre-hashed password
+4. Proxy login to auth-service
+5. Return JWT token
+
+#### Scenario 2: User Exists in Auth-Service but NOT Locally
+
+1. Proxy login to auth-service → success, JWT returned
+2. **Sync FROM auth-service:** Parse JWT, create/get organization, create local user, assign role
+3. Return JWT token
+
+See `docs/PASSWORD_HASHING_IMPLEMENTATION.md` for complete implementation details.
+
+---
+
 ## References
 
 - [Database Schema (ERD)](./erd.md) - Updated with Permission and RolePermission entities
 - [RBAC Implementation Plan](./RBAC_IMPLEMENTATION_PLAN.md) - **NEW:** Complete 5-phase roadmap with production auth-service integration and 77-permission model
+- [Password Hashing Implementation](./PASSWORD_HASHING_IMPLEMENTATION.md) - **NEW:** Argon2id standardization and bidirectional sync
 - [Integration Guide](./integration.md)
 - [Sprint Plans](./sprints/)
   - [Sprint 1: User Management & Security](./sprints/sprint-01-user-management-security.md) - Updated with Permission Model (Phase 1) and Authorization Policies (Phase 2)

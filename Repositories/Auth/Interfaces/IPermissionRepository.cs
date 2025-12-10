@@ -1,6 +1,6 @@
 using TruLoad.Backend.Models;
 
-namespace TruLoad.Backend.Repositories.Interfaces;
+namespace TruLoad.Backend.Repositories.Auth.Interfaces;
 
 /// <summary>
 /// Repository interface for Permission entity operations.

@@ -3,7 +3,26 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Serilog;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using truload_backend.Data;
+using TruLoad.Backend.Repositories.UserManagement;
+using TruLoad.Backend.Repositories.UserManagement.Interfaces;
+using TruLoad.Backend.Repositories.Auth;
+using TruLoad.Backend.Repositories.Auth.Interfaces;
+using TruLoad.Backend.Repositories.Weighing;
+using TruLoad.Backend.Repositories.Weighing.Interfaces;
+using TruLoad.Backend.Services.Interfaces;
+using TruLoad.Backend.Services.Implementations;
+using TruLoad.Backend.Services.Interfaces.Authorization;
+using TruLoad.Backend.Services.Implementations.Authorization;
+using TruLoad.Backend.Middleware;
+using TruLoad.Backend.Authorization.Handlers;
+using TruLoad.Backend.Authorization.Policies;
+using Microsoft.AspNetCore.Authorization;
+using TruLoad.Backend.Repositories.Audit;
+using TruLoad.Backend.Repositories.Audit.Interfaces;
+using TruLoad.Backend.Infrastructure.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +45,52 @@ builder.Services.AddSwaggerGen(options =>
         Title = "TruLoad API",
         Version = "v1",
         Description = "Intelligent Weighing and Enforcement Solution API"
+    });
+
+    // JWT Bearer
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+
+    // API Key
+    options.AddSecurityDefinition("ApiKey", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Description = "API Key needed to access the endpoints. Example: 'X-API-KEY: {key}'",
+        Name = "X-API-KEY",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey
+    });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        },
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "ApiKey"
+                }
+            },
+            new string[] {}
+        }
     });
 });
 
@@ -67,7 +132,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+// Authorization & Permission-Based Policies
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("Permission:system.view_config", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("system.view_config")))
+    .AddPolicy("Permission:system.manage_roles", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("system.manage_roles")))
+    .AddPolicy("Permission:user.create", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("user.create")))
+    .AddPolicy("Permission:user.update", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("user.update")))
+    .AddPolicy("Permission:user.delete", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("user.delete")))
+    .AddPolicy("Permission:system.audit_logs", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("system.audit_logs")));
+
+builder.Services.AddScoped<IAuthorizationHandler, PermissionRequirementHandler>();
 
 // CORS
 var allowedOrigins = builder.Configuration["CORS:AllowedOrigins"]?.Split(',')
@@ -89,17 +175,51 @@ builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString, name: "postgres")
     .AddRedis(redisConnection, name: "redis");
 
-// TODO: Add MediatR, FluentValidation, AutoMapper, MassTransit (RabbitMQ), etc.
+// FluentValidation
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+builder.Services.AddFluentValidationAutoValidation();
+
+// Repositories
+builder.Services.AddScoped<IUserRepository, TruLoad.Backend.Repositories.UserManagement.Repositories.UserRepository>();
+builder.Services.AddScoped<IOrganizationRepository, TruLoad.Backend.Repositories.UserManagement.Repositories.OrganizationRepository>();
+builder.Services.AddScoped<IRoleRepository, TruLoad.Backend.Repositories.UserManagement.Repositories.RoleRepository>();
+builder.Services.AddScoped<IDepartmentRepository, TruLoad.Backend.Repositories.UserManagement.DepartmentRepository>();
+builder.Services.AddScoped<IStationRepository, TruLoad.Backend.Repositories.UserManagement.Repositories.StationRepository>();
+builder.Services.AddScoped<IWorkShiftRepository, TruLoad.Backend.Repositories.UserManagement.Repositories.WorkShiftRepository>();
+
+// Infrastructure services
+builder.Services.AddSingleton<PasswordHasher>();
+
+// Permission repositories
+builder.Services.AddScoped<IPermissionRepository, PermissionRepository>();
+
+// Axle repositories
+
+// Audit repositories
+builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+
+builder.Services.AddScoped<IAxleWeightReferenceRepository, AxleWeightReferenceRepository>();
+builder.Services.AddScoped<ITyreTypeRepository, TyreTypeRepository>();
+builder.Services.AddScoped<IAxleGroupRepository, AxleGroupRepository>();
+builder.Services.AddScoped<IAxleFeeScheduleRepository, AxleFeeScheduleRepository>();
+
+// Permission services
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IPermissionVerificationService, PermissionVerificationService>();
+
+// TODO: Add MediatR, AutoMapper, MassTransit (RabbitMQ), etc.
 
 // ===== App Configuration =====
 var app = builder.Build();
 
-// Apply pending migrations automatically on startup
+// Apply pending migrations and seed database automatically on startup
 try
 {
     using (var scope = app.Services.CreateScope())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        
         var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
         
         if (pendingMigrations.Any())
@@ -112,11 +232,14 @@ try
         {
             Log.Information("✓ Database is up to date (no pending migrations)");
         }
+
+        // Run idempotent seeder
+        await TruLoad.Data.Seeders.DatabaseSeeder.SeedAsync(dbContext, logger);
     }
 }
 catch (Exception ex)
 {
-    Log.Error(ex, "Failed to apply database migrations");
+    Log.Error(ex, "Failed to apply database migrations or seeding");
     // Don't fail startup if migrations fail - let health check handle it
 }
 
@@ -129,6 +252,9 @@ app.UseSwaggerUI(c =>
 });
 
 app.UseSerilogRequestLogging();
+
+// Audit middleware
+app.UseAuditMiddleware();
 
 app.UseCors();
 
@@ -147,6 +273,16 @@ app.MapGet("/api/v1/ping", () => Results.Ok(new { message = "TruLoad API is runn
 try
 {
     Log.Information("Starting TruLoad Backend API");
+    
+    // Run database schema verification on startup (development only)
+    // TODO: Re-enable when Tests namespace is available
+    //if (app.Environment.IsDevelopment())
+    //{
+    //    using var scope = app.Services.CreateScope();
+    //    var dbContext = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
+    //    await TruLoad.Backend.Tests.DatabaseSchemaVerification.VerifySchema(dbContext);
+    //}
+    
     app.Run();
 }
 catch (Exception ex)

@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using truload_backend.Data;
 using TruLoad.Backend.Models;
-using TruLoad.Backend.Repositories.Interfaces;
+using TruLoad.Backend.Repositories.UserManagement.Interfaces;
 
-namespace TruLoad.Backend.Repositories;
+namespace TruLoad.Backend.Repositories.UserManagement.Repositories;
 
 public class StationRepository : IStationRepository
 {

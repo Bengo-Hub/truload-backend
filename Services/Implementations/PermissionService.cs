@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Caching.Distributed;
 using TruLoad.Backend.Models;
-using TruLoad.Backend.Repositories.Interfaces;
+using TruLoad.Backend.Repositories.Auth.Interfaces;
 using TruLoad.Backend.Services.Interfaces;
 using System.Text.Json;
 

@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
-using TruLoad.Backend.Repositories.Interfaces;
+using TruLoad.Backend.Repositories.UserManagement.Interfaces;
 using truload_backend.Data;
 
-namespace TruLoad.Backend.Repositories;
+namespace TruLoad.Backend.Repositories.UserManagement.Repositories;
 
 public class RoleRepository : IRoleRepository
 {

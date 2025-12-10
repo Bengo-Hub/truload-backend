@@ -20,6 +20,8 @@ public class UserManagementSeeder
     public async Task SeedAsync()
     {
         await SeedRolesAsync();
+        await _context.SaveChangesAsync(); // Ensure roles are committed before proceeding
+        
         await SeedOrganizationsAsync();
         await SeedDepartmentsAsync();
         await SeedStationsAsync();
@@ -36,18 +38,6 @@ public class UserManagementSeeder
                 Name = "System Administrator",
                 Code = "SYSTEM_ADMIN",
                 Description = "Full system access with all administrative privileges",
-                Permissions = """
-                {
-                    "users": ["create", "read", "update", "delete", "manage_roles"],
-                    "stations": ["create", "read", "update", "delete", "manage_staff"],
-                    "weighing": ["create", "read", "update", "delete", "override", "reweigh"],
-                    "vehicles": ["create", "read", "update", "delete"],
-                    "permits": ["create", "read", "update", "delete", "approve", "reject"],
-                    "violations": ["create", "read", "update", "delete", "prosecute"],
-                    "analytics": ["read", "export", "custom_reports"],
-                    "system": ["configure", "audit_logs", "backup", "restore"]
-                }
-                """,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -58,18 +48,6 @@ public class UserManagementSeeder
                 Name = "Station Manager",
                 Code = "STATION_MANAGER",
                 Description = "Manages station operations, staff, and operational workflows",
-                Permissions = """
-                {
-                    "users": ["read", "update_station_staff"],
-                    "stations": ["read", "update_own"],
-                    "weighing": ["create", "read", "approve", "reweigh"],
-                    "vehicles": ["create", "read", "update"],
-                    "permits": ["read", "verify"],
-                    "violations": ["read", "approve"],
-                    "analytics": ["read", "station_reports"],
-                    "system": ["view_audit_logs"]
-                }
-                """,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -80,18 +58,6 @@ public class UserManagementSeeder
                 Name = "Weighing Operator",
                 Code = "WEIGHING_OPERATOR",
                 Description = "Performs vehicle weighing operations and records data",
-                Permissions = """
-                {
-                    "users": ["read_own"],
-                    "stations": ["read_own"],
-                    "weighing": ["create", "read", "update_own"],
-                    "vehicles": ["create", "read", "update"],
-                    "permits": ["read", "verify"],
-                    "violations": ["create", "read"],
-                    "analytics": ["read_own"],
-                    "system": []
-                }
-                """,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -102,18 +68,6 @@ public class UserManagementSeeder
                 Name = "Enforcement Officer",
                 Code = "ENFORCEMENT_OFFICER",
                 Description = "Reviews violations and initiates prosecution proceedings",
-                Permissions = """
-                {
-                    "users": ["read"],
-                    "stations": ["read"],
-                    "weighing": ["read"],
-                    "vehicles": ["read"],
-                    "permits": ["read", "verify", "flag"],
-                    "violations": ["read", "update", "prosecute", "dismiss"],
-                    "analytics": ["read", "violation_reports"],
-                    "system": ["view_audit_logs"]
-                }
-                """,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -124,18 +78,6 @@ public class UserManagementSeeder
                 Name = "Analyst",
                 Code = "ANALYST",
                 Description = "Analyzes weighing data, generates reports, performs trend analysis",
-                Permissions = """
-                {
-                    "users": ["read"],
-                    "stations": ["read"],
-                    "weighing": ["read"],
-                    "vehicles": ["read"],
-                    "permits": ["read"],
-                    "violations": ["read"],
-                    "analytics": ["read", "export", "custom_reports", "dashboards"],
-                    "system": []
-                }
-                """,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -146,18 +88,6 @@ public class UserManagementSeeder
                 Name = "Auditor",
                 Code = "AUDITOR",
                 Description = "Reviews system activity, audit logs, and compliance records",
-                Permissions = """
-                {
-                    "users": ["read"],
-                    "stations": ["read"],
-                    "weighing": ["read"],
-                    "vehicles": ["read"],
-                    "permits": ["read"],
-                    "violations": ["read"],
-                    "analytics": ["read", "audit_reports"],
-                    "system": ["view_audit_logs", "export_audit_logs"]
-                }
-                """,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow

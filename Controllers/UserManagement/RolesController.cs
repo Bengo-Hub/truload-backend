@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.DTOs.User;
 using TruLoad.Backend.Models;
-using TruLoad.Backend.Repositories.Interfaces;
+using TruLoad.Backend.Repositories.UserManagement.Interfaces;
 
 namespace TruLoad.Controllers;
 
@@ -63,7 +63,6 @@ public class RolesController : ControllerBase
             Id = Guid.NewGuid(),
             Name = request.Name,
             Description = request.Description,
-            Permissions = request.Permissions,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -99,7 +98,6 @@ public class RolesController : ControllerBase
         }
 
         if (request.Description != null) role.Description = request.Description;
-        if (request.Permissions != null) role.Permissions = request.Permissions;
         if (request.IsActive.HasValue) role.IsActive = request.IsActive.Value;
 
         var updated = await _roleRepository.UpdateAsync(role, cancellationToken);
@@ -134,7 +132,6 @@ public class RolesController : ControllerBase
             Id = role.Id,
             Name = role.Name,
             Description = role.Description,
-            Permissions = role.Permissions,
             IsActive = role.IsActive,
             CreatedAt = role.CreatedAt,
             UpdatedAt = role.UpdatedAt
