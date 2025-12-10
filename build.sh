@@ -155,7 +155,7 @@ else
   # Setup environment secrets from existing databases (managed by devops-k8s)
   if [[ "${SETUP_DATABASES}" == "true" ]]; then
     log_info "Databases are managed by devops-k8s infrastructure"
-    log_info "PostgreSQL and Redis: Shared with ERP apps in 'erp' namespace"
+    log_info "PostgreSQL and Redis: Shared services in 'infra' namespace"
     log_info "RabbitMQ: Dedicated instance in 'truload' namespace"
     log_info "Retrieving credentials from existing secrets and setting up app environment"
     

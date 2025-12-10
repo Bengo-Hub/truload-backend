@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # Environment secret setup script for TruLoad Backend (.NET)
 # Retrieves DB credentials from existing Helm releases and creates app env secret
+#
+# IMPORTANT: This script retrieves credentials from:
+#   - PostgreSQL: 'infra' namespace (shared across all services)
+#   - Redis: 'infra' namespace (shared across all services)
+#   - RabbitMQ: 'truload' namespace (dedicated to TruLoad)
+#
+# DO NOT look in 'erp' namespace - databases are in 'infra'
 
 set -euo pipefail
 set +H
@@ -27,10 +34,10 @@ if ! command -v kubectl &> /dev/null; then
     exit 1
 fi
 
-# Get PostgreSQL password from shared 'erp' namespace - ALWAYS use the password from the live database
-log_info "Retrieving PostgreSQL password from shared 'erp' namespace..."
-if kubectl -n erp get secret postgresql >/dev/null 2>&1; then
-    EXISTING_PG_PASS=$(kubectl -n erp get secret postgresql -o jsonpath='{.data.postgres-password}' 2>/dev/null | base64 -d || true)
+# Get PostgreSQL password from shared 'infra' namespace - ALWAYS use the password from the live database
+log_info "Retrieving PostgreSQL password from shared 'infra' namespace..."
+if kubectl -n infra get secret postgresql >/dev/null 2>&1; then
+    EXISTING_PG_PASS=$(kubectl -n infra get secret postgresql -o jsonpath='{.data.postgres-password}' 2>/dev/null | base64 -d || true)
     if [[ -n "$EXISTING_PG_PASS" ]]; then
         log_info "Retrieved PostgreSQL password from database secret (source of truth)"
         APP_DB_PASS="$EXISTING_PG_PASS"
@@ -42,20 +49,41 @@ if kubectl -n erp get secret postgresql >/dev/null 2>&1; then
         fi
     else
         log_error "Could not retrieve PostgreSQL password from Kubernetes secret"
+        log_error ""
+        log_error "TROUBLESHOOTING:"
+        log_error "1. Verify PostgreSQL secret exists:"
+        log_error "   kubectl get secret postgresql -n infra"
+        log_error ""
+        log_error "2. Check secret data:"
+        log_error "   kubectl get secret postgresql -n infra -o jsonpath='{.data}'"
+        log_error ""
+        log_error "3. Re-run provisioning to create secrets:"
+        log_error "   gh workflow run provision.yml --repo Bengo-Hub/devops-k8s"
         exit 1
     fi
 else
-    log_error "PostgreSQL secret not found in 'erp' namespace"
-    log_error "Ensure PostgreSQL is installed: kubectl get secret postgresql -n erp"
+    log_error "PostgreSQL secret not found in 'infra' namespace"
+    log_error ""
+    log_error "TROUBLESHOOTING:"
+    log_error "1. Check what secrets exist:"
+    log_error "   kubectl get secret -n infra | grep -E 'postgres|postgresql'"
+    log_error ""
+    log_error "2. Verify infra namespace exists:"
+    log_error "   kubectl get ns infra"
+    log_error ""
+    log_error "3. If PostgreSQL is not deployed, run provision:"
+    log_error "   gh workflow run provision.yml --repo Bengo-Hub/devops-k8s"
+    log_error ""
+    log_error "4. Expected secret location: kubectl get secret postgresql -n infra"
     exit 1
 fi
 
 log_info "PostgreSQL password retrieved and verified (length: ${#APP_DB_PASS} chars)"
 
-# Get Redis password from shared 'erp' namespace - ALWAYS use the password from the live database
-log_info "Retrieving Redis password from shared 'erp' namespace..."
-if kubectl -n erp get secret redis >/dev/null 2>&1; then
-    REDIS_PASS=$(kubectl -n erp get secret redis -o jsonpath='{.data.redis-password}' 2>/dev/null | base64 -d || true)
+# Get Redis password from shared 'infra' namespace - ALWAYS use the password from the live database
+log_info "Retrieving Redis password from shared 'infra' namespace..."
+if kubectl -n infra get secret redis >/dev/null 2>&1; then
+    REDIS_PASS=$(kubectl -n infra get secret redis -o jsonpath='{.data.redis-password}' 2>/dev/null | base64 -d || true)
     if [[ -n "$REDIS_PASS" ]]; then
         log_info "Retrieved Redis password from database secret (source of truth)"
         
@@ -69,8 +97,19 @@ if kubectl -n erp get secret redis >/dev/null 2>&1; then
         exit 1
     fi
 else
-    log_error "Redis secret not found in 'erp' namespace"
-    log_error "Ensure Redis is installed: kubectl get secret redis -n erp"
+    log_error "Redis secret not found in 'infra' namespace"
+    log_error ""
+    log_error "TROUBLESHOOTING:"
+    log_error "1. Check what secrets exist:"
+    log_error "   kubectl get secret -n infra | grep redis"
+    log_error ""
+    log_error "2. Verify infra namespace exists:"
+    log_error "   kubectl get ns infra"
+    log_error ""
+    log_error "3. If Redis is not deployed, run provision:"
+    log_error "   gh workflow run provision.yml --repo Bengo-Hub/devops-k8s"
+    log_error ""
+    log_error "4. Expected secret location: kubectl get secret redis -n infra"
     exit 1
 fi
 

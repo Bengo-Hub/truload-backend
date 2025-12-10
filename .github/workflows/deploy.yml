@@ -60,10 +60,10 @@ jobs:
         APP_NAME: truload-backend
         GIT_USER: ${{ secrets.GIT_USER || 'TruLoad Bot' }}
         GIT_EMAIL: ${{ secrets.GIT_EMAIL || 'dev@truload.io' }}
-        # Shared database passwords from ERP namespace
+        # Shared database passwords from INFRA namespace (PostgreSQL and Redis)
         POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-        # TruLoad-specific
+        # TruLoad-specific (RabbitMQ in truload namespace)
         RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
         RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME || 'user' }}
         # .NET secrets
