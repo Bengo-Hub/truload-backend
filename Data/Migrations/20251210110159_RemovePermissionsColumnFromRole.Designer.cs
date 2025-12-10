@@ -2,18 +2,21 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using truload_backend.Data;
 
 #nullable disable
 
-namespace truload_backend.Migrations
+namespace truload_backend.Data.Migrations
 {
     [DbContext(typeof(TruLoadDbContext))]
-    partial class TruLoadDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251210110159_RemovePermissionsColumnFromRole")]
+    partial class RemovePermissionsColumnFromRole
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
