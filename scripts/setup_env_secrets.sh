@@ -148,12 +148,12 @@ log_step "Verifying PostgreSQL password by testing connection..."
 kubectl delete pod -n "$NAMESPACE" pg-test-conn --ignore-not-found >/dev/null 2>&1
 
 # Run connection test with detailed error capture (use 'postgres' db which always exists)
-log_info "Testing connection to postgresql.erp.svc.cluster.local:5432..."
+log_info "Testing connection to postgresql.infra.svc.cluster.local:5432..."
 TEST_OUTPUT=$(mktemp)
 set +e
 kubectl run -n "$NAMESPACE" pg-test-conn --rm -i --restart=Never --image=postgres:15-alpine --timeout=30s \
   --env="PGPASSWORD=$APP_DB_PASS" \
-  --command -- psql -h postgresql.erp.svc.cluster.local -U postgres -d postgres -c "SELECT 1;" >$TEST_OUTPUT 2>&1
+  --command -- psql -h postgresql.infra.svc.cluster.local -U postgres -d postgres -c "SELECT 1;" >$TEST_OUTPUT 2>&1
 TEST_RC=$?
 set -e
 
@@ -169,7 +169,7 @@ else
     log_error ""
     log_error "DIAGNOSIS: Password mismatch or connectivity issue"
     log_error "- Secret password length: ${#APP_DB_PASS} chars"
-    log_error "- Database host: postgresql.erp.svc.cluster.local:5432"
+    log_error "- Database host: postgresql.infra.svc.cluster.local:5432"
     log_error "- Test database: postgres"
     log_error ""
     log_error "FIX OPTIONS:"
@@ -207,8 +207,8 @@ log_info "Secret will include: PostgreSQL, Redis, RabbitMQ, .NET secrets, CORS c
 kubectl -n "$NAMESPACE" delete secret "$ENV_SECRET_NAME" --ignore-not-found
 
 kubectl -n "$NAMESPACE" create secret generic "$ENV_SECRET_NAME" \
-  --from-literal=ConnectionStrings__DefaultConnection="Host=postgresql.erp.svc.cluster.local;Port=5432;Database=truload;Username=postgres;Password=${APP_DB_PASS}" \
-  --from-literal=Redis__ConnectionString="redis-master.erp.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False" \
+  --from-literal=ConnectionStrings__DefaultConnection="Host=postgresql.infra.svc.cluster.local;Port=5432;Database=truload;Username=postgres;Password=${APP_DB_PASS}" \
+  --from-literal=Redis__ConnectionString="redis-master.infra.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False" \
   --from-literal=RabbitMQ__Host="rabbitmq.${NAMESPACE}.svc.cluster.local" \
   --from-literal=RabbitMQ__Port="5672" \
   --from-literal=RabbitMQ__Username="user" \
@@ -244,10 +244,10 @@ metadata:
 type: Opaque
 stringData:
   # Database credentials (verified from K8s secrets)
-  ConnectionStrings__DefaultConnection: "Host=postgresql.erp.svc.cluster.local;Port=5432;Database=truload;Username=postgres;Password=${APP_DB_PASS}"
+    ConnectionStrings__DefaultConnection: "Host=postgresql.infra.svc.cluster.local;Port=5432;Database=truload;Username=postgres;Password=${APP_DB_PASS}"
   
   # Redis credentials (verified from K8s secrets)
-  Redis__ConnectionString: "redis-master.erp.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False"
+    Redis__ConnectionString: "redis-master.infra.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False"
   
   # RabbitMQ credentials (verified from K8s secrets)
   RabbitMQ__Host: "rabbitmq.${NAMESPACE}.svc.cluster.local"
@@ -292,10 +292,10 @@ metadata:
 type: Opaque
 stringData:
   # Database credentials (verified from K8s secrets)
-  ConnectionStrings__DefaultConnection: "Host=postgresql.erp.svc.cluster.local;Port=5432;Database=truload;Username=postgres;Password=${APP_DB_PASS}"
+    ConnectionStrings__DefaultConnection: "Host=postgresql.infra.svc.cluster.local;Port=5432;Database=truload;Username=postgres;Password=${APP_DB_PASS}"
   
   # Redis credentials (verified from K8s secrets)
-  Redis__ConnectionString: "redis-master.erp.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False"
+    Redis__ConnectionString: "redis-master.infra.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False"
   
   # RabbitMQ credentials (verified from K8s secrets)
   RabbitMQ__Host: "rabbitmq.${NAMESPACE}.svc.cluster.local"
