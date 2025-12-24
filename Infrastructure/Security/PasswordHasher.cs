@@ -5,17 +5,16 @@ using Konscious.Security.Cryptography;
 namespace TruLoad.Backend.Infrastructure.Security;
 
 /// <summary>
-/// Argon2id password hasher compatible with shared Go library and auth-service.
-/// Uses identical parameters and format to ensure cross-service password verification.
+/// Argon2id password hasher for ASP.NET Core Identity.
+/// Uses industry-standard parameters for secure password hashing and verification.
 /// 
-/// This .NET implementation mirrors github.com/Bengo-Hub/shared-password-hasher
 /// Format: $argon2id$v=19$m=65536,t=3,p=2$&lt;base64-salt&gt;$&lt;base64-hash&gt;
 /// 
-/// IMPORTANT: Do NOT modify hashing logic without updating Go library!
+/// IMPORTANT: Do NOT modify hashing parameters without careful consideration!
 /// </summary>
 public class PasswordHasher
 {
-    // Default parameters matching Go shared library and auth-service
+    // Secure defaults for password hashing
     private const int DefaultMemorySize = 65536;  // 64 MiB in KB
     private const int DefaultIterations = 3;
     private const int DefaultDegreeOfParallelism = 2;
@@ -30,7 +29,7 @@ public class PasswordHasher
 
     /// <summary>
     /// Creates a new PasswordHasher with default Argon2id parameters.
-    /// Defaults match Go shared library: m=65536, t=3, p=2, keylen=32
+    /// Defaults: m=65536, t=3, p=2, keylen=32
     /// </summary>
     public PasswordHasher()
         : this(DefaultMemorySize, DefaultIterations, DefaultDegreeOfParallelism, DefaultKeyLength)
@@ -39,7 +38,7 @@ public class PasswordHasher
 
     /// <summary>
     /// Creates a new PasswordHasher with custom Argon2id parameters.
-    /// Use this when shared library configuration changes.
+    /// Use this for testing or when security requirements change.
     /// </summary>
     /// <param name="memorySize">Memory size in KB (m parameter)</param>
     /// <param name="iterations">Time cost iterations (t parameter)</param>
@@ -56,7 +55,6 @@ public class PasswordHasher
     /// <summary>
     /// Hash a password using Argon2id.
     /// Returns formatted hash: $argon2id$v=19$m=65536,t=3,p=2$&lt;salt&gt;$&lt;hash&gt;
-    /// Compatible with Go shared library and auth-service.
     /// </summary>
     public string HashPassword(string password)
     {
@@ -85,7 +83,6 @@ public class PasswordHasher
     /// <summary>
     /// Verify password against stored Argon2id hash.
     /// Compatible with hashes from Go shared library, auth-service, and other .NET services.
-    /// Uses constant-time comparison to prevent timing attacks.
     /// </summary>
     public bool VerifyPassword(string password, string hashedPassword)
     {
@@ -137,7 +134,6 @@ public class PasswordHasher
     /// <summary>
     /// Parse Argon2id hash string and extract parameters, salt, and hash.
     /// Expected format: $argon2id$v=19$m=65536,t=3,p=2$&lt;base64-salt&gt;$&lt;base64-hash&gt;
-    /// Must match Go shared library parsing logic exactly.
     /// </summary>
     private static (int memorySize, int iterations, int degreeOfParallelism, byte[] salt, byte[] hash) ParseHash(string hashedPassword)
     {

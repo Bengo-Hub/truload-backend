@@ -7,10 +7,6 @@ public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
 {
     public CreateUserRequestValidator()
     {
-        RuleFor(x => x.AuthServiceUserId)
-            .NotEmpty()
-            .WithMessage("Auth service user ID is required");
-
         RuleFor(x => x.Email)
             .NotEmpty()
             .WithMessage("Email is required")
@@ -19,10 +15,10 @@ public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
             .MaximumLength(255)
             .WithMessage("Email must not exceed 255 characters");
 
-        RuleFor(x => x.Phone)
-            .MaximumLength(20)
-            .WithMessage("Phone must not exceed 20 characters")
-            .When(x => !string.IsNullOrWhiteSpace(x.Phone));
+        RuleFor(x => x.PhoneNumber)
+            .MaximumLength(15)
+            .WithMessage("Phone number must not exceed 15 characters")
+            .When(x => !string.IsNullOrWhiteSpace(x.PhoneNumber));
 
         RuleFor(x => x.FullName)
             .MaximumLength(255)
@@ -35,19 +31,14 @@ public class UpdateUserRequestValidator : AbstractValidator<UpdateUserRequest>
 {
     public UpdateUserRequestValidator()
     {
-        RuleFor(x => x.Phone)
+        RuleFor(x => x.PhoneNumber)
             .MaximumLength(20)
-            .WithMessage("Phone must not exceed 20 characters")
-            .When(x => !string.IsNullOrWhiteSpace(x.Phone));
+            .WithMessage("Phone number must not exceed 20 characters")
+            .When(x => !string.IsNullOrWhiteSpace(x.PhoneNumber));
 
         RuleFor(x => x.FullName)
             .MaximumLength(255)
             .WithMessage("Full name must not exceed 255 characters")
             .When(x => !string.IsNullOrWhiteSpace(x.FullName));
-
-        RuleFor(x => x.Status)
-            .Must(status => status == null || new[] { "active", "inactive", "suspended" }.Contains(status))
-            .WithMessage("Status must be 'active', 'inactive', or 'suspended'")
-            .When(x => !string.IsNullOrWhiteSpace(x.Status));
     }
 }

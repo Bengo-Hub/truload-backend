@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Moq;
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Repositories.Auth;
 using TruLoad.Backend.Repositories.Auth.Interfaces;
 using TruLoad.Backend.Services.Implementations;
 using truload_backend.Data;

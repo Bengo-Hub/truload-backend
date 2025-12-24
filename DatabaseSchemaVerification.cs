@@ -1,6 +1,9 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using truload_backend.Data;
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.Identity;
 
 namespace TruLoad.Backend.Tests;
 
@@ -11,7 +14,7 @@ namespace TruLoad.Backend.Tests;
 /// </summary>
 public class DatabaseSchemaVerification
 {
-    public static async Task VerifySchema(TruLoadDbContext context)
+    public static async Task VerifySchema(TruLoadDbContext context, IServiceProvider serviceProvider)
     {
         Console.WriteLine("\n===== DATABASE SCHEMA VERIFICATION =====\n");
 
@@ -65,7 +68,7 @@ public class DatabaseSchemaVerification
 
             // 5. Test basic CRUD operations
             Console.WriteLine("\nBasic CRUD Operations:");
-            await TestCrudOperations(context);
+            await TestCrudOperations(context, serviceProvider);
 
             Console.WriteLine("\n===== VERIFICATION COMPLETE =====\n");
         }
@@ -124,7 +127,7 @@ public class DatabaseSchemaVerification
         return result is long count && count == columns.Length;
     }
 
-    private static async Task TestCrudOperations(TruLoadDbContext context)
+    private static async Task TestCrudOperations(TruLoadDbContext context, IServiceProvider serviceProvider)
     {
         // Test Organization CRUD
         var org = new Organization
@@ -139,17 +142,22 @@ public class DatabaseSchemaVerification
         await context.SaveChangesAsync();
         Console.WriteLine($"✓ Created organization: {org.Name} (ID: {org.Id})");
 
-        // Test Role CRUD
-        var role = new Role
+        // Test ApplicationRole CRUD (using Identity role)
+        var roleManager = serviceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+        var testRole = new ApplicationRole
         {
             Name = "Test_Role",
+            Code = "TEST_ROLE",
             Description = "Test role for verification",
             IsActive = true
         };
 
-        context.Roles.Add(role);
-        await context.SaveChangesAsync();
-        Console.WriteLine($"✓ Created role: {role.Name} (ID: {role.Id})");
+        var roleResult = await roleManager.CreateAsync(testRole);
+        if (!roleResult.Succeeded)
+        {
+            throw new Exception($"Failed to create test role: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
+        }
+        Console.WriteLine($"✓ Created role: {testRole.Name} (ID: {testRole.Id})");
 
         // Test Station CRUD
         var station = new Station
@@ -166,7 +174,7 @@ public class DatabaseSchemaVerification
 
         // Cleanup
         context.Organizations.Remove(org);
-        context.Roles.Remove(role);
+        await roleManager.DeleteAsync(testRole);
         context.Stations.Remove(station);
         await context.SaveChangesAsync();
         Console.WriteLine("✓ Cleaned up test data");

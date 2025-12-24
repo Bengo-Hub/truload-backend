@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using truload_backend.Data;
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Data.Seeders;
 using TruLoad.Backend.Data.Seeders.UserManagement;
 using TruLoad.Backend.Data.Seeders.WeighingOperations;
@@ -15,13 +17,22 @@ namespace TruLoad.Data.Seeders;
 /// </summary>
 public static class DatabaseSeeder
 {
-    public static async Task SeedAsync(TruLoadDbContext context, ILogger logger)
+    public static async Task SeedAsync(
+        TruLoadDbContext context, 
+        RoleManager<ApplicationRole> roleManager,
+        UserManager<ApplicationUser> userManager,
+        ILogger logger)
     {
         try
         {
             logger.LogInformation("=== Starting TruLoad Database Seeding ===");
 
-            // Seed user management data (roles, organizations, departments, stations, work shifts)
+            // Seed roles first (includes SUPERUSER and all 7 roles)
+            logger.LogInformation("Seeding roles...");
+            var roleSeeder = new RoleSeeder(roleManager);
+            await roleSeeder.SeedAsync();
+
+            // Seed user management data (organizations, departments, stations, work shifts)
             logger.LogInformation("Seeding user management data...");
             var userManagementSeeder = new UserManagementSeeder(context);
             await userManagementSeeder.SeedAsync();
@@ -33,7 +44,7 @@ public static class DatabaseSeeder
 
             // Seed users (requires organizations and roles to exist first)
             logger.LogInformation("Seeding users...");
-            var userSeeder = new UserSeeder(context);
+            var userSeeder = new UserSeeder(userManager, roleManager, context);
             await userSeeder.SeedAsync();
 
             // Seed weighing operations data (axle configurations, axle weight references)

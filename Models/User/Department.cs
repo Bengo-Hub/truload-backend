@@ -17,5 +17,4 @@ public class Department
 
     // Navigation properties
     public Organization Organization { get; set; } = null!;
-    public ICollection<User> Users { get; set; } = new List<User>();
 }

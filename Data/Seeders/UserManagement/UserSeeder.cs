@@ -1,30 +1,33 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using TruLoad.Backend.Models;
-using TruLoad.Backend.Infrastructure.Security;
+using TruLoad.Backend.Models.Identity;
 using truload_backend.Data;
 
 namespace TruLoad.Backend.Data.Seeders.UserManagement;
 
 /// <summary>
-/// Seeds initial users for TruLoad system
-/// Note: In production, users are synced from auth-service SSO
-/// These seed users are for development/testing with local auth-service
+/// Seeds initial users for TruLoad system using ASP.NET Core Identity
+/// These seed users are for development/testing
 /// 
-/// IMPORTANT: This seeder also creates users in auth-service with pre-hashed passwords
-/// to enable bidirectional sync. Password hashing uses shared Argon2id implementation.
+/// IMPORTANT: Password is managed by UserManager's password hasher (Identity's default)
 /// </summary>
 public class UserSeeder
 {
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly TruLoadDbContext _context;
-    private readonly PasswordHasher _passwordHasher;
 
     // Password for seeded users (DEVELOPMENT ONLY)
     private const string DefaultPassword = "ChangeMe123!";
 
-    public UserSeeder(TruLoadDbContext context)
+    public UserSeeder(
+        UserManager<ApplicationUser> userManager, 
+        RoleManager<ApplicationRole> roleManager,
+        TruLoadDbContext context)
     {
+        _userManager = userManager;
+        _roleManager = roleManager;
         _context = context;
-        _passwordHasher = new PasswordHasher();
     }
 
     public async Task SeedAsync()
@@ -44,64 +47,49 @@ public class UserSeeder
         }
 
         // Check if SYSTEM_ADMIN role exists
-        var systemAdminRole = await _context.Roles
-            .FirstOrDefaultAsync(r => r.Code == "SYSTEM_ADMIN");
+        var systemAdminRole = await _roleManager.FindByNameAsync("System Admin");
         
         if (systemAdminRole == null)
         {
-            throw new InvalidOperationException("SYSTEM_ADMIN role not found. Ensure UserManagementSeeder runs before UserSeeder.");
+            throw new InvalidOperationException("SYSTEM_ADMIN role not found. Ensure RoleSeeder runs before UserSeeder.");
         }
 
         // Seed superuser: gadmin@masterspace.co.ke
         var superUserEmail = "gadmin@masterspace.co.ke";
-        var existingSuperUser = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == superUserEmail);
+        var existingSuperUser = await _userManager.FindByEmailAsync(superUserEmail);
 
         if (existingSuperUser == null)
         {
-            // Generate deterministic GUID for AuthServiceUserId (development only)
-            // In production, this will be synced from auth-service
-            var authServiceUserId = Guid.Parse("10000000-0000-0000-0000-000000000001");
-
-            // Hash password using shared Argon2id implementation
-            // This hash can be verified by auth-service and other services
-            var passwordHash = _passwordHasher.HashPassword(DefaultPassword);
-
-            var superUser = new User
+            var superUser = new ApplicationUser
             {
-                Id = Guid.Parse("20000000-0000-0000-0000-000000000001"),
-                AuthServiceUserId = authServiceUserId,
                 Email = superUserEmail,
+                NormalizedEmail = superUserEmail.ToUpper(),
+                UserName = superUserEmail,
+                NormalizedUserName = superUserEmail.ToUpper(),
                 FullName = "Global Administrator",
-                Phone = "+254700000000",
-                Status = "active",
+                PhoneNumber = "+254700000000",
                 OrganizationId = kuraOrg.Id,
-                SyncStatus = "synced",
-                SyncAt = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true,
+                TwoFactorEnabled = false,
+                LockoutEnabled = false
             };
 
-            await _context.Users.AddAsync(superUser);
-            await _context.SaveChangesAsync();
+            var result = await _userManager.CreateAsync(superUser, DefaultPassword);
+            if (!result.Succeeded)
+            {
+                throw new Exception($"Failed to create superuser: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            }
 
             // Assign SYSTEM_ADMIN role to superuser
-            var userRole = new UserRole
+            var roleResult = await _userManager.AddToRoleAsync(superUser, "System Admin");
+            if (!roleResult.Succeeded)
             {
-                UserId = superUser.Id,
-                RoleId = systemAdminRole.Id,
-                AssignedAt = DateTime.UtcNow
-            };
-
-            await _context.UserRoles.AddAsync(userRole);
-            await _context.SaveChangesAsync();
+                throw new Exception($"Failed to assign role to superuser: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
+            }
 
             Console.WriteLine($"✓ Seeded superuser: {superUserEmail} linked to KURA organization with SYSTEM_ADMIN role");
             Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY - change in production!)");
-            Console.WriteLine($"  Password hash format: Argon2id (compatible with auth-service)");
-            
-            // TODO: Sync this user to auth-service via AuthServiceClient
-            // This ensures the user exists in both local DB and SSO for bidirectional sync
         }
         else
         {

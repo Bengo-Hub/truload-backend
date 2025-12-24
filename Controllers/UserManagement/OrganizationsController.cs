@@ -74,7 +74,7 @@ public class OrganizationsController : ControllerBase
             Id = Guid.NewGuid(),
             Code = request.Code,
             Name = request.Name,
-            OrgType = request.OrgType,
+            OrgType = NormalizeOrgType(request.OrgType) ?? "Private",
             ContactEmail = request.ContactEmail,
             ContactPhone = request.ContactPhone,
             Address = request.Address,
@@ -111,7 +111,7 @@ public class OrganizationsController : ControllerBase
         }
 
         if (request.Name != null) org.Name = request.Name;
-        if (request.OrgType != null) org.OrgType = request.OrgType;
+        if (request.OrgType != null) org.OrgType = NormalizeOrgType(request.OrgType) ?? org.OrgType;
         if (request.ContactEmail != null) org.ContactEmail = request.ContactEmail;
         if (request.ContactPhone != null) org.ContactPhone = request.ContactPhone;
         if (request.Address != null) org.Address = request.Address;
@@ -155,6 +155,18 @@ public class OrganizationsController : ControllerBase
             CreatedAt = org.CreatedAt,
             UpdatedAt = org.UpdatedAt
         };
+    }
+
+    private static string? NormalizeOrgType(string? orgType)
+    {
+        if (string.IsNullOrWhiteSpace(orgType)) return null;
+
+        var value = orgType.Trim();
+        return value.Equals("government", StringComparison.OrdinalIgnoreCase)
+            ? "Government"
+            : value.Equals("private", StringComparison.OrdinalIgnoreCase)
+                ? "Private"
+                : null;
     }
 }
 

@@ -1,3 +1,5 @@
+using TruLoad.Backend.Models.Identity;
+
 namespace TruLoad.Backend.Models;
 
 /// <summary>
@@ -14,7 +16,7 @@ public class UserShift
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
-    public User User { get; set; } = null!;
+    public ApplicationUser User { get; set; } = null!;
     public WorkShift? WorkShift { get; set; }
     public ShiftRotation? ShiftRotation { get; set; }
 }

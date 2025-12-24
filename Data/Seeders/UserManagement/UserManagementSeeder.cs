@@ -19,92 +19,13 @@ public class UserManagementSeeder
 
     public async Task SeedAsync()
     {
-        await SeedRolesAsync();
-        await _context.SaveChangesAsync(); // Ensure roles are committed before proceeding
+        // Note: Roles are now seeded by RoleSeeder in DatabaseSeeder
+        // This ensures SUPERUSER and all 7 roles are properly created
         
         await SeedOrganizationsAsync();
         await SeedDepartmentsAsync();
         await SeedStationsAsync();
         await SeedWorkShiftsAsync();
-    }
-
-    private async Task SeedRolesAsync()
-    {
-        var roles = new[]
-        {
-            new Role
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-                Name = "System Administrator",
-                Code = "SYSTEM_ADMIN",
-                Description = "Full system access with all administrative privileges",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            },
-            new Role
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000002"),
-                Name = "Station Manager",
-                Code = "STATION_MANAGER",
-                Description = "Manages station operations, staff, and operational workflows",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            },
-            new Role
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000003"),
-                Name = "Weighing Operator",
-                Code = "WEIGHING_OPERATOR",
-                Description = "Performs vehicle weighing operations and records data",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            },
-            new Role
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000004"),
-                Name = "Enforcement Officer",
-                Code = "ENFORCEMENT_OFFICER",
-                Description = "Reviews violations and initiates prosecution proceedings",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            },
-            new Role
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000005"),
-                Name = "Analyst",
-                Code = "ANALYST",
-                Description = "Analyzes weighing data, generates reports, performs trend analysis",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            },
-            new Role
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000006"),
-                Name = "Auditor",
-                Code = "AUDITOR",
-                Description = "Reviews system activity, audit logs, and compliance records",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            }
-        };
-
-        foreach (var role in roles)
-        {
-            var existing = await _context.Roles.FindAsync(role.Id);
-            if (existing == null)
-            {
-                await _context.Roles.AddAsync(role);
-                Console.WriteLine($"✓ Seeded role: {role.Name} ({role.Code})");
-            }
-        }
-
-        await _context.SaveChangesAsync();
     }
 
     private async Task SeedOrganizationsAsync()
@@ -154,9 +75,9 @@ public class UserManagementSeeder
             {
                 Id = Guid.NewGuid(),
                 Code = "MSS",
-                Name = "Masterspace Solutions",
+                Name = "Masterspace Solutions Ltd",
                 OrgType = "Private",
-                ContactEmail = "info@masterspacesolutions.com",
+                ContactEmail = "info@masterspace.co.ke",
                 ContactPhone = "+254-722-123456",
                 Address = "Nairobi, Kenya",
                 IsActive = true,

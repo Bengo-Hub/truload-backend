@@ -38,11 +38,10 @@
 
 **Next Priority Tasks (Recommended Sequence):**
 1. **Authorization Policy Implementation** - Create [Authorize(Policy="...")] handlers for permission-based access
-2. **Auth-Service Integration Completion** - Implement JWKS caching, token validation, user sync service
-3. **Security & Authorization Phase** - Add [Authorize] attributes to all 90+ endpoints
-4. **User Management Endpoints** - Implement user CRUD operations and filtering
-5. **Role Management Endpoints** - Implement role CRUD and user-role assignment
-6. **Shift Management** - Complete shift CRUD and user-shift assignment endpoints
+2. **Security & Authorization Phase** - Add [Authorize] attributes to all 90+ endpoints
+3. **User Management Endpoints** - Implement user CRUD operations and filtering
+4. **Role Management Endpoints** - Implement role CRUD and user-role assignment
+5. **Shift Management** - Complete shift CRUD and user-shift assignment endpoints
 
 ---
 
@@ -77,7 +76,7 @@
 - **Search (Optional):** Elasticsearch for advanced report queries
 
 ### Supporting Libraries
-- **Authentication:** ASP.NET Core Identity + JWT (System.IdentityModel.Tokens.Jwt)
+- **Authentication:** ASP.NET Core Identity + JWT (local token issuance with JwtService)
 - **Validation:** FluentValidation
 - **Resilience:** Polly (circuit breaker, retry, timeout policies)
 - **API Documentation:** Swashbuckle (Swagger/OpenAPI 3.0)
@@ -87,6 +86,7 @@
 - **Background Jobs:** Hangfire (dashboard for monitoring)
 - **AI/ML:** ONNX Runtime for text-to-vector embeddings
 - **Vector Database:** pgvector extension for PostgreSQL
+- **Password Hashing:** Argon2id (PasswordHasher for secure credential storage)
 
 ### DevOps & Observability
 - **Containerization:** Docker multi-stage builds
@@ -109,11 +109,12 @@
 6. **Security:** RBAC with claims-based authorization; audit logs for all mutations; encrypted sensitive fields
 
 ### Communication & Integration Patterns
-- **Synchronous:** REST via shared HTTP client with retries/circuit breaker; service discovery via Kubernetes DNS (e.g., `auth-service.auth.svc.cluster.local`).
-- **Async:** Domain events published through RabbitMQ outbox with versioned subjects (e.g., `truload.user.synced.v1`), DLQ configured.
+- **Synchronous:** REST via shared HTTP client with retries/circuit breaker; service discovery via Kubernetes DNS (e.g., `notifications-service.notifications.svc.cluster.local`).
+- **Async:** Domain events published through RabbitMQ outbox with versioned subjects (e.g., `truload.user.created.v1`), DLQ configured.
 - **Real-time:** SignalR reserved for TruConnect weight streaming; avoid ad-hoc websocket use elsewhere.
 - **Webhooks:** eCitizen payment callbacks and any external partner notifications; validate HMAC and idempotency keys.
-- **Avoid Duplication:** Only store foreign IDs for external systems (auth-service user IDs, NTSA references) and keep `auth_service_user_id` as the identity link.
+- **External Integration:** Only notifications-service for notification management; no other microservice dependencies.
+- **Avoid Duplication:** Store only foreign IDs for external systems (NTSA references, eCitizen transaction IDs).
 | **Inspection** | Dimensional compliance (wide load) | VehicleInspections |
 | **Reporting & Analytics** | Registers, analytics, exports, BI dashboards | Dynamic report generation, Superset dashboards |
 | **Settings** | System config, stations, cameras, I/O, prosecution defaults | Stations, Cameras, IoDevices, SystemSettings |
@@ -617,35 +618,99 @@ For detailed integration instructions, refer to [integration.md](./integration.m
 ### Authentication & Authorization
 
 **Centralized SSO Integration:**
-- TruLoad services utilize centralized `auth-service` for authentication
-- Authentication requests routed to `auth-service` via HTTP client
-- JWT tokens validated against `auth-service` public keys
-- Token refresh handled via `auth-service` refresh endpoint
-- Single Sign-On (SSO) enables seamless authentication across BengoBox services
 
 **Application-Level User Management:**
-- Local user entities maintained for app-specific data (shifts, station assignments, preferences)
-- User synchronization with `auth-service` via background jobs
-- Sync strategy: One-way sync from `auth-service` for user identity, two-way sync for app-specific attributes
-- RBAC roles and permissions managed locally but synchronized with `auth-service` where applicable
-- Avoid duplicate user entities by maintaining `auth_service_user_id` foreign key reference
 
 **User Entity Relationship:**
-- `users` table includes `auth_service_user_id` (UUID) referencing centralized auth service
-- Local user management includes: shifts, station assignments, role mappings, app preferences
-- Sync jobs run periodically to reconcile user data between services
-- User creation/deactivation events published to auth-service for cross-service synchronization
 
 **JWT Token Handling:**
-- Access tokens from `auth-service` validated on each request
-- Token claims include: user ID, email, roles, station ID (if assigned)
-- Token refresh via `auth-service` refresh endpoint before expiry
-- Token caching in Redis to reduce validation overhead
 
 **RBAC Policies:**
-- Application-specific policies: `CanProsecute`, `CanReleaseVehicle`, `CanManageStation`, etc.
-- Policy definitions stored locally but respect centralized role hierarchy
-- Permission checks combine centralized roles with local app permissions
+
+### Role-Based Access Control (RBAC) & Permission Management
+
+**RBAC Data Model:**
+```
+User (1) ──→ (M) UserRole → (1) Role (1) ──→ (M) RolePermission → (1) Permission
+```
+
+- **User**: Authentication identity linked to auth-service via `auth_service_user_id`
+- **Role**: Collection of permissions (SYSTEM_ADMIN, STATION_MANAGER, ENFORCEMENT_OFFICER, FINANCE_OFFICER, REPORT_MANAGER, VIEWER)
+- **Permission**: Fine-grained access control (weighing.create, case.read_all, user.manage, etc.)
+- **UserRole**: Junction table linking users to roles (many-to-many)
+- **RolePermission**: Junction table linking roles to permissions (many-to-many)
+
+**Permission Codes Structure:**
+- Format: `resource.action` or `resource.scope.action`
+- Categories: weighing, case, prosecution, user, station, config, report, system
+- Examples: `weighing.create`, `case.read_own`, `user.manage`, `station.configure`, `report.export`
+
+**Login Flow with Permission Retrieval:**
+```csharp
+// SsoAuthService.ProxyLoginAsync():
+// 1. Authenticate user via external SSO service
+// 2. Lookup/create local user by email with bidirectional organization sync
+// 3. Retrieve user roles: await _userRoleRepository.GetUserRolesAsync(userId)
+// 4. Retrieve permissions for all roles: await _permissionRepository.GetPermissionsByRolesAsync(roleIds)
+// 5. Generate JWT token with claims:
+//    - ClaimTypes.NameIdentifier: user ID
+//    - ClaimTypes.Email: user email
+//    - ClaimTypes.Role: role code (one claim per role)
+//    - "permission": permission code (one claim per permission)
+//    - "tenant_slug": organization code for multi-tenant support
+// 6. Return LoginResponse with user profile including roles and permissions arrays
+```
+
+**Authorization Policies (Program.cs):**
+```csharp
+services.AddAuthorization(options =>
+{
+   // Permission-based policies
+   options.AddPolicy("CanCreateWighing", policy =>
+      policy.RequireClaim("permission", "weighing.create"));
+    
+   options.AddPolicy("CanManageUsers", policy =>
+      policy.RequireClaim("permission", "user.manage"));
+    
+   // Role-based policies
+   options.AddPolicy("IsSystemAdmin", policy =>
+      policy.RequireRole("SYSTEM_ADMIN"));
+    
+   options.AddPolicy("IsOfficer", policy =>
+      policy.RequireRole("ENFORCEMENT_OFFICER", "STATION_MANAGER"));
+});
+```
+
+**API Endpoint Authorization:**
+- All endpoints protected with `[Authorize]` attribute
+- Specific endpoints require permission claims: `[Authorize(Policy = "CanCreateWighing")]`
+- Sensitive operations require role checks: `[Authorize(Roles = "SYSTEM_ADMIN")]`
+- Return 401 Unauthorized for missing/invalid tokens
+- Return 403 Forbidden for insufficient permissions
+
+**Permission Categories & Examples:**
+
+| Category | Permissions |
+|----------|-----------|
+| **Weighing** | create, read_own, read_all, update_own, update_all, delete, approve |
+| **Case** | create, read_own, read_all, update_own, update_all, close |
+| **User** | read, create, update, manage, delete |
+| **Report** | read, export, delete |
+| **System** | config, audit, roles, station_manage |
+
+**Role Assignments & Sync:**
+- Roles assigned via local interface and persisted in UserRole junction table
+- Role assignments synchronized with auth-service on change for audit trail
+- User role changes logged to audit table with timestamp and admin ID
+- Permission cache invalidated on role changes to ensure immediate effect
+
+**Implementation Status:**
+- ✅ RBAC data model (User, Role, Permission, UserRole, RolePermission tables) created
+- ✅ JWT claims generation with roles and permissions
+- ✅ Login response includes roles[] and permissions[] arrays for frontend
+- ⏳ API endpoints protected with [Authorize(Policy="...")] attributes
+- ⏳ Custom authorization handlers for dynamic permission checks
+- ⏳ Frontend permission context and component guards
 
 ### Data Encryption
 - **At Rest:** PostgreSQL transparent data encryption (TDE) or disk-level encryption
@@ -790,49 +855,39 @@ $argon2id$v=19$m=65536,t=3,p=2$<base64-salt>$<base64-hash>
 
 ### Implementation
 
-#### Go Services (Auth-Service, Ordering, Notifications)
+#### TruLoad Backend (ASP.NET Core Identity)
 
-```go
-import passwordhasher "github.com/Bengo-Hub/shared-password-hasher"
-
-hasher := passwordhasher.NewHasher()
-hash, _ := hasher.Hash("ChangeMe123!")
-```
-
-#### .NET Services (TruLoad Backend)
+- Uses built-in `IPasswordHasher<TUser>` from ASP.NET Core Identity for password hashing.
+- JWT tokens are issued locally by the backend; permission claims are embedded at login.
+- No dependency on external auth-service for authentication or user sync.
 
 ```csharp
-using TruLoad.Backend.Infrastructure.Security;
+// Example: Hashing via ASP.NET Core Identity
+public class ApplicationUser : IdentityUser<Guid> { /* extended fields: organizationId, stationId */ }
 
-var hasher = new PasswordHasher();
-string hash = hasher.HashPassword("ChangeMe123!");
+public class IdentityConfig
+{
+   private readonly IPasswordHasher<ApplicationUser> _passwordHasher;
+   public IdentityConfig(IPasswordHasher<ApplicationUser> passwordHasher)
+   {
+      _passwordHasher = passwordHasher;
+   }
+   public string Hash(string password, ApplicationUser user) => _passwordHasher.HashPassword(user, password);
+}
 ```
 
-**Location**: `Infrastructure/Security/PasswordHasher.cs`
+### Authentication Scope
 
-### Bidirectional User Sync Pattern
-
-#### Scenario 1: User Exists Locally but NOT in Auth-Service
-
-1. TruLoad backend checks local database → user found
-2. Queries auth-service → user not found
-3. **Sync TO auth-service:** Hash password, create tenant, create user with pre-hashed password
-4. Proxy login to auth-service
-5. Return JWT token
-
-#### Scenario 2: User Exists in Auth-Service but NOT Locally
-
-1. Proxy login to auth-service → success, JWT returned
-2. **Sync FROM auth-service:** Parse JWT, create/get organization, create local user, assign role
-3. Return JWT token
-
-See `docs/PASSWORD_HASHING_IMPLEMENTATION.md` for complete implementation details.
+- User management, roles, and permissions are owned by TruLoad backend.
+- Tokens are httpOnly and proxied through the backend; frontend never handles raw secrets.
+- Cross-service references store only foreign IDs; no cross-service credential sync.
 
 ---
 
 ## References
 
 - [Database Schema (ERD)](./erd.md) - Updated with Permission and RolePermission entities
+- ASP.NET Core Identity docs (built-in password hashing)
 - [RBAC Implementation Plan](./RBAC_IMPLEMENTATION_PLAN.md) - **NEW:** Complete 5-phase roadmap with production auth-service integration and 77-permission model
 - [Password Hashing Implementation](./PASSWORD_HASHING_IMPLEMENTATION.md) - **NEW:** Argon2id standardization and bidirectional sync
 - [Integration Guide](./integration.md)

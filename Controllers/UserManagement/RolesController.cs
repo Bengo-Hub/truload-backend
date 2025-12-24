@@ -1,32 +1,33 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.DTOs.User;
-using TruLoad.Backend.Models;
-using TruLoad.Backend.Repositories.UserManagement.Interfaces;
+using TruLoad.Backend.Models.Identity;
 
 namespace TruLoad.Controllers;
 
 [ApiController]
-[Route("api/v1/[controller]")]
+[Route("api/v1/user-management/roles")]
 [Authorize]
 public class RolesController : ControllerBase
 {
-    private readonly IRoleRepository _roleRepository;
+    private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly ILogger<RolesController> _logger;
 
-    public RolesController(IRoleRepository roleRepository, ILogger<RolesController> logger)
+    public RolesController(RoleManager<ApplicationRole> roleManager, ILogger<RolesController> logger)
     {
-        _roleRepository = roleRepository;
+        _roleManager = roleManager;
         _logger = logger;
     }
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(RoleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<RoleDto>> GetById(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<RoleDto>> GetById(Guid id)
     {
-        var role = await _roleRepository.GetByIdAsync(id, cancellationToken);
+        var role = await _roleManager.FindByIdAsync(id.ToString());
         if (role == null)
         {
             return NotFound(new { message = "Role not found" });
@@ -38,10 +39,16 @@ public class RolesController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<RoleDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<RoleDto>>> GetAll(
-        [FromQuery] bool includeInactive = false,
-        CancellationToken cancellationToken = default)
+        [FromQuery] bool includeInactive = false)
     {
-        var roles = await _roleRepository.GetAllAsync(includeInactive, cancellationToken);
+        var query = _roleManager.Roles.AsQueryable();
+        
+        if (!includeInactive)
+        {
+            query = query.Where(r => r.IsActive);
+        }
+        
+        var roles = await query.OrderBy(r => r.Name).ToListAsync();
         return Ok(roles.Select(MapToDto));
     }
 
@@ -49,88 +56,118 @@ public class RolesController : ControllerBase
     [HasPermission("system.manage_roles")]
     [ProducesResponseType(typeof(RoleDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<RoleDto>> Create([FromBody] CreateRoleRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<RoleDto>> Create([FromBody] CreateRoleRequest request)
     {
         // Check if name already exists
-        if (await _roleRepository.NameExistsAsync(request.Name, cancellationToken: cancellationToken))
+        var existing = await _roleManager.FindByNameAsync(request.Name);
+        if (existing != null)
         {
             return BadRequest(new { message = "Role name already exists" });
         }
 
-        var role = new Role
+        var role = new ApplicationRole
         {
             Id = Guid.NewGuid(),
             Name = request.Name,
+            NormalizedName = request.Name.ToUpperInvariant(),
+            Code = request.Code ?? request.Name.ToLowerInvariant().Replace(" ", "_"),
             Description = request.Description,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        var created = await _roleRepository.CreateAsync(role, cancellationToken);
-        _logger.LogInformation("Role created: {RoleId}, Name: {Name}", created.Id, created.Name);
+        var result = await _roleManager.CreateAsync(role);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { errors = result.Errors });
+        }
 
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, MapToDto(created));
+        _logger.LogInformation("Role created: {RoleId}, Name: {Name}", role.Id, role.Name);
+        return CreatedAtAction(nameof(GetById), new { id = role.Id }, MapToDto(role));
     }
 
     [HttpPut("{id:guid}")]
     [HasPermission("system.manage_roles")]
     [ProducesResponseType(typeof(RoleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<RoleDto>> Update(Guid id, [FromBody] UpdateRoleRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<RoleDto>> Update(Guid id, [FromBody] UpdateRoleRequest request)
     {
-        var role = await _roleRepository.GetByIdAsync(id, cancellationToken);
+        var role = await _roleManager.FindByIdAsync(id.ToString());
         if (role == null)
         {
             return NotFound(new { message = "Role not found" });
         }
 
         // Check if new name conflicts
-        if (request.Name != null && request.Name != role.Name)
+        if (!string.IsNullOrWhiteSpace(request.Name) && request.Name != role.Name)
         {
-            if (await _roleRepository.NameExistsAsync(request.Name, id, cancellationToken))
+            var existing = await _roleManager.FindByNameAsync(request.Name);
+            if (existing != null && existing.Id != role.Id)
             {
                 return BadRequest(new { message = "Role name already exists" });
             }
+            
             role.Name = request.Name;
+            role.NormalizedName = request.Name.ToUpperInvariant();
         }
 
-        if (request.Description != null) role.Description = request.Description;
-        if (request.IsActive.HasValue) role.IsActive = request.IsActive.Value;
+        if (!string.IsNullOrWhiteSpace(request.Code))
+        {
+            role.Code = request.Code;
+        }
 
-        var updated = await _roleRepository.UpdateAsync(role, cancellationToken);
-        _logger.LogInformation("Role updated: {RoleId}", updated.Id);
+        if (!string.IsNullOrWhiteSpace(request.Description))
+        {
+            role.Description = request.Description;
+        }
 
-        return Ok(MapToDto(updated));
+        if (request.IsActive.HasValue)
+        {
+            role.IsActive = request.IsActive.Value;
+        }
+
+        role.UpdatedAt = DateTime.UtcNow;
+
+        var result = await _roleManager.UpdateAsync(role);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { errors = result.Errors });
+        }
+
+        _logger.LogInformation("Role updated: {RoleId}", role.Id);
+        return Ok(MapToDto(role));
     }
 
     [HttpDelete("{id:guid}")]
     [HasPermission("system.manage_roles")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(Guid id)
     {
-        var role = await _roleRepository.GetByIdAsync(id, cancellationToken);
+        var role = await _roleManager.FindByIdAsync(id.ToString());
         if (role == null)
         {
             return NotFound(new { message = "Role not found" });
         }
 
-        await _roleRepository.DeleteAsync(id, cancellationToken);
-        _logger.LogInformation("Role deleted: {RoleId}", id);
+        var result = await _roleManager.DeleteAsync(role);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { errors = result.Errors });
+        }
 
+        _logger.LogInformation("Role deleted: {RoleId}", id);
         return NoContent();
     }
 
-    private static RoleDto MapToDto(Role role)
+    private static RoleDto MapToDto(ApplicationRole role)
     {
         return new RoleDto
         {
             Id = role.Id,
-            Name = role.Name,
+            Name = role.Name!,
+            Code = role.Code,
             Description = role.Description,
             IsActive = role.IsActive,
             CreatedAt = role.CreatedAt,

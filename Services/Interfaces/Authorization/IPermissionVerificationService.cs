@@ -54,5 +54,5 @@ public interface IPermissionVerificationService
     /// </summary>
     /// <param name="httpContext">The HTTP context containing JWT claims and headers.</param>
     /// <returns>The role ID from claims, or null if not found.</returns>
-    string? GetRoleIdFromClaims(HttpContext httpContext);
+
 }

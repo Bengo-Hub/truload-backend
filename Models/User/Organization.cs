@@ -1,7 +1,7 @@
 namespace TruLoad.Backend.Models;
 
 /// <summary>
-/// Organization entity - Companies, government agencies, transporters
+/// Organization entity - Companies and government agencies
 /// </summary>
 public class Organization
 {
@@ -10,9 +10,9 @@ public class Organization
     public string Name { get; set; } = string.Empty;
     
     /// <summary>
-    /// Organization type: government, transporter, contractor
+    /// Organization type: Government or Private
     /// </summary>
-    public string OrgType { get; set; } = string.Empty;
+    public string OrgType { get; set; } = "Private";
     
     public string? ContactEmail { get; set; }
     public string? ContactPhone { get; set; }
@@ -23,5 +23,4 @@ public class Organization
 
     // Navigation properties
     public ICollection<Department> Departments { get; set; } = new List<Department>();
-    public ICollection<User> Users { get; set; } = new List<User>();
 }

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using TruLoad.Backend.Models.Identity;
 
 namespace TruLoad.Backend.Models;
 
@@ -122,9 +123,9 @@ public class AuditLog
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Navigation property to the User who performed the action.
+    /// Navigation property to the ApplicationUser who performed the action.
     /// </summary>
     [ForeignKey("UserId")]
-    public virtual User? User { get; set; }
+    public virtual ApplicationUser? User { get; set; }
 }
 

@@ -23,9 +23,10 @@ public class AuditMiddleware
 
     public async Task InvokeAsync(HttpContext context, TruLoadDbContext dbContext)
     {
-        // Skip health check and Swagger endpoints
+        // Skip health check, Swagger, and public auth endpoints
         if (context.Request.Path.StartsWithSegments("/health") ||
-            context.Request.Path.StartsWithSegments("/swagger"))
+            context.Request.Path.StartsWithSegments("/swagger") ||
+            context.Request.Path.StartsWithSegments("/api/v1/auth"))
         {
             await _next(context);
             return;

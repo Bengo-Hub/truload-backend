@@ -2,16 +2,16 @@ using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
 using truload_backend.Data;
 
-namespace TruLoad.Backend.Data.Seeders;
+namespace TruLoad.Data.Seeders;
 
 /// <summary>
-/// Seeds 77 default permissions across 8 categories into the database.
+/// Seeds 79 default permissions across 8 categories into the database.
 /// Run once during application initialization.
 /// </summary>
 public static class PermissionSeeder
 {
     /// <summary>
-    /// Define all 77 permissions across 8 categories.
+    /// Define all 79 permissions across 8 categories.
     /// Each permission has Code, Name, Category, and Description.
     /// </summary>
     private static readonly List<(string Code, string Name, string Category, string Description)> DefaultPermissions = new()

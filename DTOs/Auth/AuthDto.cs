@@ -1,26 +1,6 @@
+using System.Text.Json.Serialization;
+
 namespace TruLoad.Backend.DTOs.Auth;
-
-/// <summary>
-/// Request DTO for SSO login.
-/// Proxied to sso.codevertexitsolutions.com for credential validation.
-/// </summary>
-public class LoginRequest
-{
-    /// <summary>
-    /// User email address (e.g., admin@codevertexitsolutions.com)
-    /// </summary>
-    public string Email { get; set; } = string.Empty;
-
-    /// <summary>
-    /// User password
-    /// </summary>
-    public string Password { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Tenant slug from SSO (e.g., "codevertex")
-    /// </summary>
-    public string TenantSlug { get; set; } = string.Empty;
-}
 
 /// <summary>
 /// Response DTO for successful login.
@@ -30,7 +10,7 @@ public class LoginResponse
 {
     /// <summary>
     /// JWT token for authenticated API requests.
-    /// Includes user ID, role ID, tenant ID, and other claims.
+    /// Includes user ID, roles, permissions, and organizational claims.
     /// </summary>
     public string Token { get; set; } = string.Empty;
 
@@ -40,7 +20,7 @@ public class LoginResponse
     public long ExpiresAt { get; set; }
 
     /// <summary>
-    /// User information synced from SSO.
+    /// User information from Identity.
     /// </summary>
     public LoginResponseUser User { get; set; } = new();
 
@@ -61,79 +41,63 @@ public class LoginResponse
 public class LoginResponseUser
 {
     /// <summary>
-    /// Local database user ID.
+    /// User ID from Identity database.
     /// </summary>
     public Guid Id { get; set; }
 
     /// <summary>
-    /// Email from SSO.
+    /// User's email address.
     /// </summary>
     public string Email { get; set; } = string.Empty;
 
     /// <summary>
-    /// User's full name from SSO.
+    /// User's full name.
     /// </summary>
     public string? FullName { get; set; }
 
     /// <summary>
-    /// Tenant ID assigned in local database.
+    /// Organization ID assigned to user.
     /// </summary>
-    public Guid TenantId { get; set; }
+    public Guid? OrganizationId { get; set; }
 
     /// <summary>
-    /// Tenant slug from SSO.
+    /// Station ID assigned to user.
     /// </summary>
-    public string TenantSlug { get; set; } = string.Empty;
+    public Guid? StationId { get; set; }
 
     /// <summary>
-    /// Role ID assigned to user.
+    /// Department ID assigned to user.
     /// </summary>
-    public Guid RoleId { get; set; }
+    public Guid? DepartmentId { get; set; }
 
     /// <summary>
-    /// Role name assigned to user.
+    /// Roles assigned to the user.
     /// </summary>
-    public string RoleName { get; set; } = string.Empty;
+    public List<RoleDto> Roles { get; set; } = new();
 
     /// <summary>
-    /// Whether user is superuser from SSO.
+    /// Permissions aggregated from assigned roles.
     /// </summary>
-    public bool IsSuperUser { get; set; }
+    public List<PermissionDto> Permissions { get; set; } = new();
 }
 
 /// <summary>
-/// SSO response from external authentication service.
+/// Lightweight role DTO returned in login response.
 /// </summary>
-public class SsoResponse
+public class RoleDto
 {
-    /// <summary>
-    /// JWT token from SSO service.
-    /// Contains user claims: sub (user_id), email, tenant_slug, role, is_superuser.
-    /// </summary>
-    public string AccessToken { get; set; } = string.Empty;
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+}
 
-    /// <summary>
-    /// Refresh token for obtaining new access tokens.
-    /// </summary>
-    public string? RefreshToken { get; set; }
-
-    /// <summary>
-    /// Token type (typically "Bearer").
-    /// </summary>
-    public string TokenType { get; set; } = "Bearer";
-
-    /// <summary>
-    /// Seconds until token expires.
-    /// </summary>
-    public int ExpiresIn { get; set; } = 3600;
-
-    /// <summary>
-    /// Error message if authentication failed.
-    /// </summary>
-    public string? Error { get; set; }
-
-    /// <summary>
-    /// Detailed error description.
-    /// </summary>
-    public string? ErrorDescription { get; set; }
+/// <summary>
+/// Lightweight permission DTO returned in login response.
+/// </summary>
+public class PermissionDto
+{
+    public Guid Id { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
 }

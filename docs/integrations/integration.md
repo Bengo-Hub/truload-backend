@@ -2,13 +2,13 @@
 
 ## Overview
 
-This document provides detailed integration information for all external services and systems integrated with the TruLoad backend, including Apache Superset, Vector Database (pgvector), ONNX Runtime, centralized auth-service, and other third-party services.
+This document provides detailed integration information for external services and systems integrated with the TruLoad backend, including Apache Superset, Vector Database (pgvector), ONNX Runtime, notifications-service, and other third-party services.
 
 ---
 
 ## Table of Contents
 
-1. [Centralized Auth-Service Integration](#centralized-auth-service-integration)
+1. [Notifications Service Integration](#notifications-service-integration)
 2. [Apache Superset Integration](#apache-superset-integration)
 3. [Vector Database (pgvector) Integration](#vector-database-pgvector-integration)
 4. [ONNX Runtime Integration](#onnx-runtime-integration)
@@ -18,68 +18,55 @@ This document provides detailed integration information for all external service
 
 ---
 
-## Centralized Auth-Service Integration
+## Notifications Service Integration
 
 ### Overview
 
-TruLoad backend integrates with the centralized `auth-service` for authentication and user identity management. Application-level user management (roles, shifts, permissions) is maintained locally but synchronized with the auth-service to avoid duplication.
+TruLoad backend integrates with the centralized `notifications-service` for managing all notification delivery (email, SMS, push notifications). All notification requests are sent to notifications-service via REST API.
 
 ### Architecture
 
-**Authentication Flow:**
-1. Frontend sends authentication request to TruLoad backend
-2. TruLoad backend forwards request to centralized auth-service
-3. Auth-service validates credentials and returns JWT tokens
-4. TruLoad backend returns tokens to frontend
-5. Subsequent requests include JWT token in Authorization header
-6. TruLoad backend validates token with auth-service (or uses cached public key)
+**Service Configuration:**
+- Notifications service base URL: `NOTIFICATIONS_SERVICE_URL` (environment variable)
+- Default: `http://notifications-service.notifications.svc.cluster.local:8080`
+- Retry policy: Polly with exponential backoff (3 retries)
+- Circuit breaker: Opens after 5 consecutive failures
+- Timeout: 10 seconds
 
-**User Synchronization:**
-- One-way sync for user identity from auth-service
-- Two-way sync for app-specific attributes (shifts, station assignments)
-- Background sync jobs run periodically to reconcile user data
+**Communication:**
+- HTTP POST requests to `/api/v1/notifications/send`
+- Payload includes: recipient, template, data, channel (email/sms/push)
+- Async fire-and-forget pattern for non-critical notifications
+- Synchronous with retry for critical notifications (password reset, case escalation)
 
 ### Implementation Details
 
-**Configuration:**
-- Auth-service base URL: `AUTH_SERVICE_BASE_URL` (environment variable)
-- Public key endpoint: `/api/v1/auth/public-key` (for JWT validation)
-- User sync endpoint: `/api/v1/users/sync` (for user synchronization)
-- Token refresh endpoint: `/api/v1/auth/refresh` (for token refresh)
+**Notification Types:**
+- User registration confirmation
+- Password reset requests
+- Case assignment notifications
+- Court hearing reminders
+- System alerts (scale calibration expired, etc.)
 
-**Database Schema:**
-- `users` table includes `auth_service_user_id` (UUID) referencing auth-service
-- Local fields: shifts, station assignments, role mappings, preferences
-- Sync status tracked via `sync_status` and `sync_at` fields
+**API Endpoints:**
 
-**User Entity Relationship:**
-- Local user maintains reference to auth-service user via `auth_service_user_id`
-- User creation events from auth-service trigger local user creation
-- User deactivation events from auth-service trigger local user deactivation
-
-**Sync Jobs:**
-- Periodic sync job (every 15 minutes) syncs user data from auth-service
-- Event-driven sync on user creation/deactivation from auth-service
-- Conflict resolution: Auth-service is source of truth for identity, local service for app-specific data
-
-**JWT Token Handling:**
-- Access tokens validated on each request using auth-service public key
-- Token claims include: user ID, email, roles, station ID (if assigned)
-- Token refresh handled via auth-service refresh endpoint
-- Token caching in Redis to reduce validation overhead
-
-### API Endpoints
-
-**TruLoad Backend Endpoints:**
-- `POST /api/v1/auth/login` - Forwards to auth-service, handles response
-- `POST /api/v1/auth/refresh` - Forwards refresh request to auth-service
-- `GET /api/v1/auth/user` - Returns current user from local database
-- `POST /api/v1/users/sync` - Manually trigger user sync (admin only)
+**POST /api/v1/notifications/send**
+```json
+{
+  "recipient": "user@example.com",
+  "template": "password-reset",
+  "channel": "email",
+  "data": {
+    "resetLink": "https://truload.app/reset?token=...",
+    "expiresIn": "1 hour"
+  }
+}
+```
 
 **Error Handling:**
-- Auth-service unavailability: Return 503 Service Unavailable
-- Invalid tokens: Return 401 Unauthorized
-- Sync failures: Log error, retry with exponential backoff
+- Notifications-service unavailability: Log error, queue for retry
+- Invalid template: Return 400 Bad Request
+- Delivery failure: Notifications-service handles retry logic
 
 ---
 
@@ -99,7 +86,7 @@ TruLoad backend integrates with the centralized Apache Superset instance for BI 
 
 **Authentication:**
 - Admin credentials used for backend-to-Superset communication
-- User authentication via JWT tokens passed to Superset for SSO
+- User authentication via JWT tokens from TruLoad backend
 - Guest tokens generated for embedded dashboards
 
 ### Integration Methods
@@ -524,7 +511,7 @@ Integration with eCitizen payment gateway for invoice creation, payment processi
 
 **Integration Tests:**
 - Use Testcontainers for local Superset instance
-- Mock auth-service responses
+- Mock external service responses
 - Test end-to-end query processing flow
 
 **Contract Tests:**
@@ -546,7 +533,7 @@ Integration with eCitizen payment gateway for invoice creation, payment processi
 - Superset dashboard creation/update success rates
 
 **Alerts:**
-- Auth-service unavailability
+- External service unavailability
 - Superset service unavailability
 - Vector search performance degradation
 - Embedding generation failures
@@ -566,7 +553,7 @@ Integration with eCitizen payment gateway for invoice creation, payment processi
 
 - All external API calls authenticated with API keys or tokens
 - API keys stored in K8s secrets, never in code
-- JWT tokens validated with auth-service public key
+- JWT tokens validated with local signing key
 - Webhook signatures verified for callbacks
 
 ### Data Privacy

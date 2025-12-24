@@ -1,3 +1,5 @@
+using TruLoad.Backend.Models.Identity;
+
 namespace TruLoad.Backend.Models;
 
 /// <summary>
@@ -83,7 +85,7 @@ public class AxleConfiguration
     public Guid? CreatedByUserId { get; set; }
     
     // Navigation properties
-    public User? CreatedByUser { get; set; }
+    public ApplicationUser? CreatedByUser { get; set; }
     public ICollection<AxleWeightReference> AxleWeightReferences { get; set; } = new List<AxleWeightReference>();
     public ICollection<WeighingAxle> WeighingAxles { get; set; } = new List<WeighingAxle>();
 }

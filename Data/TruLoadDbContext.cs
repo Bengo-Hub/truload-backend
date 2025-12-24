@@ -1,25 +1,25 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.Identity;
 
 namespace truload_backend.Data;
 
 /// <summary>
 /// Main database context for TruLoad application
-/// Uses auth-service SSO pattern - stores only auth_service_user_id as FK reference
+/// Uses ASP.NET Core Identity for local authentication
 /// </summary>
-public class TruLoadDbContext : DbContext
+public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
 {
     public TruLoadDbContext(DbContextOptions<TruLoadDbContext> options)
         : base(options)
     {
     }
 
-    // ===== Sprint 1: User Management & Auth-Service Integration =====
-    public DbSet<User> Users { get; set; } = null!;
+    // ===== Sprint 1: User Management & Identity =====
+    // Note: Users and Roles are managed by Identity (AspNetUsers, AspNetRoles tables)
     public DbSet<Organization> Organizations { get; set; } = null!;
     public DbSet<Department> Departments { get; set; } = null!;
-    public DbSet<Role> Roles { get; set; } = null!;
-    public DbSet<UserRole> UserRoles { get; set; } = null!;
     public DbSet<Permission> Permissions { get; set; } = null!;
     public DbSet<RolePermission> RolePermissions { get; set; } = null!;
     public DbSet<WorkShift> WorkShifts { get; set; } = null!;
@@ -50,32 +50,16 @@ public class TruLoadDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // ===== User Entity Configuration =====
-        modelBuilder.Entity<User>(entity =>
+        // ===== Configure Identity Tables with snake_case naming =====
+        
+        // AspNetUsers
+        modelBuilder.Entity<ApplicationUser>(entity =>
         {
-            entity.ToTable("users");
-            entity.HasKey(e => e.Id);
-            
-            entity.Property(e => e.AuthServiceUserId)
-                .HasColumnName("auth_service_user_id")
-                .IsRequired();
-            
-            entity.Property(e => e.Email)
-                .HasColumnName("email")
-                .HasMaxLength(255)
-                .IsRequired();
-            
-            entity.Property(e => e.Phone)
-                .HasColumnName("phone")
-                .HasMaxLength(20);
+            entity.ToTable("asp_net_users");
             
             entity.Property(e => e.FullName)
                 .HasColumnName("full_name")
-                .HasMaxLength(255);
-            
-            entity.Property(e => e.Status)
-                .HasColumnName("status")
-                .HasMaxLength(20)
+                .HasMaxLength(255)
                 .IsRequired();
             
             entity.Property(e => e.StationId)
@@ -90,13 +74,6 @@ public class TruLoadDbContext : DbContext
             entity.Property(e => e.LastLoginAt)
                 .HasColumnName("last_login_at");
             
-            entity.Property(e => e.SyncStatus)
-                .HasColumnName("sync_status")
-                .HasMaxLength(20);
-            
-            entity.Property(e => e.SyncAt)
-                .HasColumnName("sync_at");
-            
             entity.Property(e => e.CreatedAt)
                 .HasColumnName("created_at");
             
@@ -105,28 +82,36 @@ public class TruLoadDbContext : DbContext
             
             entity.Property(e => e.DeletedAt)
                 .HasColumnName("deleted_at");
+
+            // Standard Identity properties with snake_case
+            entity.Property(e => e.UserName).HasColumnName("user_name");
+            entity.Property(e => e.NormalizedUserName).HasColumnName("normalized_user_name");
+            entity.Property(e => e.Email).HasColumnName("email");
+            entity.Property(e => e.NormalizedEmail).HasColumnName("normalized_email");
+            entity.Property(e => e.EmailConfirmed).HasColumnName("email_confirmed");
+            entity.Property(e => e.PasswordHash).HasColumnName("password_hash");
+            entity.Property(e => e.SecurityStamp).HasColumnName("security_stamp");
+            entity.Property(e => e.ConcurrencyStamp).HasColumnName("concurrency_stamp");
+            entity.Property(e => e.PhoneNumber).HasColumnName("phone_number");
+            entity.Property(e => e.PhoneNumberConfirmed).HasColumnName("phone_number_confirmed");
+            entity.Property(e => e.TwoFactorEnabled).HasColumnName("two_factor_enabled");
+            entity.Property(e => e.LockoutEnd).HasColumnName("lockout_end");
+            entity.Property(e => e.LockoutEnabled).HasColumnName("lockout_enabled");
+            entity.Property(e => e.AccessFailedCount).HasColumnName("access_failed_count");
             
-            // Indexes per ERD
-            entity.HasIndex(e => e.AuthServiceUserId)
-                .HasDatabaseName("idx_users_auth_service_user_id");
-            
-            entity.HasIndex(e => e.Email)
-                .HasDatabaseName("idx_users_email");
-            
-            entity.HasIndex(e => e.StationId)
-                .HasDatabaseName("idx_users_station_id");
-            
-            entity.HasIndex(e => e.SyncStatus)
-                .HasDatabaseName("idx_users_sync_status");
+            // Indexes
+            entity.HasIndex(e => e.StationId).HasDatabaseName("idx_users_station_id");
+            entity.HasIndex(e => e.OrganizationId).HasDatabaseName("idx_users_organization_id");
+            entity.HasIndex(e => e.DepartmentId).HasDatabaseName("idx_users_department_id");
             
             // Relationships
             entity.HasOne(e => e.Organization)
-                .WithMany(o => o.Users)
+                .WithMany()
                 .HasForeignKey(e => e.OrganizationId)
                 .OnDelete(DeleteBehavior.SetNull);
             
             entity.HasOne(e => e.Department)
-                .WithMany(d => d.Users)
+                .WithMany()
                 .HasForeignKey(e => e.DepartmentId)
                 .OnDelete(DeleteBehavior.SetNull);
             
@@ -134,6 +119,85 @@ public class TruLoadDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.StationId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // AspNetRoles
+        modelBuilder.Entity<ApplicationRole>(entity =>
+        {
+            entity.ToTable("asp_net_roles");
+            
+            entity.Property(e => e.Code)
+                .HasColumnName("code")
+                .HasMaxLength(50)
+                .IsRequired();
+            
+            entity.Property(e => e.Description)
+                .HasColumnName("description")
+                .HasMaxLength(500);
+            
+            entity.Property(e => e.IsActive)
+                .HasColumnName("is_active");
+            
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at");
+            
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at");
+
+            // Standard Identity properties with snake_case
+            entity.Property(e => e.Name).HasColumnName("name");
+            entity.Property(e => e.NormalizedName).HasColumnName("normalized_name");
+            entity.Property(e => e.ConcurrencyStamp).HasColumnName("concurrency_stamp");
+            
+            entity.HasIndex(e => e.Code).HasDatabaseName("idx_roles_code");
+        });
+
+        // AspNetUserRoles
+        modelBuilder.Entity<Microsoft.AspNetCore.Identity.IdentityUserRole<Guid>>(entity =>
+        {
+            entity.ToTable("asp_net_user_roles");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.RoleId).HasColumnName("role_id");
+        });
+
+        // AspNetUserClaims
+        modelBuilder.Entity<Microsoft.AspNetCore.Identity.IdentityUserClaim<Guid>>(entity =>
+        {
+            entity.ToTable("asp_net_user_claims");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.ClaimType).HasColumnName("claim_type");
+            entity.Property(e => e.ClaimValue).HasColumnName("claim_value");
+        });
+
+        // AspNetUserLogins
+        modelBuilder.Entity<Microsoft.AspNetCore.Identity.IdentityUserLogin<Guid>>(entity =>
+        {
+            entity.ToTable("asp_net_user_logins");
+            entity.Property(e => e.LoginProvider).HasColumnName("login_provider");
+            entity.Property(e => e.ProviderKey).HasColumnName("provider_key");
+            entity.Property(e => e.ProviderDisplayName).HasColumnName("provider_display_name");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+        });
+
+        // AspNetUserTokens
+        modelBuilder.Entity<Microsoft.AspNetCore.Identity.IdentityUserToken<Guid>>(entity =>
+        {
+            entity.ToTable("asp_net_user_tokens");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.LoginProvider).HasColumnName("login_provider");
+            entity.Property(e => e.Name).HasColumnName("name");
+            entity.Property(e => e.Value).HasColumnName("value");
+        });
+
+        // AspNetRoleClaims
+        modelBuilder.Entity<Microsoft.AspNetCore.Identity.IdentityRoleClaim<Guid>>(entity =>
+        {
+            entity.ToTable("asp_net_role_claims");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.RoleId).HasColumnName("role_id");
+            entity.Property(e => e.ClaimType).HasColumnName("claim_type");
+            entity.Property(e => e.ClaimValue).HasColumnName("claim_value");
         });
 
         // ===== Organization Entity Configuration =====
@@ -204,69 +268,6 @@ public class TruLoadDbContext : DbContext
             entity.HasOne(e => e.Organization)
                 .WithMany(o => o.Departments)
                 .HasForeignKey(e => e.OrganizationId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        // ===== Role Entity Configuration =====
-        modelBuilder.Entity<Role>(entity =>
-        {
-            entity.ToTable("roles");
-            entity.HasKey(e => e.Id);
-            
-            entity.Property(e => e.Name)
-                .HasColumnName("name")
-                .HasMaxLength(100)
-                .IsRequired();
-            
-            entity.Property(e => e.Code)
-                .HasColumnName("code")
-                .HasMaxLength(50)
-                .IsRequired();
-            
-            entity.Property(e => e.Description)
-                .HasColumnName("description")
-                .HasMaxLength(500);
-            
-            entity.Property(e => e.CreatedAt)
-                .HasColumnName("created_at");
-            
-            entity.Property(e => e.UpdatedAt)
-                .HasColumnName("updated_at");
-            
-            entity.Property(e => e.IsActive)
-                .HasColumnName("is_active");
-            
-            entity.HasIndex(e => e.Name)
-                .IsUnique()
-                .HasDatabaseName("idx_roles_name");
-            
-            entity.HasIndex(e => e.Code)
-                .HasDatabaseName("idx_roles_code");
-        });
-
-        // ===== UserRole Junction Table Configuration =====
-        modelBuilder.Entity<UserRole>(entity =>
-        {
-            entity.ToTable("user_roles");
-            entity.HasKey(e => new { e.UserId, e.RoleId });
-            
-            entity.Property(e => e.UserId)
-                .HasColumnName("user_id");
-            
-            entity.Property(e => e.RoleId)
-                .HasColumnName("role_id");
-            
-            entity.Property(e => e.AssignedAt)
-                .HasColumnName("assigned_at");
-            
-            entity.HasOne(e => e.User)
-                .WithMany(u => u.UserRoles)
-                .HasForeignKey(e => e.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-            
-            entity.HasOne(e => e.Role)
-                .WithMany(r => r.UserRoles)
-                .HasForeignKey(e => e.RoleId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

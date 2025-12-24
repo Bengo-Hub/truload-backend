@@ -22,8 +22,8 @@ public class CreateOrganizationRequestValidator : AbstractValidator<CreateOrgani
             .WithMessage("Name must not exceed 255 characters");
 
         RuleFor(x => x.OrgType)
-            .Must(type => type == null || new[] { "government", "transporter", "contractor" }.Contains(type))
-            .WithMessage("Organization type must be 'government', 'transporter', or 'contractor'")
+            .Must(type => type == null || new[] { "government", "private" }.Contains(type.ToLowerInvariant()))
+            .WithMessage("Organization type must be 'government' or 'private'")
             .When(x => !string.IsNullOrWhiteSpace(x.OrgType));
 
         RuleFor(x => x.ContactEmail)
@@ -50,8 +50,8 @@ public class UpdateOrganizationRequestValidator : AbstractValidator<UpdateOrgani
             .When(x => !string.IsNullOrWhiteSpace(x.Name));
 
         RuleFor(x => x.OrgType)
-            .Must(type => type == null || new[] { "government", "transporter", "contractor" }.Contains(type))
-            .WithMessage("Organization type must be 'government', 'transporter', or 'contractor'")
+            .Must(type => type == null || new[] { "government", "private" }.Contains(type.ToLowerInvariant()))
+            .WithMessage("Organization type must be 'government' or 'private'")
             .When(x => !string.IsNullOrWhiteSpace(x.OrgType));
 
         RuleFor(x => x.ContactEmail)

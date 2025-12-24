@@ -2,29 +2,37 @@ using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
 using truload_backend.Data;
 
-namespace TruLoad.Backend.Data.Seeders;
+namespace TruLoad.Data.Seeders;
 
 /// <summary>
-/// Seeds role-permission assignments for 6 built-in roles.
+/// Seeds role-permission assignments for 7 built-in roles.
 /// Assigns permissions based on role type and authorization level.
+/// SUPERUSER: 79 permissions (all) - maps to auth-service superuser flag
+/// SYSTEM_ADMIN: 65 permissions (exclude system.*)
+/// STATION_MANAGER: 45 permissions
+/// WEIGHING_OPERATOR: 4 permissions
+/// ENFORCEMENT_OFFICER: 30 permissions
+/// INSPECTOR: 20 permissions
+/// AUDITOR: 25 permissions
 /// </summary>
 public static class RolePermissionSeeder
 {
     /// <summary>
     /// Define permission codes for each role.
-    /// SuperAdmin: 77 permissions (all)
-    /// Admin: 65 permissions (exclude system.*)
-    /// StationManager: 45 permissions
-    /// Prosecutor: 30 permissions
-    /// ScaleOperator: 12 permissions
-    /// Inspector: 18 permissions
+    /// SUPERUSER: 79 permissions (all - includes system.*)
+    /// SYSTEM_ADMIN: 65 permissions (exclude system.*)
+    /// STATION_MANAGER: 45 permissions
+    /// WEIGHING_OPERATOR: 4 permissions
+    /// ENFORCEMENT_OFFICER: 30 permissions
+    /// INSPECTOR: 20 permissions
+    /// AUDITOR: 25 permissions
     /// </summary>
     private static readonly Dictionary<string, List<string>> RolePermissions = new()
     {
         {
-            "SYSTEM_ADMIN", new List<string>
+            "SUPERUSER", new List<string>
             {
-                // All 77 permissions
+                // All 77 permissions - superuser has everything including system admin
                 "weighing.create", "weighing.read", "weighing.read_own", "weighing.update", "weighing.approve",
                 "weighing.override", "weighing.send_to_yard", "weighing.scale_test", "weighing.export",
                 "weighing.delete", "weighing.webhook", "weighing.audit",
@@ -48,9 +56,9 @@ public static class RolePermissionSeeder
             }
         },
         {
-            "ADMIN", new List<string>
+            "SYSTEM_ADMIN", new List<string>
             {
-                // All except system.*
+                // All except system.* - same as ADMIN role for consistency
                 "weighing.create", "weighing.read", "weighing.read_own", "weighing.update", "weighing.approve",
                 "weighing.override", "weighing.send_to_yard", "weighing.scale_test", "weighing.export",
                 "weighing.delete", "weighing.webhook", "weighing.audit",
@@ -88,12 +96,12 @@ public static class RolePermissionSeeder
             }
         },
         {
-            "PROSECUTOR", new List<string>
+            "ENFORCEMENT_OFFICER", new List<string>
             {
                 // Prosecution, case, limited weighing/user, analytics
                 "weighing.read", "weighing.read_own", "weighing.export", "weighing.audit",
                 "case.read", "case.read_own", "case.update", "case.assign", "case.escalate", "case.closure_review",
-                "case.court_hearing", "case.export", "case.audit",
+                "case.arrest_warrant", "case.court_hearing", "case.export", "case.audit",
                 "prosecution.create", "prosecution.read", "prosecution.read_own", "prosecution.update",
                 "prosecution.compute_charges", "prosecution.generate_certificate", "prosecution.export",
                 "prosecution.audit",
@@ -102,7 +110,7 @@ public static class RolePermissionSeeder
             }
         },
         {
-            "SCALE_OPERATOR", new List<string>
+            "WEIGHING_OPERATOR", new List<string>
             {
                 // Only weighing operations
                 "weighing.create", "weighing.read_own", "weighing.scale_test", "weighing.audit"
@@ -118,31 +126,45 @@ public static class RolePermissionSeeder
                 "user.read", "user.read_own", "user.audit",
                 "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit"
             }
+        },
+        {
+            "AUDITOR", new List<string>
+            {
+                // Read-only access to audit logs across all domains
+                "weighing.read", "weighing.read_own", "weighing.audit",
+                "case.read", "case.read_own", "case.audit",
+                "prosecution.read", "prosecution.read_own", "prosecution.audit",
+                "user.read", "user.read_own", "user.audit",
+                "station.read", "station.read_own", "station.audit",
+                "config.read", "config.audit",
+                "analytics.read", "analytics.read_own", "analytics.audit"
+            }
         }
     };
 
     /// <summary>
     /// Seed role-permission assignments.
-    /// Links 6 built-in roles with their permissions.
-    /// Idempotent - safe to run multiple times.
+    /// Links 7 built-in roles with their permissions.
+    /// Idempotent - safe to run multiple times. Checks per-role to allow incremental seeding.
     /// </summary>
     public static async Task SeedAsync(TruLoadDbContext context)
     {
-        // Check if role permissions already exist
-        if (await context.RolePermissions.AnyAsync())
-            return; // Already seeded
-
         var rolePermissions = new List<RolePermission>();
 
         // Get all roles and permissions
         var roles = await context.Roles.ToListAsync();
         var permissions = await context.Permissions.ToListAsync();
+        var existingRolePermissions = await context.RolePermissions.ToListAsync();
 
         foreach (var (roleCode, permissionCodes) in RolePermissions)
         {
             var role = roles.FirstOrDefault(r => r.Code == roleCode);
             if (role == null)
                 continue; // Skip if role doesn't exist
+
+            // Check if this role already has permissions assigned
+            if (existingRolePermissions.Any(rp => rp.RoleId == role.Id))
+                continue; // Skip if role already has permissions
 
             foreach (var permissionCode in permissionCodes)
             {
@@ -159,7 +181,10 @@ public static class RolePermissionSeeder
             }
         }
 
-        context.RolePermissions.AddRange(rolePermissions);
-        await context.SaveChangesAsync();
+        if (rolePermissions.Count > 0)
+        {
+            context.RolePermissions.AddRange(rolePermissions);
+            await context.SaveChangesAsync();
+        }
     }
 }

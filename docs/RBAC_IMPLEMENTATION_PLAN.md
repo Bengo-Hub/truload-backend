@@ -1,17 +1,17 @@
 # TruLoad Backend - RBAC Implementation Plan
 
 **Status:** Planning Phase  
-**Updated:** December 9, 2025  
-**Integration:** Production Auth-Service (https://auth.codevertexitsolutions.com)
+**Updated:** December 21, 2025  
+**Authentication:** ASP.NET Core Identity (Local)
 
 ---
 
 ## Executive Summary
 
-This document outlines the comprehensive RBAC (Role-Based Access Control) implementation for TruLoad Backend, integrating with the centralized auth-service for authentication while implementing fine-grained, domain-aware permissions locally.
+This document outlines the comprehensive RBAC (Role-Based Access Control) implementation for TruLoad Backend using ASP.NET Core Identity for authentication and fine-grained, domain-aware permissions.
 
 **Key Objectives:**
-- Integrate with production auth-service (OAuth2/OIDC) for authentication
+- Use ASP.NET Core Identity for local authentication and user management
 - Implement 77 domain-specific permissions across 8 categories
 - Create type-safe Permission and RolePermission data models
 - Establish Redis-backed permission caching for performance
@@ -25,12 +25,12 @@ This document outlines the comprehensive RBAC (Role-Based Access Control) implem
 
 ### Authentication vs Authorization
 
-**Authentication (Auth-Service Domain):**
-- Email/password login → Auth-Service OAuth2 `/api/v1/auth/login`
-- JWT token issuance with standard claims (sub, email, aud, iss, exp)
-- JWKS public keys: `https://auth.codevertexitsolutions.com/api/v1/.well-known/jwks.json`
-- Token validation via signature verification
-- Token refresh via `https://auth.codevertexitsolutions.com/api/v1/auth/refresh`
+**Authentication (ASP.NET Core Identity):**
+- Email/password login → `/api/v1/auth/login` (local endpoint)
+- JWT token issuance with user/role/permission claims
+- Token refresh via `/api/v1/auth/refresh` (local endpoint)
+- Password management via Identity (reset, change, policies)
+- User lockout and 2FA support
 
 **Authorization (TruLoad Backend Domain):**
 - Local permission model: 77 permissions in 8 categories
@@ -59,49 +59,53 @@ Layer 6: Audit Logging
 
 ---
 
-## Production Auth-Service Integration
+## ASP.NET Core Identity Configuration
 
-### Configuration
+### JWT Configuration
 
 Update `appsettings.json`:
 
 ```json
 {
-  "Authentication": {
-    "Authority": "https://auth.codevertexitsolutions.com",
-    "Audience": "truload-backend",
-    "RequireHttpsMetadata": true,
-    "JwksUri": "https://auth.codevertexitsolutions.com/api/v1/.well-known/jwks.json",
-    "TokenEndpoint": "https://auth.codevertexitsolutions.com/api/v1/token",
-    "UserInfoEndpoint": "https://auth.codevertexitsolutions.com/api/v1/userinfo",
-    "JwksCacheDuration": "3600",
-    "JwksRefreshThreshold": "300"
+  "Jwt": {
+    "SecretKey": "your-secret-key-minimum-32-characters-for-production",
+    "Issuer": "https://truload-backend",
+    "Audience": "truload-frontend",
+    "ExpirationMinutes": "60",
+    "RefreshTokenExpirationDays": "7"
+  },
+  "Identity": {
+    "Password": {
+      "RequireDigit": true,
+      "RequiredLength": 8,
+      "RequireNonAlphanumeric": true,
+      "RequireUppercase": true,
+      "RequireLowercase": true
+    },
+    "Lockout": {
+      "DefaultLockoutTimeSpan": "00:15:00",
+      "MaxFailedAccessAttempts": 5,
+      "AllowedForNewUsers": true
+    },
+    "User": {
+      "RequireUniqueEmail": true
+    }
   }
 }
 ```
 
-### Endpoints
+### Local Endpoints
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
+| `/api/v1/auth/register` | POST | User registration |
 | `/api/v1/auth/login` | POST | Email/password authentication |
-| `/api/v1/auth/refresh` | POST | Token refresh (rotate refresh token) |
-| `/api/v1/.well-known/openid-configuration` | GET | OIDC discovery |
-| `/api/v1/.well-known/jwks.json` | GET | JWKS public keys (cached locally) |
-| `/api/v1/userinfo` | GET | User profile (requires Bearer token) |
-
-### Local Development
-
-For local development, auth-service runs at `http://localhost:4101`:
-
-```json
-{
-  "Authentication": {
-    "Authority": "http://localhost:4101",
-    "RequireHttpsMetadata": false
-  }
-}
-```
+| `/api/v1/auth/refresh` | POST | Token refresh |
+| `/api/v1/auth/logout` | POST | Logout and invalidate token |
+| `/api/v1/auth/forgot-password` | POST | Password reset request |
+| `/api/v1/auth/reset-password` | POST | Password reset confirmation |
+| `/api/v1/auth/change-password` | POST | Change password (authenticated) |
+| `/api/v1/auth/profile` | GET | Current user profile |
 
 ---
 
@@ -644,9 +648,10 @@ public async Task<IActionResult> CreateWeighing([FromBody] CreateWeighingRequest
 3. Week 3-4: Roll out policies to remaining endpoints gradually
 4. Week 4-5: Testing, documentation, security audit
 
-**Phase 4-5: Optional for MVP**
-- Can defer user sync and claims enrichment to follow-up sprint
-- Still validates JWTs but with simpler claims model
+**Phase 4-5: Identity Integration Complete**
+- ASP.NET Core Identity manages all user/role operations
+- JWT tokens issued locally with user/role/permission claims
+- No external authentication dependencies
 
 ---
 
@@ -656,5 +661,3 @@ public async Task<IActionResult> CreateWeighing([FromBody] CreateWeighingRequest
 - `docs/plan.md` - Implementation plan
 - `sprints/sprint-01-user-management-security.md` - Detailed sprint tasks
 - `.github/copilot-instructions.md` - Platform patterns
-- Auth-Service README: `auth-service/auth-api/README.md`
-- Auth-Service ERD: `auth-service/auth-api/docs/erd.md`

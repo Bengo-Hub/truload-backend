@@ -1,3 +1,5 @@
+using TruLoad.Backend.Models.Identity;
+
 namespace TruLoad.Backend.Models;
 
 /// <summary>
@@ -7,7 +9,7 @@ namespace TruLoad.Backend.Models;
 public class RolePermission
     {
         /// <summary>
-        /// Foreign key to the Role.
+        /// Foreign key to the ApplicationRole.
         /// Part of the composite primary key.
         /// </summary>
         public Guid RoleId { get; set; }
@@ -25,9 +27,9 @@ public class RolePermission
 
         // Navigation Properties
         /// <summary>
-        /// Navigation property to the Role.
+        /// Navigation property to the ApplicationRole.
         /// </summary>
-        public Role Role { get; set; } = null!;
+        public ApplicationRole Role { get; set; } = null!;
 
         /// <summary>
         /// Navigation property to the Permission.

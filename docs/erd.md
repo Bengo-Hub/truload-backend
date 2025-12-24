@@ -24,43 +24,37 @@ This document defines all database entities, properties (fields), indexes, relat
 
 ---
 
-## Centralized SSO Integration
+## Authentication & Authorization
 
 ### Overview
 
-TruLoad backend integrates with the centralized `auth-service` for authentication while maintaining application-level user management (roles, shifts, permissions) locally. This approach avoids entity redundancy while ensuring seamless Single Sign-On (SSO) across micro-services.
+TruLoad backend uses ASP.NET Core Identity for local authentication and authorization. User identity, roles, and permissions are managed entirely within TruLoad database using Identity tables and custom extensions.
 
-### Integration Strategy
+### Identity Strategy
 
 **Authentication:**
-- All authentication requests routed to centralized `auth-service`
-- JWT tokens validated against `auth-service` public keys
-- Token refresh handled via `auth-service` refresh endpoint
+- ASP.NET Core Identity for user authentication
+- JWT tokens issued locally by TruLoad backend
+- Token refresh handled via backend `/api/v1/auth/refresh` endpoint
+- httpOnly cookies for secure token storage in frontend
 
 **User Identity Management:**
-- User identity (email, basic profile) synced from `auth-service`
-- Application-specific data (shifts, station assignments, role mappings) managed locally
-- One-way sync for user identity from `auth-service`
-- Two-way sync for app-specific attributes where applicable
+- User identity (email, password hash, profile) stored in Identity tables
+- Extended user properties (organization, station, shifts) in ApplicationUser
+- Role-based access control (RBAC) with fine-grained permissions
+- Password policies enforced via Identity configuration
 
-**User Synchronization:**
-- Periodic sync jobs (every 15 minutes) reconcile user data
-- Event-driven sync on user creation/deactivation from `auth-service`
-- Conflict resolution: Auth-service is source of truth for identity; local service for app-specific data
-- Sync status tracked via `sync_status` and `sync_at` fields
-
-**Entity Relationship:**
-- `users` table includes `auth_service_user_id` (UUID) referencing centralized auth-service user
-- Foreign key relationship maintained for consistency
-- Unique constraint ensures one-to-one mapping between local and auth-service users
-- Local user creation triggered by auth-service user creation events
+**Authorization Model:**
+- 77 permissions across 8 categories (Weighing, Case, Prosecution, User, Station, Configuration, Analytics, System)
+- Role-permission mappings via RolePermission junction table
+- Permission policies enforced on API endpoints
+- Resource-level access control (officers see only own station data)
 
 **Benefits:**
-- Eliminates duplicate user entities across services
-- Single source of truth for authentication and identity
-- Application-specific user data remains within service boundaries
-- Seamless SSO across all micro services
-- Flexible role and permission management per service
+- Self-contained authentication with no external dependencies
+- Fine-grained permission model tailored to TruLoad domain
+- Offline-capable authentication via JWT tokens
+- Full control over user lifecycle and security policies
 
 ---
 
@@ -70,31 +64,38 @@ TruLoad backend integrates with the centralized `auth-service` for authenticatio
 
 ### User Management & Security
 
-#### users
-Application-level user management with synchronization to centralized auth-service.
+#### users (AspNetUsers - Identity table)
+ASP.NET Core Identity users with TruLoad-specific extensions.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Local user ID |
-| auth_service_user_id | UUID | UNIQUE, INDEX | Reference to centralized auth-service user |
-| email | VARCHAR(255) | UNIQUE, NOT NULL, INDEX | User email (synced from auth-service) |
-| phone | VARCHAR(50) | | Contact phone |
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | User ID |
+| user_name | VARCHAR(256) | UNIQUE, NOT NULL, INDEX | Username (same as email) |
+| normalized_user_name | VARCHAR(256) | UNIQUE, INDEX | Normalized username |
+| email | VARCHAR(256) | UNIQUE, NOT NULL, INDEX | User email |
+| normalized_email | VARCHAR(256) | UNIQUE, INDEX | Normalized email |
+| email_confirmed | BOOLEAN | DEFAULT FALSE | Email confirmation status |
+| password_hash | TEXT | | Argon2id password hash |
+| security_stamp | VARCHAR(256) | | Security stamp for invalidation |
+| concurrency_stamp | VARCHAR(256) | | Concurrency token |
+| phone_number | VARCHAR(50) | | Contact phone |
+| phone_number_confirmed | BOOLEAN | DEFAULT FALSE | Phone confirmation status |
+| two_factor_enabled | BOOLEAN | DEFAULT FALSE | 2FA status |
+| lockout_end | TIMESTAMPTZ | | Lockout expiration |
+| lockout_enabled | BOOLEAN | DEFAULT TRUE | Lockout enabled |
+| access_failed_count | INT | DEFAULT 0 | Failed login attempts |
 | full_name | VARCHAR(255) | NOT NULL | Full name |
-| status | VARCHAR(20) | DEFAULT 'active', CHECK | Status: active, inactive, locked |
 | station_id | UUID | FK → stations(id), INDEX | Assigned station (nullable) |
 | organization_id | UUID | FK → organizations(id), INDEX | Organization/Company |
 | department_id | UUID | FK → departments(id), INDEX | Department |
 | last_login_at | TIMESTAMPTZ | | Last login timestamp |
-| sync_status | VARCHAR(20) | DEFAULT 'synced' | Sync status with auth-service |
-| sync_at | TIMESTAMPTZ | | Last sync timestamp |
 | created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation time |
 | updated_at | TIMESTAMPTZ | DEFAULT NOW() | Record update time |
 | deleted_at | TIMESTAMPTZ | | Soft delete timestamp |
 
 **Indexes:**
-- `idx_users_auth_service_user_id` ON users(auth_service_user_id)
-- `idx_users_email` ON users(email)
-- `idx_users_status` ON users(status) WHERE deleted_at IS NULL
+- `idx_users_email` ON users(normalized_email)
+- `idx_users_username` ON users(normalized_user_name)
 - `idx_users_station` ON users(station_id) WHERE station_id IS NOT NULL
 
 **Vector Columns:** None
@@ -1567,7 +1568,6 @@ Vector columns are used for semantic search of text fields using pgvector. All v
 - `users` ↔ `stations` (many-to-one, assigned station)
 - `users` ↔ `weighings` (one-to-many, weighed_by_id)
 - `users` ↔ `case_managers` (one-to-many)
-- `users` ↔ `auth_service_sync_logs` (one-to-many)
 
 **Vehicle & Driver Management:**
 - `vehicles` ↔ `vehicle_owners` (many-to-one)
@@ -1646,7 +1646,6 @@ Vector columns are used for semantic search of text fields using pgvector. All v
 
 **Offline & Sync:**
 - `device_sync_events` - Polymorphic references to synced entities
-- `auth_service_sync_logs` ↔ `users` (many-to-one)
 
 ---
 
@@ -1700,28 +1699,6 @@ Queue for offline submissions and synchronization tracking.
 **Relationships:**
 - Polymorphic references to synced entities via entity_type and entity_id
 
-#### auth_service_sync_logs
-Audit trail for auth-service synchronization events.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Log ID |
-| sync_type | VARCHAR(30) | CHECK | Type: user_sync, user_create, user_deactivate |
-| auth_service_user_id | UUID | INDEX | Auth-service user ID |
-| local_user_id | UUID | FK → users(id), INDEX | Local user ID |
-| status | VARCHAR(20) | CHECK | Status: success, failed, partial |
-| changes | JSONB | | Changes applied (JSON) |
-| error_message | TEXT | | Error details if failed |
-| synced_at | TIMESTAMPTZ | DEFAULT NOW(), INDEX | Sync timestamp |
-
-**Indexes:**
-- `idx_auth_sync_logs_user` ON auth_service_sync_logs(auth_service_user_id)
-- `idx_auth_sync_logs_local` ON auth_service_sync_logs(local_user_id) WHERE local_user_id IS NOT NULL
-- `idx_auth_sync_logs_status` ON auth_service_sync_logs(status, synced_at DESC)
-
-**Relationships:**
-- Many-to-one with `users`
-
 ---
 
 ## Sync & Offline Support
@@ -1729,7 +1706,6 @@ Audit trail for auth-service synchronization events.
 **Tables Supporting Offline Sync:**
 - `weighings` - Includes `client_local_id` (UUID) and `sync_status`
 - `device_sync_events` - Queue for offline submissions
-- `auth_service_sync_logs` - Audit trail for auth-service sync
 
 **Sync Metadata:**
 - `client_local_id` - Client-generated UUID for idempotency

@@ -1,11 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Serilog;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using truload_backend.Data;
+using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Repositories.UserManagement;
 using TruLoad.Backend.Repositories.UserManagement.Interfaces;
 using TruLoad.Backend.Repositories.Auth;
@@ -16,6 +18,8 @@ using TruLoad.Backend.Services.Interfaces;
 using TruLoad.Backend.Services.Implementations;
 using TruLoad.Backend.Services.Interfaces.Authorization;
 using TruLoad.Backend.Services.Implementations.Authorization;
+using TruLoad.Backend.Services.Interfaces.Auth;
+using TruLoad.Backend.Services.Implementations.Auth;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Authorization.Handlers;
 using TruLoad.Backend.Authorization.Policies;
@@ -45,6 +49,28 @@ builder.Services.AddSwaggerGen(options =>
         Title = "TruLoad API",
         Version = "v1",
         Description = "Intelligent Weighing and Enforcement Solution API"
+    });
+
+    // Avoid schema ID collisions when DTOs share names across namespaces
+    options.CustomSchemaIds(type => type.FullName?.Replace('.', '_'));
+
+    // Add server URLs for dev and production environments
+    options.AddServer(new Microsoft.OpenApi.Models.OpenApiServer
+    {
+        Url = "http://localhost:4000",
+        Description = "Development Server (Local)"
+    });
+    
+    options.AddServer(new Microsoft.OpenApi.Models.OpenApiServer
+    {
+        Url = "https://truloadapitest.masterspace.co.ke",
+        Description = "Production Server (Testing)"
+    });
+    
+    options.AddServer(new Microsoft.OpenApi.Models.OpenApiServer
+    {
+        Url = "https://kuraweighapi.kura.go.ke",
+        Description = "Production Server (KuraWeigh)"
     });
 
     // JWT Bearer
@@ -101,6 +127,28 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<TruLoadDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+// ASP.NET Core Identity
+builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
+{
+    // Password settings
+    options.Password.RequireDigit = true;
+    options.Password.RequiredLength = 8;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireLowercase = true;
+
+    // Lockout settings
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+
+    // User settings
+    options.User.RequireUniqueEmail = true;
+    options.SignIn.RequireConfirmedEmail = false; // Set to true when email service is integrated
+})
+.AddEntityFrameworkStores<TruLoadDbContext>()
+.AddDefaultTokenProviders();
+
 // Redis (StackExchange.Redis)
 var redisConnection = builder.Configuration.GetSection("Redis")["ConnectionString"]
     ?? throw new InvalidOperationException("Redis connection string not found.");
@@ -110,27 +158,36 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.Configuration = redisConnection;
 });
 
-// Authentication & JWT
-var authority = builder.Configuration["Authentication:Authority"]
-    ?? throw new InvalidOperationException("Authentication Authority not configured.");
-var audience = builder.Configuration["Authentication:Audience"]
-    ?? throw new InvalidOperationException("Authentication Audience not configured.");
-var requireHttpsMetadata = bool.Parse(builder.Configuration["Authentication:RequireHttpsMetadata"] ?? "true");
+// HTTP Client Factory
+builder.Services.AddHttpClient();
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+// Authentication & JWT (Local Token Issuance)
+var jwtSecret = builder.Configuration["Jwt:SecretKey"]
+    ?? throw new InvalidOperationException("JWT secret key not configured.");
+var jwtIssuer = builder.Configuration["Jwt:Issuer"]
+    ?? throw new InvalidOperationException("JWT issuer not configured.");
+var jwtAudience = builder.Configuration["Jwt:Audience"]
+    ?? throw new InvalidOperationException("JWT audience not configured.");
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        options.Authority = authority;
-        options.Audience = audience;
-        options.RequireHttpsMetadata = requireHttpsMetadata;
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero
-        };
-    });
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+        ClockSkew = TimeSpan.Zero
+    };
+});
 
 // Authorization & Permission-Based Policies
 builder.Services.AddAuthorizationBuilder()
@@ -179,10 +236,8 @@ builder.Services.AddHealthChecks()
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddFluentValidationAutoValidation();
 
-// Repositories
-builder.Services.AddScoped<IUserRepository, TruLoad.Backend.Repositories.UserManagement.Repositories.UserRepository>();
+// Repositories (User/Role now handled by Identity UserManager/RoleManager)
 builder.Services.AddScoped<IOrganizationRepository, TruLoad.Backend.Repositories.UserManagement.Repositories.OrganizationRepository>();
-builder.Services.AddScoped<IRoleRepository, TruLoad.Backend.Repositories.UserManagement.Repositories.RoleRepository>();
 builder.Services.AddScoped<IDepartmentRepository, TruLoad.Backend.Repositories.UserManagement.DepartmentRepository>();
 builder.Services.AddScoped<IStationRepository, TruLoad.Backend.Repositories.UserManagement.Repositories.StationRepository>();
 builder.Services.AddScoped<IWorkShiftRepository, TruLoad.Backend.Repositories.UserManagement.Repositories.WorkShiftRepository>();
@@ -206,6 +261,9 @@ builder.Services.AddScoped<IAxleFeeScheduleRepository, AxleFeeScheduleRepository
 // Permission services
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IPermissionVerificationService, PermissionVerificationService>();
+
+// Auth services
+builder.Services.AddScoped<IJwtService, JwtService>();
 
 // TODO: Add MediatR, AutoMapper, MassTransit (RabbitMQ), etc.
 
@@ -233,8 +291,10 @@ try
             Log.Information("✓ Database is up to date (no pending migrations)");
         }
 
-        // Run idempotent seeder
-        await TruLoad.Data.Seeders.DatabaseSeeder.SeedAsync(dbContext, logger);
+        // Run idempotent seeder - get required Identity managers from DI
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        await TruLoad.Data.Seeders.DatabaseSeeder.SeedAsync(dbContext, roleManager, userManager, logger);
     }
 }
 catch (Exception ex)

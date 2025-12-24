@@ -16,8 +16,6 @@ public class PermissionVerificationService : IPermissionVerificationService
 
     // Per-request cache to avoid multiple lookups of same data
     private const string UserPermissionsCacheKey = "user_permissions";
-    private const string UserIdClaimType = "auth_service_user_id";
-    private const string RoleIdClaimType = "role_id";
 
     public PermissionVerificationService(IPermissionService permissionService, ILogger<PermissionVerificationService> logger)
     {
@@ -98,39 +96,34 @@ public class PermissionVerificationService : IPermissionVerificationService
             return (IEnumerable<string>)cachedPermissions!;
         }
 
-        var roleId = GetRoleIdFromClaims(httpContext);
-        
-        if (string.IsNullOrWhiteSpace(roleId))
+        // Extract permissions directly from JWT token claims (added during login)
+        var principal = httpContext.User;
+        if (principal == null || !principal.Identity!.IsAuthenticated)
         {
-            _logger.LogWarning("No role ID found in JWT claims for user {UserId}",
-                GetUserIdFromClaims(httpContext) ?? "unknown");
-            
+            _logger.LogWarning("User is not authenticated");
             httpContext.Items[UserPermissionsCacheKey] = new List<string>();
             return Enumerable.Empty<string>();
         }
 
         try
         {
-            // Parse role ID as Guid
-            if (!Guid.TryParse(roleId, out var roleGuid))
+            // Get all "permission" claims from JWT token
+            var permissionClaims = principal.FindAll("permission").Select(c => c.Value).ToList();
+            
+            if (!permissionClaims.Any())
             {
-                _logger.LogWarning("Invalid role ID format in JWT claims: {RoleId}", roleId);
-                httpContext.Items[UserPermissionsCacheKey] = new List<string>();
-                return Enumerable.Empty<string>();
+                _logger.LogWarning("No permission claims found in JWT for user {UserId}",
+                    GetUserIdFromClaims(httpContext) ?? "unknown");
             }
 
-            // Get permissions for the role
-            var permissions = await _permissionService.GetPermissionsForRoleAsync(roleGuid, cancellationToken);
-            var permissionCodes = permissions.Select(p => p.Code).ToList();
-
             // Cache in request items for subsequent checks
-            httpContext.Items[UserPermissionsCacheKey] = permissionCodes;
+            httpContext.Items[UserPermissionsCacheKey] = permissionClaims;
 
-            return permissionCodes;
+            return permissionClaims;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving permissions for role {RoleId}", roleId);
+            _logger.LogError(ex, "Error extracting permissions from JWT claims");
             httpContext.Items[UserPermissionsCacheKey] = new List<string>();
             return Enumerable.Empty<string>();
         }
@@ -142,15 +135,8 @@ public class PermissionVerificationService : IPermissionVerificationService
             return null;
 
         var principal = httpContext.User;
-        return principal?.FindFirst(UserIdClaimType)?.Value;
-    }
-
-    public string? GetRoleIdFromClaims(HttpContext httpContext)
-    {
-        if (httpContext == null)
-            return null;
-
-        var principal = httpContext.User;
-        return principal?.FindFirst(RoleIdClaimType)?.Value;
+        // Try standard claim types first
+        return principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+            ?? principal?.FindFirst("sub")?.Value;
     }
 }

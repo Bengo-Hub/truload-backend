@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Repositories;
 using TruLoad.Backend.Data;
+using TruLoad.Data.Seeders;
 using truload_backend.Data;
 using Xunit;
 using FluentAssertions;
@@ -38,55 +40,24 @@ public class PermissionSeedingTests : IAsyncLifetime
     #region Permission Seeding Tests
 
     [Fact]
-    public async Task SeedPermissions_Creates77PermissionsIn8Categories()
+    public async Task SeedPermissions_Creates79PermissionsIn8Categories()
     {
-        // Arrange
-        var permissions = new List<Permission>();
+        // Arrange & Act - Use the actual PermissionSeeder to create default permissions
+        await PermissionSeeder.SeedAsync(_context!);
         
-        // Create 77 permissions across 8 categories
-        var categories = new[]
-        {
-            ("Weighing", 12),
-            ("Case", 15),
-            ("Prosecution", 8),
-            ("User", 10),
-            ("Station", 12),
-            ("Configuration", 8),
-            ("Analytics", 8),
-            ("System", 6)
-        };
-
-        int permId = 0;
-        foreach (var (category, count) in categories)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                permId++;
-                permissions.Add(new Permission
-                {
-                    Id = Guid.NewGuid(),
-                    Code = $"{category.ToLower()}.perm{i + 1}",
-                    Name = $"{category} Permission {i + 1}",
-                    Category = category,
-                    Description = $"Permission {i + 1} for {category}",
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow
-                });
-            }
-        }
-
-        _context!.Permissions.AddRange(permissions);
-        await _context.SaveChangesAsync();
-
-        // Act
-        var allPermissions = await _context.Permissions.ToListAsync();
+        var allPermissions = await _context!.Permissions.ToListAsync();
         var byCategory = await _context.Permissions.GroupBy(p => p.Category).Select(g => new { Category = g.Key, Count = g.Count() }).ToListAsync();
 
-        // Assert
-        allPermissions.Should().HaveCount(77);
-        byCategory.Should().HaveCount(8);
+        // Assert - verify exactly 79 permissions were seeded (12 Weighing, 15 Case, 8 Prosecution, 10 User, 12 Station, 8 Configuration, 8 Analytics, 6 System)
+        allPermissions.Should().HaveCount(79, "PermissionSeeder should create exactly 79 default permissions");
+        byCategory.Should().HaveCount(8, "Permissions should be distributed across 8 categories");
         byCategory.Should().Contain(c => c.Category == "Weighing" && c.Count == 12);
         byCategory.Should().Contain(c => c.Category == "Case" && c.Count == 15);
+        byCategory.Should().Contain(c => c.Category == "Prosecution" && c.Count == 8);
+        byCategory.Should().Contain(c => c.Category == "User" && c.Count == 10);
+        byCategory.Should().Contain(c => c.Category == "Station" && c.Count == 12);
+        byCategory.Should().Contain(c => c.Category == "Configuration" && c.Count == 8);
+        byCategory.Should().Contain(c => c.Category == "Analytics" && c.Count == 8);
         byCategory.Should().Contain(c => c.Category == "System" && c.Count == 6);
     }
 
@@ -122,7 +93,7 @@ public class PermissionSeedingTests : IAsyncLifetime
         var roleId = Guid.NewGuid();
         var permissionId = Guid.NewGuid();
 
-        var role = new Role { Id = roleId, Code = "admin", Name = "Admin", IsActive = true, CreatedAt = DateTime.UtcNow };
+        var role = new ApplicationRole { Id = roleId, Code = "admin", Name = "Admin", IsActive = true };
         var permission = new Permission { Id = permissionId, Code = "admin.all", Name = "Admin All", Category = "System", IsActive = true };
 
         _context!.Roles.Add(role);
@@ -145,7 +116,7 @@ public class PermissionSeedingTests : IAsyncLifetime
         var roleId = Guid.NewGuid();
         var permissionId = Guid.NewGuid();
 
-        var role = new Role { Id = roleId, Code = "test", Name = "Test Role", IsActive = true, CreatedAt = DateTime.UtcNow };
+        var role = new ApplicationRole { Id = roleId, Code = "test", Name = "Test Role", IsActive = true };
         var permission = new Permission { Id = permissionId, Code = "test.perm", Name = "Test Perm", Category = "Test", IsActive = true };
         var rolePermission = new RolePermission { RoleId = roleId, PermissionId = permissionId, AssignedAt = DateTime.UtcNow };
 
@@ -171,7 +142,7 @@ public class PermissionSeedingTests : IAsyncLifetime
         var roleId = Guid.NewGuid();
         var permissionId = Guid.NewGuid();
 
-        var role = new Role { Id = roleId, Code = "test", Name = "Test Role", IsActive = true, CreatedAt = DateTime.UtcNow };
+        var role = new ApplicationRole { Id = roleId, Code = "test", Name = "Test Role", IsActive = true };
         var permission = new Permission { Id = permissionId, Code = "test.perm", Name = "Test Perm", Category = "Test", IsActive = true };
         var rolePermission = new RolePermission { RoleId = roleId, PermissionId = permissionId, AssignedAt = DateTime.UtcNow };
 
@@ -197,7 +168,7 @@ public class PermissionSeedingTests : IAsyncLifetime
         var roleId = Guid.NewGuid();
         var permissionId = Guid.NewGuid();
 
-        var role = new Role { Id = roleId, Code = "test", Name = "Test Role", IsActive = true, CreatedAt = DateTime.UtcNow };
+        var role = new ApplicationRole { Id = roleId, Code = "test", Name = "Test Role", IsActive = true };
         var permission = new Permission { Id = permissionId, Code = "test.perm", Name = "Test Perm", Category = "Test", IsActive = true };
 
         _context!.Roles.Add(role);
@@ -219,7 +190,7 @@ public class PermissionSeedingTests : IAsyncLifetime
     {
         // Arrange
         var roleId = Guid.NewGuid();
-        var role = new Role { Id = roleId, Code = "editor", Name = "Editor", IsActive = true, CreatedAt = DateTime.UtcNow };
+        var role = new ApplicationRole { Id = roleId, Code = "editor", Name = "Editor", IsActive = true };
 
         var permissions = Enumerable.Range(1, 5).Select(i => new Permission
         {
@@ -260,7 +231,7 @@ public class PermissionSeedingTests : IAsyncLifetime
     {
         // Arrange
         var roleId = Guid.NewGuid();
-        var role = new Role { Id = roleId, Code = "viewer", Name = "Viewer", IsActive = true, CreatedAt = DateTime.UtcNow };
+        var role = new ApplicationRole { Id = roleId, Code = "viewer", Name = "Viewer", IsActive = true };
         var permission = new Permission { Id = Guid.NewGuid(), Code = "view.all", Name = "View All", Category = "Viewing", IsActive = true };
 
         _context!.Roles.Add(role);

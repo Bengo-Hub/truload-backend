@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
-using TruLoad.Backend.Repositories;
+using TruLoad.Backend.Repositories.Auth;
 using truload_backend.Data;
 using Xunit;
 using FluentAssertions;

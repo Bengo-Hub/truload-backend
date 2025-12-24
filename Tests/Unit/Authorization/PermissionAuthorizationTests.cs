@@ -319,33 +319,6 @@ public class PermissionAuthorizationTests
         Assert.Null(result);
     }
 
-    [Fact]
-    public void GetRoleIdFromClaims_ValidClaims_ReturnsRoleId()
-    {
-        // Arrange
-        var roleId = Guid.NewGuid();
-        var httpContext = CreateHttpContextWithClaims(Guid.NewGuid(), roleId);
-
-        // Act
-        var result = _verificationService.GetRoleIdFromClaims(httpContext);
-
-        // Assert
-        Assert.Equal(roleId.ToString(), result);
-    }
-
-    [Fact]
-    public void GetRoleIdFromClaims_NoClaims_ReturnsNull()
-    {
-        // Arrange
-        var httpContext = new DefaultHttpContext();
-
-        // Act
-        var result = _verificationService.GetRoleIdFromClaims(httpContext);
-
-        // Assert
-        Assert.Null(result);
-    }
-
     #endregion
 
     #region PermissionRequirementHandler Tests
