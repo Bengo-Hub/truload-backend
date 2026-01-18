@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using truload_backend.Data;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.Auth.Interfaces;
 
@@ -99,7 +99,7 @@ public class PermissionRepository : IPermissionRepository
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var permission = await GetByIdAsync(id, cancellationToken);
+        var permission = await _context.Permissions.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (permission == null)
             return false;
 

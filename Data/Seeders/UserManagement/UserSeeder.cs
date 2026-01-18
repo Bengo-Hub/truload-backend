@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models.Identity;
-using truload_backend.Data;
+using TruLoad.Backend.Data;
 
 namespace TruLoad.Backend.Data.Seeders.UserManagement;
 

@@ -1,3 +1,5 @@
+using TruLoad.Backend.Models.Common;
+
 namespace TruLoad.Backend.Models;
 
 /// <summary>
@@ -6,9 +8,8 @@ namespace TruLoad.Backend.Models;
 /// Axle groups define the category of an axle based on its position and configuration.
 /// Each group has specific spacing rules and weight limits affecting vehicle compliance.
 /// </summary>
-public class AxleGroup
+public class AxleGroup : BaseEntity
 {
-    public Guid Id { get; set; }
     
     /// <summary>
     /// Axle group code (e.g., "S1", "SA4", "SA6", "TAG8", "TAG8B", "TAG12", "QAG16", "WWW", "SSS", "S4")
@@ -49,10 +50,7 @@ public class AxleGroup
     /// Typically 1, but can be 2+ for multi-axle groups
     /// </summary>
     public int AxleCountInGroup { get; set; } = 1;
-    
-    public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    
+
     // Navigation properties
     public ICollection<AxleWeightReference> AxleWeightReferences { get; set; } = new List<AxleWeightReference>();
     public ICollection<WeighingAxle> WeighingAxles { get; set; } = new List<WeighingAxle>();

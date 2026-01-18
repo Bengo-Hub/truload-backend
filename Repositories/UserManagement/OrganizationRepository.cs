@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.UserManagement.Interfaces;
-using truload_backend.Data;
+using TruLoad.Backend.Data;
 
 namespace TruLoad.Backend.Repositories.UserManagement.Repositories;
 

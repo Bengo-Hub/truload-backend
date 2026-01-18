@@ -1,8 +1,9 @@
-using Microsoft.Extensions.Caching.Distributed;
+using TruLoad.Backend.Services.Interfaces;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.Auth.Interfaces;
-using TruLoad.Backend.Services.Interfaces;
+using TruLoad.Backend.Data;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 namespace TruLoad.Backend.Services.Implementations;
 
@@ -14,13 +15,15 @@ namespace TruLoad.Backend.Services.Implementations;
 public class PermissionService : IPermissionService
 {
     private readonly IPermissionRepository _repository;
-    private readonly IDistributedCache _cache;
+    private readonly ICacheService _cache;
+    private readonly TruLoadDbContext _dbContext;
     private const int CacheTtlSeconds = 3600; // 1 hour
 
-    public PermissionService(IPermissionRepository repository, IDistributedCache cache)
+    public PermissionService(IPermissionRepository repository, ICacheService cache, TruLoadDbContext dbContext)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
     }
 
     public async Task<Permission?> GetPermissionByIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -51,11 +54,7 @@ public class PermissionService : IPermissionService
         // Cache if found
         if (permission != null)
         {
-            var options = new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(CacheTtlSeconds)
-            };
-            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(permission), options, cancellationToken);
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(permission), TimeSpan.FromSeconds(CacheTtlSeconds), cancellationToken);
         }
 
         return permission;
@@ -82,11 +81,7 @@ public class PermissionService : IPermissionService
         // Cache results
         if (permissionList.Any())
         {
-            var options = new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(CacheTtlSeconds)
-            };
-            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(permissionList), options, cancellationToken);
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(permissionList), TimeSpan.FromSeconds(CacheTtlSeconds), cancellationToken);
         }
 
         return permissionList;
@@ -110,11 +105,7 @@ public class PermissionService : IPermissionService
         // Cache results
         if (permissionList.Any())
         {
-            var options = new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(CacheTtlSeconds)
-            };
-            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(permissionList), options, cancellationToken);
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(permissionList), TimeSpan.FromSeconds(CacheTtlSeconds), cancellationToken);
         }
 
         return permissionList;
@@ -135,11 +126,7 @@ public class PermissionService : IPermissionService
 
         if (permissionList.Any())
         {
-            var options = new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(CacheTtlSeconds)
-            };
-            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(permissionList), options, cancellationToken);
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(permissionList), TimeSpan.FromSeconds(CacheTtlSeconds), cancellationToken);
         }
 
         return permissionList;
@@ -163,11 +150,7 @@ public class PermissionService : IPermissionService
         // Cache results
         if (permissionList.Any())
         {
-            var options = new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(CacheTtlSeconds)
-            };
-            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(permissionList), options, cancellationToken);
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(permissionList), TimeSpan.FromSeconds(CacheTtlSeconds), cancellationToken);
         }
 
         return permissionList;
@@ -213,5 +196,104 @@ public class PermissionService : IPermissionService
         // For now, clear common patterns
         await _cache.RemoveAsync("perm:active:all", cancellationToken);
         await _cache.RemoveAsync("perm:all", cancellationToken);
+    }
+
+    public async Task AssignPermissionsToRoleAsync(Guid roleId, IEnumerable<Guid> permissionIds, CancellationToken cancellationToken = default)
+    {
+        if (roleId == Guid.Empty)
+            throw new ArgumentException("Role ID cannot be empty", nameof(roleId));
+
+        if (permissionIds == null || !permissionIds.Any())
+            return;
+
+        // Get existing assignments to avoid duplicates
+        var existingAssignments = await _dbContext.RolePermissions
+            .Where(rp => rp.RoleId == roleId && permissionIds.Contains(rp.PermissionId))
+            .Select(rp => rp.PermissionId)
+            .ToListAsync(cancellationToken);
+
+        var newPermissionIds = permissionIds.Except(existingAssignments);
+
+        if (!newPermissionIds.Any())
+            return;
+
+        // Create new assignments
+        var rolePermissions = newPermissionIds.Select(permissionId => new RolePermission
+        {
+            RoleId = roleId,
+            PermissionId = permissionId,
+            AssignedAt = DateTime.UtcNow
+        });
+
+        await _dbContext.RolePermissions.AddRangeAsync(rolePermissions, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // Invalidate role permission cache
+        await InvalidateRolePermissionCacheAsync(roleId, cancellationToken);
+    }
+
+    public async Task RemovePermissionsFromRoleAsync(Guid roleId, IEnumerable<Guid> permissionIds, CancellationToken cancellationToken = default)
+    {
+        if (roleId == Guid.Empty)
+            throw new ArgumentException("Role ID cannot be empty", nameof(roleId));
+
+        if (permissionIds == null || !permissionIds.Any())
+            return;
+
+        // Remove existing assignments
+        var assignmentsToRemove = await _dbContext.RolePermissions
+            .Where(rp => rp.RoleId == roleId && permissionIds.Contains(rp.PermissionId))
+            .ToListAsync(cancellationToken);
+
+        if (!assignmentsToRemove.Any())
+            return;
+
+        _dbContext.RolePermissions.RemoveRange(assignmentsToRemove);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // Invalidate role permission cache
+        await InvalidateRolePermissionCacheAsync(roleId, cancellationToken);
+    }
+
+    public async Task SetRolePermissionsAsync(Guid roleId, IEnumerable<Guid> permissionIds, CancellationToken cancellationToken = default)
+    {
+        if (roleId == Guid.Empty)
+            throw new ArgumentException("Role ID cannot be empty", nameof(roleId));
+
+        var permissionIdsList = permissionIds?.ToList() ?? new List<Guid>();
+
+        // Remove all existing assignments
+        var existingAssignments = await _dbContext.RolePermissions
+            .Where(rp => rp.RoleId == roleId)
+            .ToListAsync(cancellationToken);
+
+        if (existingAssignments.Any())
+        {
+            _dbContext.RolePermissions.RemoveRange(existingAssignments);
+        }
+
+        // Add new assignments
+        if (permissionIdsList.Any())
+        {
+            var rolePermissions = permissionIdsList.Select(permissionId => new RolePermission
+            {
+                RoleId = roleId,
+                PermissionId = permissionId,
+                AssignedAt = DateTime.UtcNow
+            });
+
+            await _dbContext.RolePermissions.AddRangeAsync(rolePermissions, cancellationToken);
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // Invalidate role permission cache
+        await InvalidateRolePermissionCacheAsync(roleId, cancellationToken);
+    }
+
+    private async Task InvalidateRolePermissionCacheAsync(Guid roleId, CancellationToken cancellationToken = default)
+    {
+        var cacheKey = $"perm:role:{roleId}";
+        await _cache.RemoveAsync(cacheKey, cancellationToken);
     }
 }

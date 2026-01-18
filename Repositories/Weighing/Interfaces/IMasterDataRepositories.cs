@@ -1,4 +1,5 @@
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.System;
 
 namespace TruLoad.Backend.Repositories.Weighing.Interfaces;
 
@@ -134,4 +135,50 @@ public interface IAxleFeeScheduleRepository
     /// Delete fee schedule
     /// </summary>
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Repository for tolerance settings with regulatory compliance lookup capabilities
+/// Supports Kenya Traffic Act Cap 403 and EAC Act 2016 tolerance rules
+/// </summary>
+public interface IToleranceRepository
+{
+    /// <summary>
+    /// Get all tolerance settings filtered by legal framework
+    /// </summary>
+    Task<List<ToleranceSetting>> GetAllByFrameworkAsync(
+        string legalFramework,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get tolerance setting by code
+    /// </summary>
+    Task<ToleranceSetting?> GetByCodeAsync(
+        string code,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get applicable tolerance for specific scenario
+    /// Returns tolerance setting matching legal framework and application type (GVW/AXLE)
+    /// </summary>
+    Task<ToleranceSetting?> GetToleranceAsync(
+        string legalFramework,
+        string appliesTo,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Calculate tolerance value in kg for given permissible weight
+    /// Returns either percentage-based or fixed kg tolerance based on setting
+    /// </summary>
+    Task<int> CalculateToleranceKgAsync(
+        string legalFramework,
+        string appliesTo,
+        int permissibleWeightKg,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get all active tolerance settings (cached for performance)
+    /// </summary>
+    Task<List<ToleranceSetting>> GetAllActiveAsync(
+        CancellationToken cancellationToken = default);
 }

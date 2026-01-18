@@ -22,6 +22,7 @@ public class StationsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [HasPermission("station.read")]
     [ProducesResponseType(typeof(StationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<StationDto>> GetById(Guid id, CancellationToken cancellationToken)
@@ -36,6 +37,7 @@ public class StationsController : ControllerBase
     }
 
     [HttpGet]
+    [HasPermission("station.read")]
     [ProducesResponseType(typeof(IEnumerable<StationDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<StationDto>>> GetAll(
         [FromQuery] bool includeInactive = false,
@@ -46,6 +48,7 @@ public class StationsController : ControllerBase
     }
 
     [HttpGet("type/{stationType}")]
+    [HasPermission("station.read")]
     [ProducesResponseType(typeof(IEnumerable<StationDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<StationDto>>> GetByType(string stationType, CancellationToken cancellationToken)
     {
@@ -54,6 +57,7 @@ public class StationsController : ControllerBase
     }
 
     [HttpGet("organization/{organizationId:guid}")]
+    [HasPermission("station.read")]
     [ProducesResponseType(typeof(IEnumerable<StationDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<StationDto>>> GetByOrganization(Guid organizationId, CancellationToken cancellationToken)
     {
@@ -133,6 +137,7 @@ public class StationsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [HasPermission("station.delete")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)

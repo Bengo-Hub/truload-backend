@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using truload_backend.Data;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Data.Seeders;
 using TruLoad.Backend.Data.Seeders.UserManagement;
 using TruLoad.Backend.Data.Seeders.WeighingOperations;
 using TruLoad.Backend.Data.Seeders.SystemConfiguration;
+using TruLoad.Backend.Data.Seeders.CaseManagement;
 
 namespace TruLoad.Data.Seeders;
 
@@ -53,10 +54,30 @@ public static class DatabaseSeeder
             var weighingSeeder = new WeighingOperationsSeeder(context, seedDataPath);
             await weighingSeeder.SeedAsync();
 
+            // Seed reference data (cargo types, origins/destinations, roads)
+            logger.LogInformation("Seeding reference data...");
+            var cargoTypesSeeder = new CargoTypesSeeder(context);
+            await cargoTypesSeeder.SeedAsync();
+            
+            var originsDestinationsSeeder = new OriginsDestinationsSeeder(context);
+            await originsDestinationsSeeder.SeedAsync();
+            
+            var roadsSeeder = new RoadsSeeder(context);
+            await roadsSeeder.SeedAsync();
+            
+            // Seed fee bands for EAC and Traffic Act
+            logger.LogInformation("Seeding fee bands...");
+            var axleFeeScheduleSeeder = new AxleFeeScheduleSeeder(context);
+            await axleFeeScheduleSeeder.SeedAsync();
+
             // Seed system configuration data (permit types, tolerance settings)
             logger.LogInformation("Seeding system configuration data...");
             var systemConfigSeeder = new SystemConfigurationSeeder(context);
             await systemConfigSeeder.SeedAsync();
+
+            // Seed case management taxonomies (case statuses, disposition types, violation types, etc.)
+            logger.LogInformation("Seeding case management taxonomies...");
+            await CaseManagementTaxonomySeeder.SeedAsync(context);
 
             logger.LogInformation("=== Database seeding completed successfully ===");
         }

@@ -1,4 +1,5 @@
 using TruLoad.Backend.Models.Identity;
+using TruLoad.Backend.Models.Common;
 
 namespace TruLoad.Backend.Models;
 
@@ -19,9 +20,8 @@ namespace TruLoad.Backend.Models;
 ///
 /// Unified table design simplifies relationships and avoids confusing separate tables.
 /// </summary>
-public class AxleConfiguration
+public class AxleConfiguration : BaseEntity
 {
-    public Guid Id { get; set; }
     
     /// <summary>
     /// Axle code (unique identifier)
@@ -73,12 +73,7 @@ public class AxleConfiguration
     /// Optional notes or special rules for this configuration
     /// </summary>
     public string? Notes { get; set; }
-    
-    public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? DeletedAt { get; set; } // Soft delete support
-    
+
     /// <summary>
     /// User who created derived configuration (NULL for standard configs)
     /// </summary>

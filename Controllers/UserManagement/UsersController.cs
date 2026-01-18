@@ -31,6 +31,7 @@ public class UsersController : ControllerBase
     /// Get user by ID
     /// </summary>
     [HttpGet("{id:guid}")]
+    [HasPermission("user.read")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserDto>> GetById(Guid id)
@@ -46,9 +47,77 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
+    /// Create new user
+    /// </summary>
+    [HttpPost]
+    [HasPermission("user.create")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserRequest request)
+    {
+        // Validate required fields
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new { message = "Email is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Password))
+        {
+            return BadRequest(new { message = "Password is required" });
+        }
+
+        // Check if email already exists
+        var existingUser = await _userManager.FindByEmailAsync(request.Email);
+        if (existingUser != null)
+        {
+            return BadRequest(new { message = "User with this email already exists" });
+        }
+
+        // Create new user
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = request.Email,
+            Email = request.Email,
+            FullName = request.FullName,
+            PhoneNumber = request.PhoneNumber,
+            OrganizationId = request.OrganizationId,
+            StationId = request.StationId,
+            DepartmentId = request.DepartmentId,
+            EmailConfirmed = true, // Auto-confirm for admin-created users
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var result = await _userManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { errors = result.Errors });
+        }
+
+        // Assign roles if provided
+        if (request.RoleNames != null && request.RoleNames.Any())
+        {
+            var roleResult = await _userManager.AddToRolesAsync(user, request.RoleNames);
+            if (!roleResult.Succeeded)
+            {
+                // Clean up: delete the user if role assignment fails
+                await _userManager.DeleteAsync(user);
+                return BadRequest(new { errors = roleResult.Errors });
+            }
+        }
+
+        _logger.LogInformation("User created: {UserId}, Email: {Email}", user.Id, user.Email);
+
+        var roles = await _userManager.GetRolesAsync(user);
+        return CreatedAtAction(nameof(GetById), new { id = user.Id }, await MapToDto(user, roles));
+    }
+
+    /// <summary>
     /// Get user by email
     /// </summary>
     [HttpGet("by-email/{email}")]
+    [HasPermission("user.read")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserDto>> GetByEmail(string email)
@@ -67,11 +136,17 @@ public class UsersController : ControllerBase
     /// Search users with filters and pagination
     /// </summary>
     [HttpGet]
+    [HasPermission("user.read")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<ActionResult<object>> Search(
         [FromQuery] string? search = null,
         [FromQuery] Guid? organizationId = null,
         [FromQuery] Guid? stationId = null,
+        [FromQuery] Guid? departmentId = null,
+        [FromQuery] string? roleName = null,
+        [FromQuery] Guid? workShiftId = null,
+        [FromQuery] bool? hasActiveShift = null,
+        [FromQuery] bool? isActive = null,
         [FromQuery] int skip = 0,
         [FromQuery] int take = 50)
     {
@@ -81,22 +156,46 @@ public class UsersController : ControllerBase
             .Where(u => u.DeletedAt == null)
             .AsQueryable();
 
+        // Text search across name, email, phone
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(u => 
-                u.FullName.Contains(search) || 
+            query = query.Where(u =>
+                u.FullName.Contains(search) ||
                 u.Email!.Contains(search) ||
                 u.PhoneNumber!.Contains(search));
         }
 
+        // Organization filter
         if (organizationId.HasValue)
         {
             query = query.Where(u => u.OrganizationId == organizationId.Value);
         }
 
+        // Station filter
         if (stationId.HasValue)
         {
             query = query.Where(u => u.StationId == stationId.Value);
+        }
+
+        // Department filter
+        if (departmentId.HasValue)
+        {
+            query = query.Where(u => u.DepartmentId == departmentId.Value);
+        }
+
+        // Active status filter (based on LockoutEnd)
+        if (isActive.HasValue)
+        {
+            if (isActive.Value)
+            {
+                // Active users: not locked out
+                query = query.Where(u => u.LockoutEnd == null || u.LockoutEnd <= DateTimeOffset.UtcNow);
+            }
+            else
+            {
+                // Inactive users: currently locked out
+                query = query.Where(u => u.LockoutEnd != null && u.LockoutEnd > DateTimeOffset.UtcNow);
+            }
         }
 
         var total = await query.CountAsync();
@@ -110,7 +209,60 @@ public class UsersController : ControllerBase
         foreach (var user in users)
         {
             var roles = await _userManager.GetRolesAsync(user);
+
+            // Apply role filter (post-query since roles are in separate table)
+            if (!string.IsNullOrWhiteSpace(roleName) && !roles.Contains(roleName, StringComparer.OrdinalIgnoreCase))
+            {
+                total--; // Adjust total count
+                continue;
+            }
+
             userDtos.Add(await MapToDto(user, roles));
+        }
+
+        // Apply shift filters if needed (post-query since shifts are in separate table)
+        if (workShiftId.HasValue || hasActiveShift.HasValue)
+        {
+            var filteredDtos = new List<UserDto>();
+
+            foreach (var dto in userDtos)
+            {
+                // Query user shifts from database (UserShift doesn't have DeletedAt)
+                var userShifts = await _userManager.Users
+                    .Where(u => u.Id == dto.Id)
+                    .SelectMany(u => u.UserShifts)
+                    .ToListAsync();
+
+                // Filter by work shift ID
+                if (workShiftId.HasValue)
+                {
+                    var hasShift = userShifts.Any(us => us.WorkShiftId == workShiftId.Value);
+                    if (!hasShift)
+                    {
+                        total--;
+                        continue;
+                    }
+                }
+
+                // Filter by active shift status
+                if (hasActiveShift.HasValue)
+                {
+                    var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                    var hasActive = userShifts.Any(us =>
+                        us.StartsOn <= today &&
+                        (us.EndsOn == null || us.EndsOn > today));
+
+                    if (hasActive != hasActiveShift.Value)
+                    {
+                        total--;
+                        continue;
+                    }
+                }
+
+                filteredDtos.Add(dto);
+            }
+
+            userDtos = filteredDtos;
         }
 
         return Ok(new
@@ -203,7 +355,7 @@ public class UsersController : ControllerBase
     /// Assign roles to user
     /// </summary>
     [HttpPost("{id:guid}/roles")]
-    [HasPermission("user.update")]
+    [HasPermission("user.assign_roles")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AssignRoles(Guid id, [FromBody] AssignRolesRequest request)
@@ -233,6 +385,82 @@ public class UsersController : ControllerBase
 
         _logger.LogInformation("Roles assigned to user: {UserId}", id);
         return Ok(new { message = "Roles assigned successfully" });
+    }
+
+    /// <summary>
+    /// Get user roles
+    /// </summary>
+    [HttpGet("{id:guid}/roles")]
+    [HasPermission("user.read")]
+    [ProducesResponseType(typeof(UserRolesDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserRolesDto>> GetUserRoles(Guid id)
+    {
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user == null || user.DeletedAt != null)
+        {
+            return NotFound(new { message = "User not found" });
+        }
+
+        var roles = await _userManager.GetRolesAsync(user);
+        var roleObjects = new List<ApplicationRole>();
+
+        foreach (var roleName in roles)
+        {
+            var role = await _roleManager.FindByNameAsync(roleName);
+            if (role != null)
+            {
+                roleObjects.Add(role);
+            }
+        }
+
+        return Ok(new UserRolesDto
+        {
+            UserId = id,
+            UserEmail = user.Email!,
+            UserFullName = user.FullName,
+            Roles = roleObjects.Select(r => new RoleDto
+            {
+                Id = r.Id,
+                Name = r.Name!,
+                Code = r.Code,
+                Description = r.Description,
+                IsActive = r.IsActive,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt
+            }).ToList()
+        });
+    }
+
+    /// <summary>
+    /// Remove role from user
+    /// </summary>
+    [HttpDelete("{id:guid}/roles/{roleId:guid}")]
+    [HasPermission("user.assign_roles")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveRoleFromUser(Guid id, Guid roleId)
+    {
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user == null || user.DeletedAt != null)
+        {
+            return NotFound(new { message = "User not found" });
+        }
+
+        var role = await _roleManager.FindByIdAsync(roleId.ToString());
+        if (role == null)
+        {
+            return NotFound(new { message = "Role not found" });
+        }
+
+        var result = await _userManager.RemoveFromRoleAsync(user, role.Name!);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { errors = result.Errors });
+        }
+
+        _logger.LogInformation("Role {RoleId} removed from user {UserId}", roleId, id);
+        return NoContent();
     }
 
     private async Task<UserDto> MapToDto(ApplicationUser user, IList<string> roles)

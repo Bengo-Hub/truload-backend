@@ -1,23 +1,37 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
 using Moq;
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Repositories.Auth;
 using TruLoad.Backend.Repositories.Auth.Interfaces;
 using TruLoad.Backend.Services.Implementations;
-using truload_backend.Data;
+using TruLoad.Backend.Services.Interfaces;
+using TruLoad.Backend.Data;
 using Xunit;
 using FluentAssertions;
 using System.Text.Json;
+using Microsoft.AspNetCore.Identity;
 
-namespace truload_backend.Tests.Unit.Services;
+namespace Truload.Backend.Tests.Unit.Services;
 
 /// <summary>
 /// Unit tests for PermissionService.
 /// Tests caching behavior and service methods with mocked cache and repository.
 /// </summary>
-public class PermissionServiceTests
+public class PermissionServiceTests : IDisposable
 {
+    private readonly TruLoadDbContext _context;
+
+    public PermissionServiceTests()
+    {
+        _context = CreateInMemoryContext();
+    }
+
+    public void Dispose()
+    {
+        _context.Dispose();
+    }
+
     private TruLoadDbContext CreateInMemoryContext()
     {
         var options = new DbContextOptionsBuilder<TruLoadDbContext>()
@@ -33,14 +47,13 @@ public class PermissionServiceTests
     public async Task GetPermissionByIdAsync_WithValidId_ReturnsPermission()
     {
         // Arrange
-        using var context = CreateInMemoryContext();
         var permission = new Permission { Id = Guid.NewGuid(), Code = "test", Name = "Test", Category = "Test", IsActive = true };
-        context.Permissions.Add(permission);
-        await context.SaveChangesAsync();
+        _context.Permissions.Add(permission);
+        await _context.SaveChangesAsync();
 
-        var mockCache = new Mock<IDistributedCache>();
-        var repository = new PermissionRepository(context);
-        var service = new PermissionService(repository, mockCache.Object);
+        var mockCache = new Mock<ICacheService>();
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.GetPermissionByIdAsync(permission.Id);
@@ -54,9 +67,9 @@ public class PermissionServiceTests
     public async Task GetPermissionByIdAsync_WithEmptyGuid_ReturnsNull()
     {
         // Arrange
-        var mockCache = new Mock<IDistributedCache>();
-        var mockRepository = new Mock<PermissionRepository>(new Mock<TruLoadDbContext>().Object);
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var mockCache = new Mock<ICacheService>();
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.GetPermissionByIdAsync(Guid.Empty);
@@ -77,12 +90,12 @@ public class PermissionServiceTests
         var cacheKey = "perm:code:test.code";
         var cachedJson = JsonSerializer.Serialize(permission);
 
-        var mockCache = new Mock<IDistributedCache>();
+        var mockCache = new Mock<ICacheService>();
         mockCache.Setup(c => c.GetStringAsync(cacheKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cachedJson);
 
-        var mockRepository = new Mock<IPermissionRepository>();
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.GetPermissionByCodeAsync("test.code");
@@ -90,7 +103,7 @@ public class PermissionServiceTests
         // Assert
         result.Should().NotBeNull();
         result!.Code.Should().Be("test.code");
-        mockRepository.Verify(r => r.GetByCodeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockCache.Verify(c => c.GetStringAsync(cacheKey, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -98,19 +111,19 @@ public class PermissionServiceTests
     {
         // Arrange
         var permission = new Permission { Id = Guid.NewGuid(), Code = "test.code", Name = "Test", Category = "Test", IsActive = true };
+        _context.Permissions.Add(permission);
+        await _context.SaveChangesAsync();
+        
         var cacheKey = "perm:code:test.code";
 
-        var mockCache = new Mock<IDistributedCache>();
+        var mockCache = new Mock<ICacheService>();
         mockCache.Setup(c => c.GetStringAsync(cacheKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
-        mockCache.Setup(c => c.SetStringAsync(cacheKey, It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
+        mockCache.Setup(c => c.SetStringAsync(cacheKey, It.IsAny<string>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var mockRepository = new Mock<IPermissionRepository>();
-        mockRepository.Setup(r => r.GetByCodeAsync("test.code", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(permission);
-
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.GetPermissionByCodeAsync("test.code");
@@ -118,17 +131,16 @@ public class PermissionServiceTests
         // Assert
         result.Should().NotBeNull();
         result!.Code.Should().Be("test.code");
-        mockRepository.Verify(r => r.GetByCodeAsync("test.code", It.IsAny<CancellationToken>()), Times.Once);
-        mockCache.Verify(c => c.SetStringAsync(cacheKey, It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+        mockCache.Verify(c => c.SetStringAsync(cacheKey, It.IsAny<string>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetPermissionByCodeAsync_WithNullCode_ReturnsNull()
     {
         // Arrange
-        var mockCache = new Mock<IDistributedCache>();
-        var mockRepository = new Mock<IPermissionRepository>();
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var mockCache = new Mock<ICacheService>();
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.GetPermissionByCodeAsync(null!);
@@ -153,19 +165,19 @@ public class PermissionServiceTests
         var cacheKey = "perm:category:Weighing";
         var cachedJson = JsonSerializer.Serialize(permissions);
 
-        var mockCache = new Mock<IDistributedCache>();
+        var mockCache = new Mock<ICacheService>();
         mockCache.Setup(c => c.GetStringAsync(cacheKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cachedJson);
 
-        var mockRepository = new Mock<IPermissionRepository>();
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.GetPermissionsByCategoryAsync("Weighing");
 
         // Assert
         result.Should().HaveCount(2);
-        mockRepository.Verify(r => r.GetByCategoryAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockCache.Verify(c => c.GetStringAsync("perm:category:Weighing", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -176,26 +188,26 @@ public class PermissionServiceTests
         {
             new Permission { Id = Guid.NewGuid(), Code = "p1", Name = "P1", Category = "Weighing", IsActive = true }
         };
+        _context.Permissions.AddRange(permissions);
+        await _context.SaveChangesAsync();
+        
         var cacheKey = "perm:category:Weighing";
 
-        var mockCache = new Mock<IDistributedCache>();
+        var mockCache = new Mock<ICacheService>();
         mockCache.Setup(c => c.GetStringAsync(cacheKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
-        mockCache.Setup(c => c.SetStringAsync(cacheKey, It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
+        mockCache.Setup(c => c.SetStringAsync(cacheKey, It.IsAny<string>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var mockRepository = new Mock<IPermissionRepository>();
-        mockRepository.Setup(r => r.GetByCategoryAsync("Weighing", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(permissions);
-
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.GetPermissionsByCategoryAsync("Weighing");
 
         // Assert
         result.Should().HaveCount(1);
-        mockRepository.Verify(r => r.GetByCategoryAsync("Weighing", It.IsAny<CancellationToken>()), Times.Once);
+        mockCache.Verify(c => c.SetStringAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion
@@ -212,19 +224,19 @@ public class PermissionServiceTests
         };
         var cachedJson = JsonSerializer.Serialize(permissions);
 
-        var mockCache = new Mock<IDistributedCache>();
+        var mockCache = new Mock<ICacheService>();
         mockCache.Setup(c => c.GetStringAsync("perm:active:all", It.IsAny<CancellationToken>()))
             .ReturnsAsync(cachedJson);
 
-        var mockRepository = new Mock<IPermissionRepository>();
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.GetAllActivePermissionsAsync();
 
         // Assert
         result.Should().HaveCount(1);
-        mockRepository.Verify(r => r.GetActiveAsync(It.IsAny<CancellationToken>()), Times.Never);
+        mockCache.Verify(c => c.GetStringAsync("perm:active:all", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -236,24 +248,24 @@ public class PermissionServiceTests
             new Permission { Id = Guid.NewGuid(), Code = "p1", Name = "P1", Category = "Test", IsActive = true }
         };
 
-        var mockCache = new Mock<IDistributedCache>();
+        var mockCache = new Mock<ICacheService>();
         mockCache.Setup(c => c.GetStringAsync("perm:active:all", It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
-        mockCache.Setup(c => c.SetStringAsync("perm:active:all", It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
+        mockCache.Setup(c => c.SetStringAsync("perm:active:all", It.IsAny<string>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var mockRepository = new Mock<IPermissionRepository>();
-        mockRepository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(permissions);
+        _context.Permissions.AddRange(permissions);
+        await _context.SaveChangesAsync();
 
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.GetAllActivePermissionsAsync();
 
         // Assert
         result.Should().HaveCount(1);
-        mockRepository.Verify(r => r.GetActiveAsync(It.IsAny<CancellationToken>()), Times.Once);
+        mockCache.Verify(c => c.SetStringAsync("perm:active:all", It.IsAny<string>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion
@@ -271,19 +283,19 @@ public class PermissionServiceTests
         };
         var cachedJson = JsonSerializer.Serialize(permissions);
 
-        var mockCache = new Mock<IDistributedCache>();
+        var mockCache = new Mock<ICacheService>();
         mockCache.Setup(c => c.GetStringAsync("perm:all", It.IsAny<CancellationToken>()))
             .ReturnsAsync(cachedJson);
 
-        var mockRepository = new Mock<IPermissionRepository>();
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.GetAllPermissionsAsync();
 
         // Assert
         result.Should().HaveCount(2);
-        mockRepository.Verify(r => r.GetAllAsync(It.IsAny<CancellationToken>()), Times.Never);
+        mockCache.Verify(c => c.GetStringAsync("perm:all", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion
@@ -301,24 +313,33 @@ public class PermissionServiceTests
         };
         var cacheKey = $"perm:role:{roleId}";
 
-        var mockCache = new Mock<IDistributedCache>();
+        var mockCache = new Mock<ICacheService>();
         mockCache.Setup(c => c.GetStringAsync(cacheKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
-        mockCache.Setup(c => c.SetStringAsync(cacheKey, It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
+        mockCache.Setup(c => c.SetStringAsync(cacheKey, It.IsAny<string>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var mockRepository = new Mock<IPermissionRepository>();
-        mockRepository.Setup(r => r.GetForRoleAsync(roleId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(permissions);
+        // Set up role and permissions in context
+        var role = new ApplicationRole { Id = roleId, Name = "TestRole" };
+        _context.Roles.Add(role);
+        _context.Permissions.AddRange(permissions);
+        
+        // Set up role-permission relationships
+        foreach (var perm in permissions)
+        {
+            _context.RolePermissions.Add(new RolePermission { RoleId = roleId, PermissionId = perm.Id });
+        }
+        await _context.SaveChangesAsync();
 
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.GetPermissionsForRoleAsync(roleId);
 
         // Assert
         result.Should().HaveCount(1);
-        mockCache.Verify(c => c.SetStringAsync(cacheKey, It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+        mockCache.Verify(c => c.SetStringAsync(cacheKey, It.IsAny<string>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion
@@ -333,12 +354,23 @@ public class PermissionServiceTests
         var permission = new Permission { Id = Guid.NewGuid(), Code = "test.read", Name = "Test Read", Category = "Test", IsActive = true };
         var cachedJson = JsonSerializer.Serialize(permission);
 
-        var mockCache = new Mock<IDistributedCache>();
+        var mockCache = new Mock<ICacheService>();
         mockCache.Setup(c => c.GetStringAsync("perm:code:test.read", It.IsAny<CancellationToken>()))
             .ReturnsAsync(cachedJson);
 
-        var mockRepository = new Mock<IPermissionRepository>();
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        // Set up user, role, permission, and relationships
+        var user = new ApplicationUser { Id = userId, UserName = "testuser" };
+        var roleId = Guid.NewGuid();
+        var role = new ApplicationRole { Id = roleId, Name = "TestRole" };
+        _context.Users.Add(user);
+        _context.Roles.Add(role);
+        _context.Permissions.Add(permission);
+        _context.UserRoles.Add(new IdentityUserRole<Guid> { UserId = userId, RoleId = roleId });
+        _context.RolePermissions.Add(new RolePermission { RoleId = roleId, PermissionId = permission.Id });
+        await _context.SaveChangesAsync();
+
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.UserHasPermissionAsync(userId, "test.read");
@@ -355,12 +387,12 @@ public class PermissionServiceTests
         var permission = new Permission { Id = Guid.NewGuid(), Code = "test.read", Name = "Test Read", Category = "Test", IsActive = false };
         var cachedJson = JsonSerializer.Serialize(permission);
 
-        var mockCache = new Mock<IDistributedCache>();
+        var mockCache = new Mock<ICacheService>();
         mockCache.Setup(c => c.GetStringAsync("perm:code:test.read", It.IsAny<CancellationToken>()))
             .ReturnsAsync(cachedJson);
 
-        var mockRepository = new Mock<IPermissionRepository>();
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.UserHasPermissionAsync(userId, "test.read");
@@ -373,9 +405,9 @@ public class PermissionServiceTests
     public async Task UserHasPermissionAsync_WithNullPermissionCode_ReturnsFalse()
     {
         // Arrange
-        var mockCache = new Mock<IDistributedCache>();
-        var mockRepository = new Mock<IPermissionRepository>();
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var mockCache = new Mock<ICacheService>();
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.UserHasPermissionAsync(Guid.NewGuid(), null!);
@@ -400,12 +432,12 @@ public class PermissionServiceTests
         var cachedJson = JsonSerializer.Serialize(permissions);
         var cacheKey = $"perm:role:{roleId}";
 
-        var mockCache = new Mock<IDistributedCache>();
+        var mockCache = new Mock<ICacheService>();
         mockCache.Setup(c => c.GetStringAsync(cacheKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cachedJson);
 
-        var mockRepository = new Mock<IPermissionRepository>();
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.RoleHasPermissionAsync(roleId, "test.write");
@@ -422,17 +454,19 @@ public class PermissionServiceTests
         var permissions = Enumerable.Empty<Permission>();
         var cacheKey = $"perm:role:{roleId}";
 
-        var mockCache = new Mock<IDistributedCache>();
+        var mockCache = new Mock<ICacheService>();
         mockCache.Setup(c => c.GetStringAsync(cacheKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
-        mockCache.Setup(c => c.SetStringAsync(cacheKey, It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
+        mockCache.Setup(c => c.SetStringAsync(cacheKey, It.IsAny<string>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var mockRepository = new Mock<IPermissionRepository>();
-        mockRepository.Setup(r => r.GetForRoleAsync(roleId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(permissions);
+        // Set up role with no permissions
+        var role = new ApplicationRole { Id = roleId, Name = "TestRole" };
+        _context.Roles.Add(role);
+        await _context.SaveChangesAsync();
 
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         var result = await service.RoleHasPermissionAsync(roleId, "nonexistent.perm");
@@ -449,12 +483,12 @@ public class PermissionServiceTests
     public async Task InvalidatePermissionCacheAsync_RemovesCodeAndGlobalCaches()
     {
         // Arrange
-        var mockCache = new Mock<IDistributedCache>();
+        var mockCache = new Mock<ICacheService>();
         mockCache.Setup(c => c.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var mockRepository = new Mock<IPermissionRepository>();
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         await service.InvalidatePermissionCacheAsync("test.code");
@@ -469,12 +503,12 @@ public class PermissionServiceTests
     public async Task InvalidateAllPermissionCacheAsync_RemovesGlobalCaches()
     {
         // Arrange
-        var mockCache = new Mock<IDistributedCache>();
+        var mockCache = new Mock<ICacheService>();
         mockCache.Setup(c => c.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var mockRepository = new Mock<IPermissionRepository>();
-        var service = new PermissionService(mockRepository.Object, mockCache.Object);
+        var repository = new PermissionRepository(_context);
+        var service = new PermissionService(repository, mockCache.Object, _context);
 
         // Act
         await service.InvalidateAllPermissionCacheAsync();

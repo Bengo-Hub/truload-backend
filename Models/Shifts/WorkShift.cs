@@ -12,17 +12,7 @@ public class WorkShift
     /// Shift code identifier for programmatic use (e.g., "MORNING", "EVENING", "NIGHT")
     /// </summary>
     public string Code { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// Alias for Name - for compatibility with seeders and legacy code
-    /// </summary>
-    public string? ShiftName { get; set; }
-    
-    /// <summary>
-    /// Alias for Code - for compatibility with seeders and legacy code
-    /// </summary>
-    public string? ShiftCode { get; set; }
-    
+
     public string? Description { get; set; }
     public decimal TotalHoursPerWeek { get; set; } = 40.00m;
     public int GraceMinutes { get; set; } = 0;

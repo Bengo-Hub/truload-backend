@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 using TruLoad.Backend.Models;
-using truload_backend.Data;
+using TruLoad.Backend.Data;
 
 namespace TruLoad.Backend.Middleware;
 
@@ -57,6 +57,8 @@ public class AuditMiddleware
                     startTime,
                     success: false,
                     denialReason: ex.Message);
+                
+                // Re-throw to let the global exception handler deal with it
                 throw;
             }
 
@@ -71,7 +73,11 @@ public class AuditMiddleware
                 success: context.Response.StatusCode < 400);
 
             // Copy response back to original stream
+            responseBody.Seek(0, SeekOrigin.Begin);
             await responseBody.CopyToAsync(originalBodyStream);
+
+            // Restore original response body
+            context.Response.Body = originalBodyStream;
         }
     }
 

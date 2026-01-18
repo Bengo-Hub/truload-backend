@@ -560,8 +560,51 @@ Fee calculation tiers for overload penalties per legal framework.
 - `idx_axle_fee_schedules_framework_type` ON axle_fee_schedules(legal_framework, fee_type)
 - `idx_axle_fee_schedules_effective` ON axle_fee_schedules(effective_from, effective_to)
 
+**Seed Data:**
+- 5 EAC GVW overload bands (1-1000kg, 1001-5000kg, 5001-10000kg, 10001-15000kg, 15001+kg)
+- 5 EAC AXLE overload bands (same ranges)
+- 5 Traffic Act GVW overload bands (same ranges)
+
 **Relationships:**
 - Referenced by weighing fee calculations
+
+#### tolerance_settings
+Tolerance thresholds for regulatory compliance (EAC Act 2016 & Traffic Act Cap 403).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Tolerance setting ID |
+| code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Setting code (e.g., "EAC_AXLE_TOLERANCE") |
+| name | VARCHAR(255) | NOT NULL | Display name |
+| legal_framework | VARCHAR(20) | NOT NULL, INDEX | EAC or TRAFFIC_ACT |
+| tolerance_percentage | DECIMAL(5,2) | NOT NULL, DEFAULT 0 | Tolerance percentage (e.g., 5.00 = 5%) |
+| tolerance_kg | INTEGER | NOT NULL, DEFAULT 0 | Alternative: fixed kg tolerance |
+| applies_to | VARCHAR(30) | NOT NULL, CHECK | AXLE, GVW, or BOTH |
+| description | TEXT | | Detailed description |
+| effective_from | DATE | NOT NULL | Effective start date |
+| effective_to | DATE | | Effective end date (NULL = current) |
+| is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Record update |
+
+**Indexes:**
+- `idx_tolerance_settings_code` ON tolerance_settings(code) UNIQUE
+- `idx_tolerance_settings_framework_applies` ON tolerance_settings(legal_framework, applies_to, is_active) WHERE is_active = TRUE
+
+**Seed Data:**
+- EAC_GVW_TOLERANCE (0% for GVW)
+- EAC_AXLE_TOLERANCE (5% for axle groups)
+- TRAFFIC_ACT_GVW_TOLERANCE (0% for GVW)
+- TRAFFIC_ACT_AXLE_TOLERANCE (5% for axle groups)
+- OPERATIONAL_TOLERANCE (200kg fixed)
+- PERMIT_TOLERANCE (permit-specific)
+
+**Regulatory Compliance:**
+- **Kenya Traffic Act Cap 403 Schedule 2:** 5% tolerance for axle groups, 0% for GVW
+- **EAC Vehicle Load Control Act 2016 Section 12:** Same tolerance rules for regional harmonization
+
+**Relationships:**
+- Referenced by WeighingService for tolerance calculations
 
 #### permits
 
@@ -643,29 +686,43 @@ Main weighing transaction table (partitioned by month).
 - `idx_weighings_violation_reason_embedding` ON weighings USING hnsw (violation_reason_embedding vector_cosine_ops)
 
 #### weighing_axles
-Individual axle weights for each weighing.
+Individual axle weights for each weighing with regulatory compliance properties.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Axle weight ID |
-| weighing_id | UUID | FK → weighings(id), NOT NULL | Weighing ID |
+| weighing_id | UUID | FK → weighings(id), NOT NULL, INDEX | Weighing ID |
 | axle_number | INTEGER | NOT NULL | Axle number (1, 2, 3, ...) |
 | measured_kg | INTEGER | NOT NULL | Measured weight in kg |
 | permissible_kg | INTEGER | NOT NULL | Permissible weight in kg |
 | overload_kg | INTEGER | GENERATED ALWAYS AS (measured_kg - permissible_kg) STORED | Overload amount |
 | axle_configuration_id | UUID | FK → axle_configurations(id), NOT NULL, INDEX | Configuration template |
 | axle_weight_reference_id | UUID | FK → axle_weight_references(id), NULL, INDEX | Reference specification |
-| axle_group_id | UUID | FK → axle_groups(id), NOT NULL | Axle group (S1, SA4, TAG8, etc) |
-| axle_grouping | VARCHAR(10) | NOT NULL | Deck grouping: A, B, C, D |
+| axle_group_id | UUID | FK → axle_groups(id), NOT NULL, INDEX | Axle group (S1, SA4, TAG8, etc) |
+| axle_grouping | VARCHAR(10) | NOT NULL, INDEX | Deck grouping: A, B, C, D |
+| axle_type | VARCHAR(20) | NOT NULL, CHECK, INDEX | Axle classification: Steering, SingleDrive, Tandem, Tridem, Tag |
+| axle_spacing_meters | DECIMAL(5,2) | NULL, CHECK (>= 0) | Distance to next axle (NULL for last axle) |
+| pavement_damage_factor | DECIMAL(10,4) | DEFAULT 0.0000, CHECK (>= 0) | Fourth Power Law: (Actual/Permissible)^4 |
+| group_aggregate_weight_kg | INTEGER | NULL | Cached group total weight (performance optimization) |
+| group_permissible_weight_kg | INTEGER | NULL | Cached group permissible (performance optimization) |
 | tyre_type_id | UUID | FK → tyre_types(id), NULL, INDEX | Tyre type (S, D, W) |
 | fee_usd | DECIMAL(18,2) | DEFAULT 0 | Fee in USD |
 | captured_at | TIMESTAMPTZ | DEFAULT NOW() | Capture timestamp |
-| UNIQUE (weighing_id, axle_number) | | | |
+| UNIQUE (weighing_id, axle_number) | | | Unique axle per weighing |
 
 **Indexes:**
 - `idx_weighing_axles_weighing` ON weighing_axles(weighing_id, axle_number)
 - `idx_weighing_axles_configuration` ON weighing_axles(axle_configuration_id)
 - `idx_weighing_axles_group` ON weighing_axles(axle_group_id)
+- `idx_weighing_axles_axle_type` ON weighing_axles(axle_type)
+- `idx_weighing_axles_weighing_grouping` ON weighing_axles(weighing_id, axle_grouping)
+- `idx_weighing_axles_weighing_grouping_type` ON weighing_axles(weighing_id, axle_grouping, axle_type)
+- `idx_weighing_axles_overload_fee` ON weighing_axles(overload_kg, fee_usd) WHERE overload_kg > 0
+
+**Regulatory Compliance:**
+- **Kenya Traffic Act Cap 403:** `axle_type` and `axle_spacing_meters` enforce tandem (16k limit, 1.2-1.8m spacing) and tridem (24k limit) regulations
+- **EAC Vehicle Load Control Act 2016:** `pavement_damage_factor` calculates infrastructure damage surcharge per Section 15
+- **Group Aggregation:** `axle_grouping` + cached group totals enable 5% tolerance on group weights, not individual axles
 
 **Relationships:**
 - Many-to-one with `weighings`
@@ -728,35 +785,37 @@ Tag category taxonomy.
 - `idx_tag_categories_code` ON tag_categories(code)
 - `idx_tag_categories_active` ON tag_categories(is_active) WHERE is_active = TRUE
 
-#### cpc_sections
-Criminal Procedure Code (CPC) sections for case closure.
+#### legal_sections
+Unified legal section reference for Criminal Procedure Code (CPC), Penal Code (PC), and Traffic Act sections.
+Consolidates cpc_sections and pc_sections into single table with legal_framework discriminator.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Section ID |
-| section_no | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Section number |
+| legal_framework | VARCHAR(20) | NOT NULL, CHECK, INDEX | Framework: CPC, PC, TRAFFIC_ACT, OTHER |
+| section_no | VARCHAR(50) | NOT NULL | Section number |
 | title | VARCHAR(255) | NOT NULL | Section title |
 | description | TEXT | | Full description |
 | is_active | BOOLEAN | DEFAULT TRUE | Active status |
 | created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Record update |
+| deleted_at | TIMESTAMPTZ | | Soft delete timestamp |
 
 **Indexes:**
-- `idx_cpc_sections_no` ON cpc_sections(section_no)
+- `IX_legal_sections_framework_section_no` UNIQUE ON legal_sections(legal_framework, section_no)
+- `IX_legal_sections_is_active` ON legal_sections(is_active) WHERE is_active = TRUE
 
-#### pc_sections
-Penal Code (PC) sections for case closure.
+**Check Constraints:**
+- `CK_legal_sections_framework` CHECK (legal_framework IN ('CPC', 'PC', 'TRAFFIC_ACT', 'OTHER'))
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Section ID |
-| section_no | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Section number |
-| title | VARCHAR(255) | NOT NULL | Section title |
-| description | TEXT | | Full description |
-| is_active | BOOLEAN | DEFAULT TRUE | Active status |
-| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+**Relationships:**
+- One-to-many with `case_closure_checklists` (cpc_section_id)
+- One-to-many with `case_closure_checklists` (pc_section_id)
 
-**Indexes:**
-- `idx_pc_sections_no` ON pc_sections(section_no)
+**Migration Notes:**
+- Replaces separate cpc_sections and pc_sections tables
+- Data migrated with legal_framework='CPC' for CPC sections, 'PC' for PC sections
+- Maintains backward compatibility via foreign key preservation
 
 ---
 
@@ -1514,6 +1573,62 @@ Daily weighing statistics by station.
 **Refresh Strategy:**
 - Refreshed daily at midnight
 - Partition-friendly aggregation
+
+#### mv_axle_group_violations
+Axle group violation patterns for regulatory enforcement analytics.
+
+**Columns:**
+- axle_grouping (VARCHAR) - Deck group: A, B, C, D
+- axle_type (VARCHAR) - Steering, SingleDrive, Tandem, Tridem, Tag
+- month (TIMESTAMP) - Month of violation
+- total_axles (BIGINT) - Total axles measured
+- overloaded_count (BIGINT) - Count of overloaded axles
+- avg_measured_kg (DECIMAL) - Average measured weight
+- avg_permissible_kg (DECIMAL) - Average permissible weight
+- avg_overload_kg (DECIMAL) - Average overload for violations
+- total_fees_collected_usd (DECIMAL) - Total fees collected
+- avg_pdf_violations (DECIMAL) - Average pavement damage factor for violations
+
+**Refresh Strategy:**
+- Refreshed daily at 2 AM via pg_cron
+- 2-year data retention
+
+**Index:**
+- UNIQUE INDEX on (axle_grouping, axle_type, month)
+
+**Regulatory Purpose:**
+- Track axle group compliance patterns per Kenya Traffic Act Cap 403
+- Identify systematic overload patterns by axle type (EAC Act 2016)
+- Calculate infrastructure damage via pavement damage factors
+
+#### mv_driver_demerit_rankings
+Driver demerit point rankings for license suspension tracking (EAC Act 2016).
+
+**Columns:**
+- driver_id (UUID)
+- license_no (VARCHAR)
+- full_name (VARCHAR)
+- current_demerit_points (INTEGER)
+- license_status (VARCHAR)
+- total_violations (BIGINT) - Lifetime violation count
+- lifetime_points (INTEGER) - Total points ever assigned
+- last_violation_date (TIMESTAMPTZ)
+- active_violations (BIGINT) - Non-expired violations
+- active_points (INTEGER) - Non-expired points
+- risk_category (VARCHAR) - COMPLIANT, WARNING_THRESHOLD (6+), SUSPENSION_THRESHOLD (12+), REVOCATION_THRESHOLD (21+)
+
+**Refresh Strategy:**
+- Refreshed every 4 hours via pg_cron
+- Real-time critical for enforcement decisions
+
+**Index:**
+- UNIQUE INDEX on driver_id
+
+**Regulatory Purpose:**
+- EAC Act 2016 Section 18: Demerit points system
+- 12 points = license suspension
+- 21 points = license revocation
+- Points expire after 36 months
 
 ### Views
 

@@ -22,6 +22,7 @@ public class WorkShiftsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [HasPermission("user.manage_shifts")]
     [ProducesResponseType(typeof(WorkShiftDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<WorkShiftDto>> GetById(Guid id, CancellationToken cancellationToken)
@@ -36,6 +37,7 @@ public class WorkShiftsController : ControllerBase
     }
 
     [HttpGet]
+    [HasPermission("user.manage_shifts")]
     [ProducesResponseType(typeof(IEnumerable<WorkShiftDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<WorkShiftDto>>> GetAll(
         [FromQuery] bool includeInactive = false,
@@ -46,7 +48,7 @@ public class WorkShiftsController : ControllerBase
     }
 
     [HttpPost]
-    [HasPermission("workshift.create")]
+    [HasPermission("user.manage_shifts")]
     [ProducesResponseType(typeof(WorkShiftDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -88,7 +90,7 @@ public class WorkShiftsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [HasPermission("workshift.update")]
+    [HasPermission("user.manage_shifts")]
     [ProducesResponseType(typeof(WorkShiftDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -121,7 +123,7 @@ public class WorkShiftsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [HasPermission("workshift.delete")]
+    [HasPermission("user.manage_shifts")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

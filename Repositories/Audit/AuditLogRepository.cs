@@ -1,6 +1,6 @@
 using TruLoad.Backend.Repositories.Audit.Interfaces;
 using TruLoad.Backend.Models;
-using truload_backend.Data;
+using TruLoad.Backend.Data;
 using Microsoft.EntityFrameworkCore;
 namespace TruLoad.Backend.Repositories.Audit;
 
@@ -40,7 +40,7 @@ public class AuditLogRepository : IAuditLogRepository
         Guid? organizationId = null,
         string? orderBy = "CreatedAt")
     {
-        var query = _context.AuditLogs.AsQueryable();
+        var query = _context.AuditLogs.AsNoTracking().AsQueryable();
 
         if (userId.HasValue)
             query = query.Where(a => a.UserId == userId.Value);
@@ -73,12 +73,14 @@ public class AuditLogRepository : IAuditLogRepository
     public async Task<List<AuditLog>> GetByResourceAsync(string resourceType, Guid resourceId)
     {
         return await _context.AuditLogs
+            .AsNoTracking()
             .Where(a => a.ResourceType == resourceType && a.ResourceId == resourceId)
             .ToListAsync();
     }
     public async Task<List<AuditLog>> GetByUserAsync(Guid userId, int limit = 100)
     {
         return await _context.AuditLogs
+            .AsNoTracking()
             .Where(a => a.UserId == userId)
             .OrderByDescending(a => a.CreatedAt)
             .Take(limit)
@@ -87,12 +89,14 @@ public class AuditLogRepository : IAuditLogRepository
     public async Task<List<AuditLog>> GetFailedEntriesAsync(Guid userId, DateTime since)
     {
         return await _context.AuditLogs
+            .AsNoTracking()
             .Where(a => a.UserId == userId && !a.Success && a.CreatedAt >= since)
             .ToListAsync();
     }
     public async Task<(List<AuditLog> Items, int TotalCount)> GetByOrganizationAsync(Guid organizationId, int skip = 0, int take = 50)
     {
         var query = _context.AuditLogs
+            .AsNoTracking()
             .Where(a => a.OrganizationId == organizationId);
 
         var totalCount = await query.CountAsync();
@@ -107,6 +111,7 @@ public class AuditLogRepository : IAuditLogRepository
     public async Task<List<AuditLog>> GetByEndpointAsync(string endpoint, DateTime since)
     {
         return await _context.AuditLogs
+            .AsNoTracking()
             .Where(a => a.Endpoint == endpoint && a.CreatedAt >= since)
             .ToListAsync();
     }
@@ -125,7 +130,7 @@ public class AuditLogRepository : IAuditLogRepository
 
     public async Task<DTOs.AuditLogSummaryDto> GetSummaryAsync(DateTime? fromDate = null, DateTime? toDate = null)
     {
-        var query = _context.AuditLogs.AsQueryable();
+        var query = _context.AuditLogs.AsNoTracking().AsQueryable();
 
         if (fromDate.HasValue)
             query = query.Where(a => a.CreatedAt >= fromDate.Value);

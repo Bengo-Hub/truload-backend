@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using truload_backend.Data;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
 
@@ -25,7 +25,9 @@ public class AxleConfigurationRepository : IAxleConfigurationRepository
         bool includeInactive = false,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.AxleConfigurations.AsQueryable();
+        var query = _context.AxleConfigurations
+            .Include(ac => ac.AxleWeightReferences)
+            .AsQueryable();
 
         if (isStandard.HasValue)
         {
@@ -47,10 +49,15 @@ public class AxleConfigurationRepository : IAxleConfigurationRepository
             query = query.Where(ac => ac.IsActive);
         }
 
-        return await query
+        var result = await query
             .OrderBy(ac => ac.AxleNumber)
             .ThenBy(ac => ac.AxleCode)
             .ToListAsync(cancellationToken);
+
+        _logger.LogInformation("AxleConfigurationRepository.GetAllAsync: Found {Count} configurations for isStandard={IsStandard}, legalFramework={LegalFramework}, axleCount={AxleCount}, includeInactive={IncludeInactive}", 
+            result.Count, isStandard, legalFramework, axleCount, includeInactive);
+
+        return result;
     }
 
     public async Task<AxleConfiguration?> GetByIdAsync(

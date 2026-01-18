@@ -45,6 +45,9 @@ public class AxleConfigurationController : ControllerBase
             includeInactive,
             cancellationToken);
 
+        _logger.LogInformation("AxleConfigurationController.GetAll: Returning {Count} configurations for isStandard={IsStandard}, includeInactive={IncludeInactive}", 
+            configs.Count, isStandard, includeInactive);
+
         return Ok(configs.Select(MapToResponseDto).ToList());
     }
 
@@ -296,7 +299,19 @@ public class AxleConfigurationController : ControllerBase
             CreatedAt = config.CreatedAt,
             UpdatedAt = config.UpdatedAt,
             CreatedByUserId = config.CreatedByUserId,
-            WeightReferenceCount = config.AxleWeightReferences?.Count ?? 0
+            WeightReferenceCount = config.AxleWeightReferences?.Count ?? 0,
+            WeightReferences = config.AxleWeightReferences?.Select(wr => new AxleWeightReferenceDto
+            {
+                Id = wr.Id,
+                AxleConfigurationId = wr.AxleConfigurationId,
+                AxlePosition = wr.AxlePosition,
+                AxleLegalWeightKg = wr.AxleLegalWeightKg,
+                AxleGroupId = wr.AxleGroupId,
+                AxleGrouping = wr.AxleGrouping,
+                TyreTypeId = wr.TyreTypeId,
+                IsActive = wr.IsActive,
+                CreatedAt = wr.CreatedAt
+            }).ToList()
         };
     }
 

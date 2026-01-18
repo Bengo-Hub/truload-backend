@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
-using truload_backend.Data;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
 
@@ -43,6 +43,7 @@ public class AxleGroupRepository : IAxleGroupRepository
         }
 
         var result = await _context.AxleGroups
+            .AsNoTracking()
             .Where(g => g.IsActive)
             .OrderBy(g => g.Code)
             .ToListAsync(cancellationToken);
@@ -53,12 +54,12 @@ public class AxleGroupRepository : IAxleGroupRepository
 
     public async Task<AxleGroup?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _context.AxleGroups.FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
+        return await _context.AxleGroups.AsNoTracking().FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
     }
 
     public async Task<AxleGroup?> GetByCodeAsync(string code, CancellationToken cancellationToken = default)
     {
-        return await _context.AxleGroups.FirstOrDefaultAsync(g => g.Code == code, cancellationToken);
+        return await _context.AxleGroups.AsNoTracking().FirstOrDefaultAsync(g => g.Code == code, cancellationToken);
     }
 
     public async Task<AxleGroup> CreateAsync(AxleGroup axleGroup, CancellationToken cancellationToken = default)

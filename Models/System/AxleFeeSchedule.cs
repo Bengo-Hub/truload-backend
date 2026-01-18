@@ -1,0 +1,68 @@
+namespace TruLoad.Backend.Models.System;
+
+/// <summary>
+/// Fee calculation tiers for overload penalties per legal framework
+/// Unified table for EAC and Traffic Act fee bands (GVW and AXLE types)
+/// </summary>
+public class AxleFeeSchedule
+{
+    public Guid Id { get; set; }
+    
+    /// <summary>
+    /// Legal framework: EAC or TRAFFIC_ACT
+    /// </summary>
+    public string LegalFramework { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Fee type: GVW or AXLE
+    /// </summary>
+    public string FeeType { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Minimum overload in kg (inclusive)
+    /// </summary>
+    public int OverloadMinKg { get; set; }
+    
+    /// <summary>
+    /// Maximum overload in kg (inclusive, NULL = no upper limit)
+    /// </summary>
+    public int? OverloadMaxKg { get; set; }
+    
+    /// <summary>
+    /// Fee per kg in USD
+    /// </summary>
+    public decimal FeePerKgUsd { get; set; }
+    
+    /// <summary>
+    /// Flat fee component in USD (default 0)
+    /// </summary>
+    public decimal FlatFeeUsd { get; set; } = 0;
+    
+    /// <summary>
+    /// Demerit points assigned for this overload band
+    /// </summary>
+    public int DemeritPoints { get; set; } = 0;
+    
+    /// <summary>
+    /// Description of penalty/band
+    /// </summary>
+    public string PenaltyDescription { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Effective start date for this fee schedule
+    /// </summary>
+    public DateTime EffectiveFrom { get; set; }
+    
+    /// <summary>
+    /// Effective end date (NULL = currently active)
+    /// </summary>
+    public DateTime? EffectiveTo { get; set; }
+    
+    /// <summary>
+    /// Active status
+    /// </summary>
+    public bool IsActive { get; set; } = true;
+    
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}

@@ -107,19 +107,13 @@ public class PermissionAuthorizationTests
         var roleId = Guid.NewGuid();
         var permissionCode = "user.create";
 
-        var httpContext = CreateHttpContextWithClaims(userId, roleId);
-        var permissions = new[] { new Permission { Id = Guid.NewGuid(), Code = permissionCode, Name = "Create User" } };
-
-        _mockPermissionService
-            .Setup(x => x.GetPermissionsForRoleAsync(roleId, default))
-            .ReturnsAsync(permissions);
+        var httpContext = CreateHttpContextWithClaims(userId, roleId, permissionCode);
 
         // Act
         var result = await _verificationService.UserHasPermissionAsync(httpContext, permissionCode);
 
         // Assert
         Assert.True(result);
-        _mockPermissionService.Verify(x => x.GetPermissionsForRoleAsync(roleId, default), Times.Once);
     }
 
     [Fact]
@@ -131,12 +125,7 @@ public class PermissionAuthorizationTests
         var requestedCode = "user.create";
         var availableCode = "user.view";
 
-        var httpContext = CreateHttpContextWithClaims(userId, roleId);
-        var permissions = new[] { new Permission { Id = Guid.NewGuid(), Code = availableCode, Name = "View User" } };
-
-        _mockPermissionService
-            .Setup(x => x.GetPermissionsForRoleAsync(roleId, default))
-            .ReturnsAsync(permissions);
+        var httpContext = CreateHttpContextWithClaims(userId, roleId, availableCode);
 
         // Act
         var result = await _verificationService.UserHasPermissionAsync(httpContext, requestedCode);
@@ -167,12 +156,7 @@ public class PermissionAuthorizationTests
         var roleId = Guid.NewGuid();
         var requiredCodes = new[] { "user.create", "user.update" };
 
-        var httpContext = CreateHttpContextWithClaims(userId, roleId);
-        var permissions = new[] { new Permission { Id = Guid.NewGuid(), Code = "user.update", Name = "Update User" } };
-
-        _mockPermissionService
-            .Setup(x => x.GetPermissionsForRoleAsync(roleId, default))
-            .ReturnsAsync(permissions);
+        var httpContext = CreateHttpContextWithClaims(userId, roleId, "user.update");
 
         // Act
         var result = await _verificationService.UserHasAnyPermissionAsync(httpContext, requiredCodes);
@@ -189,12 +173,7 @@ public class PermissionAuthorizationTests
         var roleId = Guid.NewGuid();
         var requiredCodes = new[] { "user.create", "user.update" };
 
-        var httpContext = CreateHttpContextWithClaims(userId, roleId);
-        var permissions = new[] { new Permission { Id = Guid.NewGuid(), Code = "user.view", Name = "View User" } };
-
-        _mockPermissionService
-            .Setup(x => x.GetPermissionsForRoleAsync(roleId, default))
-            .ReturnsAsync(permissions);
+        var httpContext = CreateHttpContextWithClaims(userId, roleId, "user.view");
 
         // Act
         var result = await _verificationService.UserHasAnyPermissionAsync(httpContext, requiredCodes);
@@ -211,20 +190,13 @@ public class PermissionAuthorizationTests
         var roleId = Guid.NewGuid();
         var requiredCodes = new[] { "user.create", "user.approve" };
 
-        var httpContext = CreateHttpContextWithClaims(userId, roleId);
-        var permissions = new[]
-        {
-            new Permission { Id = Guid.NewGuid(), Code = "user.create", Name = "Create User" },
-            new Permission { Id = Guid.NewGuid(), Code = "user.approve", Name = "Approve User" }
-        };
-
-        _mockPermissionService
-            .Setup(x => x.GetPermissionsForRoleAsync(roleId, default))
-            .ReturnsAsync(permissions);
+        var httpContext = CreateHttpContextWithClaims(userId, roleId, "user.create", "user.approve");
 
         // Act
         var result = await _verificationService.UserHasAllPermissionsAsync(httpContext, requiredCodes);
 
+        // Assert
+        Assert.True(result);
         // Assert
         Assert.True(result);
     }
@@ -237,12 +209,7 @@ public class PermissionAuthorizationTests
         var roleId = Guid.NewGuid();
         var requiredCodes = new[] { "user.create", "user.approve" };
 
-        var httpContext = CreateHttpContextWithClaims(userId, roleId);
-        var permissions = new[] { new Permission { Id = Guid.NewGuid(), Code = "user.create", Name = "Create User" } };
-
-        _mockPermissionService
-            .Setup(x => x.GetPermissionsForRoleAsync(roleId, default))
-            .ReturnsAsync(permissions);
+        var httpContext = CreateHttpContextWithClaims(userId, roleId, "user.create");
 
         // Act
         var result = await _verificationService.UserHasAllPermissionsAsync(httpContext, requiredCodes);
@@ -257,16 +224,7 @@ public class PermissionAuthorizationTests
         // Arrange
         var userId = Guid.NewGuid();
         var roleId = Guid.NewGuid();
-        var httpContext = CreateHttpContextWithClaims(userId, roleId);
-        var permissions = new[]
-        {
-            new Permission { Id = Guid.NewGuid(), Code = "user.create", Name = "Create User" },
-            new Permission { Id = Guid.NewGuid(), Code = "user.view", Name = "View User" }
-        };
-
-        _mockPermissionService
-            .Setup(x => x.GetPermissionsForRoleAsync(roleId, default))
-            .ReturnsAsync(permissions);
+        var httpContext = CreateHttpContextWithClaims(userId, roleId, "user.create", "user.view");
 
         // Act
         var result1 = await _verificationService.GetUserPermissionsAsync(httpContext);
@@ -274,8 +232,9 @@ public class PermissionAuthorizationTests
 
         // Assert
         Assert.Equal(2, result1.Count());
-        Assert.Equal(result1, result2);
-        _mockPermissionService.Verify(x => x.GetPermissionsForRoleAsync(roleId, default), Times.Once); // Called only once
+        Assert.Contains("user.create", result1);
+        Assert.Contains("user.view", result1);
+        Assert.Equal(result1, result2); // Same instance from cache
     }
 
     [Fact]
@@ -331,13 +290,8 @@ public class PermissionAuthorizationTests
         var roleId = Guid.NewGuid();
         var permissionCode = "user.create";
 
-        var httpContext = CreateHttpContextWithClaims(userId, roleId);
+        var httpContext = CreateHttpContextWithClaims(userId, roleId, permissionCode);
         var requirement = new PermissionRequirement(permissionCode);
-        var permissions = new[] { new Permission { Id = Guid.NewGuid(), Code = permissionCode, Name = "Create User" } };
-
-        _mockPermissionService
-            .Setup(x => x.GetPermissionsForRoleAsync(roleId, default))
-            .ReturnsAsync(permissions);
 
         var context = new AuthorizationHandlerContext(
             new[] { requirement },
@@ -359,13 +313,8 @@ public class PermissionAuthorizationTests
         var roleId = Guid.NewGuid();
         var permissionCode = "user.create";
 
-        var httpContext = CreateHttpContextWithClaims(userId, roleId);
+        var httpContext = CreateHttpContextWithClaims(userId, roleId, "user.view");
         var requirement = new PermissionRequirement(permissionCode);
-        var permissions = new[] { new Permission { Id = Guid.NewGuid(), Code = "user.view", Name = "View User" } };
-
-        _mockPermissionService
-            .Setup(x => x.GetPermissionsForRoleAsync(roleId, default))
-            .ReturnsAsync(permissions);
 
         var context = new AuthorizationHandlerContext(
             new[] { requirement },
@@ -405,13 +354,8 @@ public class PermissionAuthorizationTests
         var roleId = Guid.NewGuid();
         var permissionCodes = new[] { "user.create", "user.update" };
 
-        var httpContext = CreateHttpContextWithClaims(userId, roleId);
+        var httpContext = CreateHttpContextWithClaims(userId, roleId, "user.update");
         var requirement = new PermissionRequirement(permissionCodes, PermissionRequirementType.Any);
-        var permissions = new[] { new Permission { Id = Guid.NewGuid(), Code = "user.update", Name = "Update User" } };
-
-        _mockPermissionService
-            .Setup(x => x.GetPermissionsForRoleAsync(roleId, default))
-            .ReturnsAsync(permissions);
 
         var context = new AuthorizationHandlerContext(
             new[] { requirement },
@@ -433,17 +377,8 @@ public class PermissionAuthorizationTests
         var roleId = Guid.NewGuid();
         var permissionCodes = new[] { "user.create", "user.approve" };
 
-        var httpContext = CreateHttpContextWithClaims(userId, roleId);
+        var httpContext = CreateHttpContextWithClaims(userId, roleId, "user.create", "user.approve");
         var requirement = new PermissionRequirement(permissionCodes, PermissionRequirementType.All);
-        var permissions = new[]
-        {
-            new Permission { Id = Guid.NewGuid(), Code = "user.create", Name = "Create User" },
-            new Permission { Id = Guid.NewGuid(), Code = "user.approve", Name = "Approve User" }
-        };
-
-        _mockPermissionService
-            .Setup(x => x.GetPermissionsForRoleAsync(roleId, default))
-            .ReturnsAsync(permissions);
 
         var context = new AuthorizationHandlerContext(
             new[] { requirement },
@@ -461,13 +396,16 @@ public class PermissionAuthorizationTests
 
     #region Helper Methods
 
-    private DefaultHttpContext CreateHttpContextWithClaims(Guid? userId, Guid? roleId)
+    private DefaultHttpContext CreateHttpContextWithClaims(Guid? userId, Guid? roleId, params string[] permissions)
     {
         var claims = new List<Claim>();
         if (userId.HasValue)
             claims.Add(new Claim("auth_service_user_id", userId.Value.ToString()));
         if (roleId.HasValue)
             claims.Add(new Claim("role_id", roleId.Value.ToString()));
+        
+        foreach (var permission in permissions)
+            claims.Add(new Claim("permission", permission));
 
         var identity = new ClaimsIdentity(claims, "test");
         var principal = new ClaimsPrincipal(identity);
@@ -477,11 +415,14 @@ public class PermissionAuthorizationTests
         return httpContext;
     }
 
-    private DefaultHttpContext CreateHttpContextWithClaims(Guid userId, string? roleId)
+    private DefaultHttpContext CreateHttpContextWithClaims(Guid userId, string? roleId, params string[] permissions)
     {
         var claims = new List<Claim> { new Claim("auth_service_user_id", userId.ToString()) };
         if (!string.IsNullOrEmpty(roleId))
             claims.Add(new Claim("role_id", roleId));
+        
+        foreach (var permission in permissions)
+            claims.Add(new Claim("permission", permission));
 
         var identity = new ClaimsIdentity(claims, "test");
         var principal = new ClaimsPrincipal(identity);

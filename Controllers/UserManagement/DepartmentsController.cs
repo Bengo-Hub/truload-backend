@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.DTOs.User;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.UserManagement.Interfaces;
@@ -21,6 +22,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [HasPermission("system.manage_departments")]
     [ProducesResponseType(typeof(DepartmentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DepartmentDto>> GetById(Guid id, CancellationToken cancellationToken)
@@ -35,6 +37,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpGet]
+    [HasPermission("system.manage_departments")]
     [ProducesResponseType(typeof(IEnumerable<DepartmentDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<DepartmentDto>>> GetAll(
         [FromQuery] bool includeInactive = false,
@@ -45,6 +48,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpGet("organization/{organizationId:guid}")]
+    [HasPermission("system.manage_departments")]
     [ProducesResponseType(typeof(IEnumerable<DepartmentDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<DepartmentDto>>> GetByOrganization(Guid organizationId, CancellationToken cancellationToken)
     {
@@ -53,6 +57,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpPost]
+    [HasPermission("system.manage_departments")]
     [ProducesResponseType(typeof(DepartmentDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<DepartmentDto>> Create([FromBody] CreateDepartmentRequest request, CancellationToken cancellationToken)
@@ -82,6 +87,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [HasPermission("system.manage_departments")]
     [ProducesResponseType(typeof(DepartmentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DepartmentDto>> Update(Guid id, [FromBody] UpdateDepartmentRequest request, CancellationToken cancellationToken)
@@ -112,6 +118,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [HasPermission("system.manage_departments")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)

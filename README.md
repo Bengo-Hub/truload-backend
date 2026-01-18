@@ -21,9 +21,9 @@ Cloud-hosted enforcement and weighing solution enabling roadside officers to cap
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    .NET 8 Backend API                        │
+│                    .NET 10 LTS Backend API                   │
 │  • Modular architecture (User, Weighing, Prosecution, etc.) │
-│  • EF Core 8 + PostgreSQL 16                                │
+│  • EF Core 10 + PostgreSQL 16 + pgvector                    │
 │  • Redis caching + RabbitMQ events                          │
 │  • JWT auth + RBAC                                          │
 └─────────────────────────────────────────────────────────────┘
@@ -47,7 +47,7 @@ Cloud-hosted enforcement and weighing solution enabling roadside officers to cap
 
 ```
 TruLoad/
-├── truload-backend/          # .NET 8 Backend API
+├── truload-backend/          # .NET 10 LTS Backend API
 ├── truload-frontend/         # Next.js 15 PWA Frontend
 ├── TruConnect/              # Node.js/Electron weight acquisition microservice
 ├── resources/               # Specifications, SQL samples, narrations

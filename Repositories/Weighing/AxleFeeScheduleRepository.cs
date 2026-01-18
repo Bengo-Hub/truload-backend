@@ -1,154 +1,110 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
-using truload_backend.Data;
-using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
+using TruLoad.Backend.Data;
 
 namespace TruLoad.Backend.Repositories.Weighing;
 
 /// <summary>
-/// Axle fee schedule repository with fee lookup and distributed caching
+/// Repository implementation for AxleFeeSchedule entity with fee lookup capabilities
 /// </summary>
 public class AxleFeeScheduleRepository : IAxleFeeScheduleRepository
 {
     private readonly TruLoadDbContext _context;
-    private readonly IDistributedCache _cache;
-    private readonly ILogger<AxleFeeScheduleRepository> _logger;
-    private static readonly JsonSerializerOptions CacheOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-    private static readonly DistributedCacheEntryOptions CacheEntryOptions = new DistributedCacheEntryOptions
-    {
-        AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1)
-    };
 
-    private const string CacheKeyPrefix = "axlefeeschedules:"; // axlefeeschedules:{framework}
-
-    public AxleFeeScheduleRepository(TruLoadDbContext context, IDistributedCache cache, ILogger<AxleFeeScheduleRepository> logger)
+    public AxleFeeScheduleRepository(TruLoadDbContext context)
     {
         _context = context;
-        _cache = cache;
-        _logger = logger;
     }
 
-    public async Task<List<AxleFeeSchedule>> GetAllByFrameworkAsync(string legalFramework, CancellationToken cancellationToken = default)
+    public async Task<List<AxleFeeSchedule>> GetAllByFrameworkAsync(
+        string legalFramework,
+        CancellationToken cancellationToken = default)
     {
-        var cacheKey = BuildFrameworkCacheKey(legalFramework);
-        var cached = await _cache.GetStringAsync(cacheKey, cancellationToken);
-        if (!string.IsNullOrEmpty(cached))
-        {
-            var cachedResult = JsonSerializer.Deserialize<List<AxleFeeSchedule>>(cached, CacheOptions);
-            if (cachedResult != null)
-            {
-                return cachedResult;
-            }
-        }
-
-        var result = await _context.AxleFeeSchedules
-            .Where(f => f.LegalFramework == legalFramework && f.IsActive && f.DeletedAt == null)
+        return await _context.AxleFeeSchedules
+            .AsNoTracking()
+            .Where(f => f.LegalFramework == legalFramework.ToUpper())
+            .Where(f => f.IsActive)
             .OrderBy(f => f.FeeType)
             .ThenBy(f => f.OverloadMinKg)
             .ToListAsync(cancellationToken);
-
-        await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result, CacheOptions), CacheEntryOptions, cancellationToken);
-        return result;
     }
 
     public async Task<AxleFeeSchedule?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _context.AxleFeeSchedules.FirstOrDefaultAsync(f => f.Id == id && f.DeletedAt == null, cancellationToken);
+        return await _context.AxleFeeSchedules
+            .AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
     }
 
     public async Task<AxleFeeSchedule?> GetFeeByOverloadAsync(
-        string legalFramework,
-        string feeType,
+        string legalFramework, 
+        string feeType, 
         int overloadKg,
         CancellationToken cancellationToken = default)
     {
-        var schedules = await GetAllByFrameworkAsync(legalFramework, cancellationToken);
+        var now = DateTime.UtcNow.Date;
 
-        return schedules.FirstOrDefault(s =>
-            s.FeeType == feeType &&
-            overloadKg >= s.OverloadMinKg &&
-            (s.OverloadMaxKg == null || overloadKg <= s.OverloadMaxKg.Value));
+        return await _context.AxleFeeSchedules
+            .AsNoTracking()
+            .Where(f => f.LegalFramework == legalFramework.ToUpper())
+            .Where(f => f.FeeType == feeType.ToUpper())
+            .Where(f => f.IsActive)
+            .Where(f => f.EffectiveFrom <= now && (f.EffectiveTo == null || f.EffectiveTo >= now))
+            .Where(f => f.OverloadMinKg <= overloadKg && (f.OverloadMaxKg == null || f.OverloadMaxKg >= overloadKg))
+            .OrderBy(f => f.OverloadMinKg)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<(decimal FeeAmountUsd, int DemeritPoints)?> CalculateFeeAsync(
-        string legalFramework,
-        string feeType,
+        string legalFramework, 
+        string feeType, 
         int overloadKg,
         CancellationToken cancellationToken = default)
     {
         var schedule = await GetFeeByOverloadAsync(legalFramework, feeType, overloadKg, cancellationToken);
+        
         if (schedule == null)
         {
             return null;
         }
 
-        var fee = schedule.FlatFeeUsd + (overloadKg * schedule.FeePerKgUsd);
+        // Calculate fee: (overload * feePerKg) + flatFee
+        decimal fee = (overloadKg * schedule.FeePerKgUsd) + schedule.FlatFeeUsd;
+        
         return (fee, schedule.DemeritPoints);
     }
 
-    public async Task<AxleFeeSchedule> CreateAsync(
-        AxleFeeSchedule feeSchedule,
-        CancellationToken cancellationToken = default)
+    public async Task<AxleFeeSchedule> CreateAsync(AxleFeeSchedule feeSchedule, CancellationToken cancellationToken = default)
     {
         feeSchedule.CreatedAt = DateTime.UtcNow;
-        _context.AxleFeeSchedules.Add(feeSchedule);
+        feeSchedule.UpdatedAt = DateTime.UtcNow;
+        
+        await _context.AxleFeeSchedules.AddAsync(feeSchedule, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
-        await InvalidateFrameworkCacheAsync(feeSchedule.LegalFramework, cancellationToken);
-        _logger.LogInformation("Created axle fee schedule {Id} for framework {Framework}", feeSchedule.Id, feeSchedule.LegalFramework);
+        
         return feeSchedule;
     }
 
-    public async Task<AxleFeeSchedule> UpdateAsync(
-        AxleFeeSchedule feeSchedule,
-        CancellationToken cancellationToken = default)
+    public async Task<AxleFeeSchedule> UpdateAsync(AxleFeeSchedule feeSchedule, CancellationToken cancellationToken = default)
     {
-        var existing = await _context.AxleFeeSchedules.FirstOrDefaultAsync(f => f.Id == feeSchedule.Id && f.DeletedAt == null, cancellationToken);
-        if (existing == null)
-        {
-            throw new KeyNotFoundException($"Axle fee schedule {feeSchedule.Id} not found");
-        }
-
-        existing.LegalFramework = feeSchedule.LegalFramework;
-        existing.FeeType = feeSchedule.FeeType;
-        existing.OverloadMinKg = feeSchedule.OverloadMinKg;
-        existing.OverloadMaxKg = feeSchedule.OverloadMaxKg;
-        existing.FeePerKgUsd = feeSchedule.FeePerKgUsd;
-        existing.FlatFeeUsd = feeSchedule.FlatFeeUsd;
-        existing.DemeritPoints = feeSchedule.DemeritPoints;
-        existing.PenaltyDescription = feeSchedule.PenaltyDescription;
-        existing.EffectiveFrom = feeSchedule.EffectiveFrom;
-        existing.EffectiveTo = feeSchedule.EffectiveTo;
-        existing.IsActive = feeSchedule.IsActive;
-
+        feeSchedule.UpdatedAt = DateTime.UtcNow;
+        
+        _context.AxleFeeSchedules.Update(feeSchedule);
         await _context.SaveChangesAsync(cancellationToken);
-        await InvalidateFrameworkCacheAsync(existing.LegalFramework, cancellationToken);
-        _logger.LogInformation("Updated axle fee schedule {Id}", existing.Id);
-        return existing;
+        
+        return feeSchedule;
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var existing = await _context.AxleFeeSchedules.FirstOrDefaultAsync(f => f.Id == id && f.DeletedAt == null, cancellationToken);
-        if (existing == null)
+        var feeSchedule = await GetByIdAsync(id, cancellationToken);
+        if (feeSchedule != null)
         {
-            return false;
+            _context.AxleFeeSchedules.Remove(feeSchedule);
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
         }
-
-        existing.DeletedAt = DateTime.UtcNow;
-        existing.IsActive = false;
-        await _context.SaveChangesAsync(cancellationToken);
-        await InvalidateFrameworkCacheAsync(existing.LegalFramework, cancellationToken);
-        _logger.LogInformation("Soft-deleted axle fee schedule {Id}", existing.Id);
-        return true;
-    }
-
-    private string BuildFrameworkCacheKey(string legalFramework) => $"{CacheKeyPrefix}{legalFramework}";
-
-    private Task InvalidateFrameworkCacheAsync(string legalFramework, CancellationToken cancellationToken)
-    {
-        var cacheKey = BuildFrameworkCacheKey(legalFramework);
-        return _cache.RemoveAsync(cacheKey, cancellationToken);
+        return false;
     }
 }

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
-using truload_backend.Data;
+using TruLoad.Backend.Data;
 
 namespace TruLoad.Backend.Data.Seeders.UserManagement;
 
@@ -195,9 +195,7 @@ public class UserManagementSeeder
             {
                 Id = Guid.NewGuid(),
                 Name = "Morning Shift",
-                ShiftName = "Morning Shift",
                 Code = "MORNING",
-                ShiftCode = "MORNING",
                 Description = "Morning shift: 6:00 AM - 2:00 PM",
                 TotalHoursPerWeek = 40m,
                 IsActive = true,
@@ -208,9 +206,7 @@ public class UserManagementSeeder
             {
                 Id = Guid.NewGuid(),
                 Name = "Afternoon Shift",
-                ShiftName = "Afternoon Shift",
                 Code = "AFTERNOON",
-                ShiftCode = "AFTERNOON",
                 Description = "Afternoon shift: 2:00 PM - 10:00 PM",
                 TotalHoursPerWeek = 40m,
                 IsActive = true,
@@ -221,9 +217,7 @@ public class UserManagementSeeder
             {
                 Id = Guid.NewGuid(),
                 Name = "Night Shift",
-                ShiftName = "Night Shift",
                 Code = "NIGHT",
-                ShiftCode = "NIGHT",
                 Description = "Night shift: 10:00 PM - 6:00 AM",
                 TotalHoursPerWeek = 40m,
                 IsActive = true,

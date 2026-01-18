@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.DTOs.User;
 using TruLoad.Backend.Models.Identity;
+using TruLoad.Backend.Services.Interfaces;
 
 namespace TruLoad.Controllers;
 
@@ -15,14 +16,17 @@ public class RolesController : ControllerBase
 {
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly ILogger<RolesController> _logger;
+    private readonly IPermissionService _permissionService;
 
-    public RolesController(RoleManager<ApplicationRole> roleManager, ILogger<RolesController> logger)
+    public RolesController(RoleManager<ApplicationRole> roleManager, ILogger<RolesController> logger, IPermissionService permissionService)
     {
         _roleManager = roleManager;
         _logger = logger;
+        _permissionService = permissionService;
     }
 
     [HttpGet("{id:guid}")]
+    [HasPermission("system.manage_roles")]
     [ProducesResponseType(typeof(RoleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<RoleDto>> GetById(Guid id)
@@ -37,6 +41,7 @@ public class RolesController : ControllerBase
     }
 
     [HttpGet]
+    [HasPermission("system.manage_roles")]
     [ProducesResponseType(typeof(IEnumerable<RoleDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<RoleDto>>> GetAll(
         [FromQuery] bool includeInactive = false)
@@ -159,6 +164,127 @@ public class RolesController : ControllerBase
 
         _logger.LogInformation("Role deleted: {RoleId}", id);
         return NoContent();
+    }
+
+    [HttpGet("{id:guid}/permissions")]
+    [HasPermission("user.manage_permissions")]
+    [ProducesResponseType(typeof(RolePermissionsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RolePermissionsDto>> GetRolePermissions(Guid id)
+    {
+        var role = await _roleManager.FindByIdAsync(id.ToString());
+        if (role == null)
+        {
+            return NotFound(new { message = "Role not found" });
+        }
+
+        var permissions = await _permissionService.GetPermissionsForRoleAsync(id);
+        return Ok(new RolePermissionsDto
+        {
+            RoleId = id,
+            RoleName = role.Name!,
+            Permissions = permissions.Select(p => new PermissionDto
+            {
+                Id = p.Id,
+                Code = p.Code,
+                Name = p.Name,
+                Category = p.Category,
+                IsActive = p.IsActive
+            }).ToList()
+        });
+    }
+
+    [HttpPost("{id:guid}/permissions")]
+    [HasPermission("user.manage_permissions")]
+    [ProducesResponseType(typeof(RolePermissionsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RolePermissionsDto>> AssignPermissionsToRole(Guid id, [FromBody] AssignPermissionsRequest request)
+    {
+        var role = await _roleManager.FindByIdAsync(id.ToString());
+        if (role == null)
+        {
+            return NotFound(new { message = "Role not found" });
+        }
+
+        if (request.PermissionIds == null || !request.PermissionIds.Any())
+        {
+            return BadRequest(new { message = "At least one permission ID must be provided" });
+        }
+
+        try
+        {
+            await _permissionService.AssignPermissionsToRoleAsync(id, request.PermissionIds);
+            _logger.LogInformation("Permissions assigned to role {RoleId}: {PermissionIds}", id, string.Join(", ", request.PermissionIds));
+
+            // Return updated permissions
+            var permissions = await _permissionService.GetPermissionsForRoleAsync(id);
+            return Ok(new RolePermissionsDto
+            {
+                RoleId = id,
+                RoleName = role.Name!,
+                Permissions = permissions.Select(p => new PermissionDto
+                {
+                    Id = p.Id,
+                    Code = p.Code,
+                    Name = p.Name,
+                    Category = p.Category,
+                    IsActive = p.IsActive
+                }).ToList()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to assign permissions to role {RoleId}", id);
+            return BadRequest(new { message = "Failed to assign permissions to role" });
+        }
+    }
+
+    [HttpDelete("{id:guid}/permissions/{permissionId:guid}")]
+    [HasPermission("user.manage_permissions")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemovePermissionFromRole(Guid id, Guid permissionId)
+    {
+        var role = await _roleManager.FindByIdAsync(id.ToString());
+        if (role == null)
+        {
+            return NotFound(new { message = "Role not found" });
+        }
+
+        try
+        {
+            await _permissionService.RemovePermissionsFromRoleAsync(id, new[] { permissionId });
+            _logger.LogInformation("Permission {PermissionId} removed from role {RoleId}", permissionId, id);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove permission {PermissionId} from role {RoleId}", permissionId, id);
+            return BadRequest(new { message = "Failed to remove permission from role" });
+        }
+    }
+
+    [HttpGet("{id:guid}/users")]
+    [HasPermission("user.manage_permissions")]
+    [ProducesResponseType(typeof(RoleUsersDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RoleUsersDto>> GetRoleUsers(Guid id)
+    {
+        var role = await _roleManager.FindByIdAsync(id.ToString());
+        if (role == null)
+        {
+            return NotFound(new { message = "Role not found" });
+        }
+
+        // Get users in this role - this would need to be implemented in a service
+        // For now, return empty list as this requires additional implementation
+        return Ok(new RoleUsersDto
+        {
+            RoleId = id,
+            RoleName = role.Name!,
+            Users = new List<UserSummaryDto>() // TODO: Implement user retrieval for role
+        });
     }
 
     private static RoleDto MapToDto(ApplicationRole role)

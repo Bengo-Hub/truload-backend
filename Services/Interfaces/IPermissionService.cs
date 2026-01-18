@@ -67,8 +67,20 @@ public interface IPermissionService
     Task InvalidatePermissionCacheAsync(string code, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Invalidate all permission caches.
-    /// Called when permissions are bulk updated or during admin operations.
+    /// Assign permissions to a role.
+    /// Creates RolePermission entries and invalidates role permission cache.
     /// </summary>
-    Task InvalidateAllPermissionCacheAsync(CancellationToken cancellationToken = default);
+    Task AssignPermissionsToRoleAsync(Guid roleId, IEnumerable<Guid> permissionIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Remove permissions from a role.
+    /// Deletes RolePermission entries and invalidates role permission cache.
+    /// </summary>
+    Task RemovePermissionsFromRoleAsync(Guid roleId, IEnumerable<Guid> permissionIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Replace all permissions for a role.
+    /// Removes existing permissions and assigns new ones.
+    /// </summary>
+    Task SetRolePermissionsAsync(Guid roleId, IEnumerable<Guid> permissionIds, CancellationToken cancellationToken = default);
 }

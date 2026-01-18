@@ -23,11 +23,11 @@ Thank you for considering contributing to the TruLoad Backend project! This docu
 
 ### Prerequisites
 
-- .NET 8 SDK or later
+- .NET 10 SDK or later (LTS release)
 - Docker Desktop
 - Git
-- IDE: Visual Studio 2022, VS Code, or JetBrains Rider
-- PostgreSQL 16+ (or use Docker Compose)
+- IDE: Visual Studio 2026, VS Code with C# Dev Kit, or JetBrains Rider
+- PostgreSQL 16+ with pgvector extension (or use Docker Compose)
 - Redis 7+ (or use Docker Compose)
 
 ### Setting Up Development Environment
@@ -338,9 +338,13 @@ Create an issue with:
 
 ## 📚 Additional Resources
 
-- [.NET 8 Documentation](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8)
+- [.NET 10 Documentation](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-10/overview)
+- [What's New in EF Core 10](https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-10.0/whatsnew)
+- [Download .NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+- [.NET 10 Upgrade Analysis](docs/NET10_UPGRADE_ANALYSIS.md)
 - [Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [pgvector Documentation](https://github.com/pgvector/pgvector)
 - [EAC Vehicle Load Control Act (2016)](docs/BACKEND_IMPLEMENTATION_PLAN.md#5-legal-computation-rules-summary)
 
 ## 🙏 Thank You!

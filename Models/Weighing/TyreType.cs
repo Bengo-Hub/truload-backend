@@ -1,14 +1,15 @@
+using TruLoad.Backend.Models.Common;
+
 namespace TruLoad.Backend.Models;
 
 /// <summary>
 /// Master reference for tyre type classifications.
-/// 
+///
 /// Tyre types define the physical configuration of tyres on an axle,
 /// which impacts permissible weight limits and fee calculations.
 /// </summary>
-public class TyreType
+public class TyreType : BaseEntity
 {
-    public Guid Id { get; set; }
     
     /// <summary>
     /// Tyre type code (single character)
@@ -33,10 +34,7 @@ public class TyreType
     /// Guide value for common configurations
     /// </summary>
     public int? TypicalMaxWeightKg { get; set; }
-    
-    public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    
+
     // Navigation properties
     public ICollection<AxleWeightReference> AxleWeightReferences { get; set; } = new List<AxleWeightReference>();
     public ICollection<WeighingAxle> WeighingAxles { get; set; } = new List<WeighingAxle>();

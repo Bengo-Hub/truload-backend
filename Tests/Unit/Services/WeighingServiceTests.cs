@@ -1,0 +1,217 @@
+using FluentAssertions;
+using Moq;
+using TruLoad.Backend.Data.Repositories.Weighing;
+using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.Weighing;
+using TruLoad.Backend.Repositories.Weighing.Interfaces;
+using TruLoad.Backend.Services.Implementations.Weighing;
+using Xunit;
+using TruLoad.Backend.Services.Interfaces.Infrastructure;
+using TruLoad.Backend.Data.Repositories.Infrastructure;
+using System.Threading;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Truload.Backend.Tests.Unit.Services;
+
+public class WeighingServiceTests
+{
+    private readonly Mock<IWeighingRepository> _mockWeighingRepository;
+    private readonly Mock<IAxleConfigurationRepository> _mockAxleConfigurationRepository;
+    private readonly Mock<IPermitRepository> _mockPermitRepository;
+    private readonly Mock<IProhibitionRepository> _mockProhibitionRepository;
+    private readonly Mock<IToleranceRepository> _mockToleranceRepository;
+    private readonly Mock<IAxleFeeScheduleRepository> _mockFeeScheduleRepository;
+    private readonly Mock<IPdfService> _mockPdfService;
+    private readonly Mock<IBlobStorageService> _mockBlobStorageService;
+    private readonly Mock<IDocumentRepository> _mockDocumentRepository;
+    private readonly WeighingService _service;
+
+    public WeighingServiceTests()
+    {
+        _mockWeighingRepository = new Mock<IWeighingRepository>();
+        _mockAxleConfigurationRepository = new Mock<IAxleConfigurationRepository>();
+        _mockPermitRepository = new Mock<IPermitRepository>();
+        _mockProhibitionRepository = new Mock<IProhibitionRepository>();
+        _mockToleranceRepository = new Mock<IToleranceRepository>();
+        _mockFeeScheduleRepository = new Mock<IAxleFeeScheduleRepository>();
+        _mockPdfService = new Mock<IPdfService>();
+        _mockBlobStorageService = new Mock<IBlobStorageService>();
+        _mockDocumentRepository = new Mock<IDocumentRepository>();
+
+        _service = new WeighingService(
+            _mockWeighingRepository.Object,
+            _mockAxleConfigurationRepository.Object,
+            _mockPermitRepository.Object,
+            _mockProhibitionRepository.Object,
+            _mockToleranceRepository.Object,
+            _mockFeeScheduleRepository.Object,
+            _mockPdfService.Object,
+            _mockBlobStorageService.Object,
+            _mockDocumentRepository.Object
+        );
+    }
+
+    [Fact]
+    public async Task InitiateWeighingAsync_ShouldCreateTransaction_WithPendingStatus()
+    {
+        // Arrange
+        var ticketNumber = "TICKET-001";
+        var stationId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        _mockWeighingRepository.Setup(r => r.CreateTransactionAsync(It.IsAny<WeighingTransaction>()))
+            .ReturnsAsync((WeighingTransaction t) => t);
+
+        // Act
+        var result = await _service.InitiateWeighingAsync(ticketNumber, stationId, userId);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.TicketNumber.Should().Be(ticketNumber);
+        result.StationId.Should().Be(stationId);
+        result.WeighedByUserId.Should().Be(userId);
+        result.ControlStatus.Should().Be("Pending");
+        result.WeighedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task CaptureWeightsAsync_ShouldUpdateWeights_AndCalculateGvw()
+    {
+        // Arrange
+        var transactionId = Guid.NewGuid();
+        var configId = Guid.NewGuid();
+        var transaction = new WeighingTransaction { Id = transactionId, ControlStatus = "Pending" };
+        
+        var axles = new List<WeighingAxle>
+        {
+            new WeighingAxle { AxleNumber = 1, MeasuredWeightKg = 5000, AxleConfigurationId = configId },
+            new WeighingAxle { AxleNumber = 2, MeasuredWeightKg = 6000, AxleConfigurationId = configId }
+        };
+
+        var config = new AxleConfiguration 
+        { 
+            Id = configId, 
+            GvwPermissibleKg = 20000, 
+            AxleWeightReferences = new List<AxleWeightReference>
+            {
+                new AxleWeightReference { AxlePosition = 1, AxleLegalWeightKg = 8000 },
+                new AxleWeightReference { AxlePosition = 2, AxleLegalWeightKg = 8000 }
+            }
+        };
+
+        _mockWeighingRepository.Setup(r => r.GetTransactionByIdAsync(transactionId))
+            .ReturnsAsync(transaction);
+
+        _mockWeighingRepository.Setup(r => r.UpdateTransactionAsync(It.IsAny<WeighingTransaction>()))
+            .ReturnsAsync(transaction);
+
+        _mockAxleConfigurationRepository.Setup(r => r.GetByIdAsync(configId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(config);
+
+        // Act
+        var result = await _service.CaptureWeightsAsync(transactionId, axles);
+
+        // Assert
+        result.WeighingAxles.Should().HaveCount(2);
+        result.GvwMeasuredKg.Should().Be(11000); // 5000 + 6000
+        result.ControlStatus.Should().Be("Compliant");
+        result.IsCompliant.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CalculateComplianceAsync_ShouldFlagOverload_WhenGvwExceeded()
+    {
+        // Arrange
+        var transactionId = Guid.NewGuid();
+        var configId = Guid.NewGuid();
+        var axles = new List<WeighingAxle>
+        {
+            new WeighingAxle { AxleNumber = 1, MeasuredWeightKg = 6000, AxleConfigurationId = configId },
+            new WeighingAxle { AxleNumber = 2, MeasuredWeightKg = 6000, AxleConfigurationId = configId }
+        };
+        
+        var transaction = new WeighingTransaction 
+        { 
+            Id = transactionId, 
+            ControlStatus = "Pending",
+            WeighingAxles = axles
+        };
+
+        var config = new AxleConfiguration 
+        { 
+            Id = configId, 
+            GvwPermissibleKg = 10000, // Limit is 10k, measured is 12k
+            AxleWeightReferences = new List<AxleWeightReference>
+            {
+                new AxleWeightReference { AxlePosition = 1, AxleLegalWeightKg = 8000 },
+                new AxleWeightReference { AxlePosition = 2, AxleLegalWeightKg = 8000 }
+            }
+        };
+
+        _mockWeighingRepository.Setup(r => r.GetTransactionByIdAsync(transactionId))
+            .ReturnsAsync(transaction);
+        
+        _mockAxleConfigurationRepository.Setup(r => r.GetByIdAsync(configId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(config);
+
+        // Act
+        var result = await _service.CalculateComplianceAsync(transactionId);
+
+        // Assert
+        result.GvwMeasuredKg.Should().Be(12000);
+        result.GvwPermissibleKg.Should().Be(10000);
+        result.OverloadKg.Should().Be(2000);
+        result.ControlStatus.Should().Be("Overloaded");
+        result.IsCompliant.Should().BeFalse();
+        result.IsSentToYard.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CalculateComplianceAsync_ShouldAllowOperationalTolerance()
+    {
+        // Arrange
+        var transactionId = Guid.NewGuid();
+        var configId = Guid.NewGuid();
+        var axles = new List<WeighingAxle>
+        {
+            new WeighingAxle { AxleNumber = 1, MeasuredWeightKg = 5100, AxleConfigurationId = configId },
+            new WeighingAxle { AxleNumber = 2, MeasuredWeightKg = 5050, AxleConfigurationId = configId }
+        };
+        // Total = 10150
+        
+        var transaction = new WeighingTransaction 
+        { 
+            Id = transactionId, 
+            ControlStatus = "Pending",
+            WeighingAxles = axles
+        };
+
+        var config = new AxleConfiguration 
+        { 
+            Id = configId, 
+            GvwPermissibleKg = 10000,
+            AxleWeightReferences = new List<AxleWeightReference>
+            {
+                new AxleWeightReference { AxlePosition = 1, AxleLegalWeightKg = 6000 },
+                new AxleWeightReference { AxlePosition = 2, AxleLegalWeightKg = 6000 }
+            }
+        };
+
+        _mockWeighingRepository.Setup(r => r.GetTransactionByIdAsync(transactionId))
+            .ReturnsAsync(transaction);
+        
+        _mockAxleConfigurationRepository.Setup(r => r.GetByIdAsync(configId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(config);
+
+        // Act
+        var result = await _service.CalculateComplianceAsync(transactionId);
+
+        // Assert
+        result.GvwMeasuredKg.Should().Be(10150);
+        result.OverloadKg.Should().Be(150); // < 200kg tolerance
+        result.ControlStatus.Should().Be("Warning");
+        result.IsCompliant.Should().BeFalse(); // Still strict non-compliant
+        result.IsSentToYard.Should().BeFalse(); // But released
+    }
+}

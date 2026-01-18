@@ -20,4 +20,5 @@ public class AxleConfigurationResponseDto
     public DateTime UpdatedAt { get; set; }
     public Guid? CreatedByUserId { get; set; }
     public int WeightReferenceCount { get; set; }
+    public List<AxleWeightReferenceDto>? WeightReferences { get; set; }
 }

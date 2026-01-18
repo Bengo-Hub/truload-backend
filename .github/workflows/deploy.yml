@@ -64,9 +64,9 @@ jobs:
         GIT_EMAIL: ${{ secrets.GIT_EMAIL || 'dev@truload.io' }}
         # Shared database passwords from INFRA namespace (PostgreSQL and Redis)
         POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-        REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+        REDIS_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || secrets.REDIS_PASSWORD }}
         # Shared RabbitMQ in infra namespace
-        RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+        RABBITMQ_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || secrets.RABBITMQ_PASSWORD }}
         RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME || 'user' }}
         # .NET secrets
         JWT_SECRET: ${{ secrets.JWT_SECRET }}

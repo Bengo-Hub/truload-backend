@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
-using truload_backend.Data;
+using TruLoad.Backend.Data;
 
 namespace TruLoad.Data.Seeders;
 
@@ -103,8 +103,12 @@ public static class PermissionSeeder
         ("analytics.superset", "Superset Access", "Analytics", "Access Superset analytics platform"),
         ("analytics.audit", "Audit Analytics", "Analytics", "View analytics access audit logs"),
 
-        // System Category (6 permissions)
+        // System Category (10 permissions)
         ("system.admin", "System Admin", "System", "Full system administration access"),
+        ("system.manage_roles", "Manage Roles", "System", "Create, update, and delete user roles"),
+        ("system.manage_organizations", "Manage Organizations", "System", "Create, update, and delete organizations"),
+        ("system.manage_stations", "Manage Stations", "System", "Create, update, and delete stations"),
+        ("system.manage_departments", "Manage Departments", "System", "Create, update, and delete departments"),
         ("system.audit_logs", "Audit Logs", "System", "View and manage audit logs"),
         ("system.cache_management", "Cache Management", "System", "Manage system cache"),
         ("system.integration_management", "Integration Management", "System", "Manage third-party integrations"),

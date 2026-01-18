@@ -1,3 +1,5 @@
+using TruLoad.Backend.Models.Common;
+
 namespace TruLoad.Backend.Models;
 
 /// <summary>
@@ -5,9 +7,8 @@ namespace TruLoad.Backend.Models;
 /// Defines legal weights and axle group classifications for each axle position.
 /// Maps to axleweightxreff table in legacy system.
 /// </summary>
-public class AxleWeightReference
+public class AxleWeightReference : BaseEntity
 {
-    public Guid Id { get; set; }
     
     /// <summary>
     /// Parent axle configuration ID (foreign key)
@@ -46,10 +47,7 @@ public class AxleWeightReference
     /// NULL if not specified
     /// </summary>
     public Guid? TyreTypeId { get; set; }
-    
-    public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    
+
     // Navigation properties
     public AxleConfiguration AxleConfiguration { get; set; } = null!;
     public AxleGroup? AxleGroup { get; set; }

@@ -137,6 +137,7 @@ public class PermissionVerificationService : IPermissionVerificationService
         var principal = httpContext.User;
         // Try standard claim types first
         return principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-            ?? principal?.FindFirst("sub")?.Value;
+            ?? principal?.FindFirst("sub")?.Value
+            ?? principal?.FindFirst("auth_service_user_id")?.Value;
     }
 }

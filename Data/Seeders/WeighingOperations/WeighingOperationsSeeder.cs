@@ -2,7 +2,8 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
-using truload_backend.Data;
+using TruLoad.Backend.Models.System;
+using TruLoad.Backend.Data;
 
 namespace TruLoad.Backend.Data.Seeders.WeighingOperations;
 
@@ -120,9 +121,16 @@ public class WeighingOperationsSeeder
         Console.WriteLine("=== Seeding Axle Configurations (Standard) ===");
         
         int seeded = 0;
+        var addedCodes = new HashSet<string>();
         foreach (var configElement in configurationsElement.EnumerateArray())
         {
             var axleCode = configElement.GetProperty("axleCode").GetString() ?? "";
+            
+            if (addedCodes.Contains(axleCode))
+            {
+                Console.WriteLine($"Skipping duplicate axle code: {axleCode}");
+                continue;
+            }
             
             var existing = await _context.AxleConfigurations
                 .FirstOrDefaultAsync(ac => ac.AxleCode == axleCode);
@@ -145,6 +153,7 @@ public class WeighingOperationsSeeder
                 };
                 
                 await _context.AxleConfigurations.AddAsync(config);
+                addedCodes.Add(axleCode);
                 seeded++;
             }
         }
@@ -213,7 +222,7 @@ public class WeighingOperationsSeeder
     {
         Console.WriteLine("=== Seeding Axle Fee Schedules ===");
         
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
         
         int seeded = 0;
         foreach (var feeElement in feeSchedulesElement.EnumerateArray())
@@ -224,13 +233,14 @@ public class WeighingOperationsSeeder
             var overloadMax = feeElement.TryGetProperty("overloadMaxKg", out var maxEl) && maxEl.ValueKind != JsonValueKind.Null 
                 ? (int?)maxEl.GetInt32() : null;
             
+            var todayDateTime = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
             var existing = await _context.AxleFeeSchedules
                 .FirstOrDefaultAsync(afs => 
                     afs.LegalFramework == legalFramework &&
                     afs.FeeType == feeType &&
                     afs.OverloadMinKg == overloadMin &&
                     afs.OverloadMaxKg == overloadMax &&
-                    afs.EffectiveFrom == today);
+                    afs.EffectiveFrom.Date == todayDateTime.Date);
             
             if (existing == null)
             {
@@ -245,9 +255,10 @@ public class WeighingOperationsSeeder
                     FlatFeeUsd = feeElement.GetProperty("flatFeeUsd").GetDecimal(),
                     DemeritPoints = feeElement.GetProperty("demeritPoints").GetInt32(),
                     PenaltyDescription = feeElement.GetProperty("penaltyDescription").GetString(),
-                    EffectiveFrom = today,
+                    EffectiveFrom = todayDateTime,
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
                 };
                 
                 await _context.AxleFeeSchedules.AddAsync(schedule);

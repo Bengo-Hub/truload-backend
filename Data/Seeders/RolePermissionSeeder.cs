@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
-using truload_backend.Data;
+using TruLoad.Backend.Data;
 
 namespace TruLoad.Data.Seeders;
 
@@ -8,7 +8,7 @@ namespace TruLoad.Data.Seeders;
 /// Seeds role-permission assignments for 7 built-in roles.
 /// Assigns permissions based on role type and authorization level.
 /// SUPERUSER: 79 permissions (all) - maps to auth-service superuser flag
-/// SYSTEM_ADMIN: 65 permissions (exclude system.*)
+/// SYSTEM_ADMIN: 74 permissions (all except system.admin)
 /// STATION_MANAGER: 45 permissions
 /// WEIGHING_OPERATOR: 4 permissions
 /// ENFORCEMENT_OFFICER: 30 permissions
@@ -58,7 +58,7 @@ public static class RolePermissionSeeder
         {
             "SYSTEM_ADMIN", new List<string>
             {
-                // All except system.* - same as ADMIN role for consistency
+                // All permissions except system.admin (reserved for SUPERUSER)
                 "weighing.create", "weighing.read", "weighing.read_own", "weighing.update", "weighing.approve",
                 "weighing.override", "weighing.send_to_yard", "weighing.scale_test", "weighing.export",
                 "weighing.delete", "weighing.webhook", "weighing.audit",
@@ -76,7 +76,10 @@ public static class RolePermissionSeeder
                 "config.read", "config.manage_axle", "config.manage_permits", "config.manage_fees",
                 "config.manage_acts", "config.manage_taxonomy", "config.manage_references", "config.audit",
                 "analytics.read", "analytics.read_own", "analytics.export", "analytics.schedule",
-                "analytics.custom_query", "analytics.manage_dashboards", "analytics.superset", "analytics.audit"
+                "analytics.custom_query", "analytics.manage_dashboards", "analytics.superset", "analytics.audit",
+                "system.manage_roles", "system.manage_organizations", "system.manage_stations",
+                "system.manage_departments", "system.audit_logs", "system.cache_management",
+                "system.integration_management", "system.backup_restore", "system.security_policy"
             }
         },
         {

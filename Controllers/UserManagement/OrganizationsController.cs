@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.DTOs.User;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.UserManagement.Interfaces;
@@ -21,6 +22,7 @@ public class OrganizationsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [HasPermission("system.manage_organizations")]
     [ProducesResponseType(typeof(OrganizationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<OrganizationDto>> GetById(Guid id, CancellationToken cancellationToken)
@@ -35,6 +37,7 @@ public class OrganizationsController : ControllerBase
     }
 
     [HttpGet]
+    [HasPermission("system.manage_organizations")]
     [ProducesResponseType(typeof(IEnumerable<OrganizationDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<OrganizationDto>>> GetAll(
         [FromQuery] bool includeInactive = false,
@@ -45,6 +48,7 @@ public class OrganizationsController : ControllerBase
     }
 
     [HttpGet("code/{code}")]
+    [HasPermission("system.manage_organizations")]
     [ProducesResponseType(typeof(OrganizationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<OrganizationDto>> GetByCode(string code, CancellationToken cancellationToken)
@@ -59,6 +63,7 @@ public class OrganizationsController : ControllerBase
     }
 
     [HttpPost]
+    [HasPermission("system.manage_organizations")]
     [ProducesResponseType(typeof(OrganizationDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<OrganizationDto>> Create([FromBody] CreateOrganizationRequest request, CancellationToken cancellationToken)
@@ -90,6 +95,7 @@ public class OrganizationsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [HasPermission("system.manage_organizations")]
     [ProducesResponseType(typeof(OrganizationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<OrganizationDto>> Update(Guid id, [FromBody] UpdateOrganizationRequest request, CancellationToken cancellationToken)
@@ -124,6 +130,7 @@ public class OrganizationsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [HasPermission("system.manage_organizations")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)

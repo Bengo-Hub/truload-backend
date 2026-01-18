@@ -1,3 +1,6 @@
+using TruLoad.Backend.Models.Weighing;
+using TruLoad.Backend.Models.Common;
+
 namespace TruLoad.Backend.Models;
 
 /// <summary>
@@ -5,9 +8,8 @@ namespace TruLoad.Backend.Models;
 /// Records actual weights, configurations, and fees for each axle during a weighing event.
 /// Maps to weighing_axles table in database.
 /// </summary>
-public class WeighingAxle
+public class WeighingAxle : BaseEntity
 {
-    public Guid Id { get; set; }
     
     /// <summary>
     /// Parent weighing transaction ID (foreign key)
@@ -62,20 +64,59 @@ public class WeighingAxle
     /// Identifies axle position within vehicle structure
     /// </summary>
     public string AxleGrouping { get; set; } = string.Empty;
-    
+
+    /// <summary>
+    /// Axle type classification for regulatory compliance
+    /// Values: Steering, SingleDrive, Tandem, Tridem, Tag
+    /// CRITICAL: Different weight limits per EAC Act 2016 (Steering: 7k, Drive: 10k, Tandem: 16k, Tridem: 24k)
+    /// Kenya Traffic Act Cap 403 Schedule 2 requires this for fee calculation
+    /// </summary>
+    public string AxleType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Distance to next axle in meters (NULL for last axle)
+    /// REGULATORY: Kenya Traffic Act Cap 403 Schedule 2 requires specific spacing:
+    /// - Tandem axles: 1.2m-1.8m apart for 16-tonne grouping
+    /// - Tridem axles: spacing requirements for 24-tonne grouping
+    /// </summary>
+    public decimal? AxleSpacingMeters { get; set; }
+
+    /// <summary>
+    /// Pavement Damage Factor (Fourth Power Law calculation)
+    /// Formula: (ActualWeight / PermissibleWeight) ^ 4
+    /// REGULATORY: EAC Vehicle Load Control Act 2016 Section 15
+    /// Infrastructure damage surcharge based on damage severity
+    /// Values > 1.0 indicate damage to road infrastructure
+    /// </summary>
+    public decimal PavementDamageFactor { get; set; } = 0.0000m;
+
+    /// <summary>
+    /// Cached total weight of all axles in the same axle_grouping (A/B/C/D)
+    /// Performance optimization for group compliance checks
+    /// REGULATORY: Kenya Traffic Act requires 5% tolerance on GROUP weight, not individual axles
+    /// </summary>
+    public int? GroupAggregateWeightKg { get; set; }
+
+    /// <summary>
+    /// Cached permissible weight for the axle group
+    /// Performance optimization for tolerance calculations
+    /// REGULATORY: Used to apply 5% tolerance per group (Traffic Act Cap 403)
+    /// </summary>
+    public int? GroupPermissibleWeightKg { get; set; }
+
     /// <summary>
     /// Tyre type used on this axle (foreign key)
     /// S (Single), D (Dual), W (Wide) - affects weight limits
     /// NULL if not determined
     /// </summary>
     public Guid? TyreTypeId { get; set; }
-    
+
     /// <summary>
     /// Fee calculated for this axle in USD
     /// Based on overload and applicable fee schedule
     /// </summary>
     public decimal FeeUsd { get; set; } = 0m;
-    
+
     /// <summary>
     /// Timestamp when this axle was captured/measured
     /// </summary>
@@ -85,7 +126,7 @@ public class WeighingAxle
     // UNIQUE (weighing_id, axle_number)
     
     // Navigation properties
-    // public Weighing? Weighing { get; set; } // Will be configured when Weighing model is created
+    public WeighingTransaction? WeighingTransaction { get; set; }
     public AxleConfiguration? AxleConfiguration { get; set; }
     public AxleWeightReference? AxleWeightReference { get; set; }
     public AxleGroup? AxleGroup { get; set; }

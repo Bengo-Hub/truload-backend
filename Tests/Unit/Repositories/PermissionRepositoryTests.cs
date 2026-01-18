@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.Auth;
-using truload_backend.Data;
+using TruLoad.Backend.Data;
 using Xunit;
 using FluentAssertions;
 
-namespace truload_backend.Tests.Unit.Repositories;
+namespace Truload.Backend.Tests.Unit.Repositories;
 
 /// <summary>
 /// Unit tests for PermissionRepository.
