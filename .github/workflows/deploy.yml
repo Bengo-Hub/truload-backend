@@ -169,11 +169,11 @@ jobs:
         echo "$KUBE_CONFIG_B64" | base64 -d > ~/.kube/config
 
         # Check if deployment exists before checking rollout status
-        if kubectl get deployment truload-backend-app -n ${NS} >/dev/null 2>&1; then
+        if kubectl get deployment truload-backend -n ${NS} >/dev/null 2>&1; then
           echo "✓ Deployment found, checking rollout status..."
-          
+
           # Wait for deployment to be rolled out
-          if kubectl rollout status deployment/truload-backend-app -n ${NS} --timeout=300s; then
+          if kubectl rollout status deployment/truload-backend -n ${NS} --timeout=300s; then
             echo "✅ Deployment rollout successful"
             
             # Try ingress health endpoint
@@ -206,7 +206,7 @@ jobs:
           echo "  kubectl get application truload-backend -n argocd"
           echo ""
           echo "Check deployment status with:"
-          echo "  kubectl get deployment truload-backend-app -n ${NS}"
+          echo "  kubectl get deployment truload-backend -n ${NS}"
           echo ""
           echo "⚠️ Skipping health check (deployment not found)"
         fi
