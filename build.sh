@@ -1,250 +1,222 @@
 #!/usr/bin/env bash
-
 # =============================================================================
-# TruLoad Backend - Production Build & Deploy Script
+# TruLoad Backend - Build & Deploy Script
 # =============================================================================
-# - Security scan (Trivy)
-# - Docker build & push
-# - Optional DB setup (PostgreSQL, Redis, RabbitMQ)
-# - K8s secrets apply and JWT bootstrap
-# - Update centralized devops-k8s Helm values (if app path exists)
-# - Works locally or in CI (uses KUBE_CONFIG when provided)
+# Pattern: Matches auth-api deployment approach
+# - Uses devops-k8s scripts for database and secret creation
+# - Migrations handled separately (EF Core)
 # =============================================================================
 
 set -euo pipefail
 set +H
 
-# Colors
-RED='\033[0;31m'
+BLUE='\033[0;34m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
+RED='\033[0;31m'
 NC='\033[0m'
 
-log_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
-log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
-log_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
-log_step()    { echo -e "${PURPLE}[STEP]${NC} $1"; }
-
-# =============================================================================
-# Configuration
-# =============================================================================
+info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 APP_NAME=${APP_NAME:-"truload-backend"}
 NAMESPACE=${NAMESPACE:-"truload"}
 ENV_SECRET_NAME=${ENV_SECRET_NAME:-"truload-backend-env"}
 DEPLOY=${DEPLOY:-true}
 SETUP_DATABASES=${SETUP_DATABASES:-true}
-DB_TYPES=${DB_TYPES:-postgres,redis,rabbitmq}
+DB_TYPES=${DB_TYPES:-postgres,redis}
+# Per-service database configuration (matches auth-api pattern)
+SERVICE_DB_NAME=${SERVICE_DB_NAME:-truload}
+SERVICE_DB_USER=${SERVICE_DB_USER:-truload_user}
 
-# Registry
 REGISTRY_SERVER=${REGISTRY_SERVER:-docker.io}
 REGISTRY_NAMESPACE=${REGISTRY_NAMESPACE:-codevertex}
 IMAGE_REPO="${REGISTRY_SERVER}/${REGISTRY_NAMESPACE}/${APP_NAME}"
 
-# Central devops repo
 DEVOPS_REPO=${DEVOPS_REPO:-"Bengo-Hub/devops-k8s"}
 DEVOPS_DIR=${DEVOPS_DIR:-"$HOME/devops-k8s"}
 VALUES_FILE_PATH=${VALUES_FILE_PATH:-"apps/${APP_NAME}/values.yaml"}
 
-# Git identity for cross-repo values.yaml bump
 GIT_EMAIL=${GIT_EMAIL:-"dev@truload.io"}
 GIT_USER=${GIT_USER:-"TruLoad Bot"}
-
-# Trivy exit code relaxed by default
 TRIVY_ECODE=${TRIVY_ECODE:-0}
 
-# Resolve commit id
 if [[ -z ${GITHUB_SHA:-} ]]; then
   GIT_COMMIT_ID=$(git rev-parse --short=8 HEAD || echo "localbuild")
 else
   GIT_COMMIT_ID=${GITHUB_SHA::8}
 fi
 
-log_info "Service: ${APP_NAME}"
-log_info "Namespace: ${NAMESPACE}"
-log_info "Image: ${IMAGE_REPO}:${GIT_COMMIT_ID}"
+info "Service : ${APP_NAME}"
+info "Namespace: ${NAMESPACE}"
+info "Image   : ${IMAGE_REPO}:${GIT_COMMIT_ID}"
 
-# =============================================================================
-# Prerequisites
-# =============================================================================
-
-check_command() { command -v "$1" &>/dev/null || { log_error "$1 is required"; exit 1; }; }
-
-for cmd in git docker trivy; do
-  check_command "$cmd"
+for tool in git docker trivy; do
+  command -v "$tool" >/dev/null || { error "$tool is required"; exit 1; }
 done
-if [[ "${DEPLOY}" == "true" ]]; then
-  for cmd in kubectl helm yq jq; do check_command "$cmd"; done
+if [[ ${DEPLOY} == "true" ]]; then
+  for tool in kubectl helm yq jq; do
+    command -v "$tool" >/dev/null || { error "$tool is required"; exit 1; }
+  done
 fi
+success "Prerequisite checks passed"
 
-log_success "Prerequisite checks passed"
-
-# =============================================================================
-# Security scan (filesystem)
-# =============================================================================
-log_step "Security scan (filesystem)"
+info "Running Trivy filesystem scan"
 trivy fs . --exit-code "$TRIVY_ECODE" --format table \
   --skip-files "*.pem" --skip-files "*.key" --skip-files "*.crt" || true
 
-# =============================================================================
-# Docker build
-# =============================================================================
-log_step "Building Docker image"
+info "Building Docker image"
 DOCKER_BUILDKIT=1 docker build . -t "${IMAGE_REPO}:${GIT_COMMIT_ID}"
-log_success "Docker build complete"
+success "Docker build complete"
 
-# =============================================================================
-# Push & Deploy
-# =============================================================================
-if [[ "${DEPLOY}" != "true" ]]; then
-  log_info "DEPLOY=false; skipping push and deploy"
-else
-  # Registry login (optional)
-  if [[ -n "${REGISTRY_USERNAME:-}" && -n "${REGISTRY_PASSWORD:-}" ]]; then
-    echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_SERVER" -u "$REGISTRY_USERNAME" --password-stdin
-  fi
+if [[ ${DEPLOY} != "true" ]]; then
+  warn "DEPLOY=false -> skipping push/deploy"
+  exit 0
+fi
 
-  log_step "Pushing image"
-  docker push "${IMAGE_REPO}:${GIT_COMMIT_ID}"
-  log_success "Image pushed"
+if [[ -n ${REGISTRY_USERNAME:-} && -n ${REGISTRY_PASSWORD:-} ]]; then
+  echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_SERVER" -u "$REGISTRY_USERNAME" --password-stdin
+fi
 
-  # Kubeconfig setup
-  if [[ -n "${KUBE_CONFIG:-}" ]]; then
-    mkdir -p ~/.kube
-    echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
-    chmod 600 ~/.kube/config
-    export KUBECONFIG=~/.kube/config
-  fi
+docker push "${IMAGE_REPO}:${GIT_COMMIT_ID}"
+success "Image pushed"
 
-  # Namespace
-  kubectl get ns "$NAMESPACE" >/dev/null 2>&1 || kubectl create ns "$NAMESPACE"
+if [[ -n ${KUBE_CONFIG:-} ]]; then
+  mkdir -p ~/.kube
+  echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
+  chmod 600 ~/.kube/config
+  export KUBECONFIG=~/.kube/config
+fi
 
-  # CRITICAL: Do NOT apply KubeSecrets/devENV.yml in CI/CD
-  # It may contain outdated credentials. Skip in CI/CD, only apply locally.
-  if [[ -z "${CI:-}${GITHUB_ACTIONS:-}" && -f "KubeSecrets/devENV.yml" ]]; then
-    log_info "Local deployment detected - applying KubeSecrets/devENV.yml"
-    kubectl apply -n "$NAMESPACE" -f KubeSecrets/devENV.yml || log_warning "Failed to apply devENV.yml"
-  elif [[ -f "KubeSecrets/devENV.yml" ]]; then
-    log_info "CI/CD deployment - skipping KubeSecrets/devENV.yml (managed by deployment workflow)"
-  fi
+kubectl get ns "$NAMESPACE" >/dev/null 2>&1 || kubectl create ns "$NAMESPACE"
 
-  # Ensure JWT secret present
-  if ! kubectl -n "$NAMESPACE" get secret "$ENV_SECRET_NAME" -o jsonpath='{.data.JWT_SECRET}' >/dev/null 2>&1; then
-    JWT_SECRET=$(openssl rand -hex 32)
-    if kubectl -n "$NAMESPACE" get secret "$ENV_SECRET_NAME" >/dev/null 2>&1; then
-      kubectl -n "$NAMESPACE" patch secret "$ENV_SECRET_NAME" -p "{\"stringData\":{\"JWT_SECRET\":\"$JWT_SECRET\"}}"
-    else
-      kubectl -n "$NAMESPACE" create secret generic "$ENV_SECRET_NAME" --from-literal=JWT_SECRET="$JWT_SECRET"
-    fi
-    log_success "JWT secret ensured"
-  fi
+if [[ -z ${CI:-}${GITHUB_ACTIONS:-} && -f KubeSecrets/devENV.yml ]]; then
+  info "Applying local dev secrets"
+  kubectl apply -n "$NAMESPACE" -f KubeSecrets/devENV.yml || warn "Failed to apply devENV.yml"
+fi
 
-  # Optional: image pull secret
-  if [[ -n "${REGISTRY_USERNAME:-}" && -n "${REGISTRY_PASSWORD:-}" ]]; then
-    kubectl -n "$NAMESPACE" create secret docker-registry registry-credentials \
-      --docker-server="$REGISTRY_SERVER" \
-      --docker-username="$REGISTRY_USERNAME" \
-      --docker-password="$REGISTRY_PASSWORD" \
-      --dry-run=client -o yaml | kubectl apply -f - || log_warning "Pull secret creation failed"
-  fi
+if [[ -n ${REGISTRY_USERNAME:-} && -n ${REGISTRY_PASSWORD:-} ]]; then
+  kubectl -n "$NAMESPACE" create secret docker-registry registry-credentials \
+    --docker-server="$REGISTRY_SERVER" \
+    --docker-username="$REGISTRY_USERNAME" \
+    --docker-password="$REGISTRY_PASSWORD" \
+    --dry-run=client -o yaml | kubectl apply -f - || warn "registry secret creation failed"
+fi
 
-  # Setup environment secrets from existing databases (managed by devops-k8s)
-  if [[ "${SETUP_DATABASES}" == "true" ]]; then
-    log_info "Databases are managed by devops-k8s infrastructure"
-    log_info "PostgreSQL and Redis: Shared services in 'infra' namespace"
-    log_info "RabbitMQ: Shared service in 'infra' namespace (per devops-k8s)"
-    log_info "Retrieving credentials from existing secrets and setting up app environment"
-    
-    if [[ -f "scripts/setup_env_secrets.sh" ]]; then
-      chmod +x scripts/setup_env_secrets.sh
-      log_step "Running setup_env_secrets.sh with full logging (tee)"
-      LOG_FILE=$(mktemp)
-      set +e
-      ./scripts/setup_env_secrets.sh | tee "$LOG_FILE"
-      SETUP_RC=${PIPESTATUS[0]}
-      set -e
-      VALIDATION_OUTPUT=$(cat "$LOG_FILE")
-      rm -f "$LOG_FILE"
-      if [[ $SETUP_RC -ne 0 ]]; then
-        log_error "Environment secret setup failed (exit $SETUP_RC)"
-        exit $SETUP_RC
+# Create per-service database if SETUP_DATABASES is enabled (matches auth-api pattern)
+if [[ "$SETUP_DATABASES" == "true" && -n "${KUBE_CONFIG:-}" ]]; then
+  # Wait for PostgreSQL to be ready in infra namespace
+  if kubectl -n infra get statefulset postgresql >/dev/null 2>&1; then
+    info "Waiting for PostgreSQL to be ready..."
+    kubectl -n infra rollout status statefulset/postgresql --timeout=180s || warn "PostgreSQL not fully ready"
+
+    # Create service database using devops-k8s script
+    if [[ -d "$DEVOPS_DIR" ]] || [[ -n "${DEVOPS_REPO:-}" ]]; then
+      # Ensure devops repo is cloned
+      if [[ ! -d "$DEVOPS_DIR" ]]; then
+        TOKEN="${GH_PAT:-${GIT_SECRET:-${GITHUB_TOKEN:-}}}"
+        CLONE_URL="https://github.com/${DEVOPS_REPO}.git"
+        [[ -n $TOKEN ]] && CLONE_URL="https://x-access-token:${TOKEN}@github.com/${DEVOPS_REPO}.git"
+        git clone "$CLONE_URL" "$DEVOPS_DIR" || { warn "Unable to clone devops repo for database setup"; }
       fi
-      
-      # Parse output for validated credentials
-      export EFFECTIVE_PG_PASS=$(echo "$VALIDATION_OUTPUT" | grep "^EFFECTIVE_PG_PASS=" | cut -d= -f2-)
-      export EFFECTIVE_REDIS_PASS=$(echo "$VALIDATION_OUTPUT" | grep "^EFFECTIVE_REDIS_PASS=" | cut -d= -f2-)
-      export EFFECTIVE_RABBITMQ_PASS=$(echo "$VALIDATION_OUTPUT" | grep "^EFFECTIVE_RABBITMQ_PASS=" | cut -d= -f2-)
-      
-      log_success "Environment secrets configured successfully"
-    else
-      log_error "scripts/setup_env_secrets.sh not found"
-      exit 1
-    fi
-  fi
 
-  # Export variables for migration/seeding scripts
-  export APP_NAME IMAGE_REPO GIT_COMMIT_ID NAMESPACE ENV_SECRET_NAME
-
-  # Run database migrations if enabled and scripts exist
-  if [[ "${SETUP_DATABASES}" == "true" && -f "scripts/run_migrations.sh" ]]; then
-    log_step "Running database migrations..."
-    chmod +x scripts/run_migrations.sh
-    ./scripts/run_migrations.sh || { log_error "Migration failed"; exit 1; }
-  fi
-
-  # Run database seeding if enabled and scripts exist
-  if [[ "${SETUP_DATABASES}" == "true" && -f "scripts/run_seeding.sh" ]]; then
-    log_step "Running database seeding..."
-    chmod +x scripts/run_seeding.sh
-    SEED_MODE=${SEED_MODE:-minimal} ./scripts/run_seeding.sh || log_warning "Seeding failed (non-critical)"
-  fi
-
-  # Update Helm values in centralized devops repo (if path exists)
-  if [[ -n "${KUBE_CONFIG:-}" ]]; then
-    log_step "Updating devops-k8s values (if app manifest exists)"
-    TOKEN="${GH_PAT:-${GITHUB_SECRET:-${GITHUB_TOKEN:-}}}"
-    CLONE_URL="https://github.com/${DEVOPS_REPO}.git"
-    [[ -n "$TOKEN" ]] && CLONE_URL="https://x-access-token:${TOKEN}@github.com/${DEVOPS_REPO}.git"
-
-    if [[ ! -d "$DEVOPS_DIR" ]]; then
-      git clone "$CLONE_URL" "$DEVOPS_DIR" || { log_warning "Cannot clone devops repo"; DEVOPS_DIR=""; }
-    fi
-    if [[ -n "$DEVOPS_DIR" && -d "$DEVOPS_DIR" ]]; then
-      pushd "$DEVOPS_DIR" >/dev/null || true
-      git config user.name "$GIT_USER"; git config user.email "$GIT_EMAIL" || true
-      git fetch origin main || true
-      git checkout main || git checkout -b main || true
-      if [[ -f "$VALUES_FILE_PATH" ]]; then
-        IMAGE_REPO_ENV="$IMAGE_REPO" IMAGE_TAG_ENV="$GIT_COMMIT_ID" \
-          yq e -i '.image.repository = strenv(IMAGE_REPO_ENV) | .image.tag = strenv(IMAGE_TAG_ENV)' "$VALUES_FILE_PATH"
-        git add "$VALUES_FILE_PATH" && git commit -m "${APP_NAME}:${GIT_COMMIT_ID} released" || true
-        if [[ -n "$TOKEN" ]]; then
-          git push origin HEAD:main || log_warning "devops-k8s push failed"
-        else
-          log_warning "No GH token; skipped pushing to devops-k8s"
-        fi
-        log_success "Updated ${VALUES_FILE_PATH}"
+      if [[ -d "$DEVOPS_DIR" && -f "$DEVOPS_DIR/scripts/infrastructure/create-service-database.sh" ]]; then
+        info "Creating database '${SERVICE_DB_NAME}' for service ${APP_NAME}..."
+        SERVICE_DB_NAME="$SERVICE_DB_NAME" \
+        SERVICE_DB_USER="$SERVICE_DB_USER" \
+        APP_NAME="$APP_NAME" \
+        NAMESPACE="$NAMESPACE" \
+        bash "$DEVOPS_DIR/scripts/infrastructure/create-service-database.sh" || warn "Database creation failed or already exists"
       else
-        log_warning "${VALUES_FILE_PATH} not found in devops-k8s; create app manifests to enable ArgoCD auto-sync"
+        warn "create-service-database.sh not found - database should be created via devops-k8s infrastructure"
       fi
-      popd >/dev/null || true
+    fi
+  else
+    warn "PostgreSQL not found in infra namespace - skipping database creation"
+  fi
+fi
+
+# Create service secrets using devops-k8s script if not exists
+# This matches auth-api pattern - uses standard keys (postgresUrl, REDIS_PASSWORD)
+if ! kubectl -n "$NAMESPACE" get secret "$ENV_SECRET_NAME" >/dev/null 2>&1; then
+  if [[ -d "$DEVOPS_DIR" && -f "$DEVOPS_DIR/scripts/infrastructure/create-service-secrets.sh" ]]; then
+    info "Creating secrets for ${APP_NAME} using devops-k8s script..."
+    SERVICE_NAME="$APP_NAME" \
+    NAMESPACE="$NAMESPACE" \
+    DB_NAME="$SERVICE_DB_NAME" \
+    DB_USER="$SERVICE_DB_USER" \
+    SECRET_NAME="$ENV_SECRET_NAME" \
+    bash "$DEVOPS_DIR/scripts/infrastructure/create-service-secrets.sh" || warn "Secret creation failed or already exists"
+  else
+    warn "Secret $ENV_SECRET_NAME not found and create-service-secrets.sh not available"
+    warn "Please create the secret manually or ensure devops-k8s repo is cloned"
+  fi
+fi
+
+# TruLoad-specific: Ensure .NET connection string format in secret
+# The devops-k8s script creates postgresUrl, but .NET needs ConnectionStrings__DefaultConnection
+if kubectl -n "$NAMESPACE" get secret "$ENV_SECRET_NAME" >/dev/null 2>&1; then
+  # Check if ConnectionStrings__DefaultConnection exists
+  if ! kubectl -n "$NAMESPACE" get secret "$ENV_SECRET_NAME" -o jsonpath='{.data.ConnectionStrings__DefaultConnection}' 2>/dev/null | grep -q .; then
+    info "Adding .NET connection string format to secret..."
+    # Get the postgresUrl and convert to .NET format
+    PG_URL=$(kubectl -n "$NAMESPACE" get secret "$ENV_SECRET_NAME" -o jsonpath='{.data.postgresUrl}' 2>/dev/null | base64 -d || echo "")
+    if [[ -n "$PG_URL" ]]; then
+      # Convert postgresql://user:pass@host:port/db to .NET format
+      # Extract components from URL
+      DB_USER_FROM_URL=$(echo "$PG_URL" | sed -n 's|postgresql://\([^:]*\):.*|\1|p')
+      DB_PASS_FROM_URL=$(echo "$PG_URL" | sed -n 's|postgresql://[^:]*:\([^@]*\)@.*|\1|p')
+      DB_HOST_FROM_URL=$(echo "$PG_URL" | sed -n 's|postgresql://[^@]*@\([^:]*\):.*|\1|p')
+      DB_PORT_FROM_URL=$(echo "$PG_URL" | sed -n 's|postgresql://[^@]*@[^:]*:\([0-9]*\)/.*|\1|p')
+      DB_NAME_FROM_URL=$(echo "$PG_URL" | sed -n 's|postgresql://[^/]*/\([^?]*\).*|\1|p')
+
+      DOTNET_CONN="Host=${DB_HOST_FROM_URL};Port=${DB_PORT_FROM_URL};Database=${DB_NAME_FROM_URL};Username=${DB_USER_FROM_URL};Password=${DB_PASS_FROM_URL}"
+
+      kubectl -n "$NAMESPACE" patch secret "$ENV_SECRET_NAME" -p "{\"stringData\":{\"ConnectionStrings__DefaultConnection\":\"$DOTNET_CONN\"}}" || warn "Failed to add .NET connection string"
+      success "Added ConnectionStrings__DefaultConnection to secret"
     fi
   fi
 fi
 
-# =============================================================================
-# Summary
-# =============================================================================
-log_step "Deployment Summary"
-echo "Service: ${APP_NAME}"
-echo "Image  : ${IMAGE_REPO}:${GIT_COMMIT_ID}"
-echo "Deploy : ${DEPLOY}"
-echo "DB     : ${SETUP_DATABASES} (${DB_TYPES})"
+# Export variables for migration/seeding scripts
+export APP_NAME IMAGE_REPO GIT_COMMIT_ID NAMESPACE ENV_SECRET_NAME
 
-exit 0
+# Run database migrations if enabled and scripts exist
+if [[ "${SETUP_DATABASES}" == "true" && -f "scripts/run_migrations.sh" ]]; then
+  info "Running database migrations..."
+  chmod +x scripts/run_migrations.sh
+  ./scripts/run_migrations.sh || { error "Migration failed"; exit 1; }
+fi
 
+TOKEN="${GH_PAT:-${GIT_SECRET:-${GITHUB_TOKEN:-}}}"
+CLONE_URL="https://github.com/${DEVOPS_REPO}.git"
+[[ -n $TOKEN ]] && CLONE_URL="https://x-access-token:${TOKEN}@github.com/${DEVOPS_REPO}.git"
 
+if [[ ! -d $DEVOPS_DIR ]]; then
+  git clone "$CLONE_URL" "$DEVOPS_DIR" || { warn "Unable to clone devops repo"; DEVOPS_DIR=""; }
+fi
+
+if [[ -n $DEVOPS_DIR && -d $DEVOPS_DIR ]]; then
+  pushd "$DEVOPS_DIR" >/dev/null || true
+  git config user.email "$GIT_EMAIL"
+  git config user.name "$GIT_USER"
+  git fetch origin main || true
+  git checkout main || git checkout -b main || true
+  if [[ -f "$VALUES_FILE_PATH" ]]; then
+    IMAGE_REPO_ENV="$IMAGE_REPO" IMAGE_TAG_ENV="$GIT_COMMIT_ID" \
+      yq e -i '.image.repository = strenv(IMAGE_REPO_ENV) | .image.tag = strenv(IMAGE_TAG_ENV)' "$VALUES_FILE_PATH"
+    git add "$VALUES_FILE_PATH"
+    git commit -m "${APP_NAME}:${GIT_COMMIT_ID} released" || true
+    [[ -n $TOKEN ]] && git push origin HEAD:main || warn "Skipped pushing values (no token)"
+  else
+    warn "${VALUES_FILE_PATH} not found in devops repo"
+  fi
+  popd >/dev/null || true
+fi
+
+info "Deployment summary"
+echo "  Image      : ${IMAGE_REPO}:${GIT_COMMIT_ID}"
+echo "  Namespace  : ${NAMESPACE}"
+echo "  Databases  : ${SETUP_DATABASES} (${DB_TYPES})"
