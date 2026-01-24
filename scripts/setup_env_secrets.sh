@@ -32,7 +32,7 @@ log_step "Setting up environment secrets for TruLoad Backend..."
 log_info "Namespaces -> app: ${NAMESPACE}, infra(shared): infra, rabbitmq: ${RABBITMQ_NAMESPACE}"
 log_info "Secret inventory (names only):"
 kubectl get secret -n infra --no-headers 2>/dev/null | awk '{print "infra/"$1}' || true
-kubectl get secret -n "${RABBITMQ_NAMESPACE}" --no-headers 2>/dev/null | awk '{print "'"'"'${RABBITMQ_NAMESPACE}'"'"'/"$1}' || true
+kubectl get secret -n "${RABBITMQ_NAMESPACE}" --no-headers 2>/dev/null | awk -v ns="${RABBITMQ_NAMESPACE}" '{print ns"/"$1}' || true
 
 # Ensure kubectl is available
 if ! command -v kubectl &> /dev/null; then
@@ -123,24 +123,52 @@ log_info "Redis password retrieved and verified (length: ${#REDIS_PASS} chars)"
 
 # Get RabbitMQ password from shared 'infra' namespace
 log_info "Retrieving RabbitMQ password from '${RABBITMQ_NAMESPACE}' namespace..."
+RABBITMQ_PASS=""
+
+# Try to find RabbitMQ secret - different Helm charts use different secret names and keys
 if kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq >/dev/null 2>&1; then
-    RABBITMQ_PASS=$(kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq -o jsonpath='{.data.rabbitmq-password}' 2>/dev/null | base64 -d || true)
-    if [[ -n "$RABBITMQ_PASS" ]]; then
-        log_info "Retrieved RabbitMQ password from secret (source of truth)"
-        
-        # Verify it matches env var if provided (for validation)
-        if [[ -n "$RABBITMQ_PASSWORD" && "$RABBITMQ_PASSWORD" != "$RABBITMQ_PASS" ]]; then
-            log_warning "RABBITMQ_PASSWORD env var differs from secret"
-            log_warning "Using secret password (must match actual RabbitMQ)"
+    # Try different key names used by various RabbitMQ Helm charts
+    for key in "rabbitmq-password" "password" "RABBITMQ_PASSWORD"; do
+        RABBITMQ_PASS=$(kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq -o jsonpath="{.data.${key}}" 2>/dev/null | base64 -d 2>/dev/null || true)
+        if [[ -n "$RABBITMQ_PASS" ]]; then
+            log_info "Retrieved RabbitMQ password from secret key: ${key}"
+            break
         fi
+    done
+
+    # If still empty, show what keys are available
+    if [[ -z "$RABBITMQ_PASS" ]]; then
+        log_warning "Could not find password in rabbitmq secret. Available keys:"
+        kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq -o jsonpath='{.data}' 2>/dev/null | jq -r 'keys[]' 2>/dev/null || \
+            kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq -o json 2>/dev/null | jq -r '.data | keys[]' 2>/dev/null || \
+            echo "  (could not list keys)"
+    fi
+fi
+
+# Fallback: Try rabbitmq-default-user secret (used by RabbitMQ Cluster Operator)
+if [[ -z "$RABBITMQ_PASS" ]] && kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq-default-user >/dev/null 2>&1; then
+    RABBITMQ_PASS=$(kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq-default-user -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || true)
+    if [[ -n "$RABBITMQ_PASS" ]]; then
+        log_info "Retrieved RabbitMQ password from rabbitmq-default-user secret"
+    fi
+fi
+
+# Final fallback: use env var or default
+if [[ -z "$RABBITMQ_PASS" ]]; then
+    if [[ -n "$RABBITMQ_PASSWORD" ]]; then
+        log_warning "RabbitMQ secret not found or empty - using RABBITMQ_PASSWORD env var"
+        RABBITMQ_PASS="$RABBITMQ_PASSWORD"
     else
-        log_error "Could not retrieve RabbitMQ password from Kubernetes secret"
-        exit 1
+        log_warning "RabbitMQ secret not found in '${RABBITMQ_NAMESPACE}' namespace"
+        log_warning "Using default password 'guest' - update after RabbitMQ is provisioned"
+        RABBITMQ_PASS="guest"
     fi
 else
-    log_warning "RabbitMQ secret not found in '${RABBITMQ_NAMESPACE}' namespace"
-    log_warning "Using fallback password or will be installed by provisioning"
-    RABBITMQ_PASS="${RABBITMQ_PASSWORD:-rabbitmq}"
+    # Verify it matches env var if provided (for validation)
+    if [[ -n "$RABBITMQ_PASSWORD" && "$RABBITMQ_PASSWORD" != "$RABBITMQ_PASS" ]]; then
+        log_warning "RABBITMQ_PASSWORD env var differs from secret"
+        log_warning "Using secret password (must match actual RabbitMQ)"
+    fi
 fi
 
 log_info "RabbitMQ password retrieved (length: ${#RABBITMQ_PASS} chars)"
