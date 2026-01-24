@@ -128,6 +128,7 @@ if [[ "$SETUP_DATABASES" == "true" && -n "${KUBE_CONFIG:-}" ]]; then
         SERVICE_DB_USER="$SERVICE_DB_USER" \
         APP_NAME="$APP_NAME" \
         NAMESPACE="$NAMESPACE" \
+        ENABLE_PGVECTOR="true" \
         bash "$DEVOPS_DIR/scripts/infrastructure/create-service-database.sh" || warn "Database creation failed or already exists"
       else
         warn "create-service-database.sh not found - database should be created via devops-k8s infrastructure"
