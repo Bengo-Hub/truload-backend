@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.DTOs.User;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.UserManagement.Interfaces;
 
@@ -13,12 +14,47 @@ namespace TruLoad.Controllers;
 public class StationsController : ControllerBase
 {
     private readonly IStationRepository _stationRepository;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<StationsController> _logger;
 
-    public StationsController(IStationRepository stationRepository, ILogger<StationsController> logger)
+    public StationsController(
+        IStationRepository stationRepository,
+        ITenantContext tenantContext,
+        ILogger<StationsController> logger)
     {
         _stationRepository = stationRepository;
+        _tenantContext = tenantContext;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Get the station linked to the current authenticated user.
+    /// Returns the user's assigned station based on their stationId from JWT claims.
+    /// </summary>
+    [HttpGet("my-station")]
+    [HasPermission("station.read")]
+    [ProducesResponseType(typeof(StationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<StationDto>> GetMyStation(CancellationToken cancellationToken)
+    {
+        // Get user's station ID from claims (added during JWT generation)
+        var stationIdClaim = User.FindFirst("station_id")?.Value;
+
+        if (string.IsNullOrEmpty(stationIdClaim) || !Guid.TryParse(stationIdClaim, out var stationId))
+        {
+            _logger.LogWarning("User {UserId} does not have a linked station", User.FindFirst("sub")?.Value);
+            return NotFound(new { message = "No station linked to current user" });
+        }
+
+        var station = await _stationRepository.GetByIdAsync(stationId, cancellationToken);
+        if (station == null)
+        {
+            _logger.LogWarning("Station {StationId} linked to user not found", stationId);
+            return NotFound(new { message = "Linked station not found" });
+        }
+
+        _logger.LogDebug("Returning user's linked station: {StationCode}", station.Code);
+        return Ok(MapToDto(station));
     }
 
     [HttpGet("{id:guid}")]

@@ -4,6 +4,7 @@ using TruLoad.Backend.Services.Interfaces.Weighing;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.DTOs.Weighing;
+using TruLoad.Backend.Middleware;
 using System.Security.Claims;
 
 namespace TruLoad.Backend.Controllers.WeighingOperations;
@@ -14,16 +15,22 @@ namespace TruLoad.Backend.Controllers.WeighingOperations;
 public class WeighingController : ControllerBase
 {
     private readonly IWeighingService _weighingService;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<WeighingController> _logger;
 
-    public WeighingController(IWeighingService weighingService, ILogger<WeighingController> logger)
+    public WeighingController(
+        IWeighingService weighingService,
+        ITenantContext tenantContext,
+        ILogger<WeighingController> logger)
     {
         _weighingService = weighingService;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
     /// <summary>
     /// Searches weighing transactions with filters, pagination, and sorting.
+    /// Results are automatically scoped to the user's station if assigned.
     /// </summary>
     /// <param name="request">Search filters and pagination parameters</param>
     /// <returns>Paginated list of weighing transactions</returns>
@@ -41,8 +48,15 @@ public class WeighingController : ControllerBase
 
         try
         {
+            // Use tenant context station if not explicitly provided in request
+            var stationId = request.StationId ?? _tenantContext.StationId;
+
+            _logger.LogDebug(
+                "Searching weighing transactions: StationId={StationId}, OrgId={OrgId}",
+                stationId, _tenantContext.OrganizationId);
+
             var (items, totalCount) = await _weighingService.SearchTransactionsAsync(
-                request.StationId,
+                stationId,
                 request.VehicleRegNo,
                 request.FromDate,
                 request.ToDate,

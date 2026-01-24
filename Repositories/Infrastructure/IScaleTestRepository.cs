@@ -8,14 +8,14 @@ namespace TruLoad.Backend.Repositories.Infrastructure;
 public interface IScaleTestRepository
 {
     /// <summary>
-    /// Get all scale tests for a station
+    /// Get all scale tests for a station, optionally filtered by bound
     /// </summary>
-    Task<List<ScaleTest>> GetByStationAsync(Guid stationId, CancellationToken cancellationToken = default);
+    Task<List<ScaleTest>> GetByStationAsync(Guid stationId, string? bound = null, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get latest scale test for a station
+    /// Get latest scale test for a station, optionally filtered by bound
     /// </summary>
-    Task<ScaleTest?> GetLatestByStationAsync(Guid stationId, CancellationToken cancellationToken = default);
+    Task<ScaleTest?> GetLatestByStationAsync(Guid stationId, string? bound = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get scale test by ID
@@ -23,23 +23,24 @@ public interface IScaleTestRepository
     Task<ScaleTest?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get tests within date range for a station
+    /// Get tests within date range for a station, optionally filtered by bound
     /// </summary>
     Task<List<ScaleTest>> GetByDateRangeAsync(
         Guid stationId,
         DateTime fromDate,
         DateTime toDate,
+        string? bound = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Check if station has passed daily calibration (within last 24 hours)
+    /// Check if station has passed daily calibration (within last 24 hours), optionally for specific bound
     /// </summary>
-    Task<bool> HasPassedDailyCalibrationalAsync(Guid stationId, CancellationToken cancellationToken = default);
+    Task<bool> HasPassedDailyCalibrationalAsync(Guid stationId, string? bound = null, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get all failed tests for a station
+    /// Get all failed tests for a station, optionally filtered by bound
     /// </summary>
-    Task<List<ScaleTest>> GetFailedTestsAsync(Guid stationId, CancellationToken cancellationToken = default);
+    Task<List<ScaleTest>> GetFailedTestsAsync(Guid stationId, string? bound = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Create new scale test record
@@ -60,4 +61,9 @@ public interface IScaleTestRepository
     /// Get scale tests carried out by a specific user
     /// </summary>
     Task<List<ScaleTest>> GetByUserAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get today's passing scale test for a station and bound (if any)
+    /// </summary>
+    Task<ScaleTest?> GetTodaysPassingTestAsync(Guid stationId, string? bound = null, CancellationToken cancellationToken = default);
 }

@@ -5,6 +5,8 @@ using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
 using TruLoad.Backend.Services.Implementations.Weighing;
+using TruLoad.Backend.Services.Interfaces.Weighing;
+using TruLoad.Backend.DTOs.Weighing;
 using Xunit;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using TruLoad.Backend.Data.Repositories.Infrastructure;
@@ -25,6 +27,7 @@ public class WeighingServiceTests
     private readonly Mock<IPdfService> _mockPdfService;
     private readonly Mock<IBlobStorageService> _mockBlobStorageService;
     private readonly Mock<IDocumentRepository> _mockDocumentRepository;
+    private readonly Mock<IAxleGroupAggregationService> _mockAxleGroupAggregationService;
     private readonly WeighingService _service;
 
     public WeighingServiceTests()
@@ -38,6 +41,16 @@ public class WeighingServiceTests
         _mockPdfService = new Mock<IPdfService>();
         _mockBlobStorageService = new Mock<IBlobStorageService>();
         _mockDocumentRepository = new Mock<IDocumentRepository>();
+        _mockAxleGroupAggregationService = new Mock<IAxleGroupAggregationService>();
+
+        // Setup default behavior for aggregation service
+        _mockAxleGroupAggregationService
+            .Setup(s => s.AggregateAxleGroupsAsync(It.IsAny<ICollection<WeighingAxle>>(), It.IsAny<string>(), It.IsAny<int>()))
+            .ReturnsAsync(new List<AxleGroupResultDto>());
+
+        _mockAxleGroupAggregationService
+            .Setup(s => s.DetermineAxleType(It.IsAny<int>(), It.IsAny<string>()))
+            .Returns("SingleDrive");
 
         _service = new WeighingService(
             _mockWeighingRepository.Object,
@@ -48,7 +61,8 @@ public class WeighingServiceTests
             _mockFeeScheduleRepository.Object,
             _mockPdfService.Object,
             _mockBlobStorageService.Object,
-            _mockDocumentRepository.Object
+            _mockDocumentRepository.Object,
+            _mockAxleGroupAggregationService.Object
         );
     }
 

@@ -3,6 +3,7 @@ using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Backend.Migrations
 {
     [DbContext(typeof(TruLoadDbContext))]
-    partial class TruLoadDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260123070813_AddAxleTypeFeeAndDemeritSchedules")]
+    partial class AddAxleTypeFeeAndDemeritSchedules
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3151,15 +3154,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
-                    b.Property<int?>("ActualWeightKg")
-                        .HasColumnType("integer")
-                        .HasColumnName("actual_weight_kg");
-
-                    b.Property<string>("Bound")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("bound");
-
                     b.Property<DateTime>("CarriedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("carried_at");
@@ -3179,6 +3173,7 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnName("deleted_at");
 
                     b.Property<string>("Details")
+                        .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("details");
@@ -3202,12 +3197,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("station_id");
 
-                    b.Property<string>("TestType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("test_type");
-
                     b.Property<int?>("TestWeightKg")
                         .HasColumnType("integer")
                         .HasColumnName("test_weight_kg");
@@ -3217,16 +3206,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<string>("VehiclePlate")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("vehicle_plate");
-
-                    b.Property<string>("WeighingMode")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("weighing_mode");
 
                     b.HasKey("Id");
 
@@ -5447,9 +5426,6 @@ namespace TruLoad.Backend.Migrations
                     b.Property<int>("ReweighLimit")
                         .HasColumnType("integer");
 
-                    b.Property<Guid?>("ScaleTestId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("StationId")
                         .HasColumnType("uuid")
                         .HasColumnName("station_id");
@@ -5533,8 +5509,6 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("OriginId");
 
                     b.HasIndex("OriginalWeighingId");
-
-                    b.HasIndex("ScaleTestId");
 
                     b.HasIndex("StationId");
 
@@ -6853,10 +6827,6 @@ namespace TruLoad.Backend.Migrations
                         .HasForeignKey("OriginalWeighingId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("TruLoad.Backend.Models.Infrastructure.ScaleTest", "ScaleTest")
-                        .WithMany()
-                        .HasForeignKey("ScaleTestId");
-
                     b.HasOne("TruLoad.Backend.Models.Station", "Station")
                         .WithMany()
                         .HasForeignKey("StationId")
@@ -6885,8 +6855,6 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("Origin");
 
                     b.Navigation("OriginalWeighing");
-
-                    b.Navigation("ScaleTest");
 
                     b.Navigation("Station");
 

@@ -148,6 +148,9 @@ public class AuthController : ControllerBase
 
         _logger.LogInformation("User {Email} logged in successfully", request.Email);
 
+        // Check if user has SUPERUSER role (bypasses all permission checks on frontend)
+        var isSuperUser = roles.Contains("SUPERUSER", StringComparer.OrdinalIgnoreCase);
+
         return Ok(new
         {
             accessToken,
@@ -160,6 +163,7 @@ public class AuthController : ControllerBase
                 fullName = user.FullName,
                 roles = roles,
                 permissions = uniquePermissions, // Permission codes for frontend RBAC
+                isSuperUser, // Flag for frontend RBAC bypass
                 organizationId = user.OrganizationId,
                 stationId = user.StationId,
                 departmentId = user.DepartmentId
@@ -372,6 +376,9 @@ public class AuthController : ControllerBase
         }
         var uniquePermissions = allPermissions.Distinct().ToList();
 
+        // Check if user has SUPERUSER role (bypasses all permission checks on frontend)
+        var isSuperUser = roles.Contains("SUPERUSER", StringComparer.OrdinalIgnoreCase);
+
         return Ok(new
         {
             id = user.Id,
@@ -380,6 +387,7 @@ public class AuthController : ControllerBase
             phoneNumber = user.PhoneNumber,
             roles = roles,
             permissions = uniquePermissions,
+            isSuperUser, // Flag for frontend RBAC bypass
             organizationId = user.OrganizationId,
             stationId = user.StationId,
             departmentId = user.DepartmentId,

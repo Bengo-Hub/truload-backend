@@ -192,6 +192,11 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     // ===== System Configuration =====
     public DbSet<PermitType> PermitTypes { get; set; } = null!;
     public DbSet<ToleranceSetting> ToleranceSettings { get; set; } = null!;
+
+    // ===== Sprint 11: Fee & Demerit Points System =====
+    public DbSet<AxleTypeOverloadFeeSchedule> AxleTypeOverloadFeeSchedules { get; set; } = null!;
+    public DbSet<DemeritPointSchedule> DemeritPointSchedules { get; set; } = null!;
+    public DbSet<PenaltySchedule> PenaltySchedules { get; set; } = null!;
     
     // ===== Sprint 10: Case Management & Special Release =====
     public DbSet<CaseRegister> CaseRegisters { get; set; } = null!;

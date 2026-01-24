@@ -7,35 +7,39 @@ namespace TruLoad.Data.Seeders;
 /// <summary>
 /// Seeds role-permission assignments for 7 built-in roles.
 /// Assigns permissions based on role type and authorization level.
-/// SUPERUSER: 79 permissions (all) - maps to auth-service superuser flag
-/// SYSTEM_ADMIN: 74 permissions (all except system.admin)
-/// STATION_MANAGER: 45 permissions
-/// WEIGHING_OPERATOR: 4 permissions
-/// ENFORCEMENT_OFFICER: 30 permissions
-/// INSPECTOR: 20 permissions
-/// AUDITOR: 25 permissions
+/// SUPERUSER: 95 permissions (all) - maps to auth-service superuser flag
+/// SYSTEM_ADMIN: 90 permissions (all except system.admin)
+/// STATION_MANAGER: 59 permissions
+/// WEIGHING_OPERATOR: 10 permissions
+/// ENFORCEMENT_OFFICER: 36 permissions
+/// INSPECTOR: 26 permissions
+/// AUDITOR: 31 permissions
 /// </summary>
 public static class RolePermissionSeeder
 {
     /// <summary>
     /// Define permission codes for each role.
-    /// SUPERUSER: 79 permissions (all - includes system.*)
-    /// SYSTEM_ADMIN: 65 permissions (exclude system.*)
-    /// STATION_MANAGER: 45 permissions
-    /// WEIGHING_OPERATOR: 4 permissions
-    /// ENFORCEMENT_OFFICER: 30 permissions
-    /// INSPECTOR: 20 permissions
-    /// AUDITOR: 25 permissions
+    /// SUPERUSER: 95 permissions (all - includes system.*)
+    /// SYSTEM_ADMIN: 94 permissions (exclude system.admin)
+    /// STATION_MANAGER: 59 permissions
+    /// WEIGHING_OPERATOR: 10 permissions
+    /// ENFORCEMENT_OFFICER: 38 permissions
+    /// INSPECTOR: 26 permissions
+    /// AUDITOR: 31 permissions
     /// </summary>
     private static readonly Dictionary<string, List<string>> RolePermissions = new()
     {
         {
             "SUPERUSER", new List<string>
             {
-                // All 77 permissions - superuser has everything including system admin
+                // All 95 permissions - superuser has everything including system admin
                 "weighing.create", "weighing.read", "weighing.read_own", "weighing.update", "weighing.approve",
                 "weighing.override", "weighing.send_to_yard", "weighing.scale_test", "weighing.export",
                 "weighing.delete", "weighing.webhook", "weighing.audit",
+                "yard.create", "yard.read", "yard.read_own", "yard.update", "yard.release", "yard.export",
+                "yard.delete", "yard.audit",
+                "tag.create", "tag.read", "tag.read_own", "tag.update", "tag.resolve", "tag.export",
+                "tag.delete", "tag.audit",
                 "case.create", "case.read", "case.read_own", "case.update", "case.assign", "case.close",
                 "case.escalate", "case.special_release", "case.subfile_manage", "case.closure_review",
                 "case.arrest_warrant", "case.court_hearing", "case.reweigh_schedule", "case.export", "case.audit",
@@ -62,6 +66,10 @@ public static class RolePermissionSeeder
                 "weighing.create", "weighing.read", "weighing.read_own", "weighing.update", "weighing.approve",
                 "weighing.override", "weighing.send_to_yard", "weighing.scale_test", "weighing.export",
                 "weighing.delete", "weighing.webhook", "weighing.audit",
+                "yard.create", "yard.read", "yard.read_own", "yard.update", "yard.release", "yard.export",
+                "yard.delete", "yard.audit",
+                "tag.create", "tag.read", "tag.read_own", "tag.update", "tag.resolve", "tag.export",
+                "tag.delete", "tag.audit",
                 "case.create", "case.read", "case.read_own", "case.update", "case.assign", "case.close",
                 "case.escalate", "case.special_release", "case.subfile_manage", "case.closure_review",
                 "case.arrest_warrant", "case.court_hearing", "case.reweigh_schedule", "case.export", "case.audit",
@@ -85,9 +93,11 @@ public static class RolePermissionSeeder
         {
             "STATION_MANAGER", new List<string>
             {
-                // Station, weighing, case, limited prosecution/user, analytics
+                // Station, weighing, yard, tag, case, limited prosecution/user, analytics
                 "weighing.create", "weighing.read", "weighing.read_own", "weighing.update", "weighing.scale_test",
-                "weighing.export", "weighing.audit",
+                "weighing.export", "weighing.audit", "weighing.send_to_yard",
+                "yard.create", "yard.read", "yard.read_own", "yard.update", "yard.release", "yard.export", "yard.audit",
+                "tag.create", "tag.read", "tag.read_own", "tag.update", "tag.resolve", "tag.export", "tag.audit",
                 "case.create", "case.read", "case.read_own", "case.update", "case.assign", "case.export", "case.audit",
                 "prosecution.read", "prosecution.read_own", "prosecution.export", "prosecution.audit",
                 "user.read", "user.read_own", "user.audit",
@@ -101,8 +111,10 @@ public static class RolePermissionSeeder
         {
             "ENFORCEMENT_OFFICER", new List<string>
             {
-                // Prosecution, case, limited weighing/user, analytics
+                // Prosecution, case, yard, tag, limited weighing/user, analytics
                 "weighing.read", "weighing.read_own", "weighing.export", "weighing.audit",
+                "yard.read", "yard.read_own", "yard.export", "yard.audit",
+                "tag.read", "tag.read_own", "tag.export", "tag.audit",
                 "case.read", "case.read_own", "case.update", "case.assign", "case.escalate", "case.closure_review",
                 "case.arrest_warrant", "case.court_hearing", "case.export", "case.audit",
                 "prosecution.create", "prosecution.read", "prosecution.read_own", "prosecution.update",
@@ -115,15 +127,20 @@ public static class RolePermissionSeeder
         {
             "WEIGHING_OPERATOR", new List<string>
             {
-                // Only weighing operations
-                "weighing.create", "weighing.read_own", "weighing.scale_test", "weighing.audit"
+                // Weighing operations plus basic yard/tag for workflow
+                "weighing.create", "weighing.read_own", "weighing.scale_test", "weighing.audit",
+                "weighing.send_to_yard", "weighing.export",
+                "yard.create", "yard.read_own",
+                "tag.create", "tag.read_own"
             }
         },
         {
             "INSPECTOR", new List<string>
             {
-                // Weighing, case, limited prosecution, user, analytics
+                // Weighing, yard, tag, case, limited prosecution, user, analytics
                 "weighing.read", "weighing.read_own", "weighing.export", "weighing.audit",
+                "yard.read", "yard.read_own", "yard.audit",
+                "tag.read", "tag.read_own", "tag.audit",
                 "case.read", "case.read_own", "case.assign", "case.export", "case.audit",
                 "prosecution.read", "prosecution.read_own", "prosecution.export", "prosecution.audit",
                 "user.read", "user.read_own", "user.audit",
@@ -135,6 +152,8 @@ public static class RolePermissionSeeder
             {
                 // Read-only access to audit logs across all domains
                 "weighing.read", "weighing.read_own", "weighing.audit",
+                "yard.read", "yard.read_own", "yard.audit",
+                "tag.read", "tag.read_own", "tag.audit",
                 "case.read", "case.read_own", "case.audit",
                 "prosecution.read", "prosecution.read_own", "prosecution.audit",
                 "user.read", "user.read_own", "user.audit",
@@ -148,16 +167,23 @@ public static class RolePermissionSeeder
     /// <summary>
     /// Seed role-permission assignments.
     /// Links 7 built-in roles with their permissions.
-    /// Idempotent - safe to run multiple times. Checks per-role to allow incremental seeding.
+    /// Idempotent - safe to run multiple times. Adds missing role-permission assignments.
     /// </summary>
     public static async Task SeedAsync(TruLoadDbContext context)
     {
-        var rolePermissions = new List<RolePermission>();
+        var rolePermissionsToAdd = new List<RolePermission>();
 
         // Get all roles and permissions
         var roles = await context.Roles.ToListAsync();
         var permissions = await context.Permissions.ToListAsync();
-        var existingRolePermissions = await context.RolePermissions.ToListAsync();
+
+        // Build a hash set of existing role-permission pairs for fast lookup
+        var existingRolePermissionPairs = await context.RolePermissions
+            .Select(rp => new { rp.RoleId, rp.PermissionId })
+            .ToListAsync();
+        var existingPairSet = existingRolePermissionPairs
+            .Select(x => $"{x.RoleId}:{x.PermissionId}")
+            .ToHashSet();
 
         foreach (var (roleCode, permissionCodes) in RolePermissions)
         {
@@ -165,17 +191,18 @@ public static class RolePermissionSeeder
             if (role == null)
                 continue; // Skip if role doesn't exist
 
-            // Check if this role already has permissions assigned
-            if (existingRolePermissions.Any(rp => rp.RoleId == role.Id))
-                continue; // Skip if role already has permissions
-
             foreach (var permissionCode in permissionCodes)
             {
                 var permission = permissions.FirstOrDefault(p => p.Code == permissionCode);
                 if (permission == null)
                     continue; // Skip if permission doesn't exist
 
-                rolePermissions.Add(new RolePermission
+                // Check if this specific role-permission pair already exists
+                var pairKey = $"{role.Id}:{permission.Id}";
+                if (existingPairSet.Contains(pairKey))
+                    continue; // Skip if already assigned
+
+                rolePermissionsToAdd.Add(new RolePermission
                 {
                     RoleId = role.Id,
                     PermissionId = permission.Id,
@@ -184,9 +211,9 @@ public static class RolePermissionSeeder
             }
         }
 
-        if (rolePermissions.Count > 0)
+        if (rolePermissionsToAdd.Count > 0)
         {
-            context.RolePermissions.AddRange(rolePermissions);
+            context.RolePermissions.AddRange(rolePermissionsToAdd);
             await context.SaveChangesAsync();
         }
     }

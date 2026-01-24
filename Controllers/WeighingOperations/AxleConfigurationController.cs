@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.DTOs.Weighing;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
 
@@ -16,18 +17,22 @@ namespace TruLoad.Backend.Controllers.WeighingOperations;
 public class AxleConfigurationController : ControllerBase
 {
     private readonly IAxleConfigurationRepository _repository;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<AxleConfigurationController> _logger;
 
     public AxleConfigurationController(
         IAxleConfigurationRepository repository,
+        ITenantContext tenantContext,
         ILogger<AxleConfigurationController> logger)
     {
         _repository = repository;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
     /// <summary>
     /// Get all axle configurations with optional filtering
+    /// Invalid configurations (empty axleCode or axleNumber = 0) are excluded
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<AxleConfigurationResponseDto>), StatusCodes.Status200OK)]
@@ -45,10 +50,22 @@ public class AxleConfigurationController : ControllerBase
             includeInactive,
             cancellationToken);
 
-        _logger.LogInformation("AxleConfigurationController.GetAll: Returning {Count} configurations for isStandard={IsStandard}, includeInactive={IncludeInactive}", 
-            configs.Count, isStandard, includeInactive);
+        // Filter out invalid configurations (empty axleCode or axleNumber = 0)
+        var validConfigs = configs
+            .Where(c => !string.IsNullOrWhiteSpace(c.AxleCode) && c.AxleNumber > 0)
+            .ToList();
 
-        return Ok(configs.Select(MapToResponseDto).ToList());
+        if (validConfigs.Count < configs.Count)
+        {
+            _logger.LogWarning(
+                "AxleConfigurationController.GetAll: Filtered out {FilteredCount} invalid configurations (empty axleCode or axleNumber = 0)",
+                configs.Count - validConfigs.Count);
+        }
+
+        _logger.LogInformation("AxleConfigurationController.GetAll: Returning {Count} configurations for isStandard={IsStandard}, includeInactive={IncludeInactive}",
+            validConfigs.Count, isStandard, includeInactive);
+
+        return Ok(validConfigs.Select(MapToResponseDto).ToList());
     }
 
     /// <summary>

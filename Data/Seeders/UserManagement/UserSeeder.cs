@@ -37,18 +37,22 @@ public class UserSeeder
 
     private async Task SeedSuperUserAsync()
     {
-        // Check if KURA organization exists (required for linking)
+        // Check if KURA organization exists (required for linking - KURA is the default tenant)
         var kuraOrg = await _context.Organizations
             .FirstOrDefaultAsync(o => o.Code == "KURA");
-        
+
         if (kuraOrg == null)
         {
             throw new InvalidOperationException("KURA organization not found. Ensure UserManagementSeeder runs before UserSeeder.");
         }
 
+        // Get the first mobile station to link to the user (NRB-MOBILE-01)
+        var mobileStation = await _context.Stations
+            .FirstOrDefaultAsync(s => s.StationCode == "NRB-MOBILE-01");
+
         // Check if SYSTEM_ADMIN role exists
         var systemAdminRole = await _roleManager.FindByNameAsync("System Admin");
-        
+
         if (systemAdminRole == null)
         {
             throw new InvalidOperationException("SYSTEM_ADMIN role not found. Ensure RoleSeeder runs before UserSeeder.");
@@ -69,6 +73,7 @@ public class UserSeeder
                 FullName = "Global Administrator",
                 PhoneNumber = "+254700000000",
                 OrganizationId = kuraOrg.Id,
+                StationId = mobileStation?.Id,  // Link to mobile station
                 EmailConfirmed = true,
                 PhoneNumberConfirmed = true,
                 TwoFactorEnabled = false,
@@ -88,12 +93,23 @@ public class UserSeeder
                 throw new Exception($"Failed to assign role to superuser: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
             }
 
-            Console.WriteLine($"✓ Seeded superuser: {superUserEmail} linked to KURA organization with SYSTEM_ADMIN role");
+            Console.WriteLine($"✓ Seeded superuser: {superUserEmail} linked to KURA organization and {mobileStation?.StationName ?? "no station"} with SYSTEM_ADMIN role");
             Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY - change in production!)");
         }
         else
         {
-            Console.WriteLine($"✓ Superuser {superUserEmail} already exists, skipping seed");
+            // Update existing user to link station if not already linked
+            if (existingSuperUser.StationId == null && mobileStation != null)
+            {
+                existingSuperUser.StationId = mobileStation.Id;
+                existingSuperUser.OrganizationId = kuraOrg.Id;
+                await _userManager.UpdateAsync(existingSuperUser);
+                Console.WriteLine($"✓ Updated superuser {superUserEmail} to link station {mobileStation.StationName}");
+            }
+            else
+            {
+                Console.WriteLine($"✓ Superuser {superUserEmail} already exists with station link, skipping seed");
+            }
         }
     }
 }

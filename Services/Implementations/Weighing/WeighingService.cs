@@ -6,6 +6,8 @@ using TruLoad.Backend.Repositories.Weighing.Interfaces;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using TruLoad.Backend.Data.Repositories.Infrastructure;
 using TruLoad.Backend.Models.Infrastructure;
+using TruLoad.Backend.DTOs.Weighing;
+using TruLoad.Backend.Repositories.Infrastructure;
 
 namespace TruLoad.Backend.Services.Implementations.Weighing;
 
@@ -20,6 +22,9 @@ public class WeighingService : IWeighingService
     private readonly IPdfService _pdfService;
     private readonly IBlobStorageService _storageService;
     private readonly IDocumentRepository _documentRepository;
+    private readonly IAxleGroupAggregationService _axleGroupAggregationService;
+    private readonly IScaleTestRepository _scaleTestRepository;
+    private readonly ILogger<WeighingService> _logger;
 
     public WeighingService(
         IWeighingRepository weighingRepository,
@@ -30,7 +35,10 @@ public class WeighingService : IWeighingService
         IAxleFeeScheduleRepository feeScheduleRepository,
         IPdfService pdfService,
         IBlobStorageService storageService,
-        IDocumentRepository documentRepository)
+        IDocumentRepository documentRepository,
+        IAxleGroupAggregationService axleGroupAggregationService,
+        IScaleTestRepository scaleTestRepository,
+        ILogger<WeighingService> logger)
     {
         _weighingRepository = weighingRepository;
         _axleConfigurationRepository = axleConfigurationRepository;
@@ -41,18 +49,61 @@ public class WeighingService : IWeighingService
         _pdfService = pdfService;
         _storageService = storageService;
         _documentRepository = documentRepository;
+        _axleGroupAggregationService = axleGroupAggregationService;
+        _scaleTestRepository = scaleTestRepository;
+        _logger = logger;
     }
 
     public async Task<WeighingTransaction> InitiateWeighingAsync(string ticketNumber, Guid stationId, Guid userId)
     {
+        return await InitiateWeighingAsync(ticketNumber, stationId, userId, bound: null, scaleTestId: null);
+    }
+
+    /// <summary>
+    /// Initiates a weighing transaction with scale test validation.
+    /// Per FRD: Scale test must be completed once daily per station/bound before weighing operations.
+    /// </summary>
+    public async Task<WeighingTransaction> InitiateWeighingAsync(
+        string ticketNumber,
+        Guid stationId,
+        Guid userId,
+        string? bound,
+        Guid? scaleTestId)
+    {
+        // Validate scale test requirement
+        var hasValidScaleTest = await _scaleTestRepository.HasPassedDailyCalibrationalAsync(stationId, bound);
+
+        if (!hasValidScaleTest)
+        {
+            _logger.LogWarning(
+                "Weighing initiation blocked - no valid scale test for Station {StationId}, Bound {Bound}",
+                stationId, bound);
+            throw new InvalidOperationException(
+                $"Scale test required before weighing. Please complete a passing scale test for this station{(string.IsNullOrEmpty(bound) ? "" : $" (Bound {bound})")} today.");
+        }
+
+        // Get today's passing scale test if not provided
+        Guid? validScaleTestId = scaleTestId;
+        if (!validScaleTestId.HasValue)
+        {
+            var todaysTest = await _scaleTestRepository.GetTodaysPassingTestAsync(stationId, bound);
+            validScaleTestId = todaysTest?.Id;
+        }
+
         var transaction = new WeighingTransaction
         {
             TicketNumber = ticketNumber,
             StationId = stationId,
             WeighedByUserId = userId,
+            Bound = bound,
+            ScaleTestId = validScaleTestId,
             ControlStatus = "Pending",
             WeighedAt = DateTime.UtcNow
         };
+
+        _logger.LogInformation(
+            "Weighing transaction initiated: {TicketNumber}, Station: {StationId}, Bound: {Bound}, ScaleTest: {ScaleTestId}",
+            ticketNumber, stationId, bound, validScaleTestId);
 
         return await _weighingRepository.CreateTransactionAsync(transaction);
     }
@@ -262,81 +313,50 @@ public class WeighingService : IWeighingService
     /// <summary>
     /// Process axle groups for regulatory compliance
     /// Implements Kenya Traffic Act Cap 403 and EAC Act 2016 group-based tolerance
+    /// Uses the AxleGroupAggregationService for proper tolerance calculation:
+    /// - 5% tolerance for SINGLE axle groups (Steering, SingleDrive)
+    /// - 0% tolerance for MULTI-axle groups (Tandem, Tridem)
     /// </summary>
     private async Task ProcessAxleGroupsAsync(WeighingTransaction transaction, string legalFramework)
     {
         if (transaction.WeighingAxles == null || !transaction.WeighingAxles.Any())
             return;
 
-        // Group axles by AxleGrouping (A, B, C, D)
-        var axleGroups = transaction.WeighingAxles
-            .GroupBy(a => a.AxleGrouping)
-            .ToList();
+        // Get operational tolerance from settings (default 200kg)
+        var operationalTolerance = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_TOLERANCE");
+        int operationalToleranceKg = operationalTolerance?.ToleranceKg ?? 200;
 
-        // Query group tolerance (5% for Traffic Act and EAC Act)
-        int groupTolerancePercentage = 5; // Default per regulatory requirements
-        var toleranceSetting = await _toleranceRepository.GetToleranceAsync(legalFramework, "AXLE");
-        if (toleranceSetting != null)
+        // Use the AxleGroupAggregationService for proper tolerance calculation
+        var groupResults = await _axleGroupAggregationService.AggregateAxleGroupsAsync(
+            transaction.WeighingAxles,
+            legalFramework,
+            operationalToleranceKg);
+
+        // Map group results back to weighing axles
+        foreach (var groupResult in groupResults)
         {
-            groupTolerancePercentage = (int)toleranceSetting.TolerancePercentage;
-        }
+            var groupAxles = transaction.WeighingAxles
+                .Where(a => a.AxleGrouping == groupResult.GroupLabel)
+                .ToList();
 
-        foreach (var group in axleGroups)
-        {
-            // Calculate group aggregates
-            int groupTotalMeasured = group.Sum(a => a.MeasuredWeightKg);
-            int groupTotalPermissible = group.Sum(a => a.PermissibleWeightKg);
-            int groupToleranceKg = (int)Math.Round(groupTotalPermissible * (groupTolerancePercentage / 100.0));
-
-            // Calculate Pavement Damage Factor (Fourth Power Law)
-            decimal pdf = CalculatePavementDamageFactor(groupTotalMeasured, groupTotalPermissible);
-
-            // Cache group values in each axle for performance
-            foreach (var axle in group)
+            foreach (var axle in groupAxles)
             {
-                axle.GroupAggregateWeightKg = groupTotalMeasured;
-                axle.GroupPermissibleWeightKg = groupTotalPermissible;
-                axle.PavementDamageFactor = pdf;
-
-                // Infer axle type from group characteristics (simplified logic)
-                // In production, this should come from vehicle configuration
-                if (axle.AxleGrouping == "A")
-                {
-                    axle.AxleType = "Steering";
-                }
-                else if (group.Count() >= 3)
-                {
-                    axle.AxleType = "Tridem";
-                }
-                else if (group.Count() == 2)
-                {
-                    axle.AxleType = "Tandem";
-                }
-                else
-                {
-                    axle.AxleType = "SingleDrive";
-                }
+                axle.GroupAggregateWeightKg = groupResult.GroupWeightKg;
+                axle.GroupPermissibleWeightKg = groupResult.GroupPermissibleKg;
+                axle.PavementDamageFactor = groupResult.PavementDamageFactor;
+                axle.AxleType = groupResult.AxleType;
+                // Tolerance info (ToleranceKg: 5% for single, 0% for grouped) available via GetComplianceResultAsync
             }
         }
     }
 
     /// <summary>
-    /// Calculate Pavement Damage Factor using Fourth Power Law (AASHO Road Test 1958-1960)
-    /// PDF = (ActualWeight / PermissibleWeight) ^ 4
-    /// </summary>
-    private decimal CalculatePavementDamageFactor(int actualWeightKg, int permissibleWeightKg)
-    {
-        if (permissibleWeightKg == 0) return 0m;
-
-        var ratio = (double)actualWeightKg / permissibleWeightKg;
-        var pdf = Math.Pow(ratio, 4);
-
-        return (decimal)pdf;
-    }
-
-    /// <summary>
-    /// Calculate fees for overloaded axles and GVW using AxleFeeSchedule repository
-    /// Implements Kenya Traffic Act Cap 403 and EAC Act 2016 fee structures
+    /// Calculate fees for overloaded axles and GVW using per-axle-type fee schedules
+    /// Implements Kenya Traffic Act Cap 403 with differentiated fees:
+    /// - Steering axle: Different rate
+    /// - Single Drive axle: Different rate
+    /// - Tandem (2-axle group): Different rate
+    /// - Tridem (3-axle group): Different rate
     /// </summary>
     private async Task CalculateFeesAsync(WeighingTransaction transaction, string legalFramework)
     {
@@ -345,7 +365,7 @@ public class WeighingService : IWeighingService
 
         decimal totalFeeUsd = 0m;
 
-        // Calculate GVW fee if overloaded
+        // Calculate GVW fee if overloaded (still uses the standard fee schedule)
         if (transaction.OverloadKg > 0)
         {
             var gvwFeeResult = await _feeScheduleRepository.CalculateFeeAsync(
@@ -357,7 +377,8 @@ public class WeighingService : IWeighingService
             }
         }
 
-        // Calculate axle fees per group (not per individual axle)
+        // Calculate axle fees per group using per-axle-type fee schedule
+        // Each axle type has different fee rates per Kenya Traffic Act Cap 403
         var processedGroups = new HashSet<string>();
 
         foreach (var axle in transaction.WeighingAxles)
@@ -373,8 +394,18 @@ public class WeighingService : IWeighingService
 
                 if (groupOverload > 0)
                 {
+                    // Determine axle type for fee calculation
+                    string axleType = axle.AxleType;
+                    if (string.IsNullOrEmpty(axleType))
+                    {
+                        axleType = _axleGroupAggregationService.DetermineAxleType(
+                            transaction.WeighingAxles.Count(a => a.AxleGrouping == axle.AxleGrouping),
+                            axle.AxleGrouping);
+                    }
+
+                    // Use per-axle-type fee calculation
                     var axleFeeResult = await _feeScheduleRepository.CalculateFeeAsync(
-                        legalFramework, "AXLE", groupOverload);
+                        legalFramework, axleType.ToUpperInvariant(), groupOverload);
 
                     if (axleFeeResult.HasValue)
                     {
@@ -391,6 +422,28 @@ public class WeighingService : IWeighingService
                         }
 
                         totalFeeUsd += axleFeeResult.Value.FeeAmountUsd;
+                    }
+                    else
+                    {
+                        // Fallback to generic AXLE fee if per-type fee not found
+                        var fallbackFeeResult = await _feeScheduleRepository.CalculateFeeAsync(
+                            legalFramework, "AXLE", groupOverload);
+
+                        if (fallbackFeeResult.HasValue)
+                        {
+                            var groupAxles = transaction.WeighingAxles
+                                .Where(a => a.AxleGrouping == axle.AxleGrouping)
+                                .ToList();
+
+                            decimal feePerAxle = fallbackFeeResult.Value.FeeAmountUsd / groupAxles.Count;
+
+                            foreach (var groupAxle in groupAxles)
+                            {
+                                groupAxle.FeeUsd = feePerAxle;
+                            }
+
+                            totalFeeUsd += fallbackFeeResult.Value.FeeAmountUsd;
+                        }
                     }
                 }
             }
@@ -468,6 +521,16 @@ public class WeighingService : IWeighingService
     public async Task<WeighingTransaction?> GetTransactionAsync(Guid id)
     {
         return await _weighingRepository.GetTransactionByIdAsync(id);
+    }
+
+    /// <summary>
+    /// Gets detailed compliance result including axle groups, fees, and demerit points
+    /// Implements Kenya Traffic Act Cap 403 Section 117A for NTSA license management
+    /// </summary>
+    public async Task<WeighingComplianceResultDto> GetComplianceResultAsync(Guid transactionId)
+    {
+        // Delegate to the AxleGroupAggregationService which has full compliance calculation
+        return await _axleGroupAggregationService.CalculateComplianceAsync(transactionId);
     }
 
     public async Task<WeighingTransaction> UpdateTransactionAsync(WeighingTransaction transaction)

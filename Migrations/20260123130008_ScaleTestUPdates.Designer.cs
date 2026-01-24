@@ -3,6 +3,7 @@ using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Backend.Migrations
 {
     [DbContext(typeof(TruLoadDbContext))]
-    partial class TruLoadDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260123130008_ScaleTestUPdates")]
+    partial class ScaleTestUPdates
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3151,10 +3154,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
-                    b.Property<int?>("ActualWeightKg")
-                        .HasColumnType("integer")
-                        .HasColumnName("actual_weight_kg");
-
                     b.Property<string>("Bound")
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)")
@@ -3179,6 +3178,7 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnName("deleted_at");
 
                     b.Property<string>("Details")
+                        .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("details");
@@ -3202,12 +3202,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("station_id");
 
-                    b.Property<string>("TestType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("test_type");
-
                     b.Property<int?>("TestWeightKg")
                         .HasColumnType("integer")
                         .HasColumnName("test_weight_kg");
@@ -3217,16 +3211,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<string>("VehiclePlate")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("vehicle_plate");
-
-                    b.Property<string>("WeighingMode")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("weighing_mode");
 
                     b.HasKey("Id");
 

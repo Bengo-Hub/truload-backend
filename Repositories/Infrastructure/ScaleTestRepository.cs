@@ -16,20 +16,30 @@ public class ScaleTestRepository : IScaleTestRepository
         _context = context;
     }
 
-    public async Task<List<ScaleTest>> GetByStationAsync(Guid stationId, CancellationToken cancellationToken = default)
+    public async Task<List<ScaleTest>> GetByStationAsync(Guid stationId, string? bound = null, CancellationToken cancellationToken = default)
     {
-        return await _context.ScaleTests
-            .Where(st => st.StationId == stationId && st.DeletedAt == null)
+        var query = _context.ScaleTests
+            .Where(st => st.StationId == stationId && st.DeletedAt == null);
+
+        if (!string.IsNullOrEmpty(bound))
+            query = query.Where(st => st.Bound == bound);
+
+        return await query
             .Include(st => st.Station)
             .Include(st => st.CarriedBy)
             .OrderByDescending(st => st.CarriedAt)
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<ScaleTest?> GetLatestByStationAsync(Guid stationId, CancellationToken cancellationToken = default)
+    public async Task<ScaleTest?> GetLatestByStationAsync(Guid stationId, string? bound = null, CancellationToken cancellationToken = default)
     {
-        return await _context.ScaleTests
-            .Where(st => st.StationId == stationId && st.DeletedAt == null)
+        var query = _context.ScaleTests
+            .Where(st => st.StationId == stationId && st.DeletedAt == null);
+
+        if (!string.IsNullOrEmpty(bound))
+            query = query.Where(st => st.Bound == bound);
+
+        return await query
             .Include(st => st.Station)
             .Include(st => st.CarriedBy)
             .OrderByDescending(st => st.CarriedAt)
@@ -48,39 +58,76 @@ public class ScaleTestRepository : IScaleTestRepository
         Guid stationId,
         DateTime fromDate,
         DateTime toDate,
+        string? bound = null,
         CancellationToken cancellationToken = default)
     {
-        return await _context.ScaleTests
+        var query = _context.ScaleTests
             .Where(st => st.StationId == stationId &&
                         st.CarriedAt >= fromDate &&
                         st.CarriedAt <= toDate &&
-                        st.DeletedAt == null)
+                        st.DeletedAt == null);
+
+        if (!string.IsNullOrEmpty(bound))
+            query = query.Where(st => st.Bound == bound);
+
+        return await query
             .Include(st => st.Station)
             .Include(st => st.CarriedBy)
             .OrderByDescending(st => st.CarriedAt)
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<bool> HasPassedDailyCalibrationalAsync(Guid stationId, CancellationToken cancellationToken = default)
+    public async Task<bool> HasPassedDailyCalibrationalAsync(Guid stationId, string? bound = null, CancellationToken cancellationToken = default)
     {
-        var twentyFourHoursAgo = DateTime.UtcNow.AddHours(-24);
+        // Check for a passing test today (since midnight UTC)
+        var todayStart = DateTime.UtcNow.Date;
 
-        var latestTest = await _context.ScaleTests
+        var query = _context.ScaleTests
             .Where(st => st.StationId == stationId &&
-                        st.CarriedAt >= twentyFourHoursAgo &&
-                        st.DeletedAt == null)
+                        st.CarriedAt >= todayStart &&
+                        st.DeletedAt == null);
+
+        if (!string.IsNullOrEmpty(bound))
+            query = query.Where(st => st.Bound == bound);
+
+        var latestTest = await query
             .OrderByDescending(st => st.CarriedAt)
             .FirstOrDefaultAsync(cancellationToken);
 
         return latestTest != null && latestTest.Result.ToLower() == "pass";
     }
 
-    public async Task<List<ScaleTest>> GetFailedTestsAsync(Guid stationId, CancellationToken cancellationToken = default)
+    public async Task<ScaleTest?> GetTodaysPassingTestAsync(Guid stationId, string? bound = null, CancellationToken cancellationToken = default)
     {
-        return await _context.ScaleTests
+        var todayStart = DateTime.UtcNow.Date;
+
+        var query = _context.ScaleTests
+            .Where(st => st.StationId == stationId &&
+                        st.CarriedAt >= todayStart &&
+                        st.Result.ToLower() == "pass" &&
+                        st.DeletedAt == null);
+
+        if (!string.IsNullOrEmpty(bound))
+            query = query.Where(st => st.Bound == bound);
+
+        return await query
+            .Include(st => st.Station)
+            .Include(st => st.CarriedBy)
+            .OrderByDescending(st => st.CarriedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<List<ScaleTest>> GetFailedTestsAsync(Guid stationId, string? bound = null, CancellationToken cancellationToken = default)
+    {
+        var query = _context.ScaleTests
             .Where(st => st.StationId == stationId &&
                         st.Result.ToLower() == "fail" &&
-                        st.DeletedAt == null)
+                        st.DeletedAt == null);
+
+        if (!string.IsNullOrEmpty(bound))
+            query = query.Where(st => st.Bound == bound);
+
+        return await query
             .Include(st => st.Station)
             .Include(st => st.CarriedBy)
             .OrderByDescending(st => st.CarriedAt)
@@ -89,7 +136,8 @@ public class ScaleTestRepository : IScaleTestRepository
 
     public async Task<ScaleTest> CreateAsync(ScaleTest scaleTest, CancellationToken cancellationToken = default)
     {
-        scaleTest.Id = Guid.NewGuid();
+        if (scaleTest.Id == Guid.Empty)
+            scaleTest.Id = Guid.NewGuid();
         scaleTest.CreatedAt = DateTime.UtcNow;
         scaleTest.UpdatedAt = DateTime.UtcNow;
 

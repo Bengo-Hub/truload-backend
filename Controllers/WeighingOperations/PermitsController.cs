@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.Data.Repositories.Weighing;
 using TruLoad.Backend.DTOs.Weighing;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.Weighing;
 
 namespace TruLoad.Backend.Controllers.WeighingOperations;
@@ -12,11 +13,16 @@ namespace TruLoad.Backend.Controllers.WeighingOperations;
 public class PermitsController : ControllerBase
 {
     private readonly IPermitRepository _permitRepository;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<PermitsController> _logger;
 
-    public PermitsController(IPermitRepository permitRepository, ILogger<PermitsController> logger)
+    public PermitsController(
+        IPermitRepository permitRepository,
+        ITenantContext tenantContext,
+        ILogger<PermitsController> logger)
     {
         _permitRepository = permitRepository;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 

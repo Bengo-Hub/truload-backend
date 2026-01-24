@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.System;
 
 namespace TruLoad.Backend.Data.Configurations.SystemConfiguration;
 
@@ -188,6 +189,184 @@ public static class SystemConfigurationModuleDbContextConfiguration
             // Indexes
             entity.HasIndex(e => new { e.RelatedEntityType, e.RelatedEntityId });
             entity.HasIndex(e => e.DocumentType);
+        });
+
+        // ===== AxleTypeOverloadFeeSchedule Entity Configuration (Sprint 11) =====
+        modelBuilder.Entity<AxleTypeOverloadFeeSchedule>(entity =>
+        {
+            entity.ToTable("axle_type_overload_fee_schedules");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.OverloadMinKg)
+                .HasColumnName("overload_min_kg")
+                .IsRequired();
+
+            entity.Property(e => e.OverloadMaxKg)
+                .HasColumnName("overload_max_kg");
+
+            entity.Property(e => e.SteeringAxleFeeUsd)
+                .HasColumnName("steering_axle_fee_usd")
+                .HasColumnType("decimal(10,2)")
+                .IsRequired();
+
+            entity.Property(e => e.SingleDriveAxleFeeUsd)
+                .HasColumnName("single_drive_axle_fee_usd")
+                .HasColumnType("decimal(10,2)")
+                .IsRequired();
+
+            entity.Property(e => e.TandemAxleFeeUsd)
+                .HasColumnName("tandem_axle_fee_usd")
+                .HasColumnType("decimal(10,2)")
+                .IsRequired();
+
+            entity.Property(e => e.TridemAxleFeeUsd)
+                .HasColumnName("tridem_axle_fee_usd")
+                .HasColumnType("decimal(10,2)")
+                .IsRequired();
+
+            entity.Property(e => e.QuadAxleFeeUsd)
+                .HasColumnName("quad_axle_fee_usd")
+                .HasColumnType("decimal(10,2)")
+                .IsRequired();
+
+            entity.Property(e => e.LegalFramework)
+                .HasColumnName("legal_framework")
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.EffectiveFrom)
+                .HasColumnName("effective_from")
+                .IsRequired();
+
+            entity.Property(e => e.EffectiveTo)
+                .HasColumnName("effective_to");
+
+            entity.Property(e => e.IsActive)
+                .HasColumnName("is_active")
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at");
+
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at");
+
+            entity.Property(e => e.DeletedAt)
+                .HasColumnName("deleted_at");
+
+            // Index for fee lookup by overload range
+            entity.HasIndex(e => new { e.OverloadMinKg, e.OverloadMaxKg, e.IsActive })
+                .HasDatabaseName("idx_axle_fee_overload_range");
+
+            // Index on effective dates
+            entity.HasIndex(e => new { e.EffectiveFrom, e.EffectiveTo })
+                .HasDatabaseName("idx_axle_fee_effective_dates");
+        });
+
+        // ===== DemeritPointSchedule Entity Configuration (Sprint 11) =====
+        modelBuilder.Entity<DemeritPointSchedule>(entity =>
+        {
+            entity.ToTable("demerit_point_schedules");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.ViolationType)
+                .HasColumnName("violation_type")
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.OverloadMinKg)
+                .HasColumnName("overload_min_kg")
+                .IsRequired();
+
+            entity.Property(e => e.OverloadMaxKg)
+                .HasColumnName("overload_max_kg");
+
+            entity.Property(e => e.Points)
+                .HasColumnName("points")
+                .IsRequired();
+
+            entity.Property(e => e.LegalFramework)
+                .HasColumnName("legal_framework")
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.EffectiveFrom)
+                .HasColumnName("effective_from")
+                .IsRequired();
+
+            entity.Property(e => e.IsActive)
+                .HasColumnName("is_active")
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at");
+
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at");
+
+            entity.Property(e => e.DeletedAt)
+                .HasColumnName("deleted_at");
+
+            // Index for point lookup by violation type and overload range
+            entity.HasIndex(e => new { e.ViolationType, e.OverloadMinKg, e.OverloadMaxKg, e.IsActive })
+                .HasDatabaseName("idx_demerit_violation_overload");
+
+            // Index on legal framework
+            entity.HasIndex(e => e.LegalFramework)
+                .HasDatabaseName("idx_demerit_legal_framework");
+        });
+
+        // ===== PenaltySchedule Entity Configuration (Sprint 11) =====
+        modelBuilder.Entity<PenaltySchedule>(entity =>
+        {
+            entity.ToTable("penalty_schedules");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.PointsMin)
+                .HasColumnName("points_min")
+                .IsRequired();
+
+            entity.Property(e => e.PointsMax)
+                .HasColumnName("points_max");
+
+            entity.Property(e => e.PenaltyDescription)
+                .HasColumnName("penalty_description")
+                .HasMaxLength(500)
+                .IsRequired();
+
+            entity.Property(e => e.SuspensionDays)
+                .HasColumnName("suspension_days");
+
+            entity.Property(e => e.RequiresCourt)
+                .HasColumnName("requires_court")
+                .IsRequired();
+
+            entity.Property(e => e.AdditionalFineUsd)
+                .HasColumnName("additional_fine_usd")
+                .HasColumnType("decimal(10,2)")
+                .IsRequired();
+
+            entity.Property(e => e.AdditionalFineKes)
+                .HasColumnName("additional_fine_kes")
+                .HasColumnType("decimal(12,2)")
+                .IsRequired();
+
+            entity.Property(e => e.IsActive)
+                .HasColumnName("is_active")
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at");
+
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at");
+
+            entity.Property(e => e.DeletedAt)
+                .HasColumnName("deleted_at");
+
+            // Index for penalty lookup by points range
+            entity.HasIndex(e => new { e.PointsMin, e.PointsMax, e.IsActive })
+                .HasDatabaseName("idx_penalty_points_range");
         });
 
         return modelBuilder;

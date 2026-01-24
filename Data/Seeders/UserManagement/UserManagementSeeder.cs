@@ -151,36 +151,114 @@ public class UserManagementSeeder
     private async Task SeedStationsAsync()
     {
         var kenha = await _context.Organizations.FirstOrDefaultAsync(o => o.Code == "KENHA");
-        if (kenha == null) return;
+        var kura = await _context.Organizations.FirstOrDefaultAsync(o => o.Code == "KURA");
 
-        var stations = new[]
+        if (kenha == null && kura == null) return;
+
+        var stations = new List<Station>();
+
+        // KURA Stations (default tenant - users are linked to KURA by default)
+        if (kura != null)
         {
-            new Station
+            stations.AddRange(new[]
             {
-                Id = Guid.NewGuid(),
-                StationCode = "NRB-MOBILE-01",
-                StationName = "Nairobi Mobile Unit 01",
-                StationType = "Mobile",
-                Location = "Nairobi, Kenya (Mobile)",
-                Status = "Active",
-                Latitude = -1.286389m,
-                Longitude = 36.817223m,
-                OrganizationId = kenha.Id,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            }
-        };
+                new Station
+                {
+                    Id = Guid.NewGuid(),
+                    StationCode = "NRB-MOBILE-01",
+                    Code = "NRB-MOBILE-01",
+                    StationName = "Nairobi Mobile Unit 01",
+                    Name = "Nairobi Mobile Unit 01",
+                    StationType = "Mobile",
+                    Location = "Nairobi, Kenya (Mobile)",
+                    Status = "Active",
+                    Latitude = -1.286389m,
+                    Longitude = 36.817223m,
+                    OrganizationId = kura.Id,  // Link to KURA (default tenant)
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new Station
+                {
+                    Id = Guid.NewGuid(),
+                    StationCode = "NRB-MULTIDECK-01",
+                    Code = "NRB-MULTIDECK-01",
+                    StationName = "Nairobi Multideck Weighbridge",
+                    Name = "Nairobi Multideck Weighbridge",
+                    StationType = "Fixed",
+                    Location = "Nairobi, Industrial Area",
+                    Status = "Active",
+                    Latitude = -1.3028m,
+                    Longitude = 36.8641m,
+                    SupportsBidirectional = true,
+                    BoundACode = "A",
+                    BoundBCode = "B",
+                    OrganizationId = kura.Id,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                }
+            });
+        }
+
+        // KENHA Stations
+        if (kenha != null)
+        {
+            stations.AddRange(new[]
+            {
+                new Station
+                {
+                    Id = Guid.NewGuid(),
+                    StationCode = "MSA-FIXED-01",
+                    Code = "MSA-FIXED-01",
+                    StationName = "Mombasa Road Weighbridge",
+                    Name = "Mombasa Road Weighbridge",
+                    StationType = "Fixed",
+                    Location = "Athi River, Mombasa Road",
+                    Status = "Active",
+                    Latitude = -1.4528m,
+                    Longitude = 36.9833m,
+                    OrganizationId = kenha.Id,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new Station
+                {
+                    Id = Guid.NewGuid(),
+                    StationCode = "GILGIL-WB-01",
+                    Code = "GILGIL-WB-01",
+                    StationName = "Gilgil Weighbridge",
+                    Name = "Gilgil Weighbridge",
+                    StationType = "Fixed",
+                    Location = "Gilgil, Nakuru County",
+                    Status = "Active",
+                    Latitude = -0.4943m,
+                    Longitude = 36.3219m,
+                    OrganizationId = kenha.Id,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                }
+            });
+        }
 
         foreach (var station in stations)
         {
             var existing = await _context.Stations
                 .FirstOrDefaultAsync(s => s.StationCode == station.StationCode);
-            
+
             if (existing == null)
             {
                 await _context.Stations.AddAsync(station);
-                Console.WriteLine($"✓ Seeded station: {station.StationName} ({station.StationCode})");
+                Console.WriteLine($"✓ Seeded station: {station.StationName} ({station.StationCode}) for {(station.OrganizationId == kura?.Id ? "KURA" : "KENHA")}");
+            }
+            else if (existing.OrganizationId != station.OrganizationId)
+            {
+                // Update existing station's org if it was previously seeded under wrong org
+                existing.OrganizationId = station.OrganizationId;
+                Console.WriteLine($"✓ Updated station: {station.StationName} organization link to {(station.OrganizationId == kura?.Id ? "KURA" : "KENHA")}");
             }
         }
 

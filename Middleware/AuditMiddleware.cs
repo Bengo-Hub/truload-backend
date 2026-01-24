@@ -23,6 +23,13 @@ public class AuditMiddleware
 
     public async Task InvokeAsync(HttpContext context, TruLoadDbContext dbContext)
     {
+        // Skip OPTIONS preflight requests (CORS) - these don't have authentication
+        if (context.Request.Method == HttpMethods.Options)
+        {
+            await _next(context);
+            return;
+        }
+
         // Skip health check, Swagger, and public auth endpoints
         if (context.Request.Path.StartsWithSegments("/health") ||
             context.Request.Path.StartsWithSegments("/swagger") ||
@@ -102,11 +109,19 @@ public class AuditMiddleware
             var userAgent = context.Request.Headers["User-Agent"].ToString();
             var requestId = context.TraceIdentifier;
 
-            // Log to Serilog structured logging
+            // Log to Serilog structured logging (always log for debugging)
             _logger.LogInformation(
                 "AUDIT: User={UserId} Action={Action} ResourceType={ResourceType} ResourceId={ResourceId} " +
                 "Endpoint={Endpoint} Method={Method} Status={Status} Success={Success} Timestamp={Timestamp}",
                 userId, action, resourceType, resourceId, endpoint, requestMethod, statusCode, success, timestamp);
+
+            // Skip database persistence for unauthenticated requests (userId is Guid.Empty)
+            // This avoids FK constraint violations since Guid.Empty doesn't exist in asp_net_users
+            if (userId == Guid.Empty)
+            {
+                _logger.LogDebug("Skipping database audit log for unauthenticated request to {Endpoint}", endpoint);
+                return;
+            }
 
             // Create audit log entry
             var auditLog = new AuditLog

@@ -5,7 +5,7 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Data.Seeders;
 
 /// <summary>
-/// Seeds 79 default permissions across 8 categories into the database.
+/// Seeds 95 default permissions across 10 categories into the database.
 /// Run once during application initialization.
 /// </summary>
 public static class PermissionSeeder
@@ -25,10 +25,30 @@ public static class PermissionSeeder
         ("weighing.override", "Override Weighing", "Weighing", "Override weighing validations and rules"),
         ("weighing.send_to_yard", "Send to Yard", "Weighing", "Send weighing to yard"),
         ("weighing.scale_test", "Scale Test", "Weighing", "Perform scale calibration and testing"),
-        ("weighing.export", "Export Weighing", "Weighing", "Export weighing data"),
+        ("weighing.export", "Export Weighing", "Weighing", "Export weighing data and print tickets"),
         ("weighing.delete", "Delete Weighing", "Weighing", "Delete weighing records"),
         ("weighing.webhook", "Weighing Webhook", "Weighing", "Manage weighing webhooks"),
         ("weighing.audit", "Audit Weighing", "Weighing", "View weighing audit logs"),
+
+        // Yard Category (8 permissions)
+        ("yard.create", "Create Yard Entry", "Yard", "Create new yard entries"),
+        ("yard.read", "Read All Yard Entries", "Yard", "Read all yard entries"),
+        ("yard.read_own", "Read Own Yard Entries", "Yard", "Read own yard entries only"),
+        ("yard.update", "Update Yard Entry", "Yard", "Update yard entry details"),
+        ("yard.release", "Release from Yard", "Yard", "Release vehicles from yard"),
+        ("yard.export", "Export Yard Data", "Yard", "Export yard data"),
+        ("yard.delete", "Delete Yard Entry", "Yard", "Delete yard entries"),
+        ("yard.audit", "Audit Yard", "Yard", "View yard audit logs"),
+
+        // Tag Category (8 permissions)
+        ("tag.create", "Create Tag", "Tag", "Create new vehicle tags"),
+        ("tag.read", "Read All Tags", "Tag", "Read all vehicle tags"),
+        ("tag.read_own", "Read Own Tags", "Tag", "Read own created tags only"),
+        ("tag.update", "Update Tag", "Tag", "Update tag details"),
+        ("tag.resolve", "Resolve Tag", "Tag", "Mark tags as resolved"),
+        ("tag.export", "Export Tags", "Tag", "Export tag data"),
+        ("tag.delete", "Delete Tag", "Tag", "Delete vehicle tags"),
+        ("tag.audit", "Audit Tags", "Tag", "View tag audit logs"),
 
         // Case Category (15 permissions)
         ("case.create", "Create Case", "Case", "Create new cases"),
@@ -118,19 +138,24 @@ public static class PermissionSeeder
 
     /// <summary>
     /// Seed permissions into database if they don't exist.
-    /// Idempotent - safe to run multiple times.
+    /// Idempotent - safe to run multiple times. Adds any missing permissions.
     /// </summary>
     public static async Task SeedAsync(TruLoadDbContext context)
     {
-        // Check if permissions already exist
-        if (await context.Permissions.AnyAsync())
-            return; // Already seeded
+        // Get existing permission codes
+        var existingCodes = await context.Permissions
+            .Select(p => p.Code)
+            .ToHashSetAsync();
 
-        var permissions = new List<Permission>();
+        var permissionsToAdd = new List<Permission>();
 
         foreach (var (code, name, category, description) in DefaultPermissions)
         {
-            permissions.Add(new Permission
+            // Skip if permission already exists
+            if (existingCodes.Contains(code))
+                continue;
+
+            permissionsToAdd.Add(new Permission
             {
                 Id = Guid.NewGuid(),
                 Code = code,
@@ -142,7 +167,10 @@ public static class PermissionSeeder
             });
         }
 
-        context.Permissions.AddRange(permissions);
-        await context.SaveChangesAsync();
+        if (permissionsToAdd.Count > 0)
+        {
+            context.Permissions.AddRange(permissionsToAdd);
+            await context.SaveChangesAsync();
+        }
     }
 }

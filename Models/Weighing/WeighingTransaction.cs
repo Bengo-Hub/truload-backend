@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Models.Common;
+using TruLoad.Backend.Models.Infrastructure;
 
 namespace TruLoad.Backend.Models.Weighing;
 
@@ -160,6 +161,12 @@ public class WeighingTransaction : BaseEntity
     public Guid? CargoId { get; set; }
 
     /// <summary>
+    /// Foreign Key to the Scale Test performed before this weighing session.
+    /// Required per regulations - scale must be tested daily per station/bound before weighing.
+    /// </summary>
+    public Guid? ScaleTestId { get; set; }
+
+    /// <summary>
     /// Whether tolerance was applied in compliance calculation
     /// </summary>
     public bool ToleranceApplied { get; set; } = false;
@@ -195,6 +202,7 @@ public class WeighingTransaction : BaseEntity
     public OriginsDestinations? Origin { get; set; }
     public OriginsDestinations? Destination { get; set; }
     public CargoTypes? Cargo { get; set; }
+    public ScaleTest? ScaleTest { get; set; }
 
     // One-to-Many relationship with Axle Weights
     public ICollection<WeighingAxle> WeighingAxles { get; set; } = new List<WeighingAxle>();

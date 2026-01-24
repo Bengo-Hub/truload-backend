@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using TruLoad.Backend.DTOs.CaseManagement;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Services.Interfaces.CaseManagement;
 
 namespace TruLoad.Backend.Controllers.CaseManagement;
@@ -12,10 +13,14 @@ namespace TruLoad.Backend.Controllers.CaseManagement;
 public class SpecialReleaseController : ControllerBase
 {
     private readonly ISpecialReleaseService _specialReleaseService;
+    private readonly ITenantContext _tenantContext;
 
-    public SpecialReleaseController(ISpecialReleaseService specialReleaseService)
+    public SpecialReleaseController(
+        ISpecialReleaseService specialReleaseService,
+        ITenantContext tenantContext)
     {
         _specialReleaseService = specialReleaseService;
+        _tenantContext = tenantContext;
     }
 
     /// <summary>

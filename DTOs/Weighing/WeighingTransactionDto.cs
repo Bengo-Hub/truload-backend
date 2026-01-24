@@ -77,6 +77,11 @@ public class WeighingTransactionDto
     public bool HasPermit { get; set; }
     public string? PermitNumber { get; set; }
 
+    // Scale Test (daily calibration verification)
+    public Guid? ScaleTestId { get; set; }
+    public string? ScaleTestResult { get; set; }
+    public DateTime? ScaleTestCarriedAt { get; set; }
+
     // Images & Media
     public string? VehicleThumbnailUrl { get; set; }
     public List<string> VehicleImageUrls { get; set; } = new();
@@ -112,15 +117,27 @@ public class CreateWeighingRequest
     [Required]
     [StringLength(50)]
     public string TicketNumber { get; set; } = string.Empty;
-    
+
     [Required]
     public Guid StationId { get; set; }
-    
+
     [Required]
     public Guid VehicleId { get; set; }
-    
+
     public Guid? DriverId { get; set; }
     public Guid? TransporterId { get; set; }
+
+    /// <summary>
+    /// Scale test ID for this weighing session. Required per regulations.
+    /// Backend validates a passing scale test exists for the station/bound today.
+    /// </summary>
+    public Guid? ScaleTestId { get; set; }
+
+    /// <summary>
+    /// Direction/bound for bidirectional stations (A or B).
+    /// </summary>
+    [StringLength(10)]
+    public string? Bound { get; set; }
 }
 
 /// <summary>

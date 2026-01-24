@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using TruLoad.Backend.DTOs.CaseManagement;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Services.Interfaces.CaseManagement;
 
 namespace TruLoad.Backend.Controllers.CaseManagement;
@@ -12,10 +13,14 @@ namespace TruLoad.Backend.Controllers.CaseManagement;
 public class CaseRegisterController : ControllerBase
 {
     private readonly ICaseRegisterService _caseRegisterService;
+    private readonly ITenantContext _tenantContext;
 
-    public CaseRegisterController(ICaseRegisterService caseRegisterService)
+    public CaseRegisterController(
+        ICaseRegisterService caseRegisterService,
+        ITenantContext tenantContext)
     {
         _caseRegisterService = caseRegisterService;
+        _tenantContext = tenantContext;
     }
 
     /// <summary>

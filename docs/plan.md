@@ -535,13 +535,79 @@ public static class {ModuleName}ModuleDbContextConfiguration
 
 ### A.3 - Scale Test Workflow
 
+**Overview:**
+Scale tests are mandatory daily calibration verifications required before weighing operations can commence. The system supports two test types for flexibility:
+
+**Test Types:**
+1. **Calibration Weight Tests (testType: `calibration_weight`)**
+   - Traditional approach using known calibration weights
+   - Operator places standard test weight on scale
+   - System compares measured vs expected weight
+
+2. **Vehicle-Based Tests (testType: `vehicle`)**
+   - Uses a 2-axle reference vehicle with known certified weight
+   - Vehicle plate captured for audit trail
+   - For multideck: Both axles on one deck, record, move to next deck
+   - For mobile: Record combined weight from Scale A and B
+
 **Process Flow:**
 1. Daily calibration check required before weighing operations
-2. Operator places known test weight on scale
-3. System records measured weight, expected weight, deviation
-4. Test result: Pass/Fail based on tolerance thresholds
-5. Failed tests block weighing operations until resolved
-6. Test history maintained for compliance and audit
+2. Operator selects test type (calibration weight or vehicle)
+3. For calibration weights:
+   - Place known test weight on scale
+   - System reads actual weight from TruConnect
+4. For vehicle tests:
+   - Enter vehicle plate number
+   - Position vehicle according to weighing mode
+   - System captures weight per deck/scale
+5. System records: expected weight, actual weight, deviation, test type, vehicle plate (if applicable)
+6. Test result: Pass/Fail based on tolerance threshold (0.5% or 50kg minimum)
+7. Failed tests block weighing operations until a passing test is recorded
+8. Test history maintained for compliance and audit (searchable by date, result, station, bound)
+
+**Data Model (ScaleTest):**
+```csharp
+public class ScaleTest
+{
+    public Guid Id { get; set; }
+    public Guid StationId { get; set; }
+    public string? Bound { get; set; }                    // A or B for bidirectional stations
+    public string TestType { get; set; } = "calibration_weight"; // calibration_weight | vehicle
+    public string? VehiclePlate { get; set; }            // For vehicle-based tests
+    public string? WeighingMode { get; set; }            // mobile | multideck
+    public int? TestWeightKg { get; set; }               // Expected weight
+    public int? ActualWeightKg { get; set; }             // Measured weight
+    public string Result { get; set; } = "pass";         // pass | fail
+    public int? DeviationKg { get; set; }                // Absolute deviation
+    public string? Details { get; set; }                 // Test notes/log
+    public DateTime CarriedAt { get; set; }
+    public Guid CarriedById { get; set; }
+}
+```
+
+**API Endpoints:**
+- `POST /api/v1/scale-tests` - Create new scale test
+- `GET /api/v1/scale-tests/my-station/status` - Check if current user's station has valid test
+- `GET /api/v1/scale-tests/my-station/latest` - Get latest test for current user's station
+- `GET /api/v1/scale-tests/station/{stationId}/status` - Check station test status
+- `GET /api/v1/scale-tests/station/{stationId}/latest` - Get latest test for station
+- `GET /api/v1/scale-tests/station/{stationId}/range` - Get tests by date range
+- `GET /api/v1/scale-tests/station/{stationId}/failed` - Get failed tests history
+
+**Tolerance Rules (Kenya Traffic Act Cap 403):**
+- Maximum allowed deviation: 0.5% of expected weight OR 50kg (whichever is greater)
+- Example: For 10,000 kg test weight, tolerance = max(50kg, 50kg) = 50kg
+- Example: For 20,000 kg test weight, tolerance = max(100kg, 50kg) = 100kg
+
+**Bidirectional Station Support:**
+- Bidirectional stations require separate scale tests for each bound (A and B)
+- Each bound's test status is tracked independently
+- Weighing operations blocked only for the bound without valid test
+
+**Caching Considerations:**
+- Frontend caches scale test status in localStorage for 24 hours
+- Cache invalidated when new test is performed
+- Cache validated against current calendar day (UTC)
 
 ---
 
@@ -717,7 +783,7 @@ See [REGULATORY_COMPLIANCE_REPORT.md](./REGULATORY_COMPLIANCE_REPORT.md) for com
 
 ### 🚨 CRITICAL IMPLEMENTATION REQUIREMENT: Axle Grouping
 
-**CURRENT STATUS:** ❌ **NON-COMPLIANT** - Requires immediate fix (Sprint 11)
+**CURRENT STATUS:** ✅ **IMPLEMENTED** (Sprint 11 Complete)
 
 **Regulatory Requirement:**
 Weight limits and tolerance rules apply to **AXLE GROUPS**, NOT individual axles.
@@ -734,24 +800,22 @@ Weight limits and tolerance rules apply to **AXLE GROUPS**, NOT individual axles
 3. **Tandem Axle** - 2 axles with spacing < 1.8m (16,000 kg limit)
 4. **Tridem Axle** - 3 axles with spacing < 1.8m (24,000 kg limit)
 
-**REQUIRED IMPLEMENTATION:**
+**IMPLEMENTED STRATEGY:**
 ```csharp
-// Models/Weighing/WeighingAxle.cs - ADD PROPERTIES:
-public AxleType AxleType { get; set; }  // Steering, SingleDrive, Tandem, Tridem
-public decimal AxleSpacingMeters { get; set; }  // Distance to next axle
+// Models/Weighing/WeighingAxle.cs - PROPERTIES ADDED:
+public string AxleType { get; set; }  // Steering, SingleDrive, Tandem, Tridem
+public decimal? AxleSpacingMeters { get; set; }  // Distance to next axle
 public decimal PavementDamageFactor { get; set; }  // PDF = (Actual/Permissible)^4
+public int? GroupAggregateWeightKg { get; set; } // Cached group total
+public int? GroupPermissibleWeightKg { get; set; } // Cached group permissible
 
-// Services/Implementations/Weighing/WeighingService.cs - ADD METHOD:
-private async Task<List<AxleGroupResult>> AggregateAxleGroups(
-    List<WeighingAxle> axles, int operationalToleranceKg)
-{
-    // 1. Group axles by AxleGrouping ("A", "B", "C", "D")
-    // 2. Sum weights per group
-    // 3. Apply tolerance PER GROUP (5% for single, 0% for grouped)
-    // 4. Calculate PDF per group: (groupWeight / groupPermissible) ^ 4
-    // 5. Calculate fees per group from AxleOverloadFeeSchedule
-    // See REGULATORY_COMPLIANCE_REPORT.md Section 4.1 for full implementation
-}
+// Services/Implementations/Weighing/WeighingService.cs - METHOD IMPLEMENTED:
+// ProcessAxleGroupsAsync(WeighingTransaction transaction, string legalFramework)
+// 1. Groups axles by AxleGrouping ("A", "B", "C", "D")
+// 2. Sums weights per group
+// 3. Applies tolerance PER GROUP (5% for group, 0% for GVW)
+// 4. Calculates PDF per group: (groupWeight / groupPermissible) ^ 4
+// 5. Calculates fees per group using AxleOverloadFeeSchedule
 ```
 
 ---
@@ -1552,13 +1616,45 @@ $argon2id$v=19$m=65536,t=3,p=2$<base64-salt>$<base64-hash>
 
 ---
 
+---
+
+## KenloadV2 vs TruLoad System Comparison (January 22, 2026)
+
+A comprehensive audit was conducted comparing KenloadV2 (existing KeNHA system) with TruLoad. Key findings:
+
+### Critical Gaps Identified (Must Fix - Sprint 11)
+1. **Axle Group Aggregation:** TruLoad lacks proper group-level compliance checking
+2. **Per-Axle-Type Fees:** Missing fee calculation by axle type (Steering, Tandem, Tridem)
+3. **Demerit Points System:** Not implemented - required for NTSA integration
+4. **Weight Ticket Format:** Missing dual-table display (individual + group weights)
+
+### TruLoad Advantages to Preserve
+1. **Modern Architecture:** .NET 8 LTS, PostgreSQL 16 with pgvector
+2. **Offline-First PWA:** IndexedDB with background sync
+3. **Vector Search/AI:** ONNX Runtime for natural language queries
+4. **Multi-Tenancy:** Supports KURA, KeNHA, Counties
+5. **Unified Backend:** Mode-agnostic weight capture (Static, WIM, Mobile)
+
+### Recommended Roadmap
+- **Sprint 11:** Axle grouping compliance (2 weeks) - P0 Critical
+- **Sprint 12:** Weight ticket format update (1 week) - P0 Critical
+- **Sprint 13:** Demerit points & prosecution enhancement (2 weeks) - P1 High
+
+For full details, see [KenloadV2 vs TruLoad Comparison](./KENLOAD_VS_TRULOAD_COMPARISON.md).
+
+---
+
 ## References
 
 - [Database Schema (ERD)](./erd.md) - Updated with Permission and RolePermission entities
+- [KenloadV2 vs TruLoad Comparison](./KENLOAD_VS_TRULOAD_COMPARISON.md) - **NEW:** Comprehensive system comparison with gap analysis
+- [Regulatory Compliance Report](./REGULATORY_COMPLIANCE_REPORT.md) - Kenya Traffic Act & EAC Act compliance audit
 - ASP.NET Core Identity docs (built-in password hashing)
-- [RBAC Implementation Plan](./RBAC_IMPLEMENTATION_PLAN.md) - **NEW:** Complete 5-phase roadmap with production auth-service integration and 77-permission model
-- [Password Hashing Implementation](./PASSWORD_HASHING_IMPLEMENTATION.md) - **NEW:** Argon2id standardization and bidirectional sync
+- [RBAC Implementation Plan](./RBAC_IMPLEMENTATION_PLAN.md) - Complete 5-phase roadmap with 77-permission model
+- [Password Hashing Implementation](./PASSWORD_HASHING_IMPLEMENTATION.md) - Argon2id standardization
 - [Integration Guide](./integration.md)
 - [Sprint Plans](./sprints/)
-  - [Sprint 1: User Management & Security](./sprints/sprint-01-user-management-security.md) - Updated with Permission Model (Phase 1) and Authorization Policies (Phase 2)
-- [FRD Document](../../resources/Master%20FRD%20KURAWEIGH.docx.md)
+  - [Sprint 1: User Management & Security](./sprints/sprint-01-user-management-security.md) - Permission Model and Authorization Policies
+  - [Sprint 10: Case Register & Special Release](./sprints/sprint-10-case-register.md) - Case management module
+  - [Sprint 11: Axle Grouping Compliance](./sprints/sprint-11-axle-grouping-compliance.md) - **NEW:** Critical regulatory compliance fixes
+- [FRD Document](./Master-FRD-KURAWEIGH.md)

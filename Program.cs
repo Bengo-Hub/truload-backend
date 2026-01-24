@@ -229,9 +229,18 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("Permission:system.audit_logs", policy =>
         policy.RequireAuthenticatedUser()
               .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("system.audit_logs")))
-    .AddPolicy("Permission:system.view_config", policy =>
+    .AddPolicy("Permission:system.cache_management", policy =>
         policy.RequireAuthenticatedUser()
-              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("system.view_config")))
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("system.cache_management")))
+    .AddPolicy("Permission:system.integration_management", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("system.integration_management")))
+    .AddPolicy("Permission:system.backup_restore", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("system.backup_restore")))
+    .AddPolicy("Permission:system.security_policy", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("system.security_policy")))
 
     // User permissions
     .AddPolicy("Permission:user.create", policy =>
@@ -464,7 +473,59 @@ builder.Services.AddAuthorizationBuilder()
               .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("analytics.superset")))
     .AddPolicy("Permission:analytics.audit", policy =>
         policy.RequireAuthenticatedUser()
-              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("analytics.audit")));
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("analytics.audit")))
+
+    // Yard permissions
+    .AddPolicy("Permission:yard.create", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("yard.create")))
+    .AddPolicy("Permission:yard.read", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("yard.read")))
+    .AddPolicy("Permission:yard.read_own", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("yard.read_own")))
+    .AddPolicy("Permission:yard.update", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("yard.update")))
+    .AddPolicy("Permission:yard.release", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("yard.release")))
+    .AddPolicy("Permission:yard.export", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("yard.export")))
+    .AddPolicy("Permission:yard.delete", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("yard.delete")))
+    .AddPolicy("Permission:yard.audit", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("yard.audit")))
+
+    // Tag permissions
+    .AddPolicy("Permission:tag.create", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("tag.create")))
+    .AddPolicy("Permission:tag.read", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("tag.read")))
+    .AddPolicy("Permission:tag.read_own", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("tag.read_own")))
+    .AddPolicy("Permission:tag.update", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("tag.update")))
+    .AddPolicy("Permission:tag.resolve", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("tag.resolve")))
+    .AddPolicy("Permission:tag.export", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("tag.export")))
+    .AddPolicy("Permission:tag.delete", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("tag.delete")))
+    .AddPolicy("Permission:tag.audit", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("tag.audit")));
 
 builder.Services.AddScoped<IAuthorizationHandler, PermissionRequirementHandler>();
 
@@ -494,6 +555,9 @@ builder.Services.AddFluentValidationAutoValidation();
 
 // Rate Limiting (Performance optimization - prevents API abuse)
 builder.Services.AddTruLoadRateLimiting();
+
+// Multi-tenant context (Organization/Station resolution from headers/claims/default)
+builder.Services.AddTenantContext();
 
 // Response Compression (Performance optimization - reduces bandwidth)
 builder.Services.AddTruLoadResponseCompression();
@@ -556,6 +620,11 @@ builder.Services.AddScoped<IOwnershipCheckService, OwnershipCheckService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IWeighingService, WeighingService>();
 
+// Sprint 11: Axle Group Aggregation & Fee/Demerit Services
+builder.Services.AddScoped<IAxleTypeFeeRepository, AxleTypeFeeRepository>();
+builder.Services.AddScoped<IDemeritPointsRepository, DemeritPointsRepository>();
+builder.Services.AddScoped<IAxleGroupAggregationService, AxleGroupAggregationService>();
+
 // Case Management repositories
 builder.Services.AddScoped<ICaseRegisterRepository, CaseRegisterRepository>();
 builder.Services.AddScoped<ISpecialReleaseRepository, SpecialReleaseRepository>();
@@ -596,7 +665,7 @@ try
         }
 
         // Check if initial seeding has already been completed
-        var seedingVersion = 1; // Increment this when you need to re-seed
+        var seedingVersion = 2; // Increment this when you need to re-seed (v2: Added yard.* and tag.* permissions)
         var seedingName = "InitialSeed";
 
         var existingSeed = await dbContext.DatabaseSeedingHistory
@@ -700,6 +769,11 @@ app.UseCors();
 app.UseTruLoadRateLimiting();
 
 app.UseAuthentication();
+
+// Tenant context middleware - resolves org/station from headers/claims/default
+// Must be after authentication (needs user claims) and before authorization
+app.UseTenantContext();
+
 app.UseAuthorization();
 
 app.MapControllers();
