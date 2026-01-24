@@ -1,12 +1,12 @@
 #See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER app
 WORKDIR /app
 EXPOSE 4000
 EXPOSE 4001
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["truload-backend.csproj", "."]
@@ -19,14 +19,14 @@ FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./truload-backend.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS final
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS final
 # Use SDK image instead of aspnet to have EF Core tools available for migrations
 
 # Install curl and postgresql-client for health checks and DB operations
 RUN apt-get update && apt-get install -y curl postgresql-client && rm -rf /var/lib/apt/lists/*
 
 # Install EF Core tools globally for migrations
-RUN dotnet tool install --global dotnet-ef --version 8.0.*
+RUN dotnet tool install --global dotnet-ef --version 10.0.*
 ENV PATH="${PATH}:/root/.dotnet/tools"
 
 WORKDIR /app
