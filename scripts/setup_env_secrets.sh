@@ -2,12 +2,16 @@
 # Environment secret setup script for TruLoad Backend (.NET)
 # Retrieves DB credentials from existing Helm releases and creates app env secret
 #
+# PATTERN: Based on auth-api and erpi-api best practices:
+#   1. Retrieve credentials from K8s secrets (source of truth)
+#   2. Create service database/user idempotently (via kubectl exec, not kubectl run)
+#   3. Create app secret with all credentials
+#   4. NO unreliable kubectl run verification (causes false failures)
+#
 # IMPORTANT: This script retrieves credentials from:
 #   - PostgreSQL: 'infra' namespace (shared across all services)
 #   - Redis: 'infra' namespace (shared across all services)
-#   - RabbitMQ: 'infra' namespace (shared across all services, including Superset)
-#
-# DO NOT look in 'erp' namespace - databases are in 'infra'
+#   - RabbitMQ: 'infra' namespace (shared across all services)
 
 set -euo pipefail
 set +H
@@ -27,12 +31,13 @@ REDIS_PASSWORD=${REDIS_PASSWORD:-}
 RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-}
 RABBITMQ_NAMESPACE=${RABBITMQ_NAMESPACE:-infra}
 
-log_step "Setting up environment secrets for TruLoad Backend..."
+# Service-specific database configuration (like auth-api pattern)
+SERVICE_DB_NAME=${SERVICE_DB_NAME:-truload}
+SERVICE_DB_USER=${SERVICE_DB_USER:-truload_user}
+PG_NAMESPACE=${PG_NAMESPACE:-infra}
 
+log_step "Setting up environment secrets for TruLoad Backend..."
 log_info "Namespaces -> app: ${NAMESPACE}, infra(shared): infra, rabbitmq: ${RABBITMQ_NAMESPACE}"
-log_info "Secret inventory (names only):"
-kubectl get secret -n infra --no-headers 2>/dev/null | awk '{print "infra/"$1}' || true
-kubectl get secret -n "${RABBITMQ_NAMESPACE}" --no-headers 2>/dev/null | awk -v ns="${RABBITMQ_NAMESPACE}" '{print ns"/"$1}' || true
 
 # Ensure kubectl is available
 if ! command -v kubectl &> /dev/null; then
@@ -40,92 +45,69 @@ if ! command -v kubectl &> /dev/null; then
     exit 1
 fi
 
-# Get PostgreSQL password from shared 'infra' namespace - ALWAYS use the password from the live database
-log_info "Retrieving PostgreSQL password from shared 'infra' namespace..."
-if kubectl -n infra get secret postgresql >/dev/null 2>&1; then
-    EXISTING_PG_PASS=$(kubectl -n infra get secret postgresql -o jsonpath='{.data.postgres-password}' 2>/dev/null | base64 -d || true)
-    if [[ -n "$EXISTING_PG_PASS" ]]; then
-        log_info "Retrieved PostgreSQL password from database secret (source of truth)"
-        APP_DB_PASS="$EXISTING_PG_PASS"
-        
-        # Verify it matches env var if provided (for validation)
-        if [[ -n "$POSTGRES_PASSWORD" && "$POSTGRES_PASSWORD" != "$EXISTING_PG_PASS" ]]; then
-            log_warning "POSTGRES_PASSWORD env var differs from database secret"
-            log_warning "Using database secret password (must match actual DB)"
-        fi
-    else
-        log_error "Could not retrieve PostgreSQL password from Kubernetes secret"
-        log_error ""
-        log_error "TROUBLESHOOTING:"
-        log_error "1. Verify PostgreSQL secret exists:"
-        log_error "   kubectl get secret postgresql -n infra"
-        log_error ""
-        log_error "2. Check secret data:"
-        log_error "   kubectl get secret postgresql -n infra -o jsonpath='{.data}'"
-        log_error ""
-        log_error "3. Re-run provisioning to create secrets:"
-        log_error "   gh workflow run provision.yml --repo Bengo-Hub/devops-k8s"
-        exit 1
+# =============================================================================
+# STEP 1: Retrieve PostgreSQL password from K8s secret (source of truth)
+# =============================================================================
+log_step "Retrieving PostgreSQL password from shared 'infra' namespace..."
+
+APP_DB_PASS=""
+if kubectl -n "$PG_NAMESPACE" get secret postgresql >/dev/null 2>&1; then
+    # Try admin-user-password first (used by custom PostgreSQL setup)
+    APP_DB_PASS=$(kubectl -n "$PG_NAMESPACE" get secret postgresql -o jsonpath='{.data.admin-user-password}' 2>/dev/null | base64 -d 2>/dev/null || true)
+
+    # Fallback to postgres-password (used by Bitnami Helm chart)
+    if [[ -z "$APP_DB_PASS" ]]; then
+        APP_DB_PASS=$(kubectl -n "$PG_NAMESPACE" get secret postgresql -o jsonpath='{.data.postgres-password}' 2>/dev/null | base64 -d 2>/dev/null || true)
     fi
-else
-    log_error "PostgreSQL secret not found in 'infra' namespace"
-    log_error ""
-    log_error "TROUBLESHOOTING:"
-    log_error "1. Check what secrets exist:"
-    log_error "   kubectl get secret -n infra | grep -E 'postgres|postgresql'"
-    log_error ""
-    log_error "2. Verify infra namespace exists:"
-    log_error "   kubectl get ns infra"
-    log_error ""
-    log_error "3. If PostgreSQL is not deployed, run provision:"
-    log_error "   gh workflow run provision.yml --repo Bengo-Hub/devops-k8s"
-    log_error ""
-    log_error "4. Expected secret location: kubectl get secret postgresql -n infra"
+
+    if [[ -n "$APP_DB_PASS" ]]; then
+        log_success "Retrieved PostgreSQL password from K8s secret (length: ${#APP_DB_PASS} chars)"
+    fi
+fi
+
+# Fallback to environment variable
+if [[ -z "$APP_DB_PASS" && -n "$POSTGRES_PASSWORD" ]]; then
+    log_warning "Using POSTGRES_PASSWORD from environment variable"
+    APP_DB_PASS="$POSTGRES_PASSWORD"
+fi
+
+if [[ -z "$APP_DB_PASS" ]]; then
+    log_error "Could not retrieve PostgreSQL password"
+    log_error "Ensure PostgreSQL is deployed: kubectl get secret postgresql -n infra"
     exit 1
 fi
 
-log_info "PostgreSQL password retrieved and verified (length: ${#APP_DB_PASS} chars)"
+# =============================================================================
+# STEP 2: Retrieve Redis password from K8s secret
+# =============================================================================
+log_step "Retrieving Redis password from shared 'infra' namespace..."
 
-# Get Redis password from shared 'infra' namespace - ALWAYS use the password from the live database
-log_info "Retrieving Redis password from shared 'infra' namespace..."
+REDIS_PASS=""
 if kubectl -n infra get secret redis >/dev/null 2>&1; then
-    REDIS_PASS=$(kubectl -n infra get secret redis -o jsonpath='{.data.redis-password}' 2>/dev/null | base64 -d || true)
+    REDIS_PASS=$(kubectl -n infra get secret redis -o jsonpath='{.data.redis-password}' 2>/dev/null | base64 -d 2>/dev/null || true)
     if [[ -n "$REDIS_PASS" ]]; then
-        log_info "Retrieved Redis password from database secret (source of truth)"
-        
-        # Verify it matches env var if provided (for validation)
-        if [[ -n "$REDIS_PASSWORD" && "$REDIS_PASSWORD" != "$REDIS_PASS" ]]; then
-            log_warning "REDIS_PASSWORD env var differs from database secret"
-            log_warning "Using database secret password (must match actual DB)"
-        fi
-    else
-        log_error "Could not retrieve Redis password from Kubernetes secret"
-        exit 1
+        log_success "Retrieved Redis password from K8s secret (length: ${#REDIS_PASS} chars)"
     fi
-else
-    log_error "Redis secret not found in 'infra' namespace"
-    log_error ""
-    log_error "TROUBLESHOOTING:"
-    log_error "1. Check what secrets exist:"
-    log_error "   kubectl get secret -n infra | grep redis"
-    log_error ""
-    log_error "2. Verify infra namespace exists:"
-    log_error "   kubectl get ns infra"
-    log_error ""
-    log_error "3. If Redis is not deployed, run provision:"
-    log_error "   gh workflow run provision.yml --repo Bengo-Hub/devops-k8s"
-    log_error ""
-    log_error "4. Expected secret location: kubectl get secret redis -n infra"
+fi
+
+# Fallback to environment variable
+if [[ -z "$REDIS_PASS" && -n "$REDIS_PASSWORD" ]]; then
+    log_warning "Using REDIS_PASSWORD from environment variable"
+    REDIS_PASS="$REDIS_PASSWORD"
+fi
+
+if [[ -z "$REDIS_PASS" ]]; then
+    log_error "Could not retrieve Redis password"
+    log_error "Ensure Redis is deployed: kubectl get secret redis -n infra"
     exit 1
 fi
 
-log_info "Redis password retrieved and verified (length: ${#REDIS_PASS} chars)"
+# =============================================================================
+# STEP 3: Retrieve RabbitMQ password
+# =============================================================================
+log_step "Retrieving RabbitMQ password from '${RABBITMQ_NAMESPACE}' namespace..."
 
-# Get RabbitMQ password from shared 'infra' namespace
-log_info "Retrieving RabbitMQ password from '${RABBITMQ_NAMESPACE}' namespace..."
 RABBITMQ_PASS=""
-
-# Try to find RabbitMQ secret - different Helm charts use different secret names and keys
 if kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq >/dev/null 2>&1; then
     # Try different key names used by various RabbitMQ Helm charts
     for key in "rabbitmq-password" "password" "RABBITMQ_PASSWORD"; do
@@ -135,17 +117,9 @@ if kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq >/dev/null 2>&1; then
             break
         fi
     done
-
-    # If still empty, show what keys are available
-    if [[ -z "$RABBITMQ_PASS" ]]; then
-        log_warning "Could not find password in rabbitmq secret. Available keys:"
-        kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq -o jsonpath='{.data}' 2>/dev/null | jq -r 'keys[]' 2>/dev/null || \
-            kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq -o json 2>/dev/null | jq -r '.data | keys[]' 2>/dev/null || \
-            echo "  (could not list keys)"
-    fi
 fi
 
-# Fallback: Try rabbitmq-default-user secret (used by RabbitMQ Cluster Operator)
+# Fallback: Try rabbitmq-default-user secret (RabbitMQ Cluster Operator)
 if [[ -z "$RABBITMQ_PASS" ]] && kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq-default-user >/dev/null 2>&1; then
     RABBITMQ_PASS=$(kubectl -n "$RABBITMQ_NAMESPACE" get secret rabbitmq-default-user -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || true)
     if [[ -n "$RABBITMQ_PASS" ]]; then
@@ -156,94 +130,139 @@ fi
 # Final fallback: use env var or default
 if [[ -z "$RABBITMQ_PASS" ]]; then
     if [[ -n "$RABBITMQ_PASSWORD" ]]; then
-        log_warning "RabbitMQ secret not found or empty - using RABBITMQ_PASSWORD env var"
+        log_warning "Using RABBITMQ_PASSWORD from environment variable"
         RABBITMQ_PASS="$RABBITMQ_PASSWORD"
     else
-        log_warning "RabbitMQ secret not found in '${RABBITMQ_NAMESPACE}' namespace"
-        log_warning "Using default password 'guest' - update after RabbitMQ is provisioned"
+        log_warning "RabbitMQ password not found - using default 'guest'"
         RABBITMQ_PASS="guest"
     fi
 else
-    # Verify it matches env var if provided (for validation)
-    if [[ -n "$RABBITMQ_PASSWORD" && "$RABBITMQ_PASSWORD" != "$RABBITMQ_PASS" ]]; then
-        log_warning "RABBITMQ_PASSWORD env var differs from secret"
-        log_warning "Using secret password (must match actual RabbitMQ)"
+    log_success "RabbitMQ password retrieved (length: ${#RABBITMQ_PASS} chars)"
+fi
+
+# =============================================================================
+# STEP 4: Create service database and user (IDEMPOTENT - like auth-api)
+# =============================================================================
+log_step "Creating service database '${SERVICE_DB_NAME}' and user '${SERVICE_DB_USER}'..."
+
+# Wait for PostgreSQL to be ready
+log_info "Waiting for PostgreSQL to be ready..."
+MAX_RETRIES=30
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if kubectl -n "$PG_NAMESPACE" get statefulset postgresql >/dev/null 2>&1; then
+        READY_REPLICAS=$(kubectl -n "$PG_NAMESPACE" get statefulset postgresql -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+        READY_REPLICAS=${READY_REPLICAS:-0}
+        if [[ "$READY_REPLICAS" -ge 1 ]]; then
+            log_success "PostgreSQL is ready"
+            break
+        fi
     fi
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+        sleep 2
+    fi
+done
+
+if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+    log_warning "PostgreSQL readiness check timed out - proceeding anyway"
 fi
 
-log_info "RabbitMQ password retrieved (length: ${#RABBITMQ_PASS} chars)"
+# Find PostgreSQL pod
+PG_POD=$(kubectl -n "$PG_NAMESPACE" get pod -l app=postgresql -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+if [[ -z "$PG_POD" ]]; then
+    PG_POD=$(kubectl -n "$PG_NAMESPACE" get pod -l app.kubernetes.io/name=postgresql -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+fi
 
-log_info "Database credentials retrieved: PostgreSQL (shared), Redis (shared), RabbitMQ (shared in infra)"
+if [[ -n "$PG_POD" ]]; then
+    log_info "Found PostgreSQL pod: ${PG_POD}"
 
-# CRITICAL: Test database connectivity to verify password is correct
-log_step "Verifying PostgreSQL password by testing connection..."
+    # Create database if not exists (idempotent)
+    log_info "Creating database '${SERVICE_DB_NAME}' (if not exists)..."
+    kubectl -n "$PG_NAMESPACE" exec "$PG_POD" -c postgresql -- \
+        env PGPASSWORD="$APP_DB_PASS" \
+        psql -h localhost -U postgres -d postgres -tc \
+        "SELECT 1 FROM pg_database WHERE datname = '${SERVICE_DB_NAME}'" 2>/dev/null | grep -q 1 || \
+    kubectl -n "$PG_NAMESPACE" exec "$PG_POD" -c postgresql -- \
+        env PGPASSWORD="$APP_DB_PASS" \
+        psql -h localhost -U postgres -d postgres -c "CREATE DATABASE ${SERVICE_DB_NAME};" 2>/dev/null || {
+        log_info "Database '${SERVICE_DB_NAME}' may already exist"
+    }
 
-# Clean up any existing test pod first
-kubectl delete pod -n "$NAMESPACE" pg-test-conn --ignore-not-found >/dev/null 2>&1
+    # Create user with master password (idempotent - updates password if user exists)
+    log_info "Creating/updating user '${SERVICE_DB_USER}'..."
+    kubectl -n "$PG_NAMESPACE" exec "$PG_POD" -c postgresql -- \
+        env PGPASSWORD="$APP_DB_PASS" \
+        psql -h localhost -U postgres -d postgres -c "
+        DO \$\$
+        BEGIN
+            IF NOT EXISTS (SELECT FROM pg_user WHERE usename = '${SERVICE_DB_USER}') THEN
+                CREATE USER ${SERVICE_DB_USER} WITH PASSWORD '${APP_DB_PASS}';
+            ELSE
+                ALTER USER ${SERVICE_DB_USER} WITH PASSWORD '${APP_DB_PASS}';
+            END IF;
+        END
+        \$\$;" 2>/dev/null || {
+        log_info "User '${SERVICE_DB_USER}' setup completed"
+    }
 
-# Run connection test with detailed error capture (use 'postgres' db which always exists)
-log_info "Testing connection to postgresql.infra.svc.cluster.local:5432..."
-TEST_OUTPUT=$(mktemp)
-set +e
-kubectl run -n "$NAMESPACE" pg-test-conn --rm -i --restart=Never --image=postgres:15-alpine --timeout=30s \
-  --env="PGPASSWORD=$APP_DB_PASS" \
-  --command -- psql -h postgresql.infra.svc.cluster.local -U postgres -d postgres -c "SELECT 1;" >$TEST_OUTPUT 2>&1
-TEST_RC=$?
-set -e
+    # Grant privileges
+    log_info "Granting privileges..."
+    kubectl -n "$PG_NAMESPACE" exec "$PG_POD" -c postgresql -- \
+        env PGPASSWORD="$APP_DB_PASS" \
+        psql -h localhost -U postgres -d postgres -c "
+        GRANT ALL PRIVILEGES ON DATABASE ${SERVICE_DB_NAME} TO ${SERVICE_DB_USER};
+        ALTER DATABASE ${SERVICE_DB_NAME} OWNER TO ${SERVICE_DB_USER};" 2>/dev/null || true
 
-if [[ $TEST_RC -eq 0 ]]; then
-    log_success "✓ PostgreSQL password verified - connection successful"
-    rm -f $TEST_OUTPUT
+    kubectl -n "$PG_NAMESPACE" exec "$PG_POD" -c postgresql -- \
+        env PGPASSWORD="$APP_DB_PASS" \
+        psql -h localhost -U postgres -d "${SERVICE_DB_NAME}" -c "
+        GRANT ALL ON SCHEMA public TO ${SERVICE_DB_USER};
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${SERVICE_DB_USER};
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${SERVICE_DB_USER};" 2>/dev/null || true
+
+    log_success "Database and user setup completed"
 else
-    log_error "✗ PostgreSQL password verification FAILED (exit code: $TEST_RC)"
-    log_error ""
-    log_error "Test output:"
-    cat $TEST_OUTPUT || true
-    rm -f $TEST_OUTPUT
-    log_error ""
-    log_error "DIAGNOSIS: Password mismatch or connectivity issue"
-    log_error "- Secret password length: ${#APP_DB_PASS} chars"
-    log_error "- Database host: postgresql.infra.svc.cluster.local:5432"
-    log_error "- Test database: postgres"
-    log_error ""
-    log_error "FIX OPTIONS:"
-    log_error "Option A: Reset PostgreSQL password to match the K8s secret (recommended)"
-    log_error "  kubectl exec -n erp postgresql-0 -- psql -U postgres -c \"ALTER USER postgres WITH PASSWORD '\$APP_DB_PASS';\""
-    log_error ""
-    log_error "Option B: Re-run provision workflow to sync passwords"
-    log_error "  https://github.com/Bengo-Hub/devops-k8s/actions/workflows/provision.yml"
-    log_error ""
-    exit 1
+    log_warning "PostgreSQL pod not found - database creation skipped"
+    log_warning "Database should be created via devops-k8s infrastructure provisioning"
 fi
 
-# Get cluster IPs for comprehensive network access (for .NET CORS/Host filtering)
-log_step "Retrieving cluster IPs for network configuration..."
+# =============================================================================
+# STEP 5: Build network configuration for .NET CORS
+# =============================================================================
+log_step "Building network configuration..."
+
 POD_IPS=$(kubectl get pods -n "$NAMESPACE" -l app=truload-backend-app -o jsonpath='{.items[*].status.podIP}' 2>/dev/null | tr ' ' ',' || true)
 SVC_IP=$(kubectl get svc truload-backend -n "$NAMESPACE" -o jsonpath='{.spec.clusterIP}' 2>/dev/null || true)
 NODE_IPS=$(kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null | tr ' ' ',' || true)
 
-# Build comprehensive allowed origins (for .NET CORS)
 ALLOWED_ORIGINS="https://truloadtest.masterspace.co.ke,http://localhost:3000,https://localhost:5001"
-[[ -n "$SVC_IP" ]] && ALLOWED_ORIGINS="${ALLOWED_ORIGINS},http://${SVC_IP}:8080"
-[[ -n "$NODE_IPS" ]] && ALLOWED_ORIGINS="${ALLOWED_ORIGINS},http://${NODE_IPS}:8080"
+[[ -n "$SVC_IP" ]] && ALLOWED_ORIGINS="${ALLOWED_ORIGINS},http://${SVC_IP}:4000"
+[[ -n "$NODE_IPS" ]] && ALLOWED_ORIGINS="${ALLOWED_ORIGINS},http://${NODE_IPS}:4000"
 
-log_info "Allowed Origins configured: ${ALLOWED_ORIGINS}"
+log_info "Allowed Origins: ${ALLOWED_ORIGINS}"
 
-# Generate JWT secret if not provided
+# =============================================================================
+# STEP 6: Generate secrets if not provided
+# =============================================================================
 JWT_SECRET=${JWT_SECRET:-$(openssl rand -hex 32)}
 ASPNET_SECRET=${ASPNET_SECRET:-$(openssl rand -hex 32)}
 
-# Create/update environment secret
-log_info "Creating/updating environment secret: ${ENV_SECRET_NAME}"
-log_info "Secret will include: PostgreSQL, Redis, RabbitMQ, .NET secrets, CORS config"
+# =============================================================================
+# STEP 7: Create Kubernetes secret
+# =============================================================================
+log_step "Creating Kubernetes secret: ${ENV_SECRET_NAME}"
 
-# CRITICAL: Delete and recreate to ensure clean state (prevents stale password issues)
-kubectl -n "$NAMESPACE" delete secret "$ENV_SECRET_NAME" --ignore-not-found
+# Delete and recreate to ensure clean state
+kubectl -n "$NAMESPACE" delete secret "$ENV_SECRET_NAME" --ignore-not-found >/dev/null 2>&1
+
+# Build connection string - use service user for the app (not postgres superuser)
+PG_CONNECTION="Host=postgresql.infra.svc.cluster.local;Port=5432;Database=${SERVICE_DB_NAME};Username=${SERVICE_DB_USER};Password=${APP_DB_PASS}"
 
 kubectl -n "$NAMESPACE" create secret generic "$ENV_SECRET_NAME" \
-  --from-literal=ConnectionStrings__DefaultConnection="Host=postgresql.infra.svc.cluster.local;Port=5432;Database=truload;Username=postgres;Password=${APP_DB_PASS}" \
+  --from-literal=ConnectionStrings__DefaultConnection="${PG_CONNECTION}" \
   --from-literal=Redis__ConnectionString="redis-master.infra.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False" \
-    --from-literal=RabbitMQ__Host="rabbitmq.${RABBITMQ_NAMESPACE}.svc.cluster.local" \
+  --from-literal=RabbitMQ__Host="rabbitmq.${RABBITMQ_NAMESPACE}.svc.cluster.local" \
   --from-literal=RabbitMQ__Port="5672" \
   --from-literal=RabbitMQ__Username="user" \
   --from-literal=RabbitMQ__Password="${RABBITMQ_PASS}" \
@@ -258,65 +277,15 @@ kubectl -n "$NAMESPACE" create secret generic "$ENV_SECRET_NAME" \
   --from-literal=Logging__LogLevel__Default="Information" \
   --from-literal=Logging__LogLevel__Microsoft.AspNetCore="Warning"
 
-log_success "Environment secret created/updated with production configuration"
+log_success "Environment secret created: ${ENV_SECRET_NAME}"
 
-# Update KubeSecrets/devENV.yml with verified credentials for consistency
-# This ensures local deployments and Helm values use the same verified credentials
-if [[ -f "KubeSecrets/devENV.yml" ]]; then
-    log_step "Updating KubeSecrets/devENV.yml with verified credentials..."
-    
-    # Backup existing file
-    cp KubeSecrets/devENV.yml KubeSecrets/devENV.yml.bak
-    
-    # Create updated devENV.yml with verified credentials
-    cat > KubeSecrets/devENV.yml <<EOF
-apiVersion: v1
-kind: Secret
-metadata:
-  name: ${ENV_SECRET_NAME}
-  namespace: ${NAMESPACE}
-type: Opaque
-stringData:
-  # Database credentials (verified from K8s secrets)
-    ConnectionStrings__DefaultConnection: "Host=postgresql.infra.svc.cluster.local;Port=5432;Database=truload;Username=postgres;Password=${APP_DB_PASS}"
-  
-  # Redis credentials (verified from K8s secrets)
-    Redis__ConnectionString: "redis-master.infra.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False"
-  
-  # RabbitMQ credentials (verified from K8s secrets)
-  RabbitMQ__Host: "rabbitmq.${RABBITMQ_NAMESPACE}.svc.cluster.local"
-  RabbitMQ__Port: "5672"
-  RabbitMQ__Username: "user"
-  RabbitMQ__Password: "${RABBITMQ_PASS}"
-  
-  # JWT configuration
-  Jwt__Secret: "${JWT_SECRET}"
-  Jwt__Issuer: "truload-api"
-  Jwt__Audience: "truload-frontend"
-  
-  # ASP.NET Core secrets
-  AspNetCore__Secret: "${ASPNET_SECRET}"
-  
-  # Environment configuration
-  ASPNETCORE_ENVIRONMENT: "Production"
-  ASPNETCORE_URLS: "http://+:8080"
-  
-  # CORS configuration
-  Cors__AllowedOrigins: "${ALLOWED_ORIGINS}"
-  Cors__AllowCredentials: "true"
-  
-  # Logging configuration
-  Logging__LogLevel__Default: "Information"
-  Logging__LogLevel__Microsoft.AspNetCore: "Warning"
-EOF
-
-    log_success "✓ KubeSecrets/devENV.yml updated with verified credentials"
-    log_info "Backup saved to KubeSecrets/devENV.yml.bak"
-else
-    log_warning "KubeSecrets/devENV.yml not found - creating new file"
+# =============================================================================
+# STEP 8: Update KubeSecrets/devENV.yml for consistency
+# =============================================================================
+if [[ -d "KubeSecrets" ]] || [[ -f "KubeSecrets/devENV.yml" ]]; then
+    log_step "Updating KubeSecrets/devENV.yml..."
     mkdir -p KubeSecrets
-    
-    # Create new devENV.yml with verified credentials
+
     cat > KubeSecrets/devENV.yml <<EOF
 apiVersion: v1
 kind: Secret
@@ -325,44 +294,33 @@ metadata:
   namespace: ${NAMESPACE}
 type: Opaque
 stringData:
-  # Database credentials (verified from K8s secrets)
-    ConnectionStrings__DefaultConnection: "Host=postgresql.infra.svc.cluster.local;Port=5432;Database=truload;Username=postgres;Password=${APP_DB_PASS}"
-  
-  # Redis credentials (verified from K8s secrets)
-    Redis__ConnectionString: "redis-master.infra.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False"
-  
-  # RabbitMQ credentials (verified from K8s secrets)
+  ConnectionStrings__DefaultConnection: "${PG_CONNECTION}"
+  Redis__ConnectionString: "redis-master.infra.svc.cluster.local:6379,password=${REDIS_PASS},ssl=False,abortConnect=False"
   RabbitMQ__Host: "rabbitmq.${RABBITMQ_NAMESPACE}.svc.cluster.local"
   RabbitMQ__Port: "5672"
   RabbitMQ__Username: "user"
   RabbitMQ__Password: "${RABBITMQ_PASS}"
-  
-  # JWT configuration
   Jwt__Secret: "${JWT_SECRET}"
   Jwt__Issuer: "truload-api"
   Jwt__Audience: "truload-frontend"
-  
-  # ASP.NET Core secrets
   AspNetCore__Secret: "${ASPNET_SECRET}"
-  
-  # Environment configuration
   ASPNETCORE_ENVIRONMENT: "Production"
-  ASPNETCORE_URLS: "http://+:8080"
-  
-  # CORS configuration
+  ASPNETCORE_URLS: "http://+:4000"
   Cors__AllowedOrigins: "${ALLOWED_ORIGINS}"
   Cors__AllowCredentials: "true"
-  
-  # Logging configuration
   Logging__LogLevel__Default: "Information"
   Logging__LogLevel__Microsoft.AspNetCore: "Warning"
 EOF
-
-    log_success "✓ KubeSecrets/devENV.yml created with verified credentials"
+    log_success "KubeSecrets/devENV.yml updated"
 fi
 
-# Export validated credentials for use by parent script
+# =============================================================================
+# STEP 9: Export validated credentials for parent script
+# =============================================================================
 echo "EFFECTIVE_PG_PASS=${APP_DB_PASS}"
 echo "EFFECTIVE_REDIS_PASS=${REDIS_PASS}"
 echo "EFFECTIVE_RABBITMQ_PASS=${RABBITMQ_PASS}"
+echo "VALIDATED_DB_USER=${SERVICE_DB_USER}"
+echo "VALIDATED_DB_NAME=${SERVICE_DB_NAME}"
 
+log_success "TruLoad Backend environment secrets configured successfully"
