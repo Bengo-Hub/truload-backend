@@ -64,35 +64,41 @@ ${PULL_SECRETS_YAML}
           echo "EF Core Migrations - Smart Mode"
           echo "================================"
           
-          # Ensure database 'truload' exists
-          echo "Ensuring database 'truload' exists..."
-          export PGPASSWORD=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Password=\K[^;]+' || echo "")
-          psql -h postgresql.erp.svc.cluster.local -U postgres -d postgres -c "CREATE DATABASE truload;" 2>&1 | grep -v "already exists" || true
-          echo "✓ Database 'truload' ready"
-          
-          # Extract password from connection string for testing
-          # Connection string format: Host=...;Username=postgres;Password=XXX;Database=truload
+          # Extract connection details from connection string
+          # Format: Host=...;Port=5432;Database=truload;Username=truload_user;Password=XXX
+          DB_HOST=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Host=\K[^;]+' || echo "postgresql.infra.svc.cluster.local")
+          DB_USER=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Username=\K[^;]+' || echo "truload_user")
+          DB_NAME=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Database=\K[^;]+' || echo "truload")
           DB_PASS=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Password=\K[^;]+' || echo "")
-          
+
+          echo "Database Host: \$DB_HOST"
+          echo "Database User: \$DB_USER"
+          echo "Database Name: \$DB_NAME"
+
           if [[ -z "\$DB_PASS" ]]; then
             echo "✗ Could not extract password from connection string"
             exit 1
           fi
-          
-          # Test database connectivity
+
+          # Test database connectivity using extracted credentials
           echo "Testing PostgreSQL connection..."
           export PGPASSWORD="\$DB_PASS"
-          psql -h postgresql.erp.svc.cluster.local -U postgres -d truload -c "SELECT 1;" >/dev/null 2>&1 && {
+          psql -h "\$DB_HOST" -U "\$DB_USER" -d "\$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1 && {
             echo "✓ PostgreSQL connection successful"
           } || {
             echo "✗ PostgreSQL connection failed - check credentials"
-            echo "Connection string: \${ConnectionStrings__DefaultConnection%%Password=*}Password=***"
-            exit 1
+            echo "Trying with postgres superuser..."
+            psql -h "\$DB_HOST" -U postgres -d "\$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1 && {
+              echo "✓ PostgreSQL connection successful (via postgres user)"
+            } || {
+              echo "✗ PostgreSQL connection failed completely"
+              exit 1
+            }
           }
-          
+
           # Check if database has tables (indicates existing deployment)
           echo "Checking database state..."
-          TABLE_COUNT=\$(psql -h postgresql.erp.svc.cluster.local -U postgres -d truload -t -c \
+          TABLE_COUNT=\$(psql -h "\$DB_HOST" -U "\$DB_USER" -d "\$DB_NAME" -t -c \
             "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';" 2>/dev/null | xargs || echo "0")
           
           # For .NET runtime images, EF tools don't work with DLLs
@@ -140,11 +146,13 @@ EOF
 if [[ $(type -t stream_job) != "function" ]]; then
     stream_job() {
         local NS="$1"; local JOB="$2"; local TIMEOUT="$3"; local POD="";
-        log_info "Streaming logs for job ${JOB} (waiting for pod to start)..."
+        log_info "Streaming logs for job ${JOB} (waiting for pod to be ready)..."
+
+        # Wait for pod to exist (up to 60 seconds for scheduler)
         for i in {1..30}; do
             POD=$(kubectl get pods -n "${NS}" -l job-name="${JOB}" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
             if [[ -n "${POD}" ]]; then
-                log_info "Pod started: ${POD}"
+                log_info "Pod created: ${POD}"
                 break
             fi
             sleep 2
@@ -153,6 +161,36 @@ if [[ $(type -t stream_job) != "function" ]]; then
             log_error "Pod for job ${JOB} did not start"
             return 2
         fi
+
+        # Wait for container to be running (image pull can take time for large images)
+        log_info "Waiting for container to be ready (image pull may take time)..."
+        for i in {1..90}; do
+            PHASE=$(kubectl get pod -n "${NS}" "${POD}" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+            CONTAINER_STATE=$(kubectl get pod -n "${NS}" "${POD}" -o jsonpath='{.status.containerStatuses[0].state}' 2>/dev/null || echo "")
+
+            if [[ "$PHASE" == "Running" ]] || [[ "$PHASE" == "Succeeded" ]] || [[ "$PHASE" == "Failed" ]]; then
+                log_info "Pod phase: ${PHASE}"
+                break
+            fi
+
+            # Show waiting reason
+            if [[ "$PHASE" == "Pending" ]]; then
+                REASON=$(kubectl get pod -n "${NS}" "${POD}" -o jsonpath='{.status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || echo "")
+                if [[ -n "$REASON" ]]; then
+                    log_info "Waiting: ${REASON} (attempt ${i}/90)"
+                fi
+            fi
+            sleep 2
+        done
+
+        # Check final phase
+        PHASE=$(kubectl get pod -n "${NS}" "${POD}" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+        if [[ "$PHASE" == "Pending" ]]; then
+            log_error "Pod still pending after 3 minutes - possible image pull issue"
+            kubectl describe pod -n "${NS}" "${POD}" | tail -30 || true
+            return 2
+        fi
+
         kubectl logs -n "${NS}" -f "${POD}" 2>/dev/null &
         local LOGS_PID=$!
         kubectl wait --for=condition=complete job/"${JOB}" -n "${NS}" --timeout="${TIMEOUT}"
@@ -169,7 +207,8 @@ fi
 
 set +e
 kubectl apply -f /tmp/truload-migrate-job.yaml
-stream_job "${NAMESPACE}" "${APP_NAME}-migrate-${GIT_COMMIT_ID}" "300s"
+# Use longer timeout for .NET SDK image (large image, may need time to pull)
+stream_job "${NAMESPACE}" "${APP_NAME}-migrate-${GIT_COMMIT_ID}" "600s"
 JOB_STATUS=$?
 set -e
 
