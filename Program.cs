@@ -81,7 +81,7 @@ builder.Services.AddSwaggerGen(options =>
     
     options.AddServer(new Microsoft.OpenApi.Models.OpenApiServer
     {
-        Url = "https://truloadapitest.masterspace.co.ke",
+        Url = "https://kuraweighapitest.masterspace.co.ke",
         Description = "Production Server (Testing)"
     });
     
