@@ -7,10 +7,14 @@ Thank you for considering contributing to the TruLoad Backend project! This docu
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
 - [Development Workflow](#development-workflow)
+- [Project Architecture](#project-architecture)
 - [Coding Standards](#coding-standards)
+- [Naming Conventions](#naming-conventions)
+- [Branch Naming](#branch-naming)
+- [Commit Message Guidelines](#commit-message-guidelines)
 - [Testing Guidelines](#testing-guidelines)
 - [Pull Request Process](#pull-request-process)
-- [Commit Message Guidelines](#commit-message-guidelines)
+- [Security Guidelines](#security-guidelines)
 
 ## 📜 Code of Conduct
 
