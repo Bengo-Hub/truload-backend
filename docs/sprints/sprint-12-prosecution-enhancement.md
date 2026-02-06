@@ -3,27 +3,44 @@
 **Sprint Duration:** 2 weeks
 **Target Start:** February 5, 2026
 **Priority:** P1 - High
-**Status:** 🚧 PLANNED
+**Status:** ✅ COMPLETED
 
 ---
 
 ## Sprint Goal
 
-Enhance the prosecution and case management module to match KenloadV2's comprehensive subfile system (A-J) and implement court hearing tracking. This sprint addresses gaps identified in the [KenloadV2 vs TruLoad Comparison](../KENLOAD_VS_TRULOAD_COMPARISON.md) Section 4.
+Enhance the prosecution and case management module to match KenloadV2's comprehensive subfile system (A-J) and implement court hearing tracking. This sprint addresses remaining gaps from the system comparison analysis, building upon Sprint 11's regulatory compliance implementation.
 
 ---
 
 ## Background
 
-### Current State (Sprint 10 Complete)
-- ✅ CaseRegister with auto-creation from weighing
-- ✅ SpecialRelease workflow with certificates
-- ✅ Basic case status tracking (Open → Closed)
-- ✅ PDF generation for Load Correction Memo, Compliance Certificate
-- ❌ **GAP:** Limited subfile support (only basic structure)
-- ❌ **GAP:** No court hearing tracking
-- ❌ **GAP:** No warrant management workflow
-- ❌ **GAP:** No prosecutor assignment workflow
+### Current State (Sprint 10 Complete + Architecture Analysis)
+
+**✅ Already Implemented (Ready for Use):**
+- ✅ **CaseRegister** - Auto-creation from weighing, status tracking
+- ✅ **CaseSubfile** - Generic document container with SubfileTypeId (A-J), Content, FileUrl, Checksum, vector embeddings
+- ✅ **SubfileType** - Taxonomy table for A-J categories (seeded)
+- ✅ **CourtHearing** - Complete model with HearingDate, HearingType, HearingStatus, HearingOutcome, MinuteNotes, PresidingOfficer
+- ✅ **ArrestWarrant** - WarrantNo, WarrantStatus (issued/active/executed/dropped), IssuedAt/ExecutedAt
+- ✅ **CaseAssignmentLog** - IO (Investigating Officer) assignment tracking with PreviousOfficerId, NewOfficerId, AssignmentType, IsCurrent flag, OfficerRank (KenloadV2 CaseIOs pattern)
+- ✅ **CaseClosureChecklist** - Boolean flags for SubfileA-J verification
+- ✅ **ProsecutionCase** - Charge computation with GVW/Axle fees, penalty multipliers
+- ✅ **DriverDemeritRecord** - Violation history with expiry, penalty tracking
+- ✅ **SpecialRelease** - Redistribution/tolerance release workflow
+
+**⚠️ Existing But Needs Enhancement:**
+- ⚠️ CaseSubfile API endpoints (need full CRUD per subfile type)
+- ⚠️ CourtHearing API endpoints (scheduling, adjournment workflow)
+- ⚠️ ArrestWarrant API endpoints (issue, execute, cancel)
+- ⚠️ Prosecutor assignment API endpoints
+
+**Architecture Recommendation:**
+The existing models are **flexible and robust**. No new entity models needed - use the existing CaseSubfile as a generic document container for all B-J subfiles. SubfileType taxonomy defines categories. Focus on:
+1. **Repository implementations** for existing models
+2. **Service layer** for business logic (subfile verification, warrant workflow)
+3. **Controller endpoints** for frontend integration
+4. **Frontend UI** for prosecution workflow
 
 ### KenloadV2 Case Subfile System (Reference)
 
@@ -259,7 +276,68 @@ EXPIRED (time limit passed)
 CANCELLED (court order)
 ```
 
-### 6. Prosecutor Assignment Workflow
+### 6. Investigating Officer (IO) Assignment Workflow
+
+**NOTE:** TruLoad implements IO (Investigating Officer) tracking, NOT prosecutor tracking. This follows the KenloadV2 CaseIOs pattern for police case management.
+
+**Model:** `CaseAssignmentLog` (Enhanced with IsCurrent flag)
+```csharp
+public class CaseAssignmentLog : BaseEntity
+{
+    public Guid CaseRegisterId { get; set; }
+    public CaseRegister CaseRegister { get; set; }
+
+    public Guid? PreviousOfficerId { get; set; }  // Null for initial assignment
+    public Guid NewOfficerId { get; set; }        // IO being assigned
+    public Guid AssignedById { get; set; }        // Supervisor (OCS/Dept OCS)
+
+    public string AssignmentType { get; set; }    // "initial", "re_assignment", "transfer", "handover"
+    public string Reason { get; set; }            // Assignment reason
+    public DateTime AssignedAt { get; set; }
+
+    // KenloadV2 CaseIOs pattern
+    public bool IsCurrent { get; set; } = true;   // Only one per case should be true
+    public string? OfficerRank { get; set; }      // "Constable", "Corporal", "Sergeant", etc.
+
+    // Navigation properties
+    public ApplicationUser? PreviousOfficer { get; set; }
+    public ApplicationUser? NewOfficer { get; set; }
+    public ApplicationUser? AssignedBy { get; set; }
+}
+```
+
+**IO Assignment Status Flow (KenloadV2 Pattern):**
+```
+Initial Assignment (IsCurrent=true)
+        ↓
+Re-Assignment (prev IsCurrent=false, new IsCurrent=true)
+        ↓
+Transfer/Handover (prev IsCurrent=false, new IsCurrent=true)
+```
+
+**API Endpoints:**
+| Method | Route | Permission | Description |
+|--------|-------|------------|-------------|
+| GET | `/api/v1/cases/{id}/officers` | case.read | List IO assignment history |
+| GET | `/api/v1/cases/{id}/officers/current` | case.read | Get current IO |
+| POST | `/api/v1/cases/{id}/officers` | case.assign | Assign/reassign IO |
+| PUT | `/api/v1/cases/{id}/officers/{logId}` | case.assign | Update assignment notes |
+
+**Chain of Custody Query:**
+```sql
+-- Get all IOs who have worked on a case (chain of custody)
+SELECT * FROM case_assignment_logs
+WHERE case_register_id = @caseId
+ORDER BY assigned_at ASC;
+
+-- Get current IO for a case
+SELECT * FROM case_assignment_logs
+WHERE case_register_id = @caseId AND is_current = true;
+```
+
+### 7. Prosecutor Assignment (Separate from IO)
+
+For actual prosecutor tracking (if needed for court cases), use the CaseProsecutor model:
 
 **Model:** `CaseProsecutor`
 ```csharp
@@ -565,6 +643,34 @@ protected override void Up(MigrationBuilder migrationBuilder)
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** January 22, 2026
+**Document Version:** 2.0
+**Last Updated:** February 5, 2026
 **Author:** System Audit Team
+
+### Recent Updates (v2.0) - SPRINT COMPLETED
+**Backend Implementation:**
+- ✅ CourtHearingService with schedule, adjourn, complete workflows
+- ✅ CourtHearingController with permission-based authorization
+- ✅ ProsecutionService with charge calculation (GVW vs Axle basis)
+- ✅ ProsecutionController with charge sheet PDF download
+- ✅ InvoiceService with generation and status management
+- ✅ ReceiptService with idempotency key support
+- ✅ QuestPdfService extended for ChargeSheet, CourtMinutes, Invoice, Receipt PDFs
+- ✅ 4 new PDF document templates using QuestPDF
+
+**Frontend Implementation:**
+- ✅ Court Hearing API (`src/lib/api/courtHearing.ts`)
+- ✅ Prosecution API (`src/lib/api/prosecution.ts`)
+- ✅ Invoice API (`src/lib/api/invoice.ts`)
+- ✅ Receipt API (`src/lib/api/receipt.ts`)
+- ✅ TanStack Query hooks for all entities
+- ✅ CourtHearingList component with schedule/adjourn/complete modals
+- ✅ ProsecutionSection component with charge calculation and payment recording
+- ✅ Case detail page integration for court hearings and prosecution
+
+### Previous Updates (v1.1)
+- Added KenloadV2 CaseIOs pattern for IO (Investigating Officer) tracking
+- Enhanced CaseAssignmentLog with IsCurrent flag and OfficerRank
+- Created database migration: `AddCaseAssignmentLogIOTracking`
+- Separated IO tracking from Prosecutor assignment workflows
+- Fixed PermissionService.UserHasPermissionAsync placeholder with proper role-permission checking

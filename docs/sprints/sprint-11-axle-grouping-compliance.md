@@ -9,7 +9,7 @@
 
 ## Sprint Goal
 
-Implement complete axle grouping logic to achieve regulatory compliance with Kenya Traffic Act Cap 403 and EAC Vehicle Load Control Act 2016. This sprint addresses critical gaps identified in the [KenloadV2 vs TruLoad Comparison](../KENLOAD_VS_TRULOAD_COMPARISON.md).
+Implement complete axle grouping logic to achieve regulatory compliance with Kenya Traffic Act Cap 403 and EAC Vehicle Load Control Act 2016. This sprint addresses critical regulatory compliance gaps identified during system analysis.
 
 ---
 
@@ -31,7 +31,7 @@ Implement complete axle grouping logic to achieve regulatory compliance with Ken
 - **Demerit Points:** 1-10 points based on overload severity
 
 ### Reference Implementation (KenloadV2)
-See [Comparison Document](../KENLOAD_VS_TRULOAD_COMPARISON.md) Section 1.1 for detailed analysis.
+Based on KenloadV2 system analysis - dual classification system (Deck Grouping A/B/C/D + Axle Type Classification).
 
 ---
 

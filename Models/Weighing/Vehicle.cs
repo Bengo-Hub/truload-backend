@@ -13,34 +13,34 @@ namespace TruLoad.Backend.Models.Weighing
         [Required]
         [Column("reg_no")]
         [StringLength(50)]
-        public string RegNo { get; set; }
+        public string RegNo { get; set; } = string.Empty;
 
         [Column("make")]
         [StringLength(100)]
-        public string Make { get; set; }
+        public string? Make { get; set; }
 
         [Column("model")]
         [StringLength(100)]
-        public string Model { get; set; }
+        public string? Model { get; set; }
 
         [Column("vehicle_type")]
         [StringLength(50)]
-        public string VehicleType { get; set; }
+        public string? VehicleType { get; set; }
 
         [Column("color")]
         [StringLength(50)]
-        public string Color { get; set; }
+        public string? Color { get; set; }
 
         [Column("year_of_manufacture")]
         public int? YearOfManufacture { get; set; }
 
         [Column("chassis_no")]
         [StringLength(100)]
-        public string ChassisNo { get; set; }
+        public string? ChassisNo { get; set; }
 
         [Column("engine_no")]
         [StringLength(100)]
-        public string EngineNo { get; set; }
+        public string? EngineNo { get; set; }
 
         [Column("owner_id")]
         public Guid? OwnerId { get; set; }
@@ -52,7 +52,7 @@ namespace TruLoad.Backend.Models.Weighing
         public Guid? AxleConfigurationId { get; set; }
 
         [Column("description")]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         /// <summary>
         /// Vector embedding for vehicle description (semantic search).
@@ -67,13 +67,13 @@ namespace TruLoad.Backend.Models.Weighing
 
         // Navigation properties
         [ForeignKey("OwnerId")]
-        public virtual VehicleOwner Owner { get; set; }
+        public virtual VehicleOwner? Owner { get; set; }
 
         [ForeignKey("TransporterId")]
-        public virtual Transporter Transporter { get; set; }
+        public virtual Transporter? Transporter { get; set; }
 
         [ForeignKey("AxleConfigurationId")]
-        public virtual AxleConfiguration AxleConfiguration { get; set; }
+        public virtual AxleConfiguration? AxleConfiguration { get; set; }
 
         // Collections
         public virtual ICollection<Permit> Permits { get; set; } = new List<Permit>();

@@ -27,6 +27,338 @@ public class SystemConfigurationSeeder
         await SeedAxleTypeOverloadFeeSchedulesAsync();
         await SeedDemeritPointSchedulesAsync();
         await SeedPenaltySchedulesAsync();
+        await SeedApplicationSettingsAsync();
+    }
+
+    /// <summary>
+    /// Seeds default application settings for password policy, shifts, backup, and security.
+    /// </summary>
+    private async Task SeedApplicationSettingsAsync()
+    {
+        var settings = new[]
+        {
+            // Password Policy Settings
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.PasswordMinLength,
+                SettingValue = "8",
+                SettingType = "Integer",
+                Category = SettingKeys.CategorySecurity,
+                DisplayName = "Minimum Password Length",
+                Description = "Minimum number of characters required for passwords",
+                DefaultValue = "8",
+                IsEditable = true,
+                SortOrder = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.PasswordRequireUppercase,
+                SettingValue = "true",
+                SettingType = "Boolean",
+                Category = SettingKeys.CategorySecurity,
+                DisplayName = "Require Uppercase",
+                Description = "Require at least one uppercase letter in passwords",
+                DefaultValue = "true",
+                IsEditable = true,
+                SortOrder = 2,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.PasswordRequireLowercase,
+                SettingValue = "true",
+                SettingType = "Boolean",
+                Category = SettingKeys.CategorySecurity,
+                DisplayName = "Require Lowercase",
+                Description = "Require at least one lowercase letter in passwords",
+                DefaultValue = "true",
+                IsEditable = true,
+                SortOrder = 3,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.PasswordRequireDigit,
+                SettingValue = "true",
+                SettingType = "Boolean",
+                Category = SettingKeys.CategorySecurity,
+                DisplayName = "Require Digit",
+                Description = "Require at least one digit in passwords",
+                DefaultValue = "true",
+                IsEditable = true,
+                SortOrder = 4,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.PasswordRequireSpecial,
+                SettingValue = "false",
+                SettingType = "Boolean",
+                Category = SettingKeys.CategorySecurity,
+                DisplayName = "Require Special Character",
+                Description = "Require at least one special character (!@#$%^&*) in passwords",
+                DefaultValue = "false",
+                IsEditable = true,
+                SortOrder = 5,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.PasswordLockoutThreshold,
+                SettingValue = "5",
+                SettingType = "Integer",
+                Category = SettingKeys.CategorySecurity,
+                DisplayName = "Lockout Threshold",
+                Description = "Number of failed login attempts before account lockout",
+                DefaultValue = "5",
+                IsEditable = true,
+                SortOrder = 6,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.PasswordLockoutMinutes,
+                SettingValue = "30",
+                SettingType = "Integer",
+                Category = SettingKeys.CategorySecurity,
+                DisplayName = "Lockout Duration (minutes)",
+                Description = "Duration of account lockout in minutes",
+                DefaultValue = "30",
+                IsEditable = true,
+                SortOrder = 7,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+
+            // Two-Factor Authentication Settings
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.TwoFactorEnabled,
+                SettingValue = "true",
+                SettingType = "Boolean",
+                Category = SettingKeys.CategorySecurity,
+                DisplayName = "Enable Two-Factor Authentication",
+                Description = "Allow users to enable 2FA for their accounts",
+                DefaultValue = "true",
+                IsEditable = true,
+                SortOrder = 10,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.TwoFactorEnforceForAdmin,
+                SettingValue = "true",
+                SettingType = "Boolean",
+                Category = SettingKeys.CategorySecurity,
+                DisplayName = "Require 2FA for Administrators",
+                Description = "Enforce two-factor authentication for users with admin roles",
+                DefaultValue = "true",
+                IsEditable = true,
+                SortOrder = 11,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.TwoFactorBackupCodesCount,
+                SettingValue = "10",
+                SettingType = "Integer",
+                Category = SettingKeys.CategorySecurity,
+                DisplayName = "Backup Codes Count",
+                Description = "Number of one-time backup codes generated for 2FA recovery",
+                DefaultValue = "10",
+                IsEditable = true,
+                SortOrder = 12,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+
+            // Shift Settings
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.ShiftDefaultDuration,
+                SettingValue = "8",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryShifts,
+                DisplayName = "Default Shift Duration (hours)",
+                Description = "Default duration of a work shift in hours",
+                DefaultValue = "8",
+                IsEditable = true,
+                SortOrder = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.ShiftGraceMinutes,
+                SettingValue = "15",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryShifts,
+                DisplayName = "Grace Period (minutes)",
+                Description = "Grace period in minutes for shift start/end times",
+                DefaultValue = "15",
+                IsEditable = true,
+                SortOrder = 2,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.ShiftEnforceOnLogin,
+                SettingValue = "false",
+                SettingType = "Boolean",
+                Category = SettingKeys.CategoryShifts,
+                DisplayName = "Enforce Shift on Login",
+                Description = "When enabled, users outside their shift hours are locked out at login",
+                DefaultValue = "false",
+                IsEditable = true,
+                SortOrder = 3,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.ShiftBypassCheck,
+                SettingValue = "false",
+                SettingType = "Boolean",
+                Category = SettingKeys.CategoryShifts,
+                DisplayName = "Global Bypass Shift Check",
+                Description = "Temporarily bypass all shift checks (e.g. during shift transitions)",
+                DefaultValue = "false",
+                IsEditable = true,
+                SortOrder = 4,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.ShiftExcludedRoles,
+                SettingValue = "",
+                SettingType = "String",
+                Category = SettingKeys.CategoryShifts,
+                DisplayName = "Roles Excluded from Shift Check",
+                Description = "Comma-separated role codes that bypass shift enforcement",
+                DefaultValue = "",
+                IsEditable = true,
+                SortOrder = 5,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.ShiftRequire2FA,
+                SettingValue = "false",
+                SettingType = "Boolean",
+                Category = SettingKeys.CategoryShifts,
+                DisplayName = "Require 2FA for Shift Actions",
+                Description = "Require two-factor authentication for shift clock-in/out",
+                DefaultValue = "false",
+                IsEditable = true,
+                SortOrder = 6,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+
+            // Backup Settings
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.BackupEnabled,
+                SettingValue = "true",
+                SettingType = "Boolean",
+                Category = SettingKeys.CategoryBackup,
+                DisplayName = "Enable Automatic Backups",
+                Description = "Enable scheduled automatic database backups",
+                DefaultValue = "true",
+                IsEditable = true,
+                SortOrder = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.BackupScheduleCron,
+                SettingValue = "0 0 * * *",
+                SettingType = "String",
+                Category = SettingKeys.CategoryBackup,
+                DisplayName = "Backup Schedule (Cron)",
+                Description = "Cron expression for backup schedule (default: daily at midnight)",
+                DefaultValue = "0 0 * * *",
+                IsEditable = true,
+                SortOrder = 2,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.BackupRetentionDays,
+                SettingValue = "30",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryBackup,
+                DisplayName = "Backup Retention (days)",
+                Description = "Number of days to retain backup files before deletion",
+                DefaultValue = "30",
+                IsEditable = true,
+                SortOrder = 3,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.BackupStoragePath,
+                SettingValue = "/var/backups/truload",
+                SettingType = "String",
+                Category = SettingKeys.CategoryBackup,
+                DisplayName = "Backup Storage Path",
+                Description = "Directory path where backup files are stored",
+                DefaultValue = "/var/backups/truload",
+                IsEditable = true,
+                SortOrder = 4,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+
+        foreach (var setting in settings)
+        {
+            var existing = await _context.ApplicationSettings
+                .FirstOrDefaultAsync(s => s.SettingKey == setting.SettingKey);
+
+            if (existing == null)
+            {
+                await _context.ApplicationSettings.AddAsync(setting);
+                Console.WriteLine($"✓ Seeded application setting: {setting.SettingKey}");
+            }
+        }
+
+        await _context.SaveChangesAsync();
     }
 
     private async Task SeedPermitTypesAsync()

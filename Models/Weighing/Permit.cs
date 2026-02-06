@@ -13,7 +13,7 @@ namespace TruLoad.Backend.Models.Weighing
         [Required]
         [Column("permit_no")]
         [StringLength(100)]
-        public string PermitNo { get; set; }
+        public string PermitNo { get; set; } = string.Empty;
 
         [Required]
         [Column("vehicle_id")]
@@ -39,7 +39,7 @@ namespace TruLoad.Backend.Models.Weighing
 
         [Column("issuing_authority")]
         [StringLength(255)]
-        public string IssuingAuthority { get; set; }
+        public string? IssuingAuthority { get; set; }
 
         [Required]
         [Column("status")]
@@ -48,9 +48,9 @@ namespace TruLoad.Backend.Models.Weighing
 
         // Navigation properties
         [ForeignKey("VehicleId")]
-        public virtual Vehicle Vehicle { get; set; }
+        public virtual Vehicle? Vehicle { get; set; }
 
         [ForeignKey("PermitTypeId")]
-        public virtual PermitType PermitType { get; set; }
+        public virtual PermitType? PermitType { get; set; }
     }
 }

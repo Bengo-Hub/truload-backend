@@ -216,6 +216,58 @@ public class CaseRegisterController : ControllerBase
     }
 
     /// <summary>
+    /// Get case disposition breakdown for charts
+    /// </summary>
+    [HttpGet("disposition-breakdown")]
+    public async Task<IActionResult> GetDispositionBreakdown(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo)
+    {
+        var criteria = new CaseSearchCriteria
+        {
+            CreatedFrom = dateFrom,
+            CreatedTo = dateTo,
+            PageSize = 10000
+        };
+        var cases = await _caseRegisterService.SearchCasesAsync(criteria);
+        
+        var breakdown = cases
+            .GroupBy(c => c.CaseStatus ?? "Unknown")
+            .Select(g => new { Name = g.Key, Value = g.Count() })
+            .ToList();
+        
+        return Ok(breakdown);
+    }
+
+    /// <summary>
+    /// Get case trend over time
+    /// </summary>
+    [HttpGet("trend")]
+    public async Task<IActionResult> GetCaseTrend(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo)
+    {
+        var from = dateFrom ?? DateTime.UtcNow.AddDays(-30);
+        var to = dateTo ?? DateTime.UtcNow;
+
+        var criteria = new CaseSearchCriteria
+        {
+            CreatedFrom = from,
+            CreatedTo = to,
+            PageSize = 10000
+        };
+        var cases = await _caseRegisterService.SearchCasesAsync(criteria);
+        
+        var trend = cases
+            .GroupBy(c => c.CreatedAt.Date)
+            .OrderBy(g => g.Key)
+            .Select(g => new { Name = g.Key.ToString("MMM dd"), Value = g.Count() })
+            .ToList();
+        
+        return Ok(trend);
+    }
+
+    /// <summary>
     /// Delete a case
     /// </summary>
     [HttpDelete("{id}")]

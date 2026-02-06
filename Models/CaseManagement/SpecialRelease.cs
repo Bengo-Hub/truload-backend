@@ -71,6 +71,57 @@ public class SpecialRelease : BaseEntity
     [Required]
     public DateTime IssuedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Whether release is approved
+    /// </summary>
+    public bool IsApproved { get; set; } = false;
+
+    /// <summary>
+    /// User who approved the release
+    /// </summary>
+    public Guid? ApprovedById { get; set; }
+
+    /// <summary>
+    /// Approval timestamp
+    /// </summary>
+    public DateTime? ApprovedAt { get; set; }
+
+    /// <summary>
+    /// Whether release was rejected
+    /// </summary>
+    public bool IsRejected { get; set; } = false;
+
+    /// <summary>
+    /// User who rejected the release
+    /// </summary>
+    public Guid? RejectedById { get; set; }
+
+    /// <summary>
+    /// Rejection timestamp
+    /// </summary>
+    public DateTime? RejectedAt { get; set; }
+
+    /// <summary>
+    /// Reason for rejection
+    /// </summary>
+    [MaxLength(1000)]
+    public string? RejectionReason { get; set; }
+
+    /// <summary>
+    /// Load correction memo reference
+    /// </summary>
+    public Guid? LoadCorrectionMemoId { get; set; }
+
+    /// <summary>
+    /// Compliance certificate reference
+    /// </summary>
+    public Guid? ComplianceCertificateId { get; set; }
+
+    /// <summary>
+    /// User who created/requested the release
+    /// </summary>
+    public Guid CreatedById { get; set; }
+
     // Navigation properties
     public virtual CaseRegister CaseRegister { get; set; } = null!;
     public virtual ReleaseType ReleaseType { get; set; } = null!;

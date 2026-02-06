@@ -6,15 +6,19 @@ using TruLoad.Backend.Data.Repositories.Weighing;
 namespace TruLoad.Backend.Controllers.WeighingOperations;
 
 [ApiController]
-[Route("api/v1/[controller]")]
+[Route("api/v1/drivers")]
 [Authorize]
 public class DriverController : ControllerBase
 {
     private readonly IDriverRepository _driverRepository;
+    private readonly ILogger<DriverController> _logger;
 
-    public DriverController(IDriverRepository driverRepository)
+    public DriverController(
+        IDriverRepository driverRepository,
+        ILogger<DriverController> logger)
     {
         _driverRepository = driverRepository;
+        _logger = logger;
     }
 
     [HttpGet("{id}")]
@@ -26,9 +30,9 @@ public class DriverController : ControllerBase
     }
 
     [HttpGet("search")]
-    public async Task<IActionResult> Search([FromQuery] string query)
+    public async Task<IActionResult> Search([FromQuery] string? query)
     {
-        var drivers = await _driverRepository.SearchAsync(query);
+        var drivers = await _driverRepository.SearchAsync(query ?? string.Empty);
         return Ok(drivers);
     }
 
@@ -72,5 +76,41 @@ public class DriverController : ControllerBase
         
         await _driverRepository.UpdateAsync(driver);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Get top repeat offenders by demerit points
+    /// </summary>
+    [HttpGet("top-offenders")]
+    public async Task<IActionResult> GetTopOffenders(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] int limit = 10)
+    {
+        try
+        {
+            var drivers = await _driverRepository.SearchAsync(string.Empty);
+            
+            // Return drivers sorted by demerit points
+            var topOffenders = drivers
+                .OrderByDescending(d => d.CurrentDemeritPoints)
+                .Take(limit)
+                .Select(d => new
+                {
+                    DriverId = d.Id,
+                    DriverName = $"{d.FullNames} {d.Surname}".Trim(),
+                    LicenseNo = d.DrivingLicenseNo,
+                    DemeritPoints = d.CurrentDemeritPoints,
+                    ViolationCount = d.DemeritRecords?.Count ?? 0
+                })
+                .ToList();
+
+            return Ok(topOffenders);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting top offenders");
+            return StatusCode(500, "An error occurred while getting top offenders.");
+        }
     }
 }

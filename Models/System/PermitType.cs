@@ -37,7 +37,7 @@ namespace TruLoad.Backend.Models.System
         /// Description of permit type and applicability
         /// </summary>
         [Column("description")]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         /// <summary>
         /// Axle weight extension in kg (e.g., +3000 for 2A permit)

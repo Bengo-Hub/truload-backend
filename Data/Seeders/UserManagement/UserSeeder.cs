@@ -48,7 +48,7 @@ public class UserSeeder
 
         // Get the first mobile station to link to the user (NRB-MOBILE-01)
         var mobileStation = await _context.Stations
-            .FirstOrDefaultAsync(s => s.StationCode == "NRB-MOBILE-01");
+            .FirstOrDefaultAsync(s => s.Code == "NRB-MOBILE-01");
 
         // Check if SYSTEM_ADMIN role exists
         var systemAdminRole = await _roleManager.FindByNameAsync("System Admin");
@@ -93,7 +93,7 @@ public class UserSeeder
                 throw new Exception($"Failed to assign role to superuser: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
             }
 
-            Console.WriteLine($"✓ Seeded superuser: {superUserEmail} linked to KURA organization and {mobileStation?.StationName ?? "no station"} with SYSTEM_ADMIN role");
+            Console.WriteLine($"✓ Seeded superuser: {superUserEmail} linked to KURA organization and {mobileStation?.Name ?? "no station"} with SYSTEM_ADMIN role");
             Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY - change in production!)");
         }
         else
@@ -104,7 +104,7 @@ public class UserSeeder
                 existingSuperUser.StationId = mobileStation.Id;
                 existingSuperUser.OrganizationId = kuraOrg.Id;
                 await _userManager.UpdateAsync(existingSuperUser);
-                Console.WriteLine($"✓ Updated superuser {superUserEmail} to link station {mobileStation.StationName}");
+                Console.WriteLine($"✓ Updated superuser {superUserEmail} to link station {mobileStation.Name}");
             }
             else
             {

@@ -75,7 +75,10 @@ public class SpecialReleaseService : ISpecialReleaseService
             RedistributionAllowed = request.RequiresRedistribution,
             ReweighRequired = request.RequiresReweigh,
             AuthorizedById = userId,
+            CreatedById = userId,
             IssuedAt = DateTime.UtcNow,
+            IsApproved = false,
+            IsRejected = false,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -99,10 +102,16 @@ public class SpecialReleaseService : ISpecialReleaseService
         var specialRelease = await _specialReleaseRepository.GetByIdAsync(id)
             ?? throw new InvalidOperationException($"Special release {id} not found");
 
-        // Note: The model doesn't have explicit approval fields,
-        // so we just update the authorizedById if needed
-        specialRelease.AuthorizedById = approvedById;
-        specialRelease.IssuedAt = DateTime.UtcNow;
+        if (specialRelease.IsRejected)
+            throw new InvalidOperationException("Cannot approve a rejected special release");
+
+        if (specialRelease.IsApproved)
+            throw new InvalidOperationException("Special release is already approved");
+
+        specialRelease.IsApproved = true;
+        specialRelease.ApprovedById = approvedById;
+        specialRelease.ApprovedAt = DateTime.UtcNow;
+        specialRelease.UpdatedAt = DateTime.UtcNow;
 
         var updated = await _specialReleaseRepository.UpdateAsync(specialRelease);
         return MapToDto(updated);
@@ -110,9 +119,37 @@ public class SpecialReleaseService : ISpecialReleaseService
 
     public async Task<SpecialReleaseDto> RejectSpecialReleaseAsync(Guid id, RejectSpecialReleaseRequest request, Guid rejectedById)
     {
-        // For rejection, we could either delete the record or add a rejection flag in the future
-        // For now, we'll just throw an exception indicating the operation isn't fully supported yet
-        throw new NotImplementedException("Rejection workflow requires model update to add rejection fields");
+        var specialRelease = await _specialReleaseRepository.GetByIdAsync(id)
+            ?? throw new InvalidOperationException($"Special release {id} not found");
+
+        if (specialRelease.IsApproved)
+            throw new InvalidOperationException("Cannot reject an approved special release");
+
+        if (specialRelease.IsRejected)
+            throw new InvalidOperationException("Special release is already rejected");
+
+        specialRelease.IsRejected = true;
+        specialRelease.RejectedById = rejectedById;
+        specialRelease.RejectedAt = DateTime.UtcNow;
+        specialRelease.RejectionReason = request.RejectionReason;
+        specialRelease.UpdatedAt = DateTime.UtcNow;
+
+        // Reset case disposition back to pending if rejected
+        var caseRegister = await _caseRegisterRepository.GetByIdAsync(specialRelease.CaseRegisterId);
+        if (caseRegister != null)
+        {
+            var pendingDisposition = await _context.DispositionTypes
+                .FirstOrDefaultAsync(dt => dt.Code == "PENDING");
+
+            if (pendingDisposition != null)
+            {
+                caseRegister.DispositionTypeId = pendingDisposition.Id;
+                await _caseRegisterRepository.UpdateAsync(caseRegister);
+            }
+        }
+
+        var updated = await _specialReleaseRepository.UpdateAsync(specialRelease);
+        return MapToDto(updated);
     }
 
     public async Task<byte[]> GenerateSpecialReleaseCertificatePdfAsync(Guid id)
@@ -136,20 +173,20 @@ public class SpecialReleaseService : ISpecialReleaseService
             Reason = specialRelease.Reason,
             RequiresRedistribution = specialRelease.RedistributionAllowed,
             RequiresReweigh = specialRelease.ReweighRequired,
-            LoadCorrectionMemoId = null, // Not in current model
-            ComplianceCertificateId = null, // Not in current model
+            LoadCorrectionMemoId = specialRelease.LoadCorrectionMemoId,
+            ComplianceCertificateId = specialRelease.ComplianceCertificateId,
             AuthorizedById = specialRelease.AuthorizedById,
             AuthorizedAt = specialRelease.IssuedAt,
-            IsApproved = true, // Simplified - any issued release is considered approved
-            ApprovedById = specialRelease.AuthorizedById,
-            ApprovedAt = specialRelease.IssuedAt,
-            IsRejected = false, // Not supported in current model
-            RejectedById = null,
-            RejectedAt = null,
-            RejectionReason = null,
-            CreatedById = specialRelease.AuthorizedById, // Using authorizedBy as creator
+            IsApproved = specialRelease.IsApproved,
+            ApprovedById = specialRelease.ApprovedById,
+            ApprovedAt = specialRelease.ApprovedAt,
+            IsRejected = specialRelease.IsRejected,
+            RejectedById = specialRelease.RejectedById,
+            RejectedAt = specialRelease.RejectedAt,
+            RejectionReason = specialRelease.RejectionReason,
+            CreatedById = specialRelease.CreatedById,
             CreatedAt = specialRelease.CreatedAt,
-            UpdatedAt = specialRelease.CreatedAt
+            UpdatedAt = specialRelease.UpdatedAt
         };
     }
 }

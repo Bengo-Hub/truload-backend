@@ -195,7 +195,7 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Invalid access token" });
         }
 
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await _userManager.FindByIdAsync(userId.ToString()!);
         if (user == null)
         {
             return Unauthorized(new { message = "User not found" });
@@ -314,7 +314,7 @@ public class AuthController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(global::System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
         {
             return Unauthorized();
@@ -349,7 +349,7 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetProfile()
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(global::System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
         {
             return Unauthorized();

@@ -5,12 +5,20 @@ namespace TruLoad.Backend.Services.Interfaces.Infrastructure;
 
 public interface IPdfService
 {
-    // Existing methods
+    // Weighing documents
     Task<byte[]> GenerateWeightTicketAsync(WeighingTransaction transaction);
     Task<byte[]> GenerateProhibitionOrderAsync(ProhibitionOrder order);
 
-    // New legal document methods
+    // Case management documents
     Task<byte[]> GenerateLoadCorrectionMemoAsync(Guid caseRegisterId, WeighingTransaction originalWeighing, WeighingTransaction reweighing);
     Task<byte[]> GenerateComplianceCertificateAsync(Guid caseRegisterId, WeighingTransaction reweighing);
     Task<byte[]> GenerateSpecialReleaseCertificateAsync(SpecialRelease specialRelease);
+
+    // Prosecution documents
+    Task<byte[]> GenerateChargeSheetAsync(Guid prosecutionCaseId, CancellationToken ct = default);
+    Task<byte[]> GenerateCourtMinutesAsync(Guid hearingId, CancellationToken ct = default);
+
+    // Financial documents
+    Task<byte[]> GenerateInvoiceAsync(Guid invoiceId, CancellationToken ct = default);
+    Task<byte[]> GenerateReceiptAsync(Guid receiptId, CancellationToken ct = default);
 }

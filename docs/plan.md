@@ -122,74 +122,59 @@ window.open(url, '_blank');
 
 ## Development Status
 
-**Last Updated:** January 6, 2026, 10:00 UTC
+**Last Updated:** February 5, 2026, 18:00 UTC
 
-### Current Phase: Sprint 4 Complete ✅ - Sprint 10 Case Register Ready
+### Current Phase: Sprint 12 Complete ✅ - Sprint 13 Frontend Completion Ready
 
-**Build Status:** ✅ **HEALTHY** (52 warnings, 0 errors)  
-**Application Status:** ✅ **RUNNING** (localhost:4000)  
-**Database:** ✅ **UP-TO-DATE** (All migrations applied including AxleFeeSchedule)
-**Test Status:** ✅ **ALL PASSED** (80 tests passed, 0 failed)
+**Build Status:** ✅ **HEALTHY** (54 warnings, 0 errors)
+**Application Status:** ✅ **RUNNING** (localhost:4000)
+**Database:** ✅ **UP-TO-DATE** (All migrations applied)
+**Test Status:** ✅ **ALL PASSED** (80+ tests passed, 0 failed)
+**API Endpoints:** 90+ endpoints operational
+**PDF Documents:** 9 document types implemented
 
-**Sprint 4 Completion (Weighing Core & Legal Compliance - January 6, 2026):**
-- ✅ Vehicle & Driver management repositories and controllers implemented
-- ✅ Weighing transaction core flow with axle-by-axle capture
-- ✅ Compliance engine for EAC (2016) and Kenya Traffic Act (Cap 403)
-- ✅ Automated Prohibition Order generation for overloads >200kg
-- ✅ Permit integration (Axle/GVW extensions)
-- ✅ Reweigh cycle management (max 8 cycles)
-- ✅ PDF Generation (Weight Tickets, Prohibition Orders) with QuestPDF
-- ✅ Local Blob Storage for document persistence
-- ✅ Global document header/footer standard established
-- ✅ **[NEW]** AxleFeeSchedule table with proper EF Core configuration
-- ✅ **[NEW]** Comprehensive fee schedules: 10 entries (5 EAC + 5 Traffic Act)
-- ✅ **[NEW]** All DateTime UTC compliance for PostgreSQL compatibility
-- ✅ **[NEW]** All axle configurations (30+) with weight references
-- ✅ **[NEW]** Full seed data validation - all 80 tests passing
+---
 
-**Sprint 5 Progress (Role Management Endpoints - January 1, 2026):**
-- ✅ Role CRUD operations implemented
-- ✅ User-role assignment endpoints functional
-- ✅ Role-permission management APIs complete
-- ✅ Permission-based authorization applied to all endpoints
-- ✅ Comprehensive testing with 18/18 tests passing
-- ✅ Backend role management fully operational
+### Sprint 12 Completion (Prosecution Enhancement - February 5, 2026):
+- ✅ Court Proceedings - CourtHearingService with full CRUD operations
+- ✅ Prosecution Cases - ProsecutionService with charge calculation
+- ✅ Invoice Management - InvoiceService with PDF generation
+- ✅ Receipt Management - ReceiptService with idempotency support
+- ✅ PDF Documents - ChargeSheet, CourtMinutes, Invoice, Receipt templates
+- ✅ Frontend Integration - All prosecution UI components wired
 
-**Sprint 6 Progress (Frontend Role Management UI - January 2, 2026):**
-- 🚧 Navigation updates in progress
-- 🚧 Role management pages under development
-- 🚧 Permission management UI implementation pending
-- 🚧 Integration with backend APIs in progress
+### Sprint 11 Completion (Demerit Points & Axle Grouping - January 2026):
+- ✅ Axle Grouping Aggregation Service with A/B/C/D classification
+- ✅ PDF (Pavement Damage Factor) calculation
+- ✅ Demerit Point Schedules and tracking
+- ✅ 45 unit tests passing
 
-**Sprint 7+ Progress (Shift Management, Weighing Enhancements - January 10, 2026):**
-- ✅ UserShift Management fully implemented (6 API endpoints)
-- ✅ ShiftRotation Management fully implemented (7 API endpoints)
-- ✅ Weighing Search/List endpoint implemented with 25+ filter options
-- ✅ Performance optimizations (Rate limiting, Response compression, AsNoTracking)
-- ✅ Database schema cleanup (LegalSection consolidation)
-- ✅ Notification service integration implemented
-- ✅ Ownership checks implementation prepared
-- ✅ User filtering enhancements implemented
-- ✅ Database seeding idempotency verified
+### Sprint 10 Completion (Case Register & Special Release - January 2026):
+- ✅ CaseRegisterService with 19 API endpoints
+- ✅ SpecialReleaseService with approval/rejection workflow
+- ✅ Auto-case creation from weighing violations
+- ✅ State machine validation for case status transitions
+- ✅ Station lookup bug fixed (was using userId as station ID)
 
-**Phase 1 Completions (User Management & Security - December 31, 2025):**
-- ✅ Permission entity with 77 permissions across 8 categories implemented
-- ✅ RolePermission junction table with composite key created
-- ✅ PermissionService with Redis caching (1-hour TTL) operational
-- ✅ PermissionRepository with full CRUD operations implemented
-- ✅ PermissionsController API with 6 endpoints functional
-- ✅ PermissionSeeder seeding 77 permissions and 6 role mappings
-- ✅ Migration `20251227141300_AddPermissionsModel` applied to database
-- ✅ Audit logging middleware fully operational
-- ✅ Audit log repository with 9 query methods implemented
-- ✅ Repository structure refactored (consistent namespace pattern)
+### Sprint 5 Completion (Yard & Tags Enhancement - February 2026):
+- ✅ YardService with dedicated business logic and statistics
+- ✅ VehicleTagService with automatic case register linking
+- ✅ StatusLookupService for cached status/type lookups
+- ✅ Manual tags automatically create case register entries
+- ✅ CommonStatusCodes centralized constants
 
-**Phase 2 Progress (Authorization Policies - Complete):**
-- ✅ Authorization requirement classes and handlers implemented
-- ✅ PermissionRequirementHandler for policy-based authorization
-- ✅ PermissionVerificationService for user permission checking
-4. **Axle System Foundation** - Implement axle configuration system (Sprint 3)
-5. **Hardware Integration** - Implement Scale Test and Hardware Health Monitoring (Sprint 3 extension or Sprint 9)
+### Previous Sprint Completions:
+- ✅ Sprint 1: User Management & Security (77 permissions, RBAC, JWT auth)
+- ✅ Sprint 1.5: Axle System Foundation (612 configs, 1233 refs)
+- ✅ Sprint 3: Weighing Setup (Vehicle, Driver, Permit entities)
+- ✅ Sprint 4: Weighing Core (Compliance engine, PDF generation)
+- ✅ Sprint 7: Shift Management (13 API endpoints)
+
+### Next Sprint: Sprint 13 - Static Weighing & Frontend Completion
+- ⏳ Static Weighing Page (frontend)
+- ⏳ Security UI completion (6 TODO items)
+- ⏳ Dashboard enhancement
+- ⏳ Production build fix
 
 ---
 
@@ -295,11 +280,11 @@ public class MyController : ControllerBase
 
 ### Core Framework
 - **Language:** C# 12
-- **Framework:** .NET 8 (LTS) Web API
+- **Framework:** .NET 10 (LTS) Web API
 - **Architecture Pattern:** Modular Monolith with CQRS (MediatR), Vertical Slice Architecture
 
 ### Data & Caching
-- **Primary Database:** PostgreSQL 16+ (Npgsql, Entity Framework Core 8) with pgvector extension
+- **Primary Database:** PostgreSQL 16+ (Npgsql, Entity Framework Core 10) with pgvector extension
 - **Caching:** Redis 7+ (StackExchange.Redis)
 - **Message Broker:** RabbitMQ 3.13+ (MassTransit for .NET)
 - **Search (Optional):** Elasticsearch for advanced report queries
@@ -1629,7 +1614,7 @@ A comprehensive audit was conducted comparing KenloadV2 (existing KeNHA system) 
 4. **Weight Ticket Format:** Missing dual-table display (individual + group weights)
 
 ### TruLoad Advantages to Preserve
-1. **Modern Architecture:** .NET 8 LTS, PostgreSQL 16 with pgvector
+1. **Modern Architecture:** .NET 10 LTS, PostgreSQL 16 with pgvector
 2. **Offline-First PWA:** IndexedDB with background sync
 3. **Vector Search/AI:** ONNX Runtime for natural language queries
 4. **Multi-Tenancy:** Supports KURA, KeNHA, Counties

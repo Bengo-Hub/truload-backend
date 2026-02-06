@@ -219,7 +219,7 @@ public class PermitsController : ControllerBase
             GvwExtensionKg = permit.GvwExtensionKg,
             ValidFrom = permit.ValidFrom,
             ValidTo = permit.ValidTo,
-            IssuingAuthority = permit.IssuingAuthority,
+            IssuingAuthority = permit.IssuingAuthority ?? string.Empty,
             Status = permit.Status,
             CreatedAt = permit.CreatedAt
         };

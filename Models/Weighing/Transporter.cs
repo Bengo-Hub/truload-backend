@@ -13,31 +13,31 @@ namespace TruLoad.Backend.Models.Weighing
         [Required]
         [Column("code")]
         [StringLength(50)]
-        public string Code { get; set; }
+        public string Code { get; set; } = string.Empty;
 
         [Required]
         [Column("name")]
         [StringLength(255)]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         [Column("registration_no")]
         [StringLength(100)]
-        public string RegistrationNo { get; set; }
+        public string? RegistrationNo { get; set; }
 
         [Column("phone")]
         [StringLength(50)]
-        public string Phone { get; set; }
+        public string? Phone { get; set; }
 
         [Column("email")]
         [StringLength(255)]
-        public string Email { get; set; }
+        public string? Email { get; set; }
 
         [Column("address")]
-        public string Address { get; set; }
+        public string? Address { get; set; }
 
         [Column("ntac_no")]
         [StringLength(50)]
-        public string NtacNo { get; set; }
+        public string? NtacNo { get; set; }
 
         // Collections
         public virtual ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();

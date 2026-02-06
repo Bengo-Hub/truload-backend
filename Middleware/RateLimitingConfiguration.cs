@@ -5,7 +5,7 @@ namespace TruLoad.Backend.Middleware;
 
 /// <summary>
 /// Configuration for rate limiting middleware to prevent API abuse and ensure fair usage.
-/// Uses ASP.NET Core's built-in rate limiting features from .NET 8.
+/// Uses ASP.NET Core's built-in rate limiting features from .NET 10.
 /// </summary>
 public static class RateLimitingConfiguration
 {

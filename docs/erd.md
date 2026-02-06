@@ -855,6 +855,71 @@ Weighbridge station master data with bidirectional support.
 - One-to-many with `scale_tests`
 - One-to-many with `yard_entries`
 - One-to-many with `users` (assigned station)
+- One-to-one with `station_middleware_settings`
+
+#### station_middleware_settings
+Station-specific TruConnect middleware configuration for scale connectivity.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Settings ID |
+| station_id | UUID | FK → stations(id), UNIQUE, NOT NULL, INDEX | Parent station |
+| connection_mode | VARCHAR(20) | NOT NULL, DEFAULT 'websocket', CHECK | Mode: websocket, polling, backend_relay |
+| middleware_ws_url | VARCHAR(500) | DEFAULT 'ws://localhost:3030' | TruConnect WebSocket URL |
+| middleware_api_url | VARCHAR(500) | DEFAULT 'http://localhost:3031' | TruConnect API URL (polling mode) |
+| auto_weigh_enabled | BOOLEAN | DEFAULT FALSE | Enable auto-weigh to backend |
+| polling_interval_ms | INTEGER | DEFAULT 500 | API polling interval (ms) |
+| is_simulation | BOOLEAN | DEFAULT FALSE | Enable simulation mode |
+| scale_protocol | VARCHAR(20) | DEFAULT 'PAW' | Scale protocol: PAW, HAENNI, ZM, CARDINAL |
+| scale_serial_port | VARCHAR(20) | DEFAULT 'COM7' | Serial port for scale |
+| scale_baud_rate | INTEGER | DEFAULT 9600 | Serial baud rate |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Record update |
+
+**Indexes:**
+- `idx_station_middleware_settings_station` ON station_middleware_settings(station_id) UNIQUE
+
+**Check Constraints:**
+- `CK_station_middleware_settings_mode` CHECK (connection_mode IN ('websocket', 'polling', 'backend_relay'))
+- `CK_station_middleware_settings_protocol` CHECK (scale_protocol IN ('PAW', 'HAENNI', 'ZM', 'CARDINAL', 'CARDINAL2', '1310'))
+
+**Relationships:**
+- One-to-one with `stations`
+
+#### system_configurations
+Global system configuration key-value store for application settings.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Config ID |
+| config_key | VARCHAR(100) | UNIQUE, NOT NULL, INDEX | Configuration key |
+| config_value | TEXT | NOT NULL | Configuration value |
+| config_type | VARCHAR(20) | DEFAULT 'string', CHECK | Type: string, number, boolean, json |
+| category | VARCHAR(50) | DEFAULT 'general', INDEX | Category: middleware, autoweigh, output, general |
+| description | TEXT | | Human-readable description |
+| is_sensitive | BOOLEAN | DEFAULT FALSE | Sensitive data (masked in logs) |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | Record update |
+
+**Indexes:**
+- `idx_system_configurations_key` ON system_configurations(config_key) UNIQUE
+- `idx_system_configurations_category` ON system_configurations(category)
+
+**Check Constraints:**
+- `CK_system_configurations_type` CHECK (config_type IN ('string', 'number', 'boolean', 'json'))
+- `CK_system_configurations_category` CHECK (category IN ('middleware', 'autoweigh', 'output', 'general', 'security'))
+
+**Seed Data:**
+```sql
+INSERT INTO system_configurations (config_key, config_value, config_type, category, description) VALUES
+('middleware.default_ws_url', 'ws://localhost:3030', 'string', 'middleware', 'Default TruConnect WebSocket URL'),
+('middleware.default_api_url', 'http://localhost:3031', 'string', 'middleware', 'Default TruConnect API URL'),
+('middleware.default_polling_interval', '500', 'number', 'middleware', 'Default polling interval in ms'),
+('autoweigh.enabled', 'false', 'boolean', 'autoweigh', 'Enable auto-weigh mode globally'),
+('autoweigh.endpoint', '/api/v1/autoweigh', 'string', 'autoweigh', 'Auto-weigh backend endpoint'),
+('output.backend_relay_enabled', 'false', 'boolean', 'output', 'Enable backend WebSocket relay for cloud mode'),
+('output.backend_relay_ws_path', '/ws/middleware', 'string', 'output', 'Backend WebSocket relay path');
+```
 
 #### roads
 Road master data with district linkage.

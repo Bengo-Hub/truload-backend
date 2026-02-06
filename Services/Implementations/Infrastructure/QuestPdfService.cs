@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models.CaseManagement;
+using TruLoad.Backend.Models.Prosecution;
+using TruLoad.Backend.Models.Financial;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments;
 
@@ -83,5 +85,74 @@ public class QuestPdfService : IPdfService
             var document = new SpecialReleaseCertificateDocument(specialRelease);
             return document.Generate();
         });
+    }
+
+    public async Task<byte[]> GenerateChargeSheetAsync(Guid prosecutionCaseId, CancellationToken ct = default)
+    {
+        var prosecutionCase = await _context.ProsecutionCases
+            .Include(p => p.CaseRegister)
+            .Include(p => p.Weighing)
+                .ThenInclude(w => w!.Vehicle)
+            .Include(p => p.Weighing)
+                .ThenInclude(w => w!.Station)
+            .Include(p => p.ProsecutionOfficer)
+            .Include(p => p.Act)
+            .FirstOrDefaultAsync(p => p.Id == prosecutionCaseId && p.DeletedAt == null, ct)
+            ?? throw new InvalidOperationException($"Prosecution case {prosecutionCaseId} not found");
+
+        var document = new ChargeSheetDocument(prosecutionCase, prosecutionCase.CaseRegister);
+        return document.Generate();
+    }
+
+    public async Task<byte[]> GenerateCourtMinutesAsync(Guid hearingId, CancellationToken ct = default)
+    {
+        var hearing = await _context.CourtHearings
+            .Include(h => h.CaseRegister)
+            .Include(h => h.HearingType)
+            .Include(h => h.HearingStatus)
+            .Include(h => h.HearingOutcome)
+            .FirstOrDefaultAsync(h => h.Id == hearingId && h.DeletedAt == null, ct)
+            ?? throw new InvalidOperationException($"Court hearing {hearingId} not found");
+
+        var document = new CourtMinutesDocument(hearing, hearing.CaseRegister);
+        return document.Generate();
+    }
+
+    public async Task<byte[]> GenerateInvoiceAsync(Guid invoiceId, CancellationToken ct = default)
+    {
+        var invoice = await _context.Invoices
+            .Include(i => i.ProsecutionCase)
+                .ThenInclude(p => p!.CaseRegister)
+            .Include(i => i.ProsecutionCase)
+                .ThenInclude(p => p!.Weighing)
+                    .ThenInclude(w => w!.Station)
+            .Include(i => i.Receipts)
+            .FirstOrDefaultAsync(i => i.Id == invoiceId && i.DeletedAt == null, ct)
+            ?? throw new InvalidOperationException($"Invoice {invoiceId} not found");
+
+        // Get organization name from station or default
+        var organizationName = invoice.ProsecutionCase?.Weighing?.Station?.Name;
+
+        var document = new InvoiceDocument(invoice, organizationName);
+        return document.Generate();
+    }
+
+    public async Task<byte[]> GenerateReceiptAsync(Guid receiptId, CancellationToken ct = default)
+    {
+        var receipt = await _context.Receipts
+            .Include(r => r.Invoice)
+                .ThenInclude(i => i!.ProsecutionCase)
+                    .ThenInclude(p => p!.CaseRegister)
+            .Include(r => r.Invoice)
+                .ThenInclude(i => i!.ProsecutionCase)
+                    .ThenInclude(p => p!.Weighing)
+            .Include(r => r.Invoice)
+                .ThenInclude(i => i!.Receipts)
+            .Include(r => r.ReceivedBy)
+            .FirstOrDefaultAsync(r => r.Id == receiptId && r.DeletedAt == null, ct)
+            ?? throw new InvalidOperationException($"Receipt {receiptId} not found");
+
+        var document = new ReceiptDocument(receipt);
+        return document.Generate();
     }
 }

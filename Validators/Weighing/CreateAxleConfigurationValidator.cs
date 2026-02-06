@@ -26,9 +26,10 @@ public class CreateAxleConfigurationValidator : AbstractValidator<CreateAxleConf
         RuleFor(x => x.AxleNumber)
             .InclusiveBetween(2, 8).WithMessage("Axle number must be between 2 and 8");
 
-        RuleFor(x => x.GvwPermissibleKg)
-            .GreaterThan(0).WithMessage("GVW permissible must be greater than 0")
-            .LessThanOrEqualTo(50000).WithMessage("GVW permissible cannot exceed 50,000 kg");
+        RuleFor(x => x.WeightReferences)
+            .NotEmpty().WithMessage("At least one weight reference is required")
+            .Must(refs => refs == null || refs.All(r => r.AxleLegalWeightKg > 0))
+            .WithMessage("All weight reference weights must be greater than 0");
 
         RuleFor(x => x.LegalFramework)
             .Must(x => x == null || new[] { "EAC", "TRAFFIC_ACT", "BOTH" }.Contains(x))

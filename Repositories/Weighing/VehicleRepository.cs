@@ -39,8 +39,8 @@ public class VehicleRepository : IVehicleRepository
         return await _context.Vehicles
             .AsNoTracking()
             .Where(v => v.RegNo.Contains(query) ||
-                        v.ChassisNo.Contains(query) ||
-                        v.EngineNo.Contains(query))
+                        (v.ChassisNo != null && v.ChassisNo.Contains(query)) ||
+                        (v.EngineNo != null && v.EngineNo.Contains(query)))
             .Take(20)
             .ToListAsync();
     }

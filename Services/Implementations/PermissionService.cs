@@ -158,16 +158,52 @@ public class PermissionService : IPermissionService
 
     public async Task<bool> UserHasPermissionAsync(Guid userId, string permissionCode, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(permissionCode))
+        if (userId == Guid.Empty || string.IsNullOrWhiteSpace(permissionCode))
             return false;
 
-        // This is a placeholder - actual implementation would:
-        // 1. Get user's roles
-        // 2. Get permissions for each role
-        // 3. Check if permission exists
-        // For now, we just check if permission is active
+        // Check if permission is active first
         var permission = await GetPermissionByCodeAsync(permissionCode, cancellationToken);
-        return permission?.IsActive ?? false;
+        if (permission == null || !permission.IsActive)
+            return false;
+
+        // Cache key for user's effective permissions
+        var cacheKey = $"perm:user:{userId}:codes";
+
+        // Try to get from cache
+        var cachedData = await _cache.GetStringAsync(cacheKey, cancellationToken);
+        if (!string.IsNullOrEmpty(cachedData))
+        {
+            var cachedPermissions = JsonSerializer.Deserialize<HashSet<string>>(cachedData);
+            return cachedPermissions?.Contains(permissionCode, StringComparer.OrdinalIgnoreCase) ?? false;
+        }
+
+        // Get user's role IDs from asp_net_user_roles
+        var userRoleIds = await _dbContext.UserRoles
+            .Where(ur => ur.UserId == userId)
+            .Select(ur => ur.RoleId)
+            .ToListAsync(cancellationToken);
+
+        if (!userRoleIds.Any())
+            return false;
+
+        // Get all permissions for user's roles
+        var userPermissionCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var roleId in userRoleIds)
+        {
+            var rolePermissions = await GetPermissionsForRoleAsync(roleId, cancellationToken);
+            foreach (var perm in rolePermissions.Where(p => p.IsActive))
+            {
+                userPermissionCodes.Add(perm.Code);
+            }
+        }
+
+        // Cache the user's effective permissions
+        if (userPermissionCodes.Any())
+        {
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(userPermissionCodes), TimeSpan.FromSeconds(CacheTtlSeconds), cancellationToken);
+        }
+
+        return userPermissionCodes.Contains(permissionCode);
     }
 
     public async Task<bool> RoleHasPermissionAsync(Guid roleId, string permissionCode, CancellationToken cancellationToken = default)
@@ -291,9 +327,83 @@ public class PermissionService : IPermissionService
         await InvalidateRolePermissionCacheAsync(roleId, cancellationToken);
     }
 
+    public async Task<IEnumerable<string>> GetUserPermissionCodesAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        if (userId == Guid.Empty)
+            return Enumerable.Empty<string>();
+
+        // Cache key for user's effective permissions
+        var cacheKey = $"perm:user:{userId}:codes";
+
+        // Try to get from cache
+        var cachedData = await _cache.GetStringAsync(cacheKey, cancellationToken);
+        if (!string.IsNullOrEmpty(cachedData))
+        {
+            return JsonSerializer.Deserialize<HashSet<string>>(cachedData) ?? Enumerable.Empty<string>();
+        }
+
+        // Get user's role IDs from asp_net_user_roles
+        var userRoleIds = await _dbContext.UserRoles
+            .Where(ur => ur.UserId == userId)
+            .Select(ur => ur.RoleId)
+            .ToListAsync(cancellationToken);
+
+        if (!userRoleIds.Any())
+            return Enumerable.Empty<string>();
+
+        // Get all permissions for user's roles
+        var userPermissionCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var roleId in userRoleIds)
+        {
+            var rolePermissions = await GetPermissionsForRoleAsync(roleId, cancellationToken);
+            foreach (var perm in rolePermissions.Where(p => p.IsActive))
+            {
+                userPermissionCodes.Add(perm.Code);
+            }
+        }
+
+        // Cache the user's effective permissions
+        if (userPermissionCodes.Any())
+        {
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(userPermissionCodes), TimeSpan.FromSeconds(CacheTtlSeconds), cancellationToken);
+        }
+
+        return userPermissionCodes;
+    }
+
+    public async Task InvalidateUserPermissionCacheAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        if (userId == Guid.Empty)
+            return;
+
+        var cacheKey = $"perm:user:{userId}:codes";
+        await _cache.RemoveAsync(cacheKey, cancellationToken);
+    }
+
+    public async Task InvalidateUsersInRoleCacheAsync(Guid roleId, CancellationToken cancellationToken = default)
+    {
+        if (roleId == Guid.Empty)
+            return;
+
+        // Get all user IDs with this role
+        var userIds = await _dbContext.UserRoles
+            .Where(ur => ur.RoleId == roleId)
+            .Select(ur => ur.UserId)
+            .ToListAsync(cancellationToken);
+
+        // Invalidate each user's permission cache
+        foreach (var userId in userIds)
+        {
+            await InvalidateUserPermissionCacheAsync(userId, cancellationToken);
+        }
+    }
+
     private async Task InvalidateRolePermissionCacheAsync(Guid roleId, CancellationToken cancellationToken = default)
     {
         var cacheKey = $"perm:role:{roleId}";
         await _cache.RemoveAsync(cacheKey, cancellationToken);
+
+        // Also invalidate all users in this role
+        await InvalidateUsersInRoleCacheAsync(roleId, cancellationToken);
     }
 }

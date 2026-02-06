@@ -17,15 +17,24 @@ namespace TruLoad.Backend.Controllers.WeighingOperations;
 public class AxleConfigurationController : ControllerBase
 {
     private readonly IAxleConfigurationRepository _repository;
+    private readonly IAxleWeightReferenceRepository _weightRefRepository;
+    private readonly ITyreTypeRepository _tyreTypeRepository;
+    private readonly IAxleGroupRepository _axleGroupRepository;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<AxleConfigurationController> _logger;
 
     public AxleConfigurationController(
         IAxleConfigurationRepository repository,
+        IAxleWeightReferenceRepository weightRefRepository,
+        ITyreTypeRepository tyreTypeRepository,
+        IAxleGroupRepository axleGroupRepository,
         ITenantContext tenantContext,
         ILogger<AxleConfigurationController> logger)
     {
         _repository = repository;
+        _weightRefRepository = weightRefRepository;
+        _tyreTypeRepository = tyreTypeRepository;
+        _axleGroupRepository = axleGroupRepository;
         _tenantContext = tenantContext;
         _logger = logger;
     }
@@ -108,8 +117,8 @@ public class AxleConfigurationController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new derived (user-custom) axle configuration
-    /// Standard configurations are immutable and seeded only
+    /// Create a new derived (user-custom) axle configuration.
+    /// GVW is auto-calculated from the sum of weight reference legal weights.
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "Admin,Station Manager")]
@@ -128,6 +137,9 @@ public class AxleConfigurationController : ControllerBase
                 return Conflict(new { message = $"Axle code '{request.AxleCode}' already exists" });
             }
 
+            // Auto-calculate GVW from weight references
+            var gvw = request.WeightReferences?.Sum(wr => wr.AxleLegalWeightKg) ?? 0;
+
             var config = new AxleConfiguration
             {
                 Id = Guid.NewGuid(),
@@ -135,8 +147,8 @@ public class AxleConfigurationController : ControllerBase
                 AxleName = request.AxleName,
                 Description = request.Description,
                 AxleNumber = request.AxleNumber,
-                GvwPermissibleKg = request.GvwPermissibleKg,
-                IsStandard = false, // User-created configs are derived
+                GvwPermissibleKg = gvw,
+                IsStandard = false,
                 LegalFramework = request.LegalFramework ?? "BOTH",
                 VisualDiagramUrl = request.VisualDiagramUrl,
                 Notes = request.Notes,
@@ -148,12 +160,38 @@ public class AxleConfigurationController : ControllerBase
 
             var created = await _repository.CreateDerivedConfigAsync(config, cancellationToken);
 
+            // Create weight references if provided
+            if (request.WeightReferences is { Count: > 0 })
+            {
+                foreach (var wrDto in request.WeightReferences)
+                {
+                    var weightRef = new AxleWeightReference
+                    {
+                        Id = Guid.NewGuid(),
+                        AxleConfigurationId = created.Id,
+                        AxlePosition = wrDto.AxlePosition,
+                        AxleLegalWeightKg = wrDto.AxleLegalWeightKg,
+                        AxleGrouping = wrDto.AxleGrouping,
+                        AxleGroupId = wrDto.AxleGroupId,
+                        TyreTypeId = wrDto.TyreTypeId,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _weightRefRepository.CreateAsync(weightRef, cancellationToken);
+                }
+            }
+
+            // Re-fetch with weight references for response
+            var result = await _repository.GetByIdAsync(created.Id, includeWeightReferences: true, cancellationToken);
+
             _logger.LogInformation(
-                "Created derived axle configuration {AxleCode} by user {UserId}",
+                "Created derived axle configuration {AxleCode} with {RefCount} weight refs (GVW={Gvw}kg) by user {UserId}",
                 created.AxleCode,
+                request.WeightReferences?.Count ?? 0,
+                gvw,
                 GetCurrentUserId());
 
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, MapToResponseDto(created));
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, MapToResponseDto(result!));
         }
         catch (InvalidOperationException ex)
         {
@@ -163,8 +201,8 @@ public class AxleConfigurationController : ControllerBase
     }
 
     /// <summary>
-    /// Update an existing derived axle configuration
-    /// Standard (EAC-defined) configurations cannot be modified
+    /// Update an existing derived axle configuration.
+    /// When weight references are provided, they replace existing ones and GVW is recalculated.
     /// </summary>
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Admin,Station Manager")]
@@ -184,24 +222,59 @@ public class AxleConfigurationController : ControllerBase
                 return NotFound(new { message = "Axle configuration not found" });
             }
 
-            // Update fields
+            // Update basic fields
             existing.AxleName = request.AxleName;
             existing.Description = request.Description;
-            existing.GvwPermissibleKg = request.GvwPermissibleKg;
             existing.LegalFramework = request.LegalFramework ?? existing.LegalFramework;
             existing.VisualDiagramUrl = request.VisualDiagramUrl;
             existing.Notes = request.Notes;
             existing.IsActive = request.IsActive;
             existing.UpdatedAt = DateTime.UtcNow;
 
+            // Handle weight references: replace all and recalculate GVW
+            if (request.WeightReferences != null)
+            {
+                // Delete all existing weight references
+                var existingRefs = await _weightRefRepository.GetByConfigurationIdAsync(id, cancellationToken: cancellationToken);
+                foreach (var existingRef in existingRefs)
+                {
+                    await _weightRefRepository.DeleteAsync(existingRef.Id, cancellationToken);
+                }
+
+                // Create new weight references
+                foreach (var wrDto in request.WeightReferences)
+                {
+                    var weightRef = new AxleWeightReference
+                    {
+                        Id = Guid.NewGuid(),
+                        AxleConfigurationId = id,
+                        AxlePosition = wrDto.AxlePosition,
+                        AxleLegalWeightKg = wrDto.AxleLegalWeightKg,
+                        AxleGrouping = wrDto.AxleGrouping,
+                        AxleGroupId = wrDto.AxleGroupId,
+                        TyreTypeId = wrDto.TyreTypeId,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _weightRefRepository.CreateAsync(weightRef, cancellationToken);
+                }
+
+                // Recalculate GVW from new weight references
+                existing.GvwPermissibleKg = request.WeightReferences.Sum(wr => wr.AxleLegalWeightKg);
+            }
+
             var updated = await _repository.UpdateDerivedConfigAsync(existing, cancellationToken);
 
+            // Re-fetch with weight references for response
+            var result = await _repository.GetByIdAsync(id, includeWeightReferences: true, cancellationToken);
+
             _logger.LogInformation(
-                "Updated derived axle configuration {AxleCode} by user {UserId}",
+                "Updated derived axle configuration {AxleCode} (GVW={Gvw}kg) by user {UserId}",
                 updated.AxleCode,
+                existing.GvwPermissibleKg,
                 GetCurrentUserId());
 
-            return Ok(MapToResponseDto(updated));
+            return Ok(MapToResponseDto(result!));
         }
         catch (InvalidOperationException ex)
         {
@@ -251,7 +324,41 @@ public class AxleConfigurationController : ControllerBase
     }
 
     /// <summary>
-    /// Get lookup data for creating/editing axle weight references (tyre types and axle groups)
+    /// Get lookup data for creating/editing axle weight references (tyre types and axle groups).
+    /// Does not require a configuration ID - used for create form.
+    /// </summary>
+    [HttpGet("lookup/weight-ref-data")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<ActionResult<object>> GetWeightReferenceLookupData(
+        CancellationToken cancellationToken = default)
+    {
+        var tyreTypes = await _tyreTypeRepository.GetAllActiveAsync(cancellationToken);
+        var axleGroups = await _axleGroupRepository.GetAllActiveAsync(cancellationToken);
+
+        return Ok(new
+        {
+            tyreTypes = tyreTypes.Select(t => new TyreTypeLookupDto
+            {
+                Id = t.Id,
+                Code = t.Code,
+                Name = t.Name,
+                Description = t.Description,
+                TypicalMaxWeightKg = t.TypicalMaxWeightKg
+            }).ToList(),
+            axleGroups = axleGroups.Select(g => new AxleGroupLookupDto
+            {
+                Id = g.Id,
+                Code = g.Code,
+                Name = g.Name,
+                Description = g.Description,
+                TypicalWeightKg = g.TypicalWeightKg
+            }).ToList(),
+            axleGroupings = new[] { "A", "B", "C", "D" }
+        });
+    }
+
+    /// <summary>
+    /// Get lookup data for a specific configuration (includes config details)
     /// </summary>
     [HttpGet("{id:guid}/lookup")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
@@ -266,19 +373,8 @@ public class AxleConfigurationController : ControllerBase
             return NotFound(new { message = "Configuration not found" });
         }
 
-        // Get all active tyre types
-        var tyreTypes = await Task.FromResult(
-            HttpContext.RequestServices.GetService<ITyreTypeRepository>() as ITyreTypeRepository);
-
-        // Get all active axle groups
-        var axleGroups = await Task.FromResult(
-            HttpContext.RequestServices.GetService<IAxleGroupRepository>() as IAxleGroupRepository);
-
-        var tyreTypeDtos = new List<TyreTypeLookupDto>();
-        var axleGroupDtos = new List<AxleGroupLookupDto>();
-
-        // These will be fetched properly via DI in next step
-        // For now, return structure
+        var tyreTypes = await _tyreTypeRepository.GetAllActiveAsync(cancellationToken);
+        var axleGroups = await _axleGroupRepository.GetAllActiveAsync(cancellationToken);
 
         return Ok(new
         {
@@ -291,8 +387,22 @@ public class AxleConfigurationController : ControllerBase
                 gvwPermissibleKg = config.GvwPermissibleKg,
                 legalFramework = config.LegalFramework
             },
-            tyreTypes = tyreTypeDtos,
-            axleGroups = axleGroupDtos,
+            tyreTypes = tyreTypes.Select(t => new TyreTypeLookupDto
+            {
+                Id = t.Id,
+                Code = t.Code,
+                Name = t.Name,
+                Description = t.Description,
+                TypicalMaxWeightKg = t.TypicalMaxWeightKg
+            }).ToList(),
+            axleGroups = axleGroups.Select(g => new AxleGroupLookupDto
+            {
+                Id = g.Id,
+                Code = g.Code,
+                Name = g.Name,
+                Description = g.Description,
+                TypicalWeightKg = g.TypicalWeightKg
+            }).ToList(),
             axleGroupings = new[] { "A", "B", "C", "D" },
             axlePositions = Enumerable.Range(1, config.AxleNumber).ToList()
         });

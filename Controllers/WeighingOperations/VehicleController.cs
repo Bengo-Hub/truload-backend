@@ -41,6 +41,7 @@ public class VehicleController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "Permission:vehicle.create")]
     public async Task<IActionResult> Create([FromBody] Vehicle vehicle)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -54,6 +55,7 @@ public class VehicleController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Policy = "Permission:vehicle.update")]
     public async Task<IActionResult> Update(Guid id, [FromBody] Vehicle vehicle)
     {
         if (id != vehicle.Id) return BadRequest();

@@ -18,9 +18,9 @@ public class UpdateAxleConfigurationValidator : AbstractValidator<UpdateAxleConf
         RuleFor(x => x.Description)
             .MaximumLength(500).WithMessage("Description cannot exceed 500 characters");
 
-        RuleFor(x => x.GvwPermissibleKg)
-            .GreaterThan(0).WithMessage("GVW permissible must be greater than 0")
-            .LessThanOrEqualTo(50000).WithMessage("GVW permissible cannot exceed 50,000 kg");
+        RuleFor(x => x.WeightReferences)
+            .Must(refs => refs == null || refs.All(r => r.AxleLegalWeightKg > 0))
+            .WithMessage("All weight reference weights must be greater than 0");
 
         RuleFor(x => x.LegalFramework)
             .Must(x => x == null || new[] { "EAC", "TRAFFIC_ACT", "BOTH" }.Contains(x))

@@ -41,6 +41,17 @@ using TruLoad.Backend.Services.Interfaces.CaseManagement;
 using TruLoad.Backend.Services.Implementations.CaseManagement;
 using TruLoad.Backend.Services.Interfaces.Shared;
 using TruLoad.Backend.Services.Implementations.Shared;
+using TruLoad.Backend.Services.Interfaces.Prosecution;
+using TruLoad.Backend.Services.Implementations.Prosecution;
+using TruLoad.Backend.Services.Interfaces.Financial;
+using TruLoad.Backend.Services.Implementations.Financial;
+using TruLoad.Backend.Services.Interfaces.Yard;
+using TruLoad.Backend.Services.Implementations.Yard;
+using TruLoad.Backend.Services.Interfaces.System;
+using TruLoad.Backend.Services.Implementations.System;
+using TruLoad.Backend.Services.Interfaces.Analytics;
+using TruLoad.Backend.Services.Implementations.Analytics;
+using TruLoad.Backend.DTOs.Analytics;
 using TruLoad.Backend.Configuration;
 
 // Set QuestPDF License
@@ -59,6 +70,7 @@ builder.Host.UseSerilog();
 
 // ===== Services =====
 builder.Services.AddControllers();
+builder.Services.AddMemoryCache();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -449,6 +461,40 @@ builder.Services.AddAuthorizationBuilder()
         policy.RequireAuthenticatedUser()
               .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("prosecution.audit")))
 
+    // Financial permissions - Invoice
+    .AddPolicy("Permission:invoice.create", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("invoice.create")))
+    .AddPolicy("Permission:invoice.read", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("invoice.read")))
+    .AddPolicy("Permission:invoice.read_own", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("invoice.read_own")))
+    .AddPolicy("Permission:invoice.update", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("invoice.update")))
+    .AddPolicy("Permission:invoice.void", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("invoice.void")))
+
+    // Financial permissions - Receipt
+    .AddPolicy("Permission:receipt.create", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("receipt.create")))
+    .AddPolicy("Permission:receipt.read", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("receipt.read")))
+    .AddPolicy("Permission:receipt.read_own", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("receipt.read_own")))
+    .AddPolicy("Permission:receipt.void", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("receipt.void")))
+    .AddPolicy("Permission:financial.audit", policy =>
+        policy.RequireAuthenticatedUser()
+              .AddRequirements(new TruLoad.Backend.Authorization.Requirements.PermissionRequirement("financial.audit")))
+
     // Analytics permissions
     .AddPolicy("Permission:analytics.read", policy =>
         policy.RequireAuthenticatedUser()
@@ -591,6 +637,7 @@ builder.Services.AddScoped<IToleranceRepository, ToleranceRepository>();
 builder.Services.AddScoped<IWeighingRepository, WeighingRepository>();
 builder.Services.AddScoped<IVehicleRepository, VehicleRepository>();
 builder.Services.AddScoped<IDriverRepository, DriverRepository>();
+builder.Services.AddScoped<ITransporterRepository, TransporterRepository>();
 builder.Services.AddScoped<IPermitRepository, PermitRepository>();
 builder.Services.AddScoped<IProhibitionRepository, ProhibitionRepository>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
@@ -598,6 +645,7 @@ builder.Services.AddScoped<IScaleTestRepository, ScaleTestRepository>();
 builder.Services.AddScoped<ICargoTypesRepository, CargoTypesRepository>();
 builder.Services.AddScoped<IOriginsDestinationsRepository, OriginsDestinationsRepository>();
 builder.Services.AddScoped<IRoadsRepository, RoadsRepository>();
+builder.Services.AddScoped<IVehicleMakesRepository, VehicleMakesRepository>();
 
 // Infrastructure services (File Storage with SHA-256 checksums)
 builder.Services.AddScoped<IPdfService, QuestPdfService>();
@@ -616,9 +664,13 @@ builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IPermissionVerificationService, PermissionVerificationService>();
 builder.Services.AddScoped<IOwnershipCheckService, OwnershipCheckService>();
 
+// Status lookup service (centralized cached lookups for status/type entities)
+builder.Services.AddScoped<IStatusLookupService, StatusLookupService>();
+
 // Auth services
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IWeighingService, WeighingService>();
+builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
 
 // Sprint 11: Axle Group Aggregation & Fee/Demerit Services
 builder.Services.AddScoped<IAxleTypeFeeRepository, AxleTypeFeeRepository>();
@@ -632,6 +684,27 @@ builder.Services.AddScoped<ISpecialReleaseRepository, SpecialReleaseRepository>(
 // Case Management services
 builder.Services.AddScoped<ICaseRegisterService, CaseRegisterService>();
 builder.Services.AddScoped<ISpecialReleaseService, SpecialReleaseService>();
+builder.Services.AddScoped<ICourtHearingService, CourtHearingService>();
+
+// Prosecution services
+builder.Services.AddScoped<IProsecutionService, ProsecutionService>();
+
+// Financial services
+builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<IReceiptService, ReceiptService>();
+
+// Yard services
+builder.Services.AddScoped<IYardService, YardService>();
+builder.Services.AddScoped<IVehicleTagService, VehicleTagService>();
+
+// System Settings services
+builder.Services.AddScoped<ISettingsService, SettingsService>();
+builder.Services.AddScoped<IBackupService, BackupService>();
+
+// Analytics services (Superset integration)
+builder.Services.Configure<SupersetOptions>(builder.Configuration.GetSection(SupersetOptions.SectionName));
+builder.Services.Configure<OllamaOptions>(builder.Configuration.GetSection(OllamaOptions.SectionName));
+builder.Services.AddHttpClient<ISupersetService, SupersetService>();
 
 // TODO: Add MediatR, AutoMapper, MassTransit (RabbitMQ), etc.
 
@@ -665,7 +738,7 @@ try
         }
 
         // Check if initial seeding has already been completed
-        var seedingVersion = 2; // Increment this when you need to re-seed (v2: Added yard.* and tag.* permissions)
+        var seedingVersion = 3; // Increment this when you need to re-seed (v3: Added shift lockout settings - enforce_on_login, bypass_shift_check, excluded_roles)
         var seedingName = "InitialSeed";
 
         var existingSeed = await dbContext.DatabaseSeedingHistory
@@ -725,7 +798,7 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "TruLoad API v1");
-    c.RoutePrefix = string.Empty; // Serve Swagger UI at root
+    c.RoutePrefix = "v1/docs"; // Serve Swagger UI at /v1/docs
 });
 
 app.UseSerilogRequestLogging();

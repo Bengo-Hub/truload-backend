@@ -13,27 +13,27 @@ namespace TruLoad.Backend.Models.Weighing
         [Required]
         [Column("id_no_or_passport")]
         [StringLength(50)]
-        public string IdNoOrPassport { get; set; }
+        public string IdNoOrPassport { get; set; } = string.Empty;
 
         [Required]
         [Column("full_name")]
         [StringLength(255)]
-        public string FullName { get; set; }
+        public string FullName { get; set; } = string.Empty;
 
         [Column("phone")]
         [StringLength(50)]
-        public string Phone { get; set; }
+        public string? Phone { get; set; }
 
         [Column("email")]
         [StringLength(255)]
-        public string Email { get; set; }
+        public string? Email { get; set; }
 
         [Column("address")]
-        public string Address { get; set; }
+        public string? Address { get; set; }
 
         [Column("ntac_no")]
         [StringLength(50)]
-        public string NtacNo { get; set; }
+        public string? NtacNo { get; set; }
 
         // Collections
         public virtual ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();

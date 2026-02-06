@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
+using TruLoad.Backend.DTOs.Shared;
+using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
 
@@ -166,10 +168,7 @@ public class AxleWeightReferenceRepository : IAxleWeightReferenceRepository
             errors.Add("Axle legal weight must be greater than 0 kg");
         }
 
-        if (reference.AxleLegalWeightKg > parentConfig.GvwPermissibleKg)
-        {
-            errors.Add($"Axle weight ({reference.AxleLegalWeightKg} kg) cannot exceed GVW ({parentConfig.GvwPermissibleKg} kg)");
-        }
+        // Note: No check against GVW since GVW is now auto-calculated from weight refs
 
         // Validate grouping format (A, B, C, or D)
         if (!new[] { "A", "B", "C", "D" }.Contains(reference.AxleGrouping))
@@ -230,5 +229,58 @@ public class AxleWeightReferenceRepository : IAxleWeightReferenceRepository
         return await _context.AxleWeightReferences
             .Where(awr => awr.AxleConfigurationId == configurationId)
             .CountAsync(cancellationToken);
+    }
+
+    public async Task<PagedResponse<AxleWeightReferenceResponseDto>> SearchAsync(
+        SearchAxleWeightReferencesRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.AxleWeightReferences
+            .Include(awr => awr.AxleGroup)
+            .Include(awr => awr.TyreType)
+            .AsQueryable();
+
+        if (request.ConfigurationId.HasValue)
+        {
+            query = query.Where(awr => awr.AxleConfigurationId == request.ConfigurationId.Value);
+        }
+
+        if (!string.IsNullOrEmpty(request.AxleGrouping))
+        {
+            query = query.Where(awr => awr.AxleGrouping == request.AxleGrouping);
+        }
+
+        if (!request.IncludeInactive)
+        {
+            query = query.Where(awr => awr.IsActive);
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderBy(awr => awr.AxleConfigurationId)
+            .ThenBy(awr => awr.AxlePosition)
+            .Skip(request.Skip)
+            .Take(request.PageSize)
+            .Select(awr => new AxleWeightReferenceResponseDto
+            {
+                Id = awr.Id,
+                AxleConfigurationId = awr.AxleConfigurationId,
+                AxlePosition = awr.AxlePosition,
+                AxleLegalWeightKg = awr.AxleLegalWeightKg,
+                AxleGrouping = awr.AxleGrouping,
+                AxleGroupId = awr.AxleGroupId,
+                AxleGroupCode = awr.AxleGroup != null ? awr.AxleGroup.Code : null,
+                AxleGroupName = awr.AxleGroup != null ? awr.AxleGroup.Name : null,
+                TyreTypeId = awr.TyreTypeId,
+                TyreTypeCode = awr.TyreType != null ? awr.TyreType.Code : null,
+                TyreTypeName = awr.TyreType != null ? awr.TyreType.Name : null,
+                IsActive = awr.IsActive,
+                CreatedAt = awr.CreatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        return PagedResponse<AxleWeightReferenceResponseDto>.Create(
+            items, totalCount, request.PageNumber, request.PageSize);
     }
 }

@@ -1,3 +1,5 @@
+using TruLoad.Backend.DTOs.Shared;
+using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Models;
 
 namespace TruLoad.Backend.Repositories.Weighing.Interfaces;
@@ -77,5 +79,12 @@ public interface IAxleWeightReferenceRepository
     /// </summary>
     Task<int> GetCountByConfigurationAsync(
         Guid configurationId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Search weight references with pagination and filtering
+    /// </summary>
+    Task<PagedResponse<AxleWeightReferenceResponseDto>> SearchAsync(
+        SearchAxleWeightReferencesRequest request,
         CancellationToken cancellationToken = default);
 }

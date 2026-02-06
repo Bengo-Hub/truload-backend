@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
@@ -27,6 +28,19 @@ public class AxleWeightReferenceController : ControllerBase
         _repository = repository;
         _configRepository = configRepository;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Search weight references with pagination and filtering
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(PagedResponse<AxleWeightReferenceResponseDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResponse<AxleWeightReferenceResponseDto>>> Search(
+        [FromQuery] SearchAxleWeightReferencesRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _repository.SearchAsync(request, cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>

@@ -1,0 +1,117 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using TruLoad.Backend.Models.Common;
+
+namespace TruLoad.Backend.Models.System;
+
+/// <summary>
+/// System-wide application settings stored as key-value pairs.
+/// Supports multiple setting types including JSON for complex configurations.
+/// Use for: Password policies, shift defaults, security settings, feature flags, etc.
+/// </summary>
+[Table("application_settings")]
+public class ApplicationSettings : BaseEntity
+{
+    /// <summary>
+    /// Unique setting key (e.g., "security.password_policy", "shifts.default_duration").
+    /// Use dot notation for namespacing.
+    /// </summary>
+    [Required]
+    [MaxLength(100)]
+    public string SettingKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Setting value stored as string. Complex values stored as JSON.
+    /// </summary>
+    [Required]
+    public string SettingValue { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Type of the setting value for proper deserialization.
+    /// Options: String, Boolean, Integer, Decimal, Json, DateTime
+    /// </summary>
+    [Required]
+    [MaxLength(20)]
+    public string SettingType { get; set; } = "String";
+
+    /// <summary>
+    /// Category for grouping settings in UI (e.g., "Security", "Shifts", "Notifications").
+    /// </summary>
+    [Required]
+    [MaxLength(50)]
+    public string Category { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Human-readable display name for the setting.
+    /// </summary>
+    [MaxLength(100)]
+    public string? DisplayName { get; set; }
+
+    /// <summary>
+    /// Description of what this setting controls.
+    /// </summary>
+    [MaxLength(500)]
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Whether this setting can be modified by administrators.
+    /// System-critical settings should be false.
+    /// </summary>
+    public bool IsEditable { get; set; } = true;
+
+    /// <summary>
+    /// Default value for the setting (used when resetting to defaults).
+    /// </summary>
+    public string? DefaultValue { get; set; }
+
+    /// <summary>
+    /// Optional validation rules (JSON schema or regex pattern).
+    /// </summary>
+    public string? ValidationRules { get; set; }
+
+    /// <summary>
+    /// Sort order for display in UI.
+    /// </summary>
+    public int SortOrder { get; set; } = 0;
+}
+
+/// <summary>
+/// Well-known setting keys as constants for type-safe access.
+/// </summary>
+public static class SettingKeys
+{
+    // Security - Password Policy
+    public const string PasswordMinLength = "security.password_min_length";
+    public const string PasswordRequireUppercase = "security.password_require_uppercase";
+    public const string PasswordRequireLowercase = "security.password_require_lowercase";
+    public const string PasswordRequireDigit = "security.password_require_digit";
+    public const string PasswordRequireSpecial = "security.password_require_special";
+    public const string PasswordLockoutThreshold = "security.password_lockout_threshold";
+    public const string PasswordLockoutMinutes = "security.password_lockout_minutes";
+
+    // Security - Two-Factor Authentication
+    public const string TwoFactorEnabled = "security.two_factor_enabled";
+    public const string TwoFactorEnforceForAdmin = "security.two_factor_enforce_admin";
+    public const string TwoFactorBackupCodesCount = "security.two_factor_backup_codes_count";
+
+    // Shifts
+    public const string ShiftDefaultDuration = "shifts.default_duration_hours";
+    public const string ShiftGraceMinutes = "shifts.grace_minutes";
+    public const string ShiftEnforceOnLogin = "shifts.enforce_on_login";
+    public const string ShiftBypassCheck = "shifts.bypass_shift_check";
+    public const string ShiftExcludedRoles = "shifts.excluded_roles";
+    public const string ShiftRequire2FA = "shifts.require_2fa";
+
+    // Backup
+    public const string BackupEnabled = "backup.enabled";
+    public const string BackupScheduleCron = "backup.schedule_cron";
+    public const string BackupRetentionDays = "backup.retention_days";
+    public const string BackupStoragePath = "backup.storage_path";
+
+    // Categories
+    public const string CategorySecurity = "Security";
+    public const string CategoryShifts = "Shifts";
+    public const string CategoryBackup = "Backup";
+    public const string CategoryNotifications = "Notifications";
+    public const string CategoryIntegrations = "Integrations";
+}

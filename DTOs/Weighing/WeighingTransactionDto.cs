@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using TruLoad.Backend.DTOs.Shared;
 
 namespace TruLoad.Backend.DTOs.Weighing;
 
@@ -111,6 +112,8 @@ public class WeighingAxleDto
 
 /// <summary>
 /// Request DTO for creating a new weighing transaction.
+/// Provide either VehicleId or VehicleRegNo. When VehicleRegNo is provided,
+/// the backend will look up the vehicle by registration number and create it if not found.
 /// </summary>
 public class CreateWeighingRequest
 {
@@ -121,8 +124,17 @@ public class CreateWeighingRequest
     [Required]
     public Guid StationId { get; set; }
 
-    [Required]
-    public Guid VehicleId { get; set; }
+    /// <summary>
+    /// Vehicle ID (optional if VehicleRegNo is provided).
+    /// </summary>
+    public Guid? VehicleId { get; set; }
+
+    /// <summary>
+    /// Vehicle registration number. When provided, the backend will look up
+    /// the vehicle by reg number and auto-create it if not found.
+    /// </summary>
+    [StringLength(50)]
+    public string? VehicleRegNo { get; set; }
 
     public Guid? DriverId { get; set; }
     public Guid? TransporterId { get; set; }
@@ -138,6 +150,12 @@ public class CreateWeighingRequest
     /// </summary>
     [StringLength(10)]
     public string? Bound { get; set; }
+
+    /// <summary>
+    /// Weighing type/mode: mobile, multideck, wim, static
+    /// </summary>
+    [StringLength(20)]
+    public string? WeighingType { get; set; }
 }
 
 /// <summary>
@@ -234,7 +252,7 @@ public class InitiateReweighRequest
 /// Request DTO for searching weighing transactions with filters and pagination.
 /// Enhanced with ticket page filter options.
 /// </summary>
-public class SearchWeighingRequest
+public class SearchWeighingRequest : PagedRequest
 {
     // Date & Time Filters
     public DateTime? FromDate { get; set; }
@@ -277,13 +295,6 @@ public class SearchWeighingRequest
     // View Mode
     public string? ViewMode { get; set; } = "list"; // list, images, line
 
-    // Pagination
-    [Range(0, int.MaxValue)]
-    public int Skip { get; set; } = 0;
-
-    [Range(1, 100)]
-    public int Take { get; set; } = 50;
-
     // Sorting
     [StringLength(50)]
     public string SortBy { get; set; } = "WeighedAt";
@@ -293,12 +304,109 @@ public class SearchWeighingRequest
 }
 
 /// <summary>
-/// Response DTO for paginated weighing transaction search results.
+/// Request DTO for autoweigh capture from TruConnect middleware.
+/// Enables automated weight capture without manual transaction initiation.
 /// </summary>
-public class WeighingSearchResultDto
+public class AutoweighCaptureRequest
 {
-    public List<WeighingTransactionDto> Items { get; set; } = new();
-    public int TotalCount { get; set; }
-    public int Skip { get; set; }
-    public int Take { get; set; }
+    [Required]
+    public Guid StationId { get; set; }
+
+    /// <summary>
+    /// Direction/bound for bidirectional stations (A or B).
+    /// </summary>
+    [StringLength(10)]
+    public string? Bound { get; set; }
+
+    /// <summary>
+    /// Vehicle registration number from ANPR or manual entry.
+    /// If VehicleId is not provided, vehicle will be looked up by registration.
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string VehicleRegNumber { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional: Pre-identified vehicle ID. If provided, registration lookup is skipped.
+    /// </summary>
+    public Guid? VehicleId { get; set; }
+
+    /// <summary>
+    /// Captured axle weights from middleware.
+    /// </summary>
+    [Required]
+    [MinLength(1, ErrorMessage = "At least one axle weight must be provided")]
+    public List<WeighingAxleCaptureDto> Axles { get; set; } = new();
+
+    /// <summary>
+    /// Weighing mode used for capture: multideck, static, wim, mobile.
+    /// </summary>
+    [StringLength(20)]
+    public string WeighingMode { get; set; } = "static";
+
+    /// <summary>
+    /// When the weights were captured at the middleware.
+    /// </summary>
+    public DateTime? CapturedAt { get; set; }
+
+    /// <summary>
+    /// Source system identifier (e.g., "TruConnect", "ANPR", "Manual").
+    /// </summary>
+    [StringLength(50)]
+    public string? Source { get; set; }
+
+    /// <summary>
+    /// Source device identifier for audit trail.
+    /// </summary>
+    public Guid? SourceDeviceId { get; set; }
+
+    /// <summary>
+    /// Optional client-generated local ID for offline idempotency.
+    /// </summary>
+    [StringLength(100)]
+    public string? ClientLocalId { get; set; }
+
+    /// <summary>
+    /// Capture source: auto (middleware auto-detection), manual (operator), frontend (TruLoad app).
+    /// Default is "auto" for autoweigh endpoint.
+    /// </summary>
+    [StringLength(20)]
+    public string CaptureSource { get; set; } = "auto";
+
+    /// <summary>
+    /// Whether this is a final capture (true) or preliminary auto-weigh data (false).
+    /// When false, CaptureStatus will be "auto". When true, CaptureStatus will be "captured".
+    /// </summary>
+    public bool IsFinalCapture { get; set; } = false;
+}
+
+/// <summary>
+/// Response DTO for autoweigh capture result.
+/// </summary>
+public class AutoweighResultDto
+{
+    public Guid WeighingId { get; set; }
+    public string TicketNumber { get; set; } = string.Empty;
+    public string VehicleRegNumber { get; set; } = string.Empty;
+    public Guid? VehicleId { get; set; }
+    public bool VehicleFound { get; set; }
+
+    public int GvwMeasuredKg { get; set; }
+    public int GvwPermissibleKg { get; set; }
+    public int GvwOverloadKg { get; set; }
+
+    public bool IsCompliant { get; set; }
+    public string ControlStatus { get; set; } = string.Empty;
+    public string ViolationReason { get; set; } = string.Empty;
+    public string CaptureStatus { get; set; } = string.Empty;
+    public string CaptureSource { get; set; } = string.Empty;
+
+    public decimal TotalFeeUsd { get; set; }
+    public bool HasPermit { get; set; }
+
+    public List<AxleComplianceDto> AxleCompliance { get; set; } = new();
+
+    public DateTime CapturedAt { get; set; }
+    public DateTime ProcessedAt { get; set; }
+    public string? Source { get; set; }
 }

@@ -15,6 +15,7 @@ public static class ExtendedCaseEntitiesConfiguration
         ConfigureLoadCorrectionMemo(modelBuilder);
         ConfigureComplianceCertificate(modelBuilder);
         ConfigureCaseAssignmentLog(modelBuilder);
+        ConfigureCaseParty(modelBuilder);
     }
 
     private static void ConfigureCourt(ModelBuilder modelBuilder)
@@ -310,6 +311,16 @@ public static class ExtendedCaseEntitiesConfiguration
                 .HasColumnName("assigned_at")
                 .HasDefaultValueSql("NOW()");
 
+            // KenloadV2 CaseIOs pattern: IsCurrent flag for active IO tracking
+            entity.Property(e => e.IsCurrent)
+                .HasColumnName("is_current")
+                .HasDefaultValue(true);
+
+            // IO Rank tracking
+            entity.Property(e => e.OfficerRank)
+                .HasColumnName("officer_rank")
+                .HasMaxLength(50);
+
             entity.Property(e => e.IsActive)
                 .HasColumnName("is_active")
                 .HasDefaultValue(true);
@@ -360,9 +371,139 @@ public static class ExtendedCaseEntitiesConfiguration
             entity.HasIndex(e => new { e.CaseRegisterId, e.AssignedAt })
                 .HasDatabaseName("idx_case_assignment_logs_case_timeline");
 
-            // CHECK constraint
+            // Index for IsCurrent flag - efficient querying of active IO per case
+            entity.HasIndex(e => new { e.CaseRegisterId, e.IsCurrent })
+                .HasDatabaseName("idx_case_assignment_logs_current_io");
+
+            // CHECK constraint - includes 'handover' for KenloadV2 compatibility
             entity.HasCheckConstraint("chk_case_assignment_type",
-                "assignment_type IN ('initial', 're_assignment', 'transfer')");
+                "assignment_type IN ('initial', 're_assignment', 'transfer', 'handover')");
+        });
+    }
+
+    private static void ConfigureCaseParty(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CaseParty>(entity =>
+        {
+            entity.ToTable("case_parties");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasColumnName("id")
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.CaseRegisterId)
+                .HasColumnName("case_register_id")
+                .IsRequired();
+
+            entity.Property(e => e.PartyRole)
+                .HasColumnName("party_role")
+                .HasMaxLength(50)
+                .HasDefaultValue("defendant_driver");
+
+            entity.Property(e => e.UserId)
+                .HasColumnName("user_id");
+
+            entity.Property(e => e.DriverId)
+                .HasColumnName("driver_id");
+
+            entity.Property(e => e.VehicleOwnerId)
+                .HasColumnName("vehicle_owner_id");
+
+            entity.Property(e => e.TransporterId)
+                .HasColumnName("transporter_id");
+
+            entity.Property(e => e.ExternalName)
+                .HasColumnName("external_name")
+                .HasMaxLength(255);
+
+            entity.Property(e => e.ExternalIdNumber)
+                .HasColumnName("external_id_number")
+                .HasMaxLength(50);
+
+            entity.Property(e => e.ExternalPhone)
+                .HasColumnName("external_phone")
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Notes)
+                .HasColumnName("notes")
+                .HasColumnType("text");
+
+            entity.Property(e => e.IsCurrentlyActive)
+                .HasColumnName("is_currently_active")
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.AddedAt)
+                .HasColumnName("added_at")
+                .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.RemovedAt)
+                .HasColumnName("removed_at");
+
+            entity.Property(e => e.IsActive)
+                .HasColumnName("is_active")
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at")
+                .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.DeletedAt)
+                .HasColumnName("deleted_at");
+
+            // Relationships
+            entity.HasOne(e => e.CaseRegister)
+                .WithMany()
+                .HasForeignKey(e => e.CaseRegisterId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Driver)
+                .WithMany()
+                .HasForeignKey(e => e.DriverId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.VehicleOwner)
+                .WithMany()
+                .HasForeignKey(e => e.VehicleOwnerId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Transporter)
+                .WithMany()
+                .HasForeignKey(e => e.TransporterId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Indexes
+            entity.HasIndex(e => e.CaseRegisterId)
+                .HasDatabaseName("idx_case_parties_case_id");
+
+            entity.HasIndex(e => e.PartyRole)
+                .HasDatabaseName("idx_case_parties_role");
+
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("idx_case_parties_user_id");
+
+            entity.HasIndex(e => e.DriverId)
+                .HasDatabaseName("idx_case_parties_driver_id");
+
+            entity.HasIndex(e => e.IsCurrentlyActive)
+                .HasDatabaseName("idx_case_parties_active");
+
+            // Composite index for finding active parties by role
+            entity.HasIndex(e => new { e.CaseRegisterId, e.PartyRole, e.IsCurrentlyActive })
+                .HasDatabaseName("idx_case_parties_case_role_active");
+
+            // CHECK constraint for party role
+            entity.HasCheckConstraint("chk_case_party_role",
+                "party_role IN ('investigating_officer', 'ocs', 'arresting_officer', 'prosecutor', 'defendant_driver', 'defendant_owner', 'defendant_transporter', 'witness', 'complainant')");
         });
     }
 }

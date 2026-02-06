@@ -165,16 +165,16 @@ public class UserManagementSeeder
                 new Station
                 {
                     Id = Guid.NewGuid(),
-                    StationCode = "NRB-MOBILE-01",
                     Code = "NRB-MOBILE-01",
-                    StationName = "Nairobi Mobile Unit 01",
                     Name = "Nairobi Mobile Unit 01",
                     StationType = "Mobile",
                     Location = "Nairobi, Kenya (Mobile)",
-                    Status = "Active",
                     Latitude = -1.286389m,
                     Longitude = 36.817223m,
-                    OrganizationId = kura.Id,  // Link to KURA (default tenant)
+                    SupportsBidirectional = true,
+                    BoundACode = "A",
+                    BoundBCode = "B",
+                    OrganizationId = kura.Id,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -182,13 +182,10 @@ public class UserManagementSeeder
                 new Station
                 {
                     Id = Guid.NewGuid(),
-                    StationCode = "NRB-MULTIDECK-01",
                     Code = "NRB-MULTIDECK-01",
-                    StationName = "Nairobi Multideck Weighbridge",
                     Name = "Nairobi Multideck Weighbridge",
                     StationType = "Fixed",
                     Location = "Nairobi, Industrial Area",
-                    Status = "Active",
                     Latitude = -1.3028m,
                     Longitude = 36.8641m,
                     SupportsBidirectional = true,
@@ -210,13 +207,10 @@ public class UserManagementSeeder
                 new Station
                 {
                     Id = Guid.NewGuid(),
-                    StationCode = "MSA-FIXED-01",
                     Code = "MSA-FIXED-01",
-                    StationName = "Mombasa Road Weighbridge",
                     Name = "Mombasa Road Weighbridge",
                     StationType = "Fixed",
                     Location = "Athi River, Mombasa Road",
-                    Status = "Active",
                     Latitude = -1.4528m,
                     Longitude = 36.9833m,
                     OrganizationId = kenha.Id,
@@ -227,13 +221,10 @@ public class UserManagementSeeder
                 new Station
                 {
                     Id = Guid.NewGuid(),
-                    StationCode = "GILGIL-WB-01",
                     Code = "GILGIL-WB-01",
-                    StationName = "Gilgil Weighbridge",
                     Name = "Gilgil Weighbridge",
                     StationType = "Fixed",
                     Location = "Gilgil, Nakuru County",
-                    Status = "Active",
                     Latitude = -0.4943m,
                     Longitude = 36.3219m,
                     OrganizationId = kenha.Id,
@@ -247,18 +238,40 @@ public class UserManagementSeeder
         foreach (var station in stations)
         {
             var existing = await _context.Stations
-                .FirstOrDefaultAsync(s => s.StationCode == station.StationCode);
+                .FirstOrDefaultAsync(s => s.Code == station.Code);
 
             if (existing == null)
             {
                 await _context.Stations.AddAsync(station);
-                Console.WriteLine($"✓ Seeded station: {station.StationName} ({station.StationCode}) for {(station.OrganizationId == kura?.Id ? "KURA" : "KENHA")}");
+                Console.WriteLine($"✓ Seeded station: {station.Name} ({station.Code}) for {(station.OrganizationId == kura?.Id ? "KURA" : "KENHA")}");
             }
-            else if (existing.OrganizationId != station.OrganizationId)
+            else
             {
-                // Update existing station's org if it was previously seeded under wrong org
-                existing.OrganizationId = station.OrganizationId;
-                Console.WriteLine($"✓ Updated station: {station.StationName} organization link to {(station.OrganizationId == kura?.Id ? "KURA" : "KENHA")}");
+                // Update existing station with latest configuration
+                var updated = false;
+
+                if (existing.OrganizationId != station.OrganizationId)
+                {
+                    existing.OrganizationId = station.OrganizationId;
+                    updated = true;
+                }
+
+                // Update bidirectional settings
+                if (existing.SupportsBidirectional != station.SupportsBidirectional ||
+                    existing.BoundACode != station.BoundACode ||
+                    existing.BoundBCode != station.BoundBCode)
+                {
+                    existing.SupportsBidirectional = station.SupportsBidirectional;
+                    existing.BoundACode = station.BoundACode;
+                    existing.BoundBCode = station.BoundBCode;
+                    updated = true;
+                }
+
+                if (updated)
+                {
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    Console.WriteLine($"✓ Updated station: {station.Name} ({station.Code}) - bidirectional: {station.SupportsBidirectional}");
+                }
             }
         }
 

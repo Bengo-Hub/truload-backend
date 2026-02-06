@@ -7,19 +7,15 @@ namespace TruLoad.Backend.Models;
 /// </summary>
 public class Station : BaseEntity
 {
-    public string StationCode { get; set; } = string.Empty;
-    public string Code { get; set; } = string.Empty; // Alias for StationCode for consistency
+    /// <summary>
+    /// Unique station identifier code (e.g., "NRB-MOBILE-01")
+    /// </summary>
+    public string Code { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Display name of the station
+    /// </summary>
     public string Name { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Alias for Name - for compatibility with seeders and legacy code
-    /// </summary>
-    public string? StationName { get; set; }
-
-    /// <summary>
-    /// Status/Status string for compatibility with seeders
-    /// </summary>
-    public string? Status { get; set; }
 
     public Guid OrganizationId { get; set; }
 

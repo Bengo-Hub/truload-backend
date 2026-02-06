@@ -54,4 +54,30 @@ public interface IWeighingService
         int take = 50,
         string sortBy = "WeighedAt",
         string sortOrder = "desc");
+
+    /// <summary>
+    /// Lightweight search without navigation property includes.
+    /// Used for statistics/aggregation where related entities are not needed.
+    /// </summary>
+    Task<(List<WeighingTransaction> Items, int TotalCount)> SearchTransactionsLightAsync(
+        Guid? stationId = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        int take = 10000);
+
+    /// <summary>
+    /// Processes an autoweigh capture from TruConnect middleware.
+    /// Creates weighing transaction, captures weights, and calculates compliance in a single operation.
+    /// </summary>
+    /// <param name="request">Autoweigh capture request from middleware</param>
+    /// <param name="userId">Service user ID performing the autoweigh</param>
+    /// <returns>Autoweigh result with compliance evaluation</returns>
+    Task<AutoweighResultDto> ProcessAutoweighAsync(AutoweighCaptureRequest request, Guid userId);
+
+    /// <summary>
+    /// Generates a weight ticket PDF for the specified transaction.
+    /// </summary>
+    /// <param name="transactionId">Transaction ID</param>
+    /// <returns>PDF bytes</returns>
+    Task<byte[]> GenerateWeightTicketPdfAsync(Guid transactionId);
 }

@@ -139,4 +139,110 @@ public class WeighingRepository : IWeighingRepository
 
         return (items, totalCount);
     }
+
+    public async Task<(List<WeighingTransaction> Items, int TotalCount)> SearchTransactionsLightAsync(
+        Guid? stationId = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        int take = 10000)
+    {
+        var query = _context.WeighingTransactions
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (stationId.HasValue)
+            query = query.Where(t => t.StationId == stationId.Value);
+
+        if (fromDate.HasValue)
+            query = query.Where(t => t.WeighedAt >= fromDate.Value);
+
+        if (toDate.HasValue)
+            query = query.Where(t => t.WeighedAt <= toDate.Value);
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(t => t.WeighedAt)
+            .Take(take)
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
+
+    public async Task<WeighingTransaction?> GetByClientLocalIdAsync(string clientLocalId)
+    {
+        if (string.IsNullOrWhiteSpace(clientLocalId))
+            return null;
+
+        // ClientLocalId is stored as Guid, so try to parse
+        if (!Guid.TryParse(clientLocalId, out var parsedId))
+            return null;
+
+        return await _context.WeighingTransactions
+            .AsNoTracking()
+            .Include(t => t.WeighingAxles)
+            .Include(t => t.Vehicle)
+            .Include(t => t.Driver)
+            .FirstOrDefaultAsync(t => t.ClientLocalId == parsedId);
+    }
+
+    public async Task<WeighingTransaction?> GetLatestAutoweighByVehicleAsync(
+        string vehicleRegNumber,
+        Guid stationId,
+        string? bound = null)
+    {
+        var normalizedRegNumber = vehicleRegNumber.ToUpperInvariant().Trim();
+        var today = DateTime.UtcNow.Date;
+
+        var query = _context.WeighingTransactions
+            .Include(t => t.WeighingAxles)
+            .Where(t => t.VehicleRegNumber.ToUpper() == normalizedRegNumber)
+            .Where(t => t.StationId == stationId)
+            .Where(t => t.CaptureStatus == "auto")
+            .Where(t => t.WeighedAt >= today); // Only look at today's transactions
+
+        if (!string.IsNullOrEmpty(bound))
+        {
+            query = query.Where(t => t.Bound == bound);
+        }
+
+        return await query
+            .OrderByDescending(t => t.WeighedAt)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<int> MarkPendingAsNotWeighedAsync(
+        string? vehicleRegNumber,
+        Guid stationId,
+        Guid? excludeTransactionId = null)
+    {
+        var today = DateTime.UtcNow.Date;
+
+        var query = _context.WeighingTransactions
+            .Where(t => t.StationId == stationId)
+            .Where(t => t.CaptureStatus == "auto")
+            .Where(t => t.WeighedAt >= today);
+
+        if (!string.IsNullOrEmpty(vehicleRegNumber))
+        {
+            var normalizedRegNumber = vehicleRegNumber.ToUpperInvariant().Trim();
+            query = query.Where(t => t.VehicleRegNumber.ToUpper() == normalizedRegNumber);
+        }
+
+        if (excludeTransactionId.HasValue)
+        {
+            query = query.Where(t => t.Id != excludeTransactionId.Value);
+        }
+
+        var pendingTransactions = await query.ToListAsync();
+
+        foreach (var transaction in pendingTransactions)
+        {
+            transaction.CaptureStatus = "not_weighed";
+            transaction.SyncAt = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+        return pendingTransactions.Count;
+    }
 }

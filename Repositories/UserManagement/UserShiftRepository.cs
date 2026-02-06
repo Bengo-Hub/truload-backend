@@ -50,9 +50,9 @@ public class UserShiftRepository : IUserShiftRepository
         return await _context.UserShifts
             .AsNoTracking()
             .Include(us => us.WorkShift)
-                .ThenInclude(ws => ws.WorkShiftSchedules)
+                .ThenInclude(ws => ws!.WorkShiftSchedules)
             .Include(us => us.ShiftRotation)
-                .ThenInclude(sr => sr.RotationShifts)
+                .ThenInclude(sr => sr!.RotationShifts)
             .Where(us => us.UserId == userId &&
                         us.StartsOn <= today &&
                         (us.EndsOn == null || us.EndsOn > today))

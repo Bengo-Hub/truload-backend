@@ -1,8 +1,8 @@
 # TruLoad Project Progress Report
 
-**Report Date:** January 13, 2026
+**Report Date:** February 5, 2026
 **Project:** TruLoad - Intelligent Weighing & Enforcement Solution
-**Overall Completion:** 65%
+**Overall Completion:** 90%
 
 ---
 
@@ -11,14 +11,28 @@
 TruLoad is a cloud-hosted intelligent weighing and enforcement platform enabling roadside officers to capture vehicle weights, verify compliance with EAC Vehicle Load Control Act (2016) and Kenya Traffic Act (Cap 403), and manage enforcement actions including prosecution and special releases.
 
 ### Key Achievements
-- Robust backend foundation with 85+ API endpoints
-- Complete case management and special release workflows
+- Robust backend foundation with 90+ API endpoints
+- Complete case management and special release workflows with approval/rejection
 - Legal compliance engines for EAC and Kenya Traffic Acts
-- Professional PDF document generation system
+- Professional PDF document generation system (9 document types)
 - 77-permission authorization framework with Redis caching
+- Complete axle grouping aggregation with tolerance logic (Sprint 11)
+- Demerit points system fully implemented
+- **Frontend weighing UI fully wired to backend (95% complete)**
+- **Mobile & Multideck pages integrated with transaction API**
+- **Entity creation (Driver, Transporter) wired to backend**
+- **Decision panel actions (Tag, Yard) fully integrated with case linking**
+- **Yard Management with dedicated service layer (100% complete)**
+- **Vehicle Tags with automatic case register integration**
+- **Security page fully wired (Password Policy, 2FA, Backup/Restore)**
+- **Application Settings system with in-memory caching**
+- **Two-Factor Authentication service (TOTP, recovery codes)**
+- **Database backup & restore service (pg_dump/psql)**
+- **Apache Superset analytics integration (dashboards, text-to-SQL via Ollama)**
+- TruConnect middleware production-ready (95%)
 
 ### Current Phase
-Transitioning from core backend development to frontend implementation and hardware integration.
+Sprint 14 (Production Readiness) in progress. Security features complete (2FA, backup, settings). Superset analytics integration added. Focus now on remaining analytics dashboards and comprehensive testing.
 
 ---
 
@@ -26,13 +40,14 @@ Transitioning from core backend development to frontend implementation and hardw
 
 | Component | Progress | Status |
 |-----------|----------|--------|
-| Database Schema | 95% | Excellent |
-| Backend APIs | 80% | Good |
-| Business Logic | 85% | Good |
-| Frontend UI | 28% | In Progress |
-| Testing Coverage | 25% | Needs Attention |
-| Documentation | 70% | Good |
-| Deployment Ready | 70% | Fair |
+| Database Schema | 98% | Excellent |
+| Backend APIs | 92% | Excellent |
+| Business Logic | 95% | Excellent |
+| Frontend UI | 90% | Excellent |
+| TruConnect Middleware | 95% | Excellent |
+| Testing Coverage | 30% | Needs Attention |
+| Documentation | 85% | Good |
+| Deployment Ready | 75% | Good |
 
 ---
 
@@ -44,31 +59,87 @@ Transitioning from core backend development to frontend implementation and hardw
 |--------|--------|------------|
 | User Management & Security | Complete | 100% |
 | Axle Configuration System | Complete | 100% |
-| Weighing Core Operations | Complete | 95% |
+| Weighing Core Operations | Complete | 98% |
+| Axle Grouping & Compliance | Complete | 100% |
 | Case Register | Complete | 100% |
 | Special Release | Complete | 100% |
 | Shift Management | Complete | 95% |
 | Document Generation | Complete | 100% |
 | Permit System | Complete | 100% |
-| Yard Management | In Progress | 40% |
-| Demerit Points | In Progress | 50% |
-| Prosecution Module | Not Started | 0% |
-| Data Analytics | Not Started | 0% |
+| Demerit Points System | Complete | 100% |
+| Yard Management | Complete | 100% |
+| Vehicle Tags | Complete | 100% |
+| Prosecution Module | Complete | 100% |
+| Court Proceedings | Complete | 100% |
+| Invoice/Receipt Management | Complete | 100% |
+| Status Lookup Service | Complete | 100% |
+| Data Analytics | In Progress | 50% |
+| System Settings | Complete | 100% |
+| Two-Factor Authentication | Complete | 100% |
+| Backup & Restore | Complete | 100% |
 
 ### Frontend Modules
 
 | Module | Status | Completion |
 |--------|--------|------------|
-| Authentication | Complete | 75% |
-| Dashboard | Partial | 40% |
-| Users & Roles Management | In Progress | 60% |
-| Axle Configuration Setup | Complete | 85% |
-| Organizations/Stations | Complete | 80% |
-| Shifts Management | Partial | 40% |
-| Weighing Operations | Not Started | 0% |
-| Case Register UI | Not Started | 0% |
-| Prosecution UI | Not Started | 0% |
-| Reports & Analytics | Not Started | 0% |
+| Authentication | Complete | 100% |
+| Dashboard | Partial | 30% |
+| Users & Roles Management | Complete | 100% |
+| Axle Configuration Setup | Complete | 100% |
+| Organizations/Stations | Complete | 100% |
+| Shifts Management | Complete | 100% |
+| Weighing Operations (Mobile) | Complete | 100% |
+| Weighing Operations (Multideck/Static) | Complete | 100% |
+| Yard Management UI | Complete | 100% |
+| Tags Management | Complete | 100% |
+| Weight Tickets | Complete | 100% |
+| Case Register UI | Complete | 100% |
+| Special Release UI | Complete | 100% |
+| Court Proceedings UI | Complete | 100% |
+| Prosecution UI | Complete | 100% |
+| Invoice/Receipt UI | Complete | 100% |
+| Document Generation UI | Complete | 100% |
+| Security & Audit UI | Complete | 95% |
+| Reports & Analytics | In Progress | 40% |
+
+**Weighing Operations Detail (98%):**
+- ✅ Mobile weighing page - Transaction API wired, dynamic compliance
+- ✅ Multideck/Static weighing page - Transaction API wired, dynamic compliance (Note: Static = Multideck, same thing)
+- ✅ Weight capture & submission - Backend integrated
+- ✅ Entity creation (Driver, Transporter, CargoType, Location, VehicleMake) - All mutations wired
+- ✅ Decision panel (Tag, Yard) - Backend API integrated with case linking
+- ✅ TruConnect WebSocket - Real-time weight streaming
+- ✅ PDF document generation - Weight ticket printing wired to backend
+- ✅ TanStack Query migration - All queries use TTL-based caching
+- ✅ Dynamic compliance calculation - Auto-refresh on axle config change (mobile + multideck)
+- ✅ VehicleMake API endpoint - Full CRUD operations
+- ⏳ Scale test workflow - Pending full integration
+
+**Security Page Completed Items:**
+- ✅ Password policies configuration - Full CRUD with backend
+- ✅ Two-factor authentication - TOTP setup, enable/disable, recovery codes
+- ✅ Backup & restore functionality - Create, download, delete backups
+- ✅ Shift settings configuration - Backend wired
+- ✅ Audit logs - Wired to backend with pagination and filters
+
+**Security Page TODO Items (3 remaining):**
+- ⏳ Active Sessions API integration
+- ⏳ Security Events API integration
+- ⏳ Block user endpoint
+
+### TruConnect Middleware
+
+| Module | Status | Completion |
+|--------|--------|------------|
+| Core Architecture | Complete | 100% |
+| Protocol Parsers (8 types) | Complete | 100% |
+| Input Sources (Serial/TCP/UDP/API) | Complete | 100% |
+| Output Channels (WebSocket/RDU) | Complete | 100% |
+| Mobile Weighing Mode | Complete | 100% |
+| Multideck Weighing Mode | Complete | 100% |
+| Cloud Relay | Complete | 100% |
+| Authentication | Complete | 100% |
+| Backend Integration | Awaiting Backend | 80% |
 
 ---
 
@@ -97,28 +168,35 @@ Transitioning from core backend development to frontend implementation and hardw
 
 ## Sprint Progress Overview
 
-### Completed Sprints (6 of 13)
+### Completed Sprints (10 of 14)
 
 | Sprint | Module | Completion | Key Deliverables |
 |--------|--------|------------|------------------|
 | 1 | User Management & Security | 100% | 77 permissions, RBAC, JWT auth, audit logging |
 | 1.5 | Axle System Foundation | 100% | 612 configs, 1233 refs, fee schedules |
-| 3 | Weighing Setup | 85% | Vehicle, Driver, Permit entities |
-| 4 | Weighing Core | 95% | Compliance engine, PDF generation |
-| 7 | Shift Management | 95% | 13 API endpoints, rotations |
-| 10 | Case Register & Special Release | 100% | 19 endpoints, auto-case creation |
+| 3 | Weighing Setup | 100% | Vehicle, Driver, Permit entities |
+| 4 | Weighing Core | 100% | Compliance engine, PDF generation |
+| 5 | Yard & Tags Enhancement | 100% | YardService, VehicleTagService, case linking |
+| 7 | Shift Management | 100% | 13 API endpoints, rotations |
+| 10 | Case Register & Special Release | 100% | 19 endpoints, auto-case creation, approval/rejection workflow |
+| 11 | Demerit Points & Axle Grouping | 100% | Axle aggregation service, PDF calculation, demerit schedules, 45 unit tests |
+| 12 | Prosecution Enhancement | 100% | Court hearings, prosecution cases, invoices, receipts, 4 new PDF documents |
 
-### Pending Sprints (7 remaining)
+### In Progress Sprints (2)
+
+| Sprint | Module | Completion | Remaining |
+|--------|--------|------------|-----------|
+| 9 | Frontend Weighing Completion | 90% | Static weighing page |
+| 6 | Frontend Security UI | 75% | 6 TODO items to fix |
+
+### Pending Sprints (3 remaining)
 
 | Sprint | Module | Priority |
 |--------|--------|----------|
-| 2 | Data Analytics | Medium |
-| 5 | Yard & Tags | High |
+| 2 | Data Analytics (Superset) | Medium |
 | 8 | Infrastructure Decoupling | Medium |
-| 9 | Yard Management | High |
-| 11 | Demerit Points | High |
-| 12 | Prosecution EAC | Critical |
-| 13 | Prosecution Traffic | High |
+| 13 | Static Weighing & Frontend Completion | High |
+| 14 | Production Readiness & Testing | Critical |
 
 ---
 
@@ -129,24 +207,65 @@ Transitioning from core backend development to frontend implementation and hardw
 - Kenya Traffic Act (Cap 403) rules
 - 5% axle tolerance, configurable operational tolerance
 - Permit extension calculations (2A/3A)
+- Charge calculation with best-of GVW/Axle logic
+- Penalty multiplier for repeat offenders (5x)
 
-### Document Generation System
+### Document Generation System (9 Document Types)
 - Weight Tickets (EAC-aligned format)
 - Prohibition Orders (Kenya Traffic Act format)
 - Special Release Certificates
 - Compliance Certificates
 - Load Correction Memos
+- **Charge Sheets** (prosecution documents)
+- **Court Minutes** (hearing records)
+- **Invoices** (KRA-compliant format)
+- **Receipts** (with payment method support)
 
 ### Case Management Workflow
 - Auto-case creation from weighing violations
 - Smart case numbering (STATION-YEAR-SEQUENCE)
 - Multi-criteria search with 12+ filters
 - Case status tracking (Open, Investigation, Escalated, Closed)
+- State machine validation for status transitions
+- **Manual tag → Case register automatic linking**
+
+### Special Release Workflow
+- Complete approval/rejection workflow
+- Case disposition reset on rejection
+- Load correction memo generation
+- Compliance certificate after successful reweigh
+
+### Yard Management System
+- Dedicated YardService with business logic
+- Vehicle impoundment with statistics
+- Yard entry/exit tracking
+- Integration with case management
+
+### Vehicle Tag System
+- VehicleTagService with case linking
+- Manual tags automatically create case register entries
+- Automatic tags with optional case linking
+- Tag category management
+- Open/closed tag status tracking
+
+### Court Proceedings
+- CourtHearingService with full CRUD
+- Hearing scheduling, adjournment, completion
+- Court minutes PDF generation
+- Verdict and outcome tracking
+
+### Prosecution Module
+- ProsecutionService with charge calculation
+- Invoice generation from prosecution
+- Receipt recording with payment methods
+- M-Pesa, Bank Transfer, Card, Cash support
+- Idempotency for payment recording
 
 ### Authorization Framework
 - 77 granular permissions across 8 categories
 - 6 predefined roles with policy-based handlers
 - 1-hour Redis cache for performance
+- StatusLookupService for cached status/type lookups
 
 ---
 
@@ -172,47 +291,86 @@ Transitioning from core backend development to frontend implementation and hardw
 
 | Risk | Mitigation |
 |------|------------|
-| Frontend production build failing | Fix immediately |
-| Limited test coverage | Implement test strategy |
-| Hardware integration pending | Start TruConnect integration |
+| Frontend production build failing | Fix PWA/App Router Suspense boundary conflicts |
+| Limited test coverage (30%) | Implement comprehensive test strategy with integration tests |
+| Security page incomplete | Complete 6 TODO items for security/audit UI |
+| Dashboard underdeveloped | Implement statistics cards and charts |
 
 ### Medium Priority
 
 | Risk | Mitigation |
 |------|------------|
-| Prosecution module not started | Begin Sprint 12 |
-| Performance untested | Implement load testing |
+| Analytics dashboard not started | Begin Superset SDK integration in Sprint 14 |
+| NTSA integration pending | Plan Phase 4 for demerit points sync |
+| Dashboard only 30% complete | Prioritize dashboard statistics and charts |
+
+### Low Priority
+
+| Risk | Mitigation |
+|------|------------|
+| Advanced analytics not started | Defer to Phase 4 |
+| Performance untested at scale | Implement load testing before production |
+| Infrastructure decoupling | Consider microservices split post-production |
 
 ---
 
 ## Next Phase Priorities
 
-### Immediate (Next 2 Weeks)
-1. Fix Frontend Production Build
-2. Complete Weighing UI
-3. Implement Frontend Testing
+### Immediate (Next 2 Weeks) - SPRINT 13: FRONTEND COMPLETION & UI ENHANCEMENT
+1. **Fix Frontend Production Build** - Resolve PWA/App Router Suspense boundary conflicts
+2. **Complete Security UI** - Fix 6 TODO items (active sessions, security events, etc.)
+3. **Dashboard Enhancement** - Statistics cards and charts integration
+4. **UI Polish** - ✅ Axle Configuration page revamped with KenloadV2 design patterns
 
-### Short-Term (Weeks 3-6)
-1. Yard Management Module
-2. Case Register Frontend
-3. Demerit Points System
+### Short-Term (Weeks 3-4) - SPRINT 14: PRODUCTION READINESS & TESTING
+1. **Integration Testing Setup** - Unit, integration, and E2E tests
+2. **Performance Testing** - Load testing with 100+ concurrent users
+3. **Security Audit** - OWASP compliance verification
+4. **Documentation Completion** - API docs, user guides, deployment guides
 
-### Medium-Term (Weeks 7-12)
-1. Prosecution Module (EAC + Traffic Act)
-2. Hardware Integration (TruConnect)
-3. Analytics Dashboard (Superset)
+### Medium-Term (Weeks 5-8) - PHASE 4: DEPLOYMENT & POLISH
+1. **Analytics Dashboard** - Superset SDK integration with guest tokens
+2. **NTSA Integration** - Demerit points sync with NTSA
+3. **TruConnect Haenni Support** - Mobile scale integration
+4. **Production Deployment** - Multi-tenant setup, monitoring, alerting
 
 ---
 
 ## Success Criteria for Production
 
-- All core weighing workflows operational
-- Case register integrated with prosecution
-- Legal documents validated by authorities
-- 100+ concurrent user capacity tested
-- Frontend production build stable
-- 80%+ test coverage on critical paths
-- Hardware integration complete
+### Weighing Module (Target: 100%) - 99% Complete
+- [x] All weighing modes operational (Static/Multideck, WIM, Mobile/Axle)
+- [x] Axle grouping compliance with EAC/Traffic Act tolerance rules
+- [x] Backend PDF document generation (9 types)
+- [x] Frontend weighing UI fully wired to backend APIs (Mobile, Multideck/Static)
+- [x] TanStack Query migration with TTL-based caching
+- [x] Dynamic compliance calculation on axle config change
+- [x] Static weighing = Multideck weighing (same page, complete)
+- [ ] Scale test workflow complete
+
+### Case Register Module (Target: 100%) - 100% Complete
+- [x] Auto-case creation from weighing violations
+- [x] 19 backend API endpoints operational
+- [x] Case Register UI implementation
+- [x] Document preview/download in frontend
+- [x] Special Release workflow UI with approval/rejection
+- [x] Manual tag → Case register linking
+
+### Prosecution Module (Target: 100%) - 100% Complete
+- [x] Charge calculation with EAC/Traffic Act rules
+- [x] Prosecution case management
+- [x] Invoice generation
+- [x] Receipt recording with multiple payment methods
+- [x] Court hearing scheduling and tracking
+- [x] All PDF documents (ChargeSheet, CourtMinutes, Invoice, Receipt)
+
+### Production Readiness - 75% Complete
+- [ ] Frontend production build stable (Suspense boundary fix needed)
+- [x] TruConnect autoweigh endpoint operational
+- [ ] 100+ concurrent user capacity tested
+- [ ] 80%+ test coverage on critical paths
+- [ ] Legal documents validated by KeNHA authorities
+- [ ] Security page TODO items completed
 
 ---
 
@@ -220,13 +378,124 @@ Transitioning from core backend development to frontend implementation and hardw
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| Phase 1 | Foundation (Backend Core) | Complete |
-| Phase 2 | Frontend & Integration | Current |
-| Phase 3 | Advanced Features | Upcoming |
-| Phase 4 | Production Deployment | Target Q2 2026 |
+| Phase 1 | Foundation (Backend Core) | ✅ Complete |
+| Phase 2 | Frontend & TruConnect Integration | ✅ Complete (90%) |
+| Phase 3 | Prosecution & Court Proceedings | ✅ Complete |
+| Phase 4 | Static Weighing & Production Readiness | 🔄 Current |
+| Phase 5 | Analytics & NTSA Integration | ⏳ Upcoming |
+| Phase 6 | Production Deployment | Target Q1 2026 |
 
 ---
 
-**Document Version:** 2.0
-**Last Updated:** January 13, 2026
-**Next Review:** January 20, 2026
+## Critical Dependencies for Production Release
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    DEPENDENCY CHAIN                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ✅ COMPLETED DEPENDENCIES                                       │
+│  ─────────────────────────────                                   │
+│  ✓ Backend APIs (90+ endpoints)                                  │
+│  ✓ Weighing UI (Mobile, Multideck/Static)                        │
+│  ✓ Case Register & Special Release                               │
+│  ✓ Court Proceedings & Prosecution                               │
+│  ✓ Document Generation (9 types)                                 │
+│  ✓ Tag → Case linking                                            │
+│  ✓ Axle Config UI (revamped with KenloadV2 patterns)             │
+│                                                                  │
+│  ✓ Sprint 13 COMPLETE (Feb 5, 2026)                              │
+│  ─────────────────────────────────                               │
+│  ✓ Production Build Fixed                                        │
+│  ✓ Security Audit Logs API (AuditLogController)                  │
+│  ✓ Dashboard Statistics (6 backend endpoints integrated)         │
+│                                                                  │
+│  🔄 CURRENT SPRINT (Sprint 14)                                   │
+│  ─────────────────────────────                                   │
+│  → Integration Testing ─────────► QUALITY ───────► DEPLOYMENT   │
+│  → Performance Testing            ASSURANCE                     │
+│  → Security Backend Endpoints                                    │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+**Document Version:** 4.5
+**Last Updated:** February 5, 2026
+**Next Review:** February 12, 2026
+**Audited By:** Claude Code Comprehensive Audit
+
+### Recent Updates (v4.5) - Sprint 13 Complete
+- ✅ **Backend AuditLogController Created** - New controller exposing audit log endpoints
+  - `GET /api/v1/audit-logs` - Paginated audit logs with filters
+  - `GET /api/v1/audit-logs/{id}` - Get audit log by ID
+  - `GET /api/v1/audit-logs/summary` - Get summary statistics
+  - `GET /api/v1/audit-logs/failed` - Get failed entries for security monitoring
+- ✅ **Frontend Production Build Fixed** - Resolved missing UI components
+  - Added Skeleton component for loading states
+  - Added Progress component for progress bars
+  - Replaced AlertDialog with Dialog component (no new Radix deps needed)
+- ✅ **Dashboard Statistics Integrated** - Real data from 6 backend endpoints
+  - Cases, Yard, Tags, Prosecution, Invoices, Receipts
+- ✅ **Security Page Audit Logs** - Wired to backend with pagination, filtering, summary cards
+
+### Previous Updates (v4.4)
+- ✅ **Axle Configuration UI Revamp** - Modern responsive design with KenloadV2 patterns
+  - Statistics cards (Total, EAC, Traffic Act, Standard configs)
+  - Search and filter functionality
+  - CSV export capability
+  - GVW compliance indicator with progress bar
+  - Improved form layout (3 columns instead of 5)
+  - Alert dialog for delete confirmation
+  - Loading skeletons for better UX
+  - axleCode protected on edit (immutable)
+- ✅ **Static = Multideck Clarification** - Confirmed static weighing is the same as multideck (complete)
+- ✅ **Sprint 13 & 14 Plans Created** - Frontend completion and production readiness
+
+### Previous Updates (v4.3)
+- ✅ **Yard Management Complete** - YardService with dedicated business logic and statistics
+- ✅ **Vehicle Tags with Case Linking** - VehicleTagService with automatic case register creation for manual tags
+- ✅ **StatusLookupService** - Centralized cached lookups for status/type entities
+- ✅ **Special Release Rejection Workflow** - Case disposition reset on rejection
+- ✅ **WeighingService Fixes** - Proper exception logging, input validation, typo corrections
+- ✅ **CaseRegisterService Fixes** - Station lookup bug fixed, state machine validation added
+- ✅ **CommonStatusCodes** - Centralized status code constants avoiding namespace conflicts
+- ✅ **Comprehensive Codebase Audit** - 90+ API endpoints verified, 9 document types confirmed
+- ✅ **Sprint Documentation Updated** - 10 of 14 sprints marked complete
+
+### Previous Updates (v4.2)
+- ✅ **Court Proceedings Module Complete** - Backend service, controller, and DTOs
+- ✅ **Prosecution Module Complete** - Charge calculation, prosecution case management
+- ✅ **Invoice/Receipt Module Complete** - Financial management with idempotency support
+- ✅ **PDF Document Templates** - ChargeSheet, CourtMinutes, Invoice, Receipt documents
+- ✅ **Frontend Court Hearings** - Schedule, adjourn, complete hearings with PDF download
+- ✅ **Frontend Prosecution** - Charge calculation, prosecution creation, invoice generation
+- ✅ **Frontend Payments** - Record payments with M-Pesa, bank transfer, card, cash support
+- ✅ **TanStack Query Hooks** - Court, Prosecution, Invoice, Receipt query/mutation hooks
+
+### Previous Updates (v4.1)
+- ✅ VehicleMake and VehicleModel backend models and API created
+- ✅ CaseParty model for comprehensive case party tracking
+- ✅ CaseAssignmentLog enhanced with IsCurrent flag (KenloadV2 CaseIOs pattern)
+- ✅ PermissionService.UserHasPermissionAsync placeholder fixed with proper role-permission checking
+- ✅ Frontend VehicleMake hooks and API integration
+- ✅ Mobile and Multideck pages wired to VehicleMake API
+
+---
+
+## KenloadV2 Adaptations Summary
+
+The following features were analyzed from KenloadV2 and adapted/enhanced for TruLoad:
+
+| KenloadV2 Feature | TruLoad Adaptation | Status |
+|-------------------|-------------------|--------|
+| CaseIOs officer assignment | CaseAssignmentLog with IsCurrent flag | ✅ Complete |
+| Prosecution charge computation | Enhanced with best-of GVW/Axle logic | ✅ Complete |
+| Court hearing tracking | CourtHearingService with adjournment/completion | ✅ Complete |
+| Invoice/Receipt generation | InvoiceService, ReceiptService with idempotency | ✅ Complete |
+| Special Release workflow | Enhanced with approval/rejection workflow | ✅ Complete |
+| Vehicle tagging | Enhanced with automatic case register linking | ✅ Complete |
+| Fee schedules | AxleFeeScheduleRepository with EAC/Traffic Act support | ✅ Complete |
+| Axle Configuration UI | Modern responsive design with stats, search, filters, CSV export | ✅ Complete |
+| Demerit points | DemeritPointService with NTSA sync preparation | ✅ Complete |

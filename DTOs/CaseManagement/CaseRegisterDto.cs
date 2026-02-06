@@ -1,3 +1,5 @@
+using TruLoad.Backend.DTOs.Shared;
+
 namespace TruLoad.Backend.DTOs.CaseManagement;
 
 /// <summary>
@@ -97,7 +99,7 @@ public class CloseCaseRequest
 /// <summary>
 /// Case Search Criteria
 /// </summary>
-public class CaseSearchCriteria
+public class CaseSearchCriteria : PagedRequest
 {
     public string? CaseNo { get; set; }
     public string? VehicleRegNumber { get; set; }
@@ -108,6 +110,4 @@ public class CaseSearchCriteria
     public DateTime? CreatedTo { get; set; }
     public bool? EscalatedToCaseManager { get; set; }
     public Guid? CaseManagerId { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
 }

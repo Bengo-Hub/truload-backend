@@ -1,7 +1,8 @@
 namespace TruLoad.Backend.DTOs.Weighing;
 
 /// <summary>
-/// DTO for creating a new derived axle configuration
+/// DTO for creating a new derived axle configuration.
+/// GVW is auto-calculated from the sum of weight reference legal weights.
 /// </summary>
 public class CreateAxleConfigurationDto
 {
@@ -26,11 +27,6 @@ public class CreateAxleConfigurationDto
     public int AxleNumber { get; set; }
 
     /// <summary>
-    /// Gross Vehicle Weight permissible in kg
-    /// </summary>
-    public int GvwPermissibleKg { get; set; }
-
-    /// <summary>
     /// Legal framework applicability (EAC, TRAFFIC_ACT, or BOTH)
     /// </summary>
     public string? LegalFramework { get; set; }
@@ -44,4 +40,22 @@ public class CreateAxleConfigurationDto
     /// Optional notes or special rules
     /// </summary>
     public string? Notes { get; set; }
+
+    /// <summary>
+    /// Weight references for each axle position.
+    /// GVW is calculated as the sum of all AxleLegalWeightKg values.
+    /// </summary>
+    public List<CreateAxleWeightReferenceInlineDto>? WeightReferences { get; set; }
+}
+
+/// <summary>
+/// Inline weight reference for creating alongside axle configuration
+/// </summary>
+public class CreateAxleWeightReferenceInlineDto
+{
+    public int AxlePosition { get; set; }
+    public int AxleLegalWeightKg { get; set; }
+    public string AxleGrouping { get; set; } = string.Empty;
+    public Guid AxleGroupId { get; set; }
+    public Guid? TyreTypeId { get; set; }
 }

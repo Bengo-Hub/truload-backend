@@ -57,7 +57,7 @@ public class CaseRegisterRepository : ICaseRegisterRepository
             .FirstOrDefaultAsync(c => c.ProhibitionOrderId == prohibitionOrderId);
     }
 
-    public async Task<IEnumerable<CaseRegister>> GetAllAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<IEnumerable<CaseRegister>> GetAllAsync(int pageNumber = 1, int pageSize = 50)
     {
         return await _context.CaseRegisters
             .AsNoTracking()
@@ -81,7 +81,7 @@ public class CaseRegisterRepository : ICaseRegisterRepository
         bool? escalatedToCaseManager = null,
         Guid? caseManagerId = null,
         int pageNumber = 1,
-        int pageSize = 20)
+        int pageSize = 50)
     {
         var query = _context.CaseRegisters
             .AsNoTracking()

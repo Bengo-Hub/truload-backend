@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.DTOs.User;
+using TruLoad.Backend.DTOs.Shared;
+using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Models.Identity;
 
 namespace TruLoad.Controllers;
@@ -79,7 +81,7 @@ public class UsersController : ControllerBase
             Id = Guid.NewGuid(),
             UserName = request.Email,
             Email = request.Email,
-            FullName = request.FullName,
+            FullName = request.FullName ?? string.Empty,
             PhoneNumber = request.PhoneNumber,
             OrganizationId = request.OrganizationId,
             StationId = request.StationId,
@@ -147,10 +149,11 @@ public class UsersController : ControllerBase
         [FromQuery] Guid? workShiftId = null,
         [FromQuery] bool? hasActiveShift = null,
         [FromQuery] bool? isActive = null,
-        [FromQuery] int skip = 0,
-        [FromQuery] int take = 50)
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 50)
     {
-        if (take > 100) take = 100;
+        if (pageSize > 1000) pageSize = 1000;
+        var skip = (pageNumber - 1) * pageSize;
 
         var query = _userManager.Users
             .Where(u => u.DeletedAt == null)
@@ -202,7 +205,7 @@ public class UsersController : ControllerBase
         var users = await query
             .OrderBy(u => u.FullName)
             .Skip(skip)
-            .Take(take)
+            .Take(pageSize)
             .ToListAsync();
 
         var userDtos = new List<UserDto>();
@@ -265,13 +268,7 @@ public class UsersController : ControllerBase
             userDtos = filteredDtos;
         }
 
-        return Ok(new
-        {
-            total,
-            skip,
-            take,
-            data = userDtos
-        });
+        return Ok(PagedResponse<UserDto>.Create(userDtos, total, pageNumber, pageSize));
     }
 
     /// <summary>
@@ -461,6 +458,42 @@ public class UsersController : ControllerBase
 
         _logger.LogInformation("Role {RoleId} removed from user {UserId}", roleId, id);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Gets users grouped by station.
+    /// </summary>
+    [HttpGet("by-station")]
+    [HasPermission("user.read")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(List<UsersByStationDto>), 200)]
+    public async Task<IActionResult> GetUsersByStation(CancellationToken ct)
+    {
+        try
+        {
+            var users = await _userManager.Users
+                .Where(u => u.StationId.HasValue)
+                .Include(u => u.Station)
+                .ToListAsync(ct);
+
+            var grouped = users
+                .GroupBy(u => new { u.StationId, StationName = u.Station?.Name ?? "Unknown" })
+                .Select(g => new UsersByStationDto
+                {
+                    StationId = g.Key.StationId ?? Guid.Empty,
+                    StationName = g.Key.StationName,
+                    Count = g.Count()
+                })
+                .OrderBy(d => d.StationName)
+                .ToList();
+
+            return Ok(grouped);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting users by station");
+            return StatusCode(500, "An error occurred while getting users by station.");
+        }
     }
 
     private async Task<UserDto> MapToDto(ApplicationUser user, IList<string> roles)

@@ -254,7 +254,7 @@ public class WeighingOperationsSeeder
                     FeePerKgUsd = feeElement.GetProperty("feePerKgUsd").GetDecimal(),
                     FlatFeeUsd = feeElement.GetProperty("flatFeeUsd").GetDecimal(),
                     DemeritPoints = feeElement.GetProperty("demeritPoints").GetInt32(),
-                    PenaltyDescription = feeElement.GetProperty("penaltyDescription").GetString(),
+                    PenaltyDescription = feeElement.GetProperty("penaltyDescription").GetString() ?? string.Empty,
                     EffectiveFrom = todayDateTime,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,

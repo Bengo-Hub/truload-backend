@@ -1,0 +1,192 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using TruLoad.Backend.Authorization.Attributes;
+using TruLoad.Backend.DTOs.Financial;
+using TruLoad.Backend.Middleware;
+using TruLoad.Backend.Services.Interfaces.Financial;
+using TruLoad.Backend.Services.Interfaces.Infrastructure;
+
+namespace TruLoad.Backend.Controllers.Financial;
+
+/// <summary>
+/// API controller for invoice management.
+/// Handles invoice generation, status updates, and PDF export.
+/// </summary>
+[ApiController]
+[Authorize]
+public class InvoiceController : ControllerBase
+{
+    private readonly IInvoiceService _invoiceService;
+    private readonly IPdfService _pdfService;
+    private readonly ITenantContext _tenantContext;
+
+    public InvoiceController(
+        IInvoiceService invoiceService,
+        IPdfService pdfService,
+        ITenantContext tenantContext)
+    {
+        _invoiceService = invoiceService;
+        _pdfService = pdfService;
+        _tenantContext = tenantContext;
+    }
+
+    /// <summary>
+    /// Get invoice by ID
+    /// </summary>
+    [HttpGet("api/v1/invoices/{id}")]
+    [HasPermission("invoice.read")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
+    {
+        var invoice = await _invoiceService.GetByIdAsync(id, ct);
+        if (invoice == null) return NotFound();
+        return Ok(invoice);
+    }
+
+    /// <summary>
+    /// Get invoices for a prosecution case
+    /// </summary>
+    [HttpGet("api/v1/prosecutions/{prosecutionId}/invoices")]
+    [HasPermission("invoice.read")]
+    public async Task<IActionResult> GetByProsecutionId(Guid prosecutionId, CancellationToken ct)
+    {
+        var invoices = await _invoiceService.GetByProsecutionIdAsync(prosecutionId, ct);
+        return Ok(invoices);
+    }
+
+    /// <summary>
+    /// Search invoices with filters
+    /// </summary>
+    [HttpPost("api/v1/invoices/search")]
+    [HasPermission("invoice.read")]
+    public async Task<IActionResult> Search([FromBody] InvoiceSearchCriteria criteria, CancellationToken ct)
+    {
+        var invoices = await _invoiceService.SearchAsync(criteria, ct);
+        return Ok(invoices);
+    }
+
+    /// <summary>
+    /// Generate a new invoice for a prosecution case
+    /// </summary>
+    [HttpPost("api/v1/prosecutions/{prosecutionId}/invoices")]
+    [HasPermission("invoice.create")]
+    public async Task<IActionResult> GenerateInvoice(Guid prosecutionId, CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+
+        try
+        {
+            var invoice = await _invoiceService.GenerateInvoiceAsync(prosecutionId, userId, ct);
+            return CreatedAtAction(nameof(GetById), new { id = invoice.Id }, invoice);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Update invoice status
+    /// </summary>
+    [HttpPut("api/v1/invoices/{id}/status")]
+    [HasPermission("invoice.update")]
+    public async Task<IActionResult> UpdateStatus(
+        Guid id,
+        [FromBody] UpdateInvoiceStatusRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var userId = GetCurrentUserId();
+
+        try
+        {
+            var invoice = await _invoiceService.UpdateStatusAsync(id, request.Status, userId, ct);
+            return Ok(invoice);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Void an invoice
+    /// </summary>
+    [HttpPost("api/v1/invoices/{id}/void")]
+    [HasPermission("invoice.void")]
+    public async Task<IActionResult> VoidInvoice(
+        Guid id,
+        [FromBody] VoidInvoiceRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var userId = GetCurrentUserId();
+
+        try
+        {
+            var invoice = await _invoiceService.VoidInvoiceAsync(id, request.Reason, userId, ct);
+            return Ok(invoice);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Get invoice statistics for dashboard
+    /// </summary>
+    [HttpGet("api/v1/invoices/statistics")]
+    [HasPermission("invoice.read")]
+    public async Task<IActionResult> GetStatistics(CancellationToken ct)
+    {
+        var stats = await _invoiceService.GetStatisticsAsync(ct);
+        return Ok(stats);
+    }
+
+    /// <summary>
+    /// Download invoice PDF
+    /// </summary>
+    [HttpGet("api/v1/invoices/{id}/pdf")]
+    [HasPermission("invoice.read")]
+    public async Task<IActionResult> DownloadPdf(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            var pdfBytes = await _pdfService.GenerateInvoiceAsync(id, ct);
+            var invoice = await _invoiceService.GetByIdAsync(id, ct);
+            var fileName = $"Invoice_{invoice?.InvoiceNo ?? id.ToString()}.pdf";
+            return File(pdfBytes, "application/pdf", fileName);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(ex.Message);
+        }
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim))
+            throw new UnauthorizedAccessException("User ID not found in claims");
+        return Guid.Parse(userIdClaim);
+    }
+}
+
+/// <summary>
+/// Request to update invoice status
+/// </summary>
+public class UpdateInvoiceStatusRequest
+{
+    public string Status { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request to void an invoice
+/// </summary>
+public class VoidInvoiceRequest
+{
+    public string Reason { get; set; } = string.Empty;
+}

@@ -58,7 +58,7 @@ This audit compared KenloadV2 (existing KeNHA weighbridge system) with TruLoad (
 ### 2. TruLoad Advantages to Preserve
 
 1. **Modern Technology Stack**
-   - .NET 8 LTS (vs KenloadV2's .NET Framework)
+   - .NET 10 LTS (vs KenloadV2's .NET Framework)
    - PostgreSQL 16 with pgvector extension
    - Redis caching, RabbitMQ message queue
 
@@ -232,7 +232,7 @@ This audit compared KenloadV2 (existing KeNHA weighbridge system) with TruLoad (
 TruLoad has a strong architectural foundation but requires critical enhancements to achieve regulatory compliance parity with KenloadV2. The identified gaps are addressable within 4-6 weeks (Sprints 11-12), after which TruLoad will be a superior system with:
 
 1. **Full regulatory compliance** (Traffic Act Cap 403 & EAC Act 2016)
-2. **Modern technology stack** (.NET 8, PostgreSQL, Redis, Next.js 15)
+2. **Modern technology stack** (.NET 10, PostgreSQL, Redis, Next.js 16)
 3. **Comprehensive prosecution workflow** (subfiles A-J, court tracking)
 4. **Superior offline capabilities** (PWA, IndexedDB, background sync)
 5. **AI-powered analytics** (vector search, natural language queries)

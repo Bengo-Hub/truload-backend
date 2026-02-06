@@ -89,8 +89,15 @@ public class VehicleTag : BaseEntity
     /// </summary>
     public bool Exported { get; set; } = false;
 
+    /// <summary>
+    /// Case register reference (required for manual tags, optional for automatic)
+    /// Links tag violations to the case management workflow for prosecution tracking
+    /// </summary>
+    public Guid? CaseRegisterId { get; set; }
+
     // Navigation properties
     public TagCategory? TagCategory { get; set; }
     public ApplicationUser? CreatedBy { get; set; }
     public ApplicationUser? ClosedBy { get; set; }
+    public CaseManagement.CaseRegister? CaseRegister { get; set; }
 }

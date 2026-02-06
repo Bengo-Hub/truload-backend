@@ -76,9 +76,9 @@ namespace TruLoad.Backend.Models.Infrastructure
 
         // Navigation properties
         [ForeignKey("StationId")]
-        public virtual Station Station { get; set; }
+        public virtual Station? Station { get; set; }
 
         [ForeignKey("CarriedById")]
-        public virtual ApplicationUser CarriedBy { get; set; }
+        public virtual ApplicationUser? CarriedBy { get; set; }
     }
 }

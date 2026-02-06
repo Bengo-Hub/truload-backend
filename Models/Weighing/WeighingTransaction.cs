@@ -192,6 +192,28 @@ public class WeighingTransaction : BaseEntity
     /// </summary>
     public DateTime? SyncAt { get; set; }
 
+    /// <summary>
+    /// Capture source: auto (from middleware auto-weigh), manual (operator captured), frontend (from TruLoad app)
+    /// </summary>
+    [MaxLength(20)]
+    public string CaptureSource { get; set; } = "manual";
+
+    /// <summary>
+    /// Capture status: auto (auto-weigh data only), captured (final weights submitted), not_weighed (vehicle left without capture)
+    /// </summary>
+    [MaxLength(20)]
+    public string CaptureStatus { get; set; } = "captured";
+
+    /// <summary>
+    /// Auto-weigh GVW before final capture (for comparison)
+    /// </summary>
+    public int? AutoweighGvwKg { get; set; }
+
+    /// <summary>
+    /// Timestamp when auto-weigh captured the initial data
+    /// </summary>
+    public DateTime? AutoweighAt { get; set; }
+
     // Navigation Properties
     public Vehicle? Vehicle { get; set; }
     public Driver? Driver { get; set; }

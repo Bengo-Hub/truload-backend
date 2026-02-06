@@ -17,7 +17,11 @@ public static class YardModuleDbContextConfiguration
         // ===== YardEntry Entity Configuration =====
         modelBuilder.Entity<YardEntry>(entity =>
         {
-            entity.ToTable("yard_entries");
+            entity.ToTable("yard_entries", t =>
+            {
+                t.HasCheckConstraint("chk_yard_entry_status", "status IN ('pending', 'processing', 'released', 'escalated')");
+                t.HasCheckConstraint("chk_yard_entry_reason", "reason IN ('redistribution', 'gvw_overload', 'permit_check', 'offload')");
+            });
             entity.HasKey(e => e.Id);
 
             entity.Property(e => e.Id)
@@ -91,20 +95,16 @@ public static class YardModuleDbContextConfiguration
             // Composite index for station + status queries
             entity.HasIndex(e => new { e.StationId, e.Status })
                 .HasDatabaseName("idx_yard_entries_station_status");
-
-            // CHECK constraint for status
-            entity.HasCheckConstraint("chk_yard_entry_status",
-                "status IN ('pending', 'processing', 'released', 'escalated')");
-
-            // CHECK constraint for reason
-            entity.HasCheckConstraint("chk_yard_entry_reason",
-                "reason IN ('redistribution', 'gvw_overload', 'permit_check', 'offload')");
         });
 
         // ===== VehicleTag Entity Configuration =====
         modelBuilder.Entity<VehicleTag>(entity =>
         {
-            entity.ToTable("vehicle_tags");
+            entity.ToTable("vehicle_tags", t =>
+            {
+                t.HasCheckConstraint("chk_vehicle_tag_type", "tag_type IN ('automatic', 'manual')");
+                t.HasCheckConstraint("chk_vehicle_tag_status", "status IN ('open', 'closed')");
+            });
             entity.HasKey(e => e.Id);
 
             entity.Property(e => e.Id)
@@ -222,13 +222,6 @@ public static class YardModuleDbContextConfiguration
 
             // NOTE: ReasonEmbedding vector property is configured in TruLoadDbContext.OnModelCreating
             // conditionally for PostgreSQL only (not supported by InMemory provider for tests)
-
-            // CHECK constraints
-            entity.HasCheckConstraint("chk_vehicle_tag_type",
-                "tag_type IN ('automatic', 'manual')");
-
-            entity.HasCheckConstraint("chk_vehicle_tag_status",
-                "status IN ('open', 'closed')");
         });
 
         // ===== TagCategory Entity Configuration =====

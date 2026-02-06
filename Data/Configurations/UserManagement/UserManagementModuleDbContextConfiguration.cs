@@ -504,27 +504,15 @@ public static class UserManagementModuleDbContextConfiguration
             entity.ToTable("stations");
             entity.HasKey(e => e.Id);
 
-            entity.Property(e => e.StationCode)
-                .HasColumnName("station_code")
-                .HasMaxLength(50)
-                .IsRequired();
-
             entity.Property(e => e.Code)
                 .HasColumnName("code")
-                .HasMaxLength(50);
+                .HasMaxLength(50)
+                .IsRequired();
 
             entity.Property(e => e.Name)
                 .HasColumnName("name")
                 .HasMaxLength(255)
                 .IsRequired();
-
-            entity.Property(e => e.StationName)
-                .HasColumnName("station_name")
-                .HasMaxLength(255);
-
-            entity.Property(e => e.Status)
-                .HasColumnName("status")
-                .HasMaxLength(50);
 
             entity.Property(e => e.StationType)
                 .HasColumnName("station_type")
@@ -534,6 +522,12 @@ public static class UserManagementModuleDbContextConfiguration
             entity.Property(e => e.Location)
                 .HasColumnName("location")
                 .HasMaxLength(500);
+
+            entity.Property(e => e.RoadId)
+                .HasColumnName("road_id");
+
+            entity.Property(e => e.CountyId)
+                .HasColumnName("county_id");
 
             entity.Property(e => e.Latitude)
                 .HasColumnName("latitude")
@@ -545,6 +539,14 @@ public static class UserManagementModuleDbContextConfiguration
 
             entity.Property(e => e.SupportsBidirectional)
                 .HasColumnName("supports_bidirectional");
+
+            entity.Property(e => e.BoundACode)
+                .HasColumnName("bound_a_code")
+                .HasMaxLength(50);
+
+            entity.Property(e => e.BoundBCode)
+                .HasColumnName("bound_b_code")
+                .HasMaxLength(50);
 
             entity.Property(e => e.IsActive)
                 .HasColumnName("is_active");
@@ -558,12 +560,24 @@ public static class UserManagementModuleDbContextConfiguration
             entity.Property(e => e.DeletedAt)
                 .HasColumnName("deleted_at");
 
-            entity.HasIndex(e => e.StationCode)
+            entity.HasIndex(e => e.Code)
                 .IsUnique()
                 .HasDatabaseName("idx_stations_code");
 
-            entity.HasIndex(e => e.Code)
-                .HasDatabaseName("idx_stations_code_alias");
+            entity.HasOne(e => e.Organization)
+                .WithMany()
+                .HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Road)
+                .WithMany()
+                .HasForeignKey(e => e.RoadId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.County)
+                .WithMany()
+                .HasForeignKey(e => e.CountyId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // ===== AuditLog Entity Configuration =====

@@ -7,32 +7,32 @@ namespace TruLoad.Data.Seeders;
 /// <summary>
 /// Seeds role-permission assignments for 7 built-in roles.
 /// Assigns permissions based on role type and authorization level.
-/// SUPERUSER: 95 permissions (all) - maps to auth-service superuser flag
-/// SYSTEM_ADMIN: 90 permissions (all except system.admin)
-/// STATION_MANAGER: 59 permissions
+/// SUPERUSER: 109 permissions (all) - maps to auth-service superuser flag
+/// SYSTEM_ADMIN: 108 permissions (all except system.admin)
+/// STATION_MANAGER: 66 permissions (incl. financial create/read)
 /// WEIGHING_OPERATOR: 10 permissions
-/// ENFORCEMENT_OFFICER: 36 permissions
+/// ENFORCEMENT_OFFICER: 44 permissions (incl. financial create/read)
 /// INSPECTOR: 26 permissions
-/// AUDITOR: 31 permissions
+/// AUDITOR: 36 permissions (incl. financial read/audit)
 /// </summary>
 public static class RolePermissionSeeder
 {
     /// <summary>
     /// Define permission codes for each role.
-    /// SUPERUSER: 95 permissions (all - includes system.*)
-    /// SYSTEM_ADMIN: 94 permissions (exclude system.admin)
-    /// STATION_MANAGER: 59 permissions
+    /// SUPERUSER: 109 permissions (all - includes system.* and financial.*)
+    /// SYSTEM_ADMIN: 108 permissions (exclude system.admin)
+    /// STATION_MANAGER: 66 permissions (incl. financial)
     /// WEIGHING_OPERATOR: 10 permissions
-    /// ENFORCEMENT_OFFICER: 38 permissions
+    /// ENFORCEMENT_OFFICER: 44 permissions (incl. financial)
     /// INSPECTOR: 26 permissions
-    /// AUDITOR: 31 permissions
+    /// AUDITOR: 36 permissions (incl. financial read/audit)
     /// </summary>
     private static readonly Dictionary<string, List<string>> RolePermissions = new()
     {
         {
             "SUPERUSER", new List<string>
             {
-                // All 95 permissions - superuser has everything including system admin
+                // All permissions - superuser has everything including system admin and financial
                 "weighing.create", "weighing.read", "weighing.read_own", "weighing.update", "weighing.approve",
                 "weighing.override", "weighing.send_to_yard", "weighing.scale_test", "weighing.export",
                 "weighing.delete", "weighing.webhook", "weighing.audit",
@@ -55,8 +55,12 @@ public static class RolePermissionSeeder
                 "config.manage_acts", "config.manage_taxonomy", "config.manage_references", "config.audit",
                 "analytics.read", "analytics.read_own", "analytics.export", "analytics.schedule",
                 "analytics.custom_query", "analytics.manage_dashboards", "analytics.superset", "analytics.audit",
-                "system.admin", "system.audit_logs", "system.cache_management", "system.integration_management",
-                "system.backup_restore", "system.security_policy"
+                "invoice.create", "invoice.read", "invoice.read_own", "invoice.update", "invoice.void",
+                "receipt.create", "receipt.read", "receipt.read_own", "receipt.void",
+                "financial.audit",
+                "system.admin", "system.manage_roles", "system.manage_organizations", "system.manage_stations",
+                "system.manage_departments", "system.audit_logs", "system.cache_management",
+                "system.integration_management", "system.backup_restore", "system.security_policy"
             }
         },
         {
@@ -85,6 +89,9 @@ public static class RolePermissionSeeder
                 "config.manage_acts", "config.manage_taxonomy", "config.manage_references", "config.audit",
                 "analytics.read", "analytics.read_own", "analytics.export", "analytics.schedule",
                 "analytics.custom_query", "analytics.manage_dashboards", "analytics.superset", "analytics.audit",
+                "invoice.create", "invoice.read", "invoice.read_own", "invoice.update", "invoice.void",
+                "receipt.create", "receipt.read", "receipt.read_own", "receipt.void",
+                "financial.audit",
                 "system.manage_roles", "system.manage_organizations", "system.manage_stations",
                 "system.manage_departments", "system.audit_logs", "system.cache_management",
                 "system.integration_management", "system.backup_restore", "system.security_policy"
@@ -93,7 +100,7 @@ public static class RolePermissionSeeder
         {
             "STATION_MANAGER", new List<string>
             {
-                // Station, weighing, yard, tag, case, limited prosecution/user, analytics
+                // Station, weighing, yard, tag, case, limited prosecution/user, analytics, financial read
                 "weighing.create", "weighing.read", "weighing.read_own", "weighing.update", "weighing.scale_test",
                 "weighing.export", "weighing.audit", "weighing.send_to_yard",
                 "yard.create", "yard.read", "yard.read_own", "yard.update", "yard.release", "yard.export", "yard.audit",
@@ -105,13 +112,16 @@ public static class RolePermissionSeeder
                 "station.manage_devices", "station.manage_io", "station.configure_defaults", "station.export",
                 "station.audit",
                 "config.read",
-                "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit"
+                "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit",
+                "invoice.create", "invoice.read", "invoice.read_own", "invoice.update",
+                "receipt.create", "receipt.read", "receipt.read_own",
+                "financial.audit"
             }
         },
         {
             "ENFORCEMENT_OFFICER", new List<string>
             {
-                // Prosecution, case, yard, tag, limited weighing/user, analytics
+                // Prosecution, case, yard, tag, limited weighing/user, analytics, financial
                 "weighing.read", "weighing.read_own", "weighing.export", "weighing.audit",
                 "yard.read", "yard.read_own", "yard.export", "yard.audit",
                 "tag.read", "tag.read_own", "tag.export", "tag.audit",
@@ -121,7 +131,9 @@ public static class RolePermissionSeeder
                 "prosecution.compute_charges", "prosecution.generate_certificate", "prosecution.export",
                 "prosecution.audit",
                 "user.read", "user.read_own", "user.audit",
-                "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit"
+                "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit",
+                "invoice.create", "invoice.read", "invoice.read_own",
+                "receipt.create", "receipt.read", "receipt.read_own"
             }
         },
         {
@@ -150,7 +162,7 @@ public static class RolePermissionSeeder
         {
             "AUDITOR", new List<string>
             {
-                // Read-only access to audit logs across all domains
+                // Read-only access to audit logs across all domains including financial
                 "weighing.read", "weighing.read_own", "weighing.audit",
                 "yard.read", "yard.read_own", "yard.audit",
                 "tag.read", "tag.read_own", "tag.audit",
@@ -159,7 +171,10 @@ public static class RolePermissionSeeder
                 "user.read", "user.read_own", "user.audit",
                 "station.read", "station.read_own", "station.audit",
                 "config.read", "config.audit",
-                "analytics.read", "analytics.read_own", "analytics.audit"
+                "analytics.read", "analytics.read_own", "analytics.audit",
+                "invoice.read", "invoice.read_own",
+                "receipt.read", "receipt.read_own",
+                "financial.audit"
             }
         }
     };

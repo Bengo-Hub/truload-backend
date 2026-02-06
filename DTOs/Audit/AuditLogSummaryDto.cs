@@ -1,9 +1,11 @@
+using System.ComponentModel.DataAnnotations;
+using TruLoad.Backend.DTOs.Shared;
 namespace TruLoad.Backend.DTOs;
 
 /// <summary>
 /// Summary statistics for audit logs, including entry counts, user activity, and action/resource distributions.
 /// </summary>
-public class AuditLogSummaryDto
+public class AuditLogSummaryDto: PagedRequest
 {
     /// <summary>
     /// Total number of audit log entries in the specified date range.

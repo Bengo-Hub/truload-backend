@@ -2,9 +2,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.DTOs.User;
+using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.UserManagement.Interfaces;
+using TruLoad.Backend.Services.Interfaces.Weighing;
 
 namespace TruLoad.Controllers;
 
@@ -14,15 +16,18 @@ namespace TruLoad.Controllers;
 public class StationsController : ControllerBase
 {
     private readonly IStationRepository _stationRepository;
+    private readonly IWeighingService _weighingService;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<StationsController> _logger;
 
     public StationsController(
         IStationRepository stationRepository,
+        IWeighingService weighingService,
         ITenantContext tenantContext,
         ILogger<StationsController> logger)
     {
         _stationRepository = stationRepository;
+        _weighingService = weighingService;
         _tenantContext = tenantContext;
         _logger = logger;
     }
@@ -190,6 +195,63 @@ public class StationsController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Gets performance metrics for all stations.
+    /// </summary>
+    [HttpGet("performance")]
+    [HasPermission("station.read")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(List<StationPerformanceDto>), 200)]
+    public async Task<IActionResult> GetStationPerformance(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        CancellationToken ct)
+    {
+        try
+        {
+            var from = dateFrom ?? DateTime.UtcNow.AddDays(-30);
+            var to = dateTo ?? DateTime.UtcNow;
+
+            var orgId = _tenantContext.OrganizationId;
+            var stations = await _stationRepository.GetByOrganizationIdAsync(orgId, ct);
+
+            var result = new List<StationPerformanceDto>();
+
+            foreach (var station in stations)
+            {
+                var (items, _) = await _weighingService.SearchTransactionsLightAsync(
+                    stationId: station.Id,
+                    fromDate: from,
+                    toDate: to,
+                    take: 10000);
+
+                var total = items.Count;
+                var legalCount = items.Count(t => string.Equals(t.ControlStatus, "LEGAL", StringComparison.OrdinalIgnoreCase));
+                var overloadedCount = items.Count(t => string.Equals(t.ControlStatus, "OVERLOAD", StringComparison.OrdinalIgnoreCase));
+                var complianceRate = total > 0 ? Math.Round((decimal)legalCount / total * 100, 1) : 0;
+                var revenue = items.Sum(t => t.TotalFeeUsd);
+
+                result.Add(new StationPerformanceDto
+                {
+                    StationId = station.Id,
+                    StationName = station.Name,
+                    TotalWeighings = total,
+                    OverloadedCount = overloadedCount,
+                    ComplianceRate = complianceRate,
+                    Revenue = revenue,
+                    AvgProcessingTime = 0 // TODO: Calculate from weighing timestamps
+                });
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting station performance");
+            return StatusCode(500, "An error occurred while getting station performance.");
+        }
+    }
+
     private static StationDto MapToDto(Station station)
     {
         return new StationDto
@@ -204,6 +266,8 @@ public class StationsController : ControllerBase
             Latitude = station.Latitude,
             Longitude = station.Longitude,
             SupportsBidirectional = station.SupportsBidirectional,
+            BoundACode = station.BoundACode,
+            BoundBCode = station.BoundBCode,
             IsActive = station.IsActive,
             CreatedAt = station.CreatedAt,
             UpdatedAt = station.UpdatedAt

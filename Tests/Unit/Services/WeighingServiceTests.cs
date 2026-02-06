@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Moq;
+using Microsoft.Extensions.Logging;
 using TruLoad.Backend.Data.Repositories.Weighing;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.Weighing;
@@ -10,6 +11,7 @@ using TruLoad.Backend.DTOs.Weighing;
 using Xunit;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using TruLoad.Backend.Data.Repositories.Infrastructure;
+using TruLoad.Backend.Repositories.Infrastructure;
 using System.Threading;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,6 +30,9 @@ public class WeighingServiceTests
     private readonly Mock<IBlobStorageService> _mockBlobStorageService;
     private readonly Mock<IDocumentRepository> _mockDocumentRepository;
     private readonly Mock<IAxleGroupAggregationService> _mockAxleGroupAggregationService;
+    private readonly Mock<IScaleTestRepository> _mockScaleTestRepository;
+    private readonly Mock<IVehicleRepository> _mockVehicleRepository;
+    private readonly Mock<ILogger<WeighingService>> _mockLogger;
     private readonly WeighingService _service;
 
     public WeighingServiceTests()
@@ -42,6 +47,9 @@ public class WeighingServiceTests
         _mockBlobStorageService = new Mock<IBlobStorageService>();
         _mockDocumentRepository = new Mock<IDocumentRepository>();
         _mockAxleGroupAggregationService = new Mock<IAxleGroupAggregationService>();
+        _mockScaleTestRepository = new Mock<IScaleTestRepository>();
+        _mockVehicleRepository = new Mock<IVehicleRepository>();
+        _mockLogger = new Mock<ILogger<WeighingService>>();
 
         // Setup default behavior for aggregation service
         _mockAxleGroupAggregationService
@@ -62,7 +70,10 @@ public class WeighingServiceTests
             _mockPdfService.Object,
             _mockBlobStorageService.Object,
             _mockDocumentRepository.Object,
-            _mockAxleGroupAggregationService.Object
+            _mockAxleGroupAggregationService.Object,
+            _mockScaleTestRepository.Object,
+            _mockVehicleRepository.Object,
+            _mockLogger.Object
         );
     }
 

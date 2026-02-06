@@ -68,9 +68,11 @@ public class CaseRegisterService : ICaseRegisterService
             .FirstOrDefaultAsync(dt => dt.Code == "PENDING")
             ?? throw new InvalidOperationException("Default PENDING disposition not found");
 
-        // Generate case number
-        var station = await _context.Stations.FindAsync(userId); // Simplified - should get from user's station
-        var stationPrefix = station?.Code ?? "CASE";
+        // Generate case number - get user's assigned station
+        var user = await _context.Users
+            .Include(u => u.Station)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+        var stationPrefix = user?.Station?.Code ?? "CASE";
         var caseNo = await _caseRegisterRepository.GenerateNextCaseNumberAsync(stationPrefix);
 
         var caseRegister = new CaseRegister
@@ -147,7 +149,7 @@ public class CaseRegisterService : ICaseRegisterService
         if (existingCase != null)
             throw new InvalidOperationException($"Case already exists for prohibition {prohibitionOrderId}");
 
-        if (prohibition.WeighingId == null || prohibition.WeighingId == Guid.Empty)
+        if (prohibition.WeighingId == Guid.Empty)
             throw new InvalidOperationException("Prohibition order has no associated weighing");
 
         return await CreateCaseFromWeighingAsync(prohibition.WeighingId, userId);
@@ -195,6 +197,23 @@ public class CaseRegisterService : ICaseRegisterService
         var caseRegister = await _caseRegisterRepository.GetByIdAsync(id)
             ?? throw new InvalidOperationException($"Case {id} not found");
 
+        // State machine validation - check current status
+        var currentStatus = caseRegister.CaseStatus?.Code ?? await GetStatusCodeAsync(caseRegister.CaseStatusId);
+
+        // Cases can only be closed from OPEN, INVESTIGATION, or ESCALATED states
+        var closableStates = new[] { "OPEN", "INVESTIGATION", "ESCALATED" };
+        if (!closableStates.Contains(currentStatus))
+        {
+            throw new InvalidOperationException(
+                $"Cannot close case in status '{currentStatus}'. Cases can only be closed from: {string.Join(", ", closableStates)}");
+        }
+
+        // Validate disposition is provided
+        if (request.DispositionTypeId == Guid.Empty)
+        {
+            throw new ArgumentException("Disposition type is required when closing a case");
+        }
+
         // Get "Closed" status
         var closedStatus = await _context.CaseStatuses
             .FirstOrDefaultAsync(cs => cs.Code == "CLOSED")
@@ -205,9 +224,16 @@ public class CaseRegisterService : ICaseRegisterService
         caseRegister.ClosingReason = request.ClosingReason;
         caseRegister.ClosedAt = DateTime.UtcNow;
         caseRegister.ClosedById = userId;
+        caseRegister.UpdatedAt = DateTime.UtcNow;
 
         var updated = await _caseRegisterRepository.UpdateAsync(caseRegister);
         return MapToDto(updated);
+    }
+
+    private async Task<string> GetStatusCodeAsync(Guid statusId)
+    {
+        var status = await _context.CaseStatuses.FindAsync(statusId);
+        return status?.Code ?? "UNKNOWN";
     }
 
     public async Task<CaseRegisterDto> EscalateToCaseManagerAsync(Guid id, Guid caseManagerId, Guid userId)

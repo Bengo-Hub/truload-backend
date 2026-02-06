@@ -368,43 +368,167 @@ var similarEntities = await dbContext.Vehicles
 
 ### Overview
 
-TruConnect is a Node.js/Electron microservice running on client machines that connects to scale indicators and exposes weight data via HTTP endpoints.
+TruConnect is a Node.js/Electron middleware running on client machines that connects to scale indicators (ZM, Cardinal, Haenni, PAW, etc.) and provides weight data to TruLoad via real-time WebSocket or HTTP polling.
 
-### Architecture
+### Connection Modes
 
-**Service Configuration:**
-- Service URL: `TRUCONNECT_URL` (typically `http://localhost:3001`)
+**IMPORTANT:** Only ONE mode should be active at a time. The mode is configured in TruLoad settings.
+
+**1. Real-time WebSocket (DEFAULT)**
+- TruConnect runs WebSocket server on port 8080
+- TruLoad frontend connects as WebSocket client
+- Two-way communication enabled
+- Weights pushed in real-time (<50ms latency)
+- Recommended for production use
+
+**2. API Polling (FALLBACK)**
+- Enabled explicitly in TruLoad configuration
+- TruConnect exposes HTTP API on port 3031
+- TruLoad backend can proxy weights via `/api/weights/proxy`
 - Polling interval: 500ms (configurable)
-- Timeout: 5 seconds
-- Retry policy: Exponential backoff (3 retries)
+- Use when WebSocket not available
 
-**Communication:**
-- HTTP GET requests to `/api/weights/stream`
-- WebSocket fallback (if available)
-- Local-only: Service runs on client machine, not accessible from network
+**Mode Synchronization:** When API polling is enabled in TruLoad, TruConnect MUST also enable its API server endpoint.
 
-### Implementation Details
+### Two-Way Communication Protocol
 
-**Weight Data Format:**
+TruConnect implements bidirectional WebSocket communication:
+
+**TruLoad → TruConnect Messages:**
+
+```typescript
+// Registration (sent on connect)
+{ type: 'register', stationCode: 'ROMIA', bound: 'A', clientType: 'truload' }
+
+// Vehicle plate (from ANPR or manual entry)
+{ type: 'plate', plate: 'KAA 123X', source: 'anpr' | 'manual' }
+
+// Bound switch (bidirectional stations)
+{ type: 'bound-switch', newBound: 'B', newStationCode: 'ROKSA' }
+
+// Status request
+{ type: 'status-request' }
+```
+
+**TruConnect → TruLoad Messages:**
+
+```typescript
+// Weight update (continuous stream)
+{
+  type: 'weights',
+  mode: 'multideck' | 'mobile',
+  stationCode: 'ROMIA',
+  bound: 'A',
+  decks: [{ index: 1, weight: 6500, stable: true }, ...],
+  gvw: 31600,
+  status: 'stable',
+  vehicleOnDeck: true,
+  timestamp: '2026-01-28T10:00:00Z'
+}
+
+// Connection status
+{
+  type: 'status',
+  connected: true,
+  simulation: false,
+  indicators: [{ id: 'ZM1', type: 'ZM', connected: true }]
+}
+
+// Registration acknowledgment
+{ type: 'ack', registered: true, stationCode: 'ROMIA', bound: 'A' }
+```
+
+### Station Code & Bound Architecture
+
+TruLoad supports complex weighbridge naming conventions:
+
+**1. Simple Bidirectional (Single deck per bound)**
+```
+Station: Rongo Weighbridge
+Base Code: ROMI
+Bound A: ROMIA (Nairobi bound)
+Bound B: ROKSA (Kisumu bound)
+Pattern: Last letter indicates bound
+```
+
+**2. Multi-Deck Per Bound (Athi River style)**
+```
+Station: Athi River Mombasa Bound
+Station Code: ATMB
+Deck A: ATMBA (First deck)
+Deck B: ATMBB (Second deck)
+Pattern: [STATION_CODE][DECK_LETTER]
+```
+
+**3. Non-Directional (Single bound)**
+```
+Station: Webuye
+Code: WBMLA
+No bound switching
+```
+
+### Connection Flow
+
+1. TruLoad opens WebSocket to TruConnect (ws://localhost:8080)
+2. TruLoad sends `register` with station code and current bound
+3. TruConnect acknowledges with `ack`
+4. TruConnect streams weights continuously
+5. When plate captured, TruLoad sends `plate` message
+6. TruConnect uses plate for auto-weigh data
+7. On bound change, TruLoad sends `bound-switch`
+8. TruConnect updates station code in subsequent messages
+
+### Weight Data Formats
+
+**Multideck Mode (Static Weighbridge)**
 ```json
 {
-  "deck": 1,
-  "weight": 7950,
-  "stable": true,
-  "timestamp": "2025-10-28T12:34:56Z"
+  "mode": "multideck",
+  "stationCode": "ROMIA",
+  "bound": "A",
+  "decks": [
+    { "index": 1, "weight": 6500, "stable": true },
+    { "index": 2, "weight": 8200, "stable": true },
+    { "index": 3, "weight": 9100, "stable": true },
+    { "index": 4, "weight": 7800, "stable": true }
+  ],
+  "gvw": 31600,
+  "status": "stable",
+  "vehicleOnDeck": true,
+  "timestamp": "2026-01-28T10:00:00Z"
 }
 ```
 
-**Integration Points:**
-- Frontend polls TruConnect directly (client-side)
-- Backend receives finalized weight data from frontend
-- Backend stores raw weight streams in `weight_stream_events` table for audit
-- Backend stores finalized weights in `weighing_axles` table
+**Mobile Mode (Axle-by-Axle / Haenni)**
+```json
+{
+  "mode": "mobile",
+  "stationCode": "WBMLA",
+  "currentAxle": 2,
+  "totalAxles": 5,
+  "axles": [
+    { "axle": 1, "weight": 6500, "captured": true },
+    { "axle": 2, "weight": 8200, "captured": false, "live": true }
+  ],
+  "gvw": 14700,
+  "timestamp": "2026-01-28T10:00:00Z"
+}
+```
 
-**Error Handling:**
-- TruConnect unavailability: Frontend shows "Scales Off" message
-- Connection timeout: Retry with exponential backoff
-- Invalid data: Log error, request retry
+### Integration Points
+
+- Frontend connects to TruConnect via WebSocket (client-side)
+- Frontend sends finalized weighing to backend via REST API
+- Backend stores weighing in `weighings` table
+- Backend stores axle details in `weighing_axles` table
+- Backend validates against EAC/Traffic Act rules
+
+### Error Handling
+
+- **TruConnect unavailable**: Frontend shows "Scales Offline" indicator
+- **WebSocket disconnect**: Auto-reconnect with exponential backoff
+- **Invalid data**: Log error, skip message, continue
+- **Simulation mode**: TruConnect can run without physical scales
 
 ---
 

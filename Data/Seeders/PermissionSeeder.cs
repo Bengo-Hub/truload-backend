@@ -5,7 +5,7 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Data.Seeders;
 
 /// <summary>
-/// Seeds 95 default permissions across 10 categories into the database.
+/// Seeds 105 default permissions across 11 categories into the database.
 /// Run once during application initialization.
 /// </summary>
 public static class PermissionSeeder
@@ -122,6 +122,18 @@ public static class PermissionSeeder
         ("analytics.manage_dashboards", "Manage Dashboards", "Analytics", "Create and manage dashboards"),
         ("analytics.superset", "Superset Access", "Analytics", "Access Superset analytics platform"),
         ("analytics.audit", "Audit Analytics", "Analytics", "View analytics access audit logs"),
+
+        // Financial Category (10 permissions)
+        ("invoice.create", "Create Invoice", "Financial", "Generate invoices for prosecutions"),
+        ("invoice.read", "Read Invoices", "Financial", "Read all invoices"),
+        ("invoice.read_own", "Read Own Invoices", "Financial", "Read own station invoices only"),
+        ("invoice.update", "Update Invoice", "Financial", "Update invoice status"),
+        ("invoice.void", "Void Invoice", "Financial", "Void invoices"),
+        ("receipt.create", "Record Payment", "Financial", "Record payments and create receipts"),
+        ("receipt.read", "Read Receipts", "Financial", "Read all receipts"),
+        ("receipt.read_own", "Read Own Receipts", "Financial", "Read own station receipts only"),
+        ("receipt.void", "Void Receipt", "Financial", "Void receipts"),
+        ("financial.audit", "Audit Financial", "Financial", "View financial audit logs"),
 
         // System Category (10 permissions)
         ("system.admin", "System Admin", "System", "Full system administration access"),

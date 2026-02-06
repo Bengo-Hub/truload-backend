@@ -38,7 +38,7 @@ public class PermissionsController : ControllerBase
     /// <response code="400">Invalid request parameters</response>
     /// <response code="500">Server error during retrieval</response>
     [HttpGet]
-    [HasPermission("system.view_config")]
+    [HasPermission("config.read")]
     [ProducesResponseType(typeof(IEnumerable<PermissionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<IEnumerable<PermissionDto>>> GetAllPermissions(CancellationToken cancellationToken = default)
@@ -73,7 +73,7 @@ public class PermissionsController : ControllerBase
     /// <response code="200">Permission found and returned</response>
     /// <response code="404">Permission not found</response>
     [HttpGet("{id:guid}")]
-    [HasPermission("system.view_config")]
+    [HasPermission("config.read")]
     [ProducesResponseType(typeof(PermissionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PermissionDto>> GetPermissionById(Guid id, CancellationToken cancellationToken = default)
@@ -116,7 +116,7 @@ public class PermissionsController : ControllerBase
     /// <response code="200">Permissions retrieved successfully</response>
     /// <response code="400">Invalid category</response>
     [HttpGet("category/{category}")]
-    [HasPermission("system.view_config")]
+    [HasPermission("config.read")]
     [ProducesResponseType(typeof(IEnumerable<PermissionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<IEnumerable<PermissionDto>>> GetPermissionsByCategory(
@@ -198,7 +198,7 @@ public class PermissionsController : ControllerBase
     /// <response code="200">Permission check completed</response>
     /// <response code="400">Invalid parameters</response>
     [HttpGet("check/{userId:guid}/{permissionCode}")]
-    [HasPermission("system.view_config")]
+    [HasPermission("config.read")]
     [ProducesResponseType(typeof(PermissionCheckResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PermissionCheckResult>> CheckUserPermission(

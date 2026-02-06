@@ -83,4 +83,30 @@ public interface IPermissionService
     /// Removes existing permissions and assigns new ones.
     /// </summary>
     Task SetRolePermissionsAsync(Guid roleId, IEnumerable<Guid> permissionIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get all effective permission codes for a user.
+    /// Aggregates permissions from all assigned roles.
+    /// Cache key: perm:user:{userId}:codes
+    /// Cache TTL: 1 hour
+    /// </summary>
+    Task<IEnumerable<string>> GetUserPermissionCodesAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Invalidate permission cache for a specific user.
+    /// Called when user's roles change.
+    /// </summary>
+    Task InvalidateUserPermissionCacheAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Invalidate all user permission caches for users with a specific role.
+    /// Called when role permissions change.
+    /// </summary>
+    Task InvalidateUsersInRoleCacheAsync(Guid roleId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Invalidate all permission caches.
+    /// Use with caution - expensive operation.
+    /// </summary>
+    Task InvalidateAllPermissionCacheAsync(CancellationToken cancellationToken = default);
 }

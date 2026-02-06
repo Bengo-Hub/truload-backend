@@ -162,6 +162,8 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     public DbSet<ScaleTest> ScaleTests { get; set; } = null!;
     public DbSet<CargoTypes> CargoTypes { get; set; } = null!;
     public DbSet<OriginsDestinations> OriginsDestinations { get; set; } = null!;
+    public DbSet<VehicleMake> VehicleMakes { get; set; } = null!;
+    public DbSet<VehicleModel> VehicleModels { get; set; } = null!;
     public DbSet<Roads> Roads { get; set; } = null!;
     public DbSet<Counties> Counties { get; set; } = null!;
     public DbSet<Districts> Districts { get; set; } = null!;
@@ -208,8 +210,9 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     public DbSet<LoadCorrectionMemo> LoadCorrectionMemos { get; set; } = null!;
     public DbSet<ComplianceCertificate> ComplianceCertificates { get; set; } = null!;
     public DbSet<CaseAssignmentLog> CaseAssignmentLogs { get; set; } = null!;
+    public DbSet<CaseParty> CaseParties { get; set; } = null!;
     public DbSet<Court> Courts { get; set; } = null!;
-    
+
     // ===== Case Management Configuration/Taxonomy Tables =====
     public DbSet<ViolationType> ViolationTypes { get; set; } = null!;
     public DbSet<LegalSection> LegalSections { get; set; } = null!;
@@ -240,6 +243,9 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
 
     // ===== Offline Support Module =====
     public DbSet<DeviceSyncEvent> DeviceSyncEvents { get; set; } = null!;
+
+    // ===== System Settings =====
+    public DbSet<ApplicationSettings> ApplicationSettings { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
