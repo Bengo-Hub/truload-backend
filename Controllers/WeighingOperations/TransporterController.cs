@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
 
@@ -12,6 +13,7 @@ namespace TruLoad.Backend.Controllers.WeighingOperations;
 [ApiController]
 [Route("api/v1/transporters")]
 [Authorize]
+[EnableRateLimiting("weighing")]
 public class TransporterController : ControllerBase
 {
     private readonly ITransporterRepository _repository;

@@ -84,18 +84,25 @@ public class WeighingServiceTests
         var ticketNumber = "TICKET-001";
         var stationId = Guid.NewGuid();
         var userId = Guid.NewGuid();
+        var vehicleId = Guid.NewGuid();
+        var vehicleRegNo = "KAA001A";
+
+        _mockScaleTestRepository.Setup(r => r.HasPassedDailyCalibrationalAsync(stationId, null))
+            .ReturnsAsync(true);
 
         _mockWeighingRepository.Setup(r => r.CreateTransactionAsync(It.IsAny<WeighingTransaction>()))
             .ReturnsAsync((WeighingTransaction t) => t);
 
         // Act
-        var result = await _service.InitiateWeighingAsync(ticketNumber, stationId, userId);
+        var result = await _service.InitiateWeighingAsync(ticketNumber, stationId, userId, vehicleId, vehicleRegNo);
 
         // Assert
         result.Should().NotBeNull();
         result.TicketNumber.Should().Be(ticketNumber);
         result.StationId.Should().Be(stationId);
         result.WeighedByUserId.Should().Be(userId);
+        result.VehicleId.Should().Be(vehicleId);
+        result.VehicleRegNumber.Should().Be(vehicleRegNo);
         result.ControlStatus.Should().Be("Pending");
         result.WeighedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
     }

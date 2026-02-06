@@ -158,33 +158,27 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
 
                 entity.Property(e => e.Make)
                     .HasColumnName("make")
-                    .HasMaxLength(100)
-                    .IsRequired();
+                    .HasMaxLength(100);
 
                 entity.Property(e => e.Model)
                     .HasColumnName("model")
-                    .HasMaxLength(100)
-                    .IsRequired();
+                    .HasMaxLength(100);
 
                 entity.Property(e => e.VehicleType)
                     .HasColumnName("vehicle_type")
-                    .HasMaxLength(50)
-                    .IsRequired();
+                    .HasMaxLength(50);
 
                 entity.Property(e => e.Color)
                     .HasColumnName("color")
-                    .HasMaxLength(50)
-                    .IsRequired();
+                    .HasMaxLength(50);
 
                 entity.Property(e => e.ChassisNo)
                     .HasColumnName("chassis_no")
-                    .HasMaxLength(50)
-                    .IsRequired();
+                    .HasMaxLength(50);
 
                 entity.Property(e => e.EngineNo)
                     .HasColumnName("engine_no")
-                    .HasMaxLength(50)
-                    .IsRequired();
+                    .HasMaxLength(50);
 
                 entity.Property(e => e.YearOfManufacture)
                     .HasColumnName("year_of_manufacture");
@@ -207,8 +201,7 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
 
                 // Foreign keys
                 entity.Property(e => e.OwnerId)
-                    .HasColumnName("owner_id")
-                    .IsRequired();
+                    .HasColumnName("owner_id");
 
                 entity.Property(e => e.TransporterId)
                     .HasColumnName("transporter_id");
@@ -220,7 +213,8 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.HasOne(e => e.Owner)
                     .WithMany(o => o.Vehicles)
                     .HasForeignKey(e => e.OwnerId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                    .IsRequired(false)
+                    .OnDelete(DeleteBehavior.SetNull);
 
                 entity.HasOne(e => e.Transporter)
                     .WithMany(t => t.Vehicles)
@@ -234,7 +228,9 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
 
                 // Indexes
                 entity.HasIndex(e => e.RegNo).IsUnique();
-                entity.HasIndex(e => e.ChassisNo).IsUnique();
+                entity.HasIndex(e => e.ChassisNo)
+                    .IsUnique()
+                    .HasFilter("chassis_no IS NOT NULL");
                 entity.HasIndex(e => e.EngineNo);
                 entity.HasIndex(e => e.OwnerId);
                 entity.HasIndex(e => e.TransporterId);
@@ -369,7 +365,7 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
 
                 entity.Property(e => e.ReweighCycleNo)
                     .HasColumnName("reweigh_cycle_no")
-                    .HasDefaultValue(1);
+                    .HasDefaultValue(0);
 
                 entity.Property(e => e.OriginalWeighingId)
                     .HasColumnName("original_weighing_id");

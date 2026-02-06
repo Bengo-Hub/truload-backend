@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using TruLoad.Backend.Models.Infrastructure;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Repositories.Infrastructure;
@@ -12,6 +13,7 @@ namespace TruLoad.Backend.Controllers.WeighingOperations;
 [ApiController]
 [Route("api/v1/scale-tests")]
 [Authorize]
+[EnableRateLimiting("weighing")]
 public class ScaleTestsController : ControllerBase
 {
     private readonly IScaleTestRepository _scaleTestRepository;
@@ -290,7 +292,7 @@ public class ScaleTestsController : ControllerBase
     /// Delete scale test (soft delete)
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize(Policy = "RequireDeleteScaleTestPermission")]
+    [Authorize(Policy = "Permission:weighing.scale_test")]
     [ProducesResponseType(204)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> Delete(Guid id)

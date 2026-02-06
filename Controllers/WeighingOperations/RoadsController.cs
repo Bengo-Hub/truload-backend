@@ -74,7 +74,7 @@ public class RoadsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = "RequireCreateRoadPermission")]
+    [Authorize(Policy = "Permission:config.manage_taxonomy")]
     [ProducesResponseType(typeof(Roads), 201)]
     [ProducesResponseType(400)]
     [ProducesResponseType(409)]
@@ -92,7 +92,7 @@ public class RoadsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Policy = "RequireUpdateRoadPermission")]
+    [Authorize(Policy = "Permission:config.manage_taxonomy")]
     [ProducesResponseType(typeof(Roads), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(404)]
@@ -117,7 +117,7 @@ public class RoadsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Policy = "RequireDeleteRoadPermission")]
+    [Authorize(Policy = "Permission:config.manage_taxonomy")]
     [ProducesResponseType(204)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> Delete(Guid id)

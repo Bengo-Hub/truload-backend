@@ -131,9 +131,9 @@ public class WeighingTransaction : BaseEntity
     public Pgvector.Vector? ViolationReasonEmbedding { get; set; }
 
     /// <summary>
-    /// Current reweigh cycle (1 = original).
+    /// Current reweigh cycle (0 = original weigh, 1+ = reweigh).
     /// </summary>
-    public int ReweighCycleNo { get; set; } = 1;
+    public int ReweighCycleNo { get; set; } = 0;
 
     /// <summary>
     /// Reference to the parent transaction if this is a reweigh.

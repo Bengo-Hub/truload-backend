@@ -5,7 +5,7 @@ namespace TruLoad.Data.Seeders;
 
 /// <summary>
 /// Seeds role definitions for TruLoad backend.
-/// Defines 7 roles: SUPERUSER, SYSTEM_ADMIN, STATION_MANAGER, WEIGHING_OPERATOR, ENFORCEMENT_OFFICER, INSPECTOR, AUDITOR.
+/// Defines 8 roles: SUPERUSER, SYSTEM_ADMIN, STATION_MANAGER, WEIGHING_OPERATOR, ENFORCEMENT_OFFICER, INSPECTOR, AUDITOR, MIDDLEWARE_SERVICE.
 /// Permissions are managed via RolePermissions junction table (see RolePermissionSeeder).
 /// Idempotent - safe to run multiple times.
 /// </summary>
@@ -34,7 +34,8 @@ public class RoleSeeder
             new { Name = "Weighing Operator", Code = "WEIGHING_OPERATOR", Description = "Weighing operator performing weighing operations and recording weighing data" },
             new { Name = "Enforcement Officer", Code = "ENFORCEMENT_OFFICER", Description = "Enforcement officer with authority to manage cases and enforcement actions" },
             new { Name = "Inspector", Code = "INSPECTOR", Description = "Inspector with authority to view and analyze weighing and case data" },
-            new { Name = "Auditor", Code = "AUDITOR", Description = "Auditor with authority to review and audit system operations and data integrity" }
+            new { Name = "Auditor", Code = "AUDITOR", Description = "Auditor with authority to review and audit system operations and data integrity" },
+            new { Name = "Middleware Service", Code = "MIDDLEWARE_SERVICE", Description = "Service account for TruConnect middleware with limited permissions for autoweigh operations" }
         };
 
         foreach (var roleData in roles)

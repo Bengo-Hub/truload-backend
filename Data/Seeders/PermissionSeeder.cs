@@ -5,13 +5,13 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Data.Seeders;
 
 /// <summary>
-/// Seeds 105 default permissions across 11 categories into the database.
+/// Seeds 119 default permissions across 14 categories into the database.
 /// Run once during application initialization.
 /// </summary>
 public static class PermissionSeeder
 {
     /// <summary>
-    /// Define all 79 permissions across 8 categories.
+    /// Define all permissions across 14 categories.
     /// Each permission has Code, Name, Category, and Description.
     /// </summary>
     private static readonly List<(string Code, string Name, string Category, string Description)> DefaultPermissions = new()
@@ -134,6 +134,22 @@ public static class PermissionSeeder
         ("receipt.read_own", "Read Own Receipts", "Financial", "Read own station receipts only"),
         ("receipt.void", "Void Receipt", "Financial", "Void receipts"),
         ("financial.audit", "Audit Financial", "Financial", "View financial audit logs"),
+
+        // Vehicle Category (3 permissions)
+        ("vehicle.create", "Create Vehicle", "Vehicle", "Create new vehicle records"),
+        ("vehicle.read", "Read Vehicles", "Vehicle", "Read vehicle records"),
+        ("vehicle.update", "Update Vehicle", "Vehicle", "Update vehicle records"),
+
+        // Transporter Category (4 permissions)
+        ("transporter.create", "Create Transporter", "Transporter", "Create new transporter records"),
+        ("transporter.read", "Read Transporters", "Transporter", "Read transporter records"),
+        ("transporter.update", "Update Transporter", "Transporter", "Update transporter records"),
+        ("transporter.delete", "Delete Transporter", "Transporter", "Delete transporter records"),
+
+        // Driver Category (3 permissions)
+        ("driver.create", "Create Driver", "Driver", "Create new driver records"),
+        ("driver.read", "Read Drivers", "Driver", "Read driver records"),
+        ("driver.update", "Update Driver", "Driver", "Update driver records"),
 
         // System Category (10 permissions)
         ("system.admin", "System Admin", "System", "Full system administration access"),

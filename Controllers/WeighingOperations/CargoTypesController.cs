@@ -66,7 +66,7 @@ public class CargoTypesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = "RequireCreateCargoTypePermission")]
+    [Authorize(Policy = "Permission:config.manage_taxonomy")]
     [ProducesResponseType(typeof(CargoTypes), 201)]
     [ProducesResponseType(400)]
     [ProducesResponseType(409)]
@@ -84,7 +84,7 @@ public class CargoTypesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Policy = "RequireUpdateCargoTypePermission")]
+    [Authorize(Policy = "Permission:config.manage_taxonomy")]
     [ProducesResponseType(typeof(CargoTypes), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(404)]
@@ -109,7 +109,7 @@ public class CargoTypesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Policy = "RequireDeleteCargoTypePermission")]
+    [Authorize(Policy = "Permission:config.manage_taxonomy")]
     [ProducesResponseType(204)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> Delete(Guid id)

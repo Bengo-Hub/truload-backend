@@ -15,9 +15,9 @@ public abstract class PagedRequest
     public int PageNumber { get; set; } = 1;
 
     /// <summary>
-    /// Number of items per page. Default: 50. Maximum: 100.
+    /// Number of items per page. Default: 50. Maximum: 1000.
     /// </summary>
-    [Range(1, 100)]
+    [Range(1, 1000)]
     public int PageSize { get; set; } = 50;
 
     /// <summary>

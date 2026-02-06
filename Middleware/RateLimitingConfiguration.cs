@@ -6,26 +6,34 @@ namespace TruLoad.Backend.Middleware;
 /// <summary>
 /// Configuration for rate limiting middleware to prevent API abuse and ensure fair usage.
 /// Uses ASP.NET Core's built-in rate limiting features from .NET 10.
+///
+/// Policy summary (per user, per minute unless noted):
+///   Global (authenticated): 300/min  - baseline for all endpoints
+///   Global (anonymous):      30/min  - stricter for unauthenticated
+///   "weighing":             600/min  - core weighing operations (dashboard, transactions, compliance)
+///   "autoweigh":           1000/min  - machine-to-machine TruConnect middleware traffic
+///   "api":                  200/min  - general API endpoints
+///   "search":               120/min  - search/list endpoints
+///   "reports":               30/5min - heavy operations (PDF, exports)
+///   "auth":                  10/5min - login/token endpoints (brute-force protection)
 /// </summary>
 public static class RateLimitingConfiguration
 {
     /// <summary>
     /// Configures rate limiting services with multiple policies for different use cases.
     /// </summary>
-    /// <param name="services">Service collection</param>
-    /// <returns>Service collection for chaining</returns>
     public static IServiceCollection AddTruLoadRateLimiting(this IServiceCollection services)
     {
         services.AddRateLimiter(options =>
         {
-            // Global default policy - stricter limits for unauthenticated requests
+            // Global default policy - per-user partitioning
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
             {
                 var userId = httpContext.User.Identity?.IsAuthenticated == true
                     ? httpContext.User.FindFirst("sub")?.Value ?? "anonymous"
                     : "anonymous";
 
-                // Anonymous users get lower limits
+                // Anonymous users get stricter limits
                 if (userId == "anonymous")
                 {
                     return RateLimitPartition.GetFixedWindowLimiter(
@@ -39,61 +47,72 @@ public static class RateLimitingConfiguration
                         });
                 }
 
-                // Authenticated users get higher limits
+                // Authenticated users - generous limit so essential workflows aren't blocked
                 return RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: userId,
                     factory: _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 100,
+                        PermitLimit = 300,
                         Window = TimeSpan.FromMinutes(1),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                        QueueLimit = 10
+                        QueueLimit = 20
                     });
             });
 
-            // API policy - general API endpoints (100 requests per minute per user)
-            options.AddFixedWindowLimiter("api", options =>
+            // API policy - general API endpoints
+            options.AddFixedWindowLimiter("api", opts =>
             {
-                options.PermitLimit = 100;
-                options.Window = TimeSpan.FromMinutes(1);
-                options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                options.QueueLimit = 10;
+                opts.PermitLimit = 200;
+                opts.Window = TimeSpan.FromMinutes(1);
+                opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                opts.QueueLimit = 15;
             });
 
-            // Weighing operations - higher limits for high-traffic operations
-            options.AddFixedWindowLimiter("weighing", options =>
+            // Weighing operations - high limits for core operational workflows
+            // (dashboard polling, transaction creation, weight capture, compliance checks)
+            options.AddFixedWindowLimiter("weighing", opts =>
             {
-                options.PermitLimit = 200;
-                options.Window = TimeSpan.FromMinutes(1);
-                options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                options.QueueLimit = 20;
+                opts.PermitLimit = 600;
+                opts.Window = TimeSpan.FromMinutes(1);
+                opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                opts.QueueLimit = 30;
             });
 
-            // Authentication endpoints - stricter limits to prevent brute force
-            options.AddFixedWindowLimiter("auth", options =>
+            // Autoweigh/webhook - highest limits for machine-to-machine traffic
+            // (TruConnect middleware sends bursts of autoweigh data)
+            options.AddFixedWindowLimiter("autoweigh", opts =>
             {
-                options.PermitLimit = 10;
-                options.Window = TimeSpan.FromMinutes(5);
-                options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                options.QueueLimit = 2;
+                opts.PermitLimit = 1000;
+                opts.Window = TimeSpan.FromMinutes(1);
+                opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                opts.QueueLimit = 50;
             });
 
-            // Heavy operations (reports, exports) - lower limits
-            options.AddFixedWindowLimiter("reports", options =>
+            // Authentication endpoints - strict limits to prevent brute force
+            options.AddFixedWindowLimiter("auth", opts =>
             {
-                options.PermitLimit = 20;
-                options.Window = TimeSpan.FromMinutes(5);
-                options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                options.QueueLimit = 5;
+                opts.PermitLimit = 10;
+                opts.Window = TimeSpan.FromMinutes(5);
+                opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                opts.QueueLimit = 2;
+            });
+
+            // Heavy operations (reports, exports, PDF generation) - lower limits
+            options.AddFixedWindowLimiter("reports", opts =>
+            {
+                opts.PermitLimit = 30;
+                opts.Window = TimeSpan.FromMinutes(5);
+                opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                opts.QueueLimit = 5;
             });
 
             // Search endpoints - moderate limits
-            options.AddFixedWindowLimiter("search", options =>
+            options.AddFixedWindowLimiter("search", opts =>
             {
-                options.PermitLimit = 50;
-                options.Window = TimeSpan.FromMinutes(1);
-                options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                options.QueueLimit = 10;
+                opts.PermitLimit = 120;
+                opts.Window = TimeSpan.FromMinutes(1);
+                opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                opts.QueueLimit = 15;
             });
 
             // Rejection response
@@ -124,8 +143,6 @@ public static class RateLimitingConfiguration
     /// Applies rate limiting middleware to the request pipeline.
     /// Should be called after UseRouting() and before UseAuthentication().
     /// </summary>
-    /// <param name="app">Application builder</param>
-    /// <returns>Application builder for chaining</returns>
     public static IApplicationBuilder UseTruLoadRateLimiting(this IApplicationBuilder app)
     {
         app.UseRateLimiter();

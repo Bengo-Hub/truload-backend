@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Data.Repositories.Weighing;
 
@@ -8,6 +9,7 @@ namespace TruLoad.Backend.Controllers.WeighingOperations;
 [ApiController]
 [Route("api/v1/[controller]")]
 [Authorize]
+[EnableRateLimiting("weighing")]
 public class VehicleController : ControllerBase
 {
     private readonly IVehicleRepository _vehicleRepository;

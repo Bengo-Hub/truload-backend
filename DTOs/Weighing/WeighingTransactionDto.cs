@@ -58,6 +58,10 @@ public class WeighingTransactionDto
     public string? CargoType { get; set; }
     public string? CargoDescription { get; set; }
 
+    // Weighing mode
+    public string? WeighingType { get; set; }
+    public string? Bound { get; set; }
+
     // Status & Compliance
     public string ControlStatus { get; set; } = string.Empty;
     public decimal TotalFeeUsd { get; set; }
@@ -65,13 +69,17 @@ public class WeighingTransactionDto
     public bool IsSentToYard { get; set; }
     public string ViolationReason { get; set; } = string.Empty;
 
+    // Capture tracking
+    public string CaptureStatus { get; set; } = string.Empty;
+    public string CaptureSource { get; set; } = string.Empty;
+
     // Timing
     public DateTime WeighedAt { get; set; }
     public int? TimeTakenSeconds { get; set; } // Processing time
 
     // Sync & Reweigh
     public bool IsSync { get; set; }
-    public int ReweighCycleNo { get; set; } = 1;
+    public int ReweighCycleNo { get; set; } = 0;
     public Guid? OriginalWeighingId { get; set; }
 
     // Permit
@@ -271,6 +279,12 @@ public class SearchWeighingRequest : PagedRequest
     public string? AxleConfiguration { get; set; }
     public Guid? TransporterId { get; set; }
 
+    /// <summary>
+    /// Filter by weighing type: mobile, multideck, wim, static
+    /// </summary>
+    [StringLength(20)]
+    public string? WeighingType { get; set; }
+
     // Status Filters
     [StringLength(50)]
     public string? ControlStatus { get; set; } // All, Pending, Passed, Failed, etc.
@@ -378,6 +392,13 @@ public class AutoweighCaptureRequest
     /// When false, CaptureStatus will be "auto". When true, CaptureStatus will be "captured".
     /// </summary>
     public bool IsFinalCapture { get; set; } = false;
+
+    /// <summary>
+    /// Optional: Existing weighing transaction ID from the frontend.
+    /// When provided, the backend updates this transaction instead of creating a new one.
+    /// This links the middleware autoweigh to the frontend-initiated transaction.
+    /// </summary>
+    public Guid? WeighingTransactionId { get; set; }
 }
 
 /// <summary>

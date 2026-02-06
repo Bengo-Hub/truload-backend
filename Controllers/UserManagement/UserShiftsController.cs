@@ -28,7 +28,7 @@ public class UserShiftsController : ControllerBase
     /// <param name="id">User shift ID</param>
     /// <returns>User shift details</returns>
     [HttpGet("{id}")]
-    [Authorize(Policy = "Permission:users.read")]
+    [Authorize(Policy = "Permission:user.manage_shifts")]
     [ProducesResponseType(typeof(UserShiftDto), 200)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> GetById(Guid id)
@@ -58,7 +58,7 @@ public class UserShiftsController : ControllerBase
     /// <param name="activeOnly">Filter to active shifts only</param>
     /// <returns>List of user shifts</returns>
     [HttpGet("user/{userId}")]
-    [Authorize(Policy = "Permission:users.read")]
+    [Authorize(Policy = "Permission:user.manage_shifts")]
     [ProducesResponseType(typeof(List<UserShiftDto>), 200)]
     public async Task<IActionResult> GetByUserId(Guid userId, [FromQuery] bool activeOnly = true)
     {
@@ -81,7 +81,7 @@ public class UserShiftsController : ControllerBase
     /// <param name="userId">User ID</param>
     /// <returns>Active user shift</returns>
     [HttpGet("user/{userId}/active")]
-    [Authorize(Policy = "Permission:users.read")]
+    [Authorize(Policy = "Permission:user.manage_shifts")]
     [ProducesResponseType(typeof(UserShiftDto), 200)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> GetActiveShiftForUser(Guid userId)
@@ -110,7 +110,7 @@ public class UserShiftsController : ControllerBase
     /// <param name="request">User shift details</param>
     /// <returns>Created user shift</returns>
     [HttpPost]
-    [Authorize(Policy = "Permission:users.update")]
+    [Authorize(Policy = "Permission:user.manage_shifts")]
     [ProducesResponseType(typeof(UserShiftDto), 201)]
     [ProducesResponseType(400)]
     public async Task<IActionResult> Create([FromBody] CreateUserShiftRequest request)
@@ -172,7 +172,7 @@ public class UserShiftsController : ControllerBase
     /// <param name="request">Updated details</param>
     /// <returns>Updated user shift</returns>
     [HttpPut("{id}")]
-    [Authorize(Policy = "Permission:users.update")]
+    [Authorize(Policy = "Permission:user.manage_shifts")]
     [ProducesResponseType(typeof(UserShiftDto), 200)]
     [ProducesResponseType(404)]
     [ProducesResponseType(400)]
@@ -243,7 +243,7 @@ public class UserShiftsController : ControllerBase
     /// <param name="id">User shift ID</param>
     /// <returns>No content on success</returns>
     [HttpDelete("{id}")]
-    [Authorize(Policy = "Permission:users.delete")]
+    [Authorize(Policy = "Permission:user.manage_shifts")]
     [ProducesResponseType(204)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> Delete(Guid id)

@@ -72,15 +72,20 @@ public class WeighingRepository : IWeighingRepository
         int skip = 0,
         int take = 50,
         string sortBy = "WeighedAt",
-        string sortOrder = "desc")
+        string sortOrder = "desc",
+        string? weighingType = null)
     {
         var query = _context.WeighingTransactions
             .AsNoTracking()
             .Include(t => t.WeighingAxles)
             .Include(t => t.Vehicle)
+                .ThenInclude(v => v!.AxleConfiguration)
             .Include(t => t.Driver)
             .Include(t => t.Transporter)
             .Include(t => t.Station)
+            .Include(t => t.Origin)
+            .Include(t => t.Destination)
+            .Include(t => t.Cargo)
             .AsQueryable();
 
         // Apply filters
@@ -104,6 +109,9 @@ public class WeighingRepository : IWeighingRepository
 
         if (operatorId.HasValue)
             query = query.Where(t => t.WeighedByUserId == operatorId.Value);
+
+        if (!string.IsNullOrWhiteSpace(weighingType))
+            query = query.Where(t => t.WeighingType == weighingType);
 
         // Get total count before pagination
         var totalCount = await query.CountAsync();

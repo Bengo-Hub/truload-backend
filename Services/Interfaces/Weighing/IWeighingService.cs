@@ -7,27 +7,32 @@ namespace TruLoad.Backend.Services.Interfaces.Weighing;
 public interface IWeighingService
 {
     /// <summary>
-    /// Initiates a weighing transaction (basic - for backward compatibility).
-    /// </summary>
-    Task<WeighingTransaction> InitiateWeighingAsync(string ticketNumber, Guid stationId, Guid userId);
-
-    /// <summary>
     /// Initiates a weighing transaction with scale test validation.
     /// Per FRD: Scale test must be completed once daily per station/bound before weighing operations.
     /// </summary>
     /// <param name="ticketNumber">Unique ticket identifier</param>
     /// <param name="stationId">Station where weighing occurs</param>
     /// <param name="userId">User performing the weighing</param>
+    /// <param name="vehicleId">Resolved vehicle ID</param>
+    /// <param name="vehicleRegNo">Vehicle registration number snapshot</param>
     /// <param name="bound">Direction/bound for bidirectional stations (A or B)</param>
     /// <param name="scaleTestId">Optional scale test ID (auto-resolved if not provided)</param>
+    /// <param name="driverId">Optional driver ID</param>
+    /// <param name="transporterId">Optional transporter ID</param>
+    /// <param name="weighingType">Weighing type (static, wim, axle)</param>
     /// <returns>The created weighing transaction</returns>
     /// <exception cref="InvalidOperationException">Thrown if no valid scale test exists for today</exception>
     Task<WeighingTransaction> InitiateWeighingAsync(
         string ticketNumber,
         Guid stationId,
         Guid userId,
-        string? bound,
-        Guid? scaleTestId);
+        Guid vehicleId,
+        string vehicleRegNo,
+        string? bound = null,
+        Guid? scaleTestId = null,
+        Guid? driverId = null,
+        Guid? transporterId = null,
+        string weighingType = "static");
 
     Task<WeighingTransaction> InitiateReweighAsync(Guid originalTransactionId, string ticketNumber, Guid userId);
     Task<WeighingTransaction> CaptureWeightsAsync(Guid transactionId, List<WeighingAxle> axles);
@@ -53,7 +58,8 @@ public interface IWeighingService
         int skip = 0,
         int take = 50,
         string sortBy = "WeighedAt",
-        string sortOrder = "desc");
+        string sortOrder = "desc",
+        string? weighingType = null);
 
     /// <summary>
     /// Lightweight search without navigation property includes.

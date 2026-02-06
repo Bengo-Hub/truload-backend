@@ -20,7 +20,8 @@ public interface IWeighingRepository
         int skip = 0,
         int take = 50,
         string sortBy = "WeighedAt",
-        string sortOrder = "desc");
+        string sortOrder = "desc",
+        string? weighingType = null);
 
     /// <summary>
     /// Lightweight search without navigation property includes.

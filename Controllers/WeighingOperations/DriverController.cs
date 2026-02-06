@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Data.Repositories.Weighing;
 
@@ -8,6 +9,7 @@ namespace TruLoad.Backend.Controllers.WeighingOperations;
 [ApiController]
 [Route("api/v1/drivers")]
 [Authorize]
+[EnableRateLimiting("weighing")]
 public class DriverController : ControllerBase
 {
     private readonly IDriverRepository _driverRepository;
@@ -56,14 +58,27 @@ public class DriverController : ControllerBase
     public async Task<IActionResult> Create([FromBody] Driver driver)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
-        
-        var existing = await _driverRepository.GetByIdNumberAsync(driver.IdNumber);
-        if (existing != null)
-            return Conflict($"Driver with ID {driver.IdNumber} already exists.");
-        
-        existing = await _driverRepository.GetByLicenseAsync(driver.DrivingLicenseNo);
-        if (existing != null)
-            return Conflict($"Driver with License {driver.DrivingLicenseNo} already exists.");
+
+        // Validate required name fields
+        if (string.IsNullOrWhiteSpace(driver.FullNames))
+            return BadRequest("Full names (first name) is required.");
+        if (string.IsNullOrWhiteSpace(driver.Surname))
+            return BadRequest("Surname (last name) is required.");
+
+        // Only check for duplicates when the field has a value (skip empty strings)
+        if (!string.IsNullOrWhiteSpace(driver.IdNumber))
+        {
+            var existing = await _driverRepository.GetByIdNumberAsync(driver.IdNumber);
+            if (existing != null)
+                return Conflict($"Driver with ID {driver.IdNumber} already exists.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(driver.DrivingLicenseNo))
+        {
+            var existing = await _driverRepository.GetByLicenseAsync(driver.DrivingLicenseNo);
+            if (existing != null)
+                return Conflict($"Driver with License {driver.DrivingLicenseNo} already exists.");
+        }
 
         var created = await _driverRepository.CreateAsync(driver);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);

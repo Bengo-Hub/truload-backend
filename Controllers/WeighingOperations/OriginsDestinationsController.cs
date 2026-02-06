@@ -74,7 +74,7 @@ public class OriginsDestinationsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = "RequireCreateOriginDestinationPermission")]
+    [Authorize(Policy = "Permission:config.manage_taxonomy")]
     [ProducesResponseType(typeof(OriginsDestinations), 201)]
     [ProducesResponseType(400)]
     [ProducesResponseType(409)]
@@ -92,7 +92,7 @@ public class OriginsDestinationsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Policy = "RequireUpdateOriginDestinationPermission")]
+    [Authorize(Policy = "Permission:config.manage_taxonomy")]
     [ProducesResponseType(typeof(OriginsDestinations), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(404)]
@@ -117,7 +117,7 @@ public class OriginsDestinationsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Policy = "RequireDeleteOriginDestinationPermission")]
+    [Authorize(Policy = "Permission:config.manage_taxonomy")]
     [ProducesResponseType(204)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> Delete(Guid id)

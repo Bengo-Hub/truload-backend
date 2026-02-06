@@ -31,7 +31,7 @@ public class ShiftRotationsController : ControllerBase
     /// <param name="includeInactive">Include inactive rotations</param>
     /// <returns>List of shift rotations</returns>
     [HttpGet]
-    [Authorize(Policy = "Permission:users.read")]
+    [Authorize(Policy = "Permission:user.manage_shifts")]
     [ProducesResponseType(typeof(List<ShiftRotationDto>), 200)]
     public async Task<IActionResult> GetAll([FromQuery] bool includeInactive = false)
     {
@@ -54,7 +54,7 @@ public class ShiftRotationsController : ControllerBase
     /// <param name="id">Shift rotation ID</param>
     /// <returns>Shift rotation details</returns>
     [HttpGet("{id}")]
-    [Authorize(Policy = "Permission:users.read")]
+    [Authorize(Policy = "Permission:user.manage_shifts")]
     [ProducesResponseType(typeof(ShiftRotationDto), 200)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> GetById(Guid id)
@@ -83,7 +83,7 @@ public class ShiftRotationsController : ControllerBase
     /// <param name="request">Shift rotation details</param>
     /// <returns>Created shift rotation</returns>
     [HttpPost]
-    [Authorize(Policy = "Permission:users.create")]
+    [Authorize(Policy = "Permission:user.manage_shifts")]
     [ProducesResponseType(typeof(ShiftRotationDto), 201)]
     [ProducesResponseType(400)]
     public async Task<IActionResult> Create([FromBody] CreateShiftRotationRequest request)
@@ -169,7 +169,7 @@ public class ShiftRotationsController : ControllerBase
     /// <param name="request">Updated details</param>
     /// <returns>Updated shift rotation</returns>
     [HttpPut("{id}")]
-    [Authorize(Policy = "Permission:users.update")]
+    [Authorize(Policy = "Permission:user.manage_shifts")]
     [ProducesResponseType(typeof(ShiftRotationDto), 200)]
     [ProducesResponseType(404)]
     [ProducesResponseType(400)]
@@ -264,7 +264,7 @@ public class ShiftRotationsController : ControllerBase
     /// <param name="request">Updated rotation shifts</param>
     /// <returns>Updated shift rotation</returns>
     [HttpPut("{id}/rotation-shifts")]
-    [Authorize(Policy = "Permission:users.update")]
+    [Authorize(Policy = "Permission:user.manage_shifts")]
     [ProducesResponseType(typeof(ShiftRotationDto), 200)]
     [ProducesResponseType(404)]
     [ProducesResponseType(400)]
@@ -325,7 +325,7 @@ public class ShiftRotationsController : ControllerBase
     /// <param name="id">Shift rotation ID</param>
     /// <returns>No content on success</returns>
     [HttpDelete("{id}")]
-    [Authorize(Policy = "Permission:users.delete")]
+    [Authorize(Policy = "Permission:user.manage_shifts")]
     [ProducesResponseType(204)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> Delete(Guid id)

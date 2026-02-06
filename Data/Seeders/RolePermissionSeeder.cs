@@ -5,7 +5,7 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Data.Seeders;
 
 /// <summary>
-/// Seeds role-permission assignments for 7 built-in roles.
+/// Seeds role-permission assignments for 8 built-in roles.
 /// Assigns permissions based on role type and authorization level.
 /// SUPERUSER: 109 permissions (all) - maps to auth-service superuser flag
 /// SYSTEM_ADMIN: 108 permissions (all except system.admin)
@@ -14,6 +14,7 @@ namespace TruLoad.Data.Seeders;
 /// ENFORCEMENT_OFFICER: 44 permissions (incl. financial create/read)
 /// INSPECTOR: 26 permissions
 /// AUDITOR: 36 permissions (incl. financial read/audit)
+/// MIDDLEWARE_SERVICE: 7 permissions (autoweigh operations only)
 /// </summary>
 public static class RolePermissionSeeder
 {
@@ -26,6 +27,7 @@ public static class RolePermissionSeeder
     /// ENFORCEMENT_OFFICER: 44 permissions (incl. financial)
     /// INSPECTOR: 26 permissions
     /// AUDITOR: 36 permissions (incl. financial read/audit)
+    /// MIDDLEWARE_SERVICE: 7 permissions (autoweigh operations only)
     /// </summary>
     private static readonly Dictionary<string, List<string>> RolePermissions = new()
     {
@@ -58,6 +60,9 @@ public static class RolePermissionSeeder
                 "invoice.create", "invoice.read", "invoice.read_own", "invoice.update", "invoice.void",
                 "receipt.create", "receipt.read", "receipt.read_own", "receipt.void",
                 "financial.audit",
+                "vehicle.create", "vehicle.read", "vehicle.update",
+                "transporter.create", "transporter.read", "transporter.update", "transporter.delete",
+                "driver.create", "driver.read", "driver.update",
                 "system.admin", "system.manage_roles", "system.manage_organizations", "system.manage_stations",
                 "system.manage_departments", "system.audit_logs", "system.cache_management",
                 "system.integration_management", "system.backup_restore", "system.security_policy"
@@ -92,6 +97,9 @@ public static class RolePermissionSeeder
                 "invoice.create", "invoice.read", "invoice.read_own", "invoice.update", "invoice.void",
                 "receipt.create", "receipt.read", "receipt.read_own", "receipt.void",
                 "financial.audit",
+                "vehicle.create", "vehicle.read", "vehicle.update",
+                "transporter.create", "transporter.read", "transporter.update", "transporter.delete",
+                "driver.create", "driver.read", "driver.update",
                 "system.manage_roles", "system.manage_organizations", "system.manage_stations",
                 "system.manage_departments", "system.audit_logs", "system.cache_management",
                 "system.integration_management", "system.backup_restore", "system.security_policy"
@@ -115,7 +123,10 @@ public static class RolePermissionSeeder
                 "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit",
                 "invoice.create", "invoice.read", "invoice.read_own", "invoice.update",
                 "receipt.create", "receipt.read", "receipt.read_own",
-                "financial.audit"
+                "financial.audit",
+                "vehicle.create", "vehicle.read", "vehicle.update",
+                "transporter.create", "transporter.read", "transporter.update",
+                "driver.create", "driver.read", "driver.update"
             }
         },
         {
@@ -133,7 +144,8 @@ public static class RolePermissionSeeder
                 "user.read", "user.read_own", "user.audit",
                 "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit",
                 "invoice.create", "invoice.read", "invoice.read_own",
-                "receipt.create", "receipt.read", "receipt.read_own"
+                "receipt.create", "receipt.read", "receipt.read_own",
+                "vehicle.read", "driver.read", "transporter.read"
             }
         },
         {
@@ -143,7 +155,10 @@ public static class RolePermissionSeeder
                 "weighing.create", "weighing.read_own", "weighing.scale_test", "weighing.audit",
                 "weighing.send_to_yard", "weighing.export",
                 "yard.create", "yard.read_own",
-                "tag.create", "tag.read_own"
+                "tag.create", "tag.read_own",
+                "vehicle.create", "vehicle.read", "vehicle.update",
+                "driver.create", "driver.read", "driver.update",
+                "transporter.read"
             }
         },
         {
@@ -175,6 +190,14 @@ public static class RolePermissionSeeder
                 "invoice.read", "invoice.read_own",
                 "receipt.read", "receipt.read_own",
                 "financial.audit"
+            }
+        },
+        {
+            "MIDDLEWARE_SERVICE", new List<string>
+            {
+                // Limited permissions for TruConnect middleware autoweigh operations
+                "weighing.create", "weighing.read", "weighing.update", "weighing.webhook",
+                "vehicle.read", "driver.read", "transporter.read"
             }
         }
     };

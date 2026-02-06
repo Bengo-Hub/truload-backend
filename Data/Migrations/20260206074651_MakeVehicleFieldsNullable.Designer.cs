@@ -3,6 +3,7 @@ using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -10,12 +11,14 @@ using TruLoad.Backend.Data;
 
 #nullable disable
 
-namespace TruLoad.Backend.Migrations
+namespace TruLoad.Backend.Data.Migrations
 {
     [DbContext(typeof(TruLoadDbContext))]
-    partial class TruLoadDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260206074651_MakeVehicleFieldsNullable")]
+    partial class MakeVehicleFieldsNullable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -5825,7 +5828,7 @@ namespace TruLoad.Backend.Migrations
                     b.Property<int>("ReweighCycleNo")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasDefaultValue(0)
+                        .HasDefaultValue(1)
                         .HasColumnName("reweigh_cycle_no");
 
                     b.Property<int>("ReweighLimit")

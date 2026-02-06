@@ -57,21 +57,22 @@ public class WeighingService : IWeighingService
         _logger = logger;
     }
 
-    public async Task<WeighingTransaction> InitiateWeighingAsync(string ticketNumber, Guid stationId, Guid userId)
-    {
-        return await InitiateWeighingAsync(ticketNumber, stationId, userId, bound: null, scaleTestId: null);
-    }
-
     /// <summary>
     /// Initiates a weighing transaction with scale test validation.
     /// Per FRD: Scale test must be completed once daily per station/bound before weighing operations.
+    /// All required FK fields (vehicleId) must be provided to avoid FK constraint violations on save.
     /// </summary>
     public async Task<WeighingTransaction> InitiateWeighingAsync(
         string ticketNumber,
         Guid stationId,
         Guid userId,
-        string? bound,
-        Guid? scaleTestId)
+        Guid vehicleId,
+        string vehicleRegNo,
+        string? bound = null,
+        Guid? scaleTestId = null,
+        Guid? driverId = null,
+        Guid? transporterId = null,
+        string weighingType = "static")
     {
         // Validate scale test requirement
         var hasValidScaleTest = await _scaleTestRepository.HasPassedDailyCalibrationalAsync(stationId, bound);
@@ -98,6 +99,11 @@ public class WeighingService : IWeighingService
             TicketNumber = ticketNumber,
             StationId = stationId,
             WeighedByUserId = userId,
+            VehicleId = vehicleId,
+            VehicleRegNumber = vehicleRegNo,
+            DriverId = driverId,
+            TransporterId = transporterId,
+            WeighingType = weighingType,
             Bound = bound,
             ScaleTestId = validScaleTestId,
             ControlStatus = "Pending",
@@ -105,8 +111,8 @@ public class WeighingService : IWeighingService
         };
 
         _logger.LogInformation(
-            "Weighing transaction initiated: {TicketNumber}, Station: {StationId}, Bound: {Bound}, ScaleTest: {ScaleTestId}",
-            ticketNumber, stationId, bound, validScaleTestId);
+            "Weighing transaction initiated: {TicketNumber}, Station: {StationId}, Vehicle: {VehicleId}, Bound: {Bound}, ScaleTest: {ScaleTestId}",
+            ticketNumber, stationId, vehicleId, bound, validScaleTestId);
 
         return await _weighingRepository.CreateTransactionAsync(transaction);
     }
@@ -151,6 +157,17 @@ public class WeighingService : IWeighingService
 
         transaction.WeighingAxles = axles;
         transaction.GvwMeasuredKg = axles.Sum(a => a.MeasuredWeightKg);
+
+        // If this transaction was auto-weighed by middleware, update to "captured" now that
+        // the frontend is submitting final weights
+        if (transaction.CaptureStatus == "auto")
+        {
+            transaction.CaptureStatus = "captured";
+            transaction.CaptureSource = "frontend";
+            _logger.LogInformation(
+                "Updated CaptureStatus from 'auto' to 'captured' for transaction {TransactionId}",
+                transactionId);
+        }
 
         // Initial simplified compliance check
         await CalculateComplianceAsync(transactionId); // Should be called explicitly usually, but good to have here
@@ -572,7 +589,8 @@ public class WeighingService : IWeighingService
         int skip = 0,
         int take = 50,
         string sortBy = "WeighedAt",
-        string sortOrder = "desc")
+        string sortOrder = "desc",
+        string? weighingType = null)
     {
         return await _weighingRepository.SearchTransactionsAsync(
             stationId,
@@ -585,7 +603,8 @@ public class WeighingService : IWeighingService
             skip,
             take,
             sortBy,
-            sortOrder);
+            sortOrder,
+            weighingType);
     }
 
     public async Task<(List<WeighingTransaction> Items, int TotalCount)> SearchTransactionsLightAsync(
@@ -627,11 +646,31 @@ public class WeighingService : IWeighingService
             }
         }
 
-        // 2. For final capture, look for existing auto-weigh record to update
+        // 2. Look for existing transaction to update
         WeighingTransaction? transaction = null;
         bool isUpdate = false;
 
-        if (request.IsFinalCapture)
+        // 2a. If WeighingTransactionId provided, look up that specific transaction
+        if (request.WeighingTransactionId.HasValue)
+        {
+            transaction = await _weighingRepository.GetTransactionByIdAsync(request.WeighingTransactionId.Value);
+            if (transaction != null)
+            {
+                isUpdate = true;
+                _logger.LogInformation(
+                    "Found frontend-created transaction {TransactionId} for autoweigh sync",
+                    transaction.Id);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "WeighingTransactionId {TransactionId} not found, proceeding with normal flow",
+                    request.WeighingTransactionId.Value);
+            }
+        }
+
+        // 2b. Fallback: For final capture, look for existing auto-weigh record by vehicle
+        if (transaction == null && request.IsFinalCapture)
         {
             transaction = await _weighingRepository.GetLatestAutoweighByVehicleAsync(
                 vehicleRegNumber, request.StationId, request.Bound);
@@ -644,7 +683,7 @@ public class WeighingService : IWeighingService
                     transaction.Id);
             }
         }
-        else
+        else if (transaction == null)
         {
             // For auto-weigh (non-final), mark any previous incomplete sessions as not_weighed
             var markedCount = await _weighingRepository.MarkPendingAsNotWeighedAsync(
@@ -675,8 +714,8 @@ public class WeighingService : IWeighingService
         var todaysTest = await _scaleTestRepository.GetTodaysPassingTestAsync(request.StationId, request.Bound);
         var scaleTestId = todaysTest?.Id;
 
-        // 5. Look up or identify vehicle
-        Guid vehicleId = Guid.Empty;
+        // 5. Look up or auto-create vehicle (required FK - cannot be Guid.Empty)
+        Guid vehicleId;
         bool vehicleFound = false;
 
         if (request.VehicleId.HasValue)
@@ -688,6 +727,14 @@ public class WeighingService : IWeighingService
                 vehicleFound = true;
                 vehicleRegNumber = vehicle.RegNo;
             }
+            else
+            {
+                // VehicleId provided but not found - auto-create with reg number
+                var newVehicle = new Vehicle { RegNo = vehicleRegNumber };
+                var created = await _vehicleRepository.CreateAsync(newVehicle);
+                vehicleId = created.Id;
+                _logger.LogInformation("Autoweigh: Auto-created vehicle {RegNo} with ID {VehicleId}", vehicleRegNumber, vehicleId);
+            }
         }
         else
         {
@@ -696,6 +743,14 @@ public class WeighingService : IWeighingService
             {
                 vehicleId = vehicle.Id;
                 vehicleFound = true;
+            }
+            else
+            {
+                // Vehicle not found by reg number - auto-create
+                var newVehicle = new Vehicle { RegNo = vehicleRegNumber };
+                var created = await _vehicleRepository.CreateAsync(newVehicle);
+                vehicleId = created.Id;
+                _logger.LogInformation("Autoweigh: Auto-created vehicle {RegNo} with ID {VehicleId}", vehicleRegNumber, vehicleId);
             }
         }
 
@@ -712,7 +767,7 @@ public class WeighingService : IWeighingService
                 WeighedByUserId = userId,
                 Bound = request.Bound,
                 ScaleTestId = scaleTestId,
-                VehicleId = vehicleId != Guid.Empty ? vehicleId : Guid.Empty,
+                VehicleId = vehicleId,
                 VehicleRegNumber = vehicleRegNumber,
                 WeighingType = request.WeighingMode ?? "static",
                 ControlStatus = "Pending",

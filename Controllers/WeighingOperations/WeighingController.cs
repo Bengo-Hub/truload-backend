@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using TruLoad.Backend.Services.Interfaces.Weighing;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models;
@@ -14,6 +15,7 @@ namespace TruLoad.Backend.Controllers.WeighingOperations;
 [ApiController]
 [Route("api/v1/weighing-transactions")]
 [Authorize]
+[EnableRateLimiting("weighing")]
 public class WeighingController : ControllerBase
 {
     private readonly IWeighingService _weighingService;
@@ -71,7 +73,8 @@ public class WeighingController : ControllerBase
                 request.Skip,
                 request.PageSize,
                 request.SortBy,
-                request.SortOrder);
+                request.SortOrder,
+                request.WeighingType);
 
             var dtos = items.Select(t => MapToDto(t)).ToList();
 
@@ -183,17 +186,13 @@ public class WeighingController : ControllerBase
                 request.TicketNumber,
                 request.StationId,
                 userGuid,
+                vehicleId,
+                vehicleRegNo,
                 request.Bound,
-                request.ScaleTestId);
-
-            // Set additional fields and persist
-            transaction.VehicleId = vehicleId;
-            transaction.VehicleRegNumber = vehicleRegNo;
-            transaction.DriverId = request.DriverId;
-            transaction.TransporterId = request.TransporterId;
-            transaction.WeighingType = request.WeighingType;
-
-            await _weighingService.UpdateTransactionAsync(transaction);
+                request.ScaleTestId,
+                request.DriverId,
+                request.TransporterId,
+                request.WeighingType ?? "static");
 
             var dto = MapToDto(transaction);
             return CreatedAtAction(nameof(GetById), new { id = transaction.Id }, dto);
@@ -372,6 +371,7 @@ public class WeighingController : ControllerBase
     /// <returns>Compliance result with weighing details</returns>
     [HttpPost("autoweigh")]
     [Authorize(Policy = "Permission:weighing.webhook")]
+    [EnableRateLimiting("autoweigh")]
     [Produces("application/json")]
     [ProducesResponseType(typeof(AutoweighResultDto), 201)]
     [ProducesResponseType(400)]
@@ -828,19 +828,45 @@ public class WeighingController : ControllerBase
             TransporterId = transaction.TransporterId,
             StationId = transaction.StationId,
             WeighedByUserId = transaction.WeighedByUserId,
+            WeighingType = transaction.WeighingType,
+            Bound = transaction.Bound,
             GvwMeasuredKg = transaction.GvwMeasuredKg,
             GvwPermissibleKg = transaction.GvwPermissibleKg,
             OverloadKg = transaction.OverloadKg,
+            ExcessKg = Math.Max(0, transaction.OverloadKg),
             ControlStatus = transaction.ControlStatus,
             TotalFeeUsd = transaction.TotalFeeUsd,
-            WeighedAt = transaction.WeighedAt,
-            IsSync = transaction.IsSync,
             IsCompliant = transaction.IsCompliant,
             IsSentToYard = transaction.IsSentToYard,
             ViolationReason = transaction.ViolationReason,
+            CaptureStatus = transaction.CaptureStatus,
+            CaptureSource = transaction.CaptureSource,
+            WeighedAt = transaction.WeighedAt,
+            IsSync = transaction.IsSync,
             ReweighCycleNo = transaction.ReweighCycleNo,
             OriginalWeighingId = transaction.OriginalWeighingId,
             HasPermit = transaction.HasPermit,
+
+            // Vehicle details
+            VehicleMake = transaction.Vehicle?.Make,
+            VehicleModel = transaction.Vehicle?.Model,
+            VehicleType = transaction.Vehicle?.VehicleType,
+            AxleConfiguration = transaction.Vehicle?.AxleConfiguration?.AxleCode,
+
+            // People
+            DriverName = transaction.Driver?.FullNames,
+            TransporterName = transaction.Transporter?.Name,
+
+            // Station
+            StationName = transaction.Station?.Name,
+            StationCode = transaction.Station?.Code,
+
+            // Route & Cargo
+            SourceLocation = transaction.Origin?.Name,
+            DestinationLocation = transaction.Destination?.Name,
+            CargoType = transaction.Cargo?.Name,
+            CargoDescription = transaction.Cargo?.Category,
+
             WeighingAxles = transaction.WeighingAxles?.Select(a => new WeighingAxleDto
             {
                 Id = a.Id,
