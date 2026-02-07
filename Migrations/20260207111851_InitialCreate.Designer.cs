@@ -14,8 +14,8 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Backend.Migrations
 {
     [DbContext(typeof(TruLoadDbContext))]
-    [Migration("20260129134302_AddStationBoundCodes")]
-    partial class AddStationBoundCodes
+    [Migration("20260207111851_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -758,9 +758,20 @@ namespace TruLoad.Backend.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
+                    b.Property<bool>("IsCurrent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_current");
+
                     b.Property<Guid>("NewOfficerId")
                         .HasColumnType("uuid")
                         .HasColumnName("new_officer_id");
+
+                    b.Property<string>("OfficerRank")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("officer_rank");
 
                     b.Property<Guid?>("PreviousOfficerId")
                         .HasColumnType("uuid")
@@ -795,9 +806,12 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("CaseRegisterId", "AssignedAt")
                         .HasDatabaseName("idx_case_assignment_logs_case_timeline");
 
+                    b.HasIndex("CaseRegisterId", "IsCurrent")
+                        .HasDatabaseName("idx_case_assignment_logs_current_io");
+
                     b.ToTable("case_assignment_logs", null, t =>
                         {
-                            t.HasCheckConstraint("chk_case_assignment_type", "assignment_type IN ('initial', 're_assignment', 'transfer')");
+                            t.HasCheckConstraint("chk_case_assignment_type", "assignment_type IN ('initial', 're_assignment', 'transfer', 'handover')");
                         });
                 });
 
@@ -1005,6 +1019,129 @@ namespace TruLoad.Backend.Migrations
                     b.ToTable("case_managers", null, t =>
                         {
                             t.HasCheckConstraint("ck_case_managers_role_type", "role_type IN ('case_manager', 'prosecutor', 'investigator')");
+                        });
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.CaseManagement.CaseParty", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("AddedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("added_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("CaseRegisterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("case_register_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("driver_id");
+
+                    b.Property<string>("ExternalIdNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("external_id_number");
+
+                    b.Property<string>("ExternalName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("external_name");
+
+                    b.Property<string>("ExternalPhone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("external_phone");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsCurrentlyActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_currently_active");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("PartyRole")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("defendant_driver")
+                        .HasColumnName("party_role");
+
+                    b.Property<DateTime?>("RemovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("removed_at");
+
+                    b.Property<Guid?>("TransporterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("transporter_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid?>("VehicleOwnerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vehicle_owner_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CaseRegisterId")
+                        .HasDatabaseName("idx_case_parties_case_id");
+
+                    b.HasIndex("DriverId")
+                        .HasDatabaseName("idx_case_parties_driver_id");
+
+                    b.HasIndex("IsCurrentlyActive")
+                        .HasDatabaseName("idx_case_parties_active");
+
+                    b.HasIndex("PartyRole")
+                        .HasDatabaseName("idx_case_parties_role");
+
+                    b.HasIndex("TransporterId");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("idx_case_parties_user_id");
+
+                    b.HasIndex("VehicleOwnerId");
+
+                    b.HasIndex("CaseRegisterId", "PartyRole", "IsCurrentlyActive")
+                        .HasDatabaseName("idx_case_parties_case_role_active");
+
+                    b.ToTable("case_parties", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_case_party_role", "party_role IN ('investigating_officer', 'ocs', 'arresting_officer', 'prosecutor', 'defendant_driver', 'defendant_owner', 'defendant_transporter', 'witness', 'complainant')");
                         });
                 });
 
@@ -2163,6 +2300,12 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ApprovedById")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("AuthorizedById")
                         .HasColumnType("uuid")
                         .HasColumnName("authorized_by_id");
@@ -2183,11 +2326,17 @@ namespace TruLoad.Backend.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("compliance_achieved");
 
+                    b.Property<Guid?>("ComplianceCertificateId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2195,11 +2344,20 @@ namespace TruLoad.Backend.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRejected")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("IssuedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("issued_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid?>("LoadCorrectionMemoId")
+                        .HasColumnType("uuid");
 
                     b.Property<int?>("OverloadKg")
                         .HasColumnType("integer")
@@ -2215,6 +2373,16 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("redistribution_allowed");
+
+                    b.Property<DateTime?>("RejectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("RejectedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<Guid>("ReleaseTypeId")
                         .HasColumnType("uuid")
@@ -3307,6 +3475,165 @@ namespace TruLoad.Backend.Migrations
                     b.ToTable("subcounties", (string)null);
                 });
 
+            modelBuilder.Entity("TruLoad.Backend.Models.Infrastructure.VehicleMake", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("country");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("idx_vehicle_makes_code");
+
+                    b.HasIndex("Country")
+                        .HasDatabaseName("idx_vehicle_makes_country");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("idx_vehicle_makes_is_active");
+
+                    b.HasIndex("Name")
+                        .HasDatabaseName("idx_vehicle_makes_name");
+
+                    b.ToTable("vehicle_makes", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Infrastructure.VehicleModel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid?>("AxleConfigurationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("axle_configuration_id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<Guid>("MakeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("make_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("VehicleCategory")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Truck")
+                        .HasColumnName("vehicle_category");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AxleConfigurationId");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("idx_vehicle_models_code");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("idx_vehicle_models_is_active");
+
+                    b.HasIndex("MakeId")
+                        .HasDatabaseName("idx_vehicle_models_make_id");
+
+                    b.HasIndex("Name")
+                        .HasDatabaseName("idx_vehicle_models_name");
+
+                    b.HasIndex("VehicleCategory")
+                        .HasDatabaseName("idx_vehicle_models_category");
+
+                    b.ToTable("vehicle_models", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_vehicle_category", "vehicle_category IN ('Truck', 'Trailer', 'Bus', 'Van', 'Other')");
+                        });
+                });
+
             modelBuilder.Entity("TruLoad.Backend.Models.Infrastructure.WeighbridgeHardware", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4114,6 +4441,68 @@ namespace TruLoad.Backend.Migrations
                     b.ToTable("stations", (string)null);
                 });
 
+            modelBuilder.Entity("TruLoad.Backend.Models.System.ApplicationSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DefaultValue")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsEditable")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("SettingKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SettingType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("SettingValue")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ValidationRules")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("application_settings");
+                });
+
             modelBuilder.Entity("TruLoad.Backend.Models.System.AxleFeeSchedule", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4448,7 +4837,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnName("created_at");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("description");
 
@@ -4924,7 +5312,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<string>("IssuingAuthority")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("issuing_authority");
@@ -5160,13 +5547,11 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnName("axle_configuration_id");
 
                     b.Property<string>("ChassisNo")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("chassis_no");
 
                     b.Property<string>("Color")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("color");
@@ -5181,7 +5566,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("description");
@@ -5190,7 +5574,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("vector(384)");
 
                     b.Property<string>("EngineNo")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("engine_no");
@@ -5205,18 +5588,16 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnName("is_flagged");
 
                     b.Property<string>("Make")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("make");
 
                     b.Property<string>("Model")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("model");
 
-                    b.Property<Guid>("OwnerId")
+                    b.Property<Guid?>("OwnerId")
                         .HasColumnType("uuid")
                         .HasColumnName("owner_id");
 
@@ -5237,7 +5618,6 @@ namespace TruLoad.Backend.Migrations
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("VehicleType")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("vehicle_type");
@@ -5251,7 +5631,8 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("AxleConfigurationId");
 
                     b.HasIndex("ChassisNo")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("chassis_no IS NOT NULL");
 
                     b.HasIndex("DescriptionEmbedding");
 
@@ -5447,7 +5828,7 @@ namespace TruLoad.Backend.Migrations
                     b.Property<int>("ReweighCycleNo")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasDefaultValue(1)
+                        .HasDefaultValue(0)
                         .HasColumnName("reweigh_cycle_no");
 
                     b.Property<int>("ReweighLimit")
@@ -5868,6 +6249,9 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<Guid?>("CaseRegisterId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("ClosedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("closed_at");
@@ -5969,6 +6353,8 @@ namespace TruLoad.Backend.Migrations
                         .HasDefaultValueSql("NOW()");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CaseRegisterId");
 
                     b.HasIndex("ClosedById");
 
@@ -6273,6 +6659,45 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("LegalSection");
 
                     b.Navigation("ReviewStatus");
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.CaseManagement.CaseParty", b =>
+                {
+                    b.HasOne("TruLoad.Backend.Models.CaseManagement.CaseRegister", "CaseRegister")
+                        .WithMany()
+                        .HasForeignKey("CaseRegisterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TruLoad.Backend.Models.Weighing.Driver", "Driver")
+                        .WithMany()
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("TruLoad.Backend.Models.Weighing.Transporter", "Transporter")
+                        .WithMany()
+                        .HasForeignKey("TransporterId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("TruLoad.Backend.Models.Identity.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("TruLoad.Backend.Models.Weighing.VehicleOwner", "VehicleOwner")
+                        .WithMany()
+                        .HasForeignKey("VehicleOwnerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CaseRegister");
+
+                    b.Navigation("Driver");
+
+                    b.Navigation("Transporter");
+
+                    b.Navigation("User");
+
+                    b.Navigation("VehicleOwner");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.CaseManagement.CaseRegister", b =>
@@ -6600,6 +7025,24 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("District");
                 });
 
+            modelBuilder.Entity("TruLoad.Backend.Models.Infrastructure.VehicleModel", b =>
+                {
+                    b.HasOne("TruLoad.Backend.Models.AxleConfiguration", "AxleConfiguration")
+                        .WithMany()
+                        .HasForeignKey("AxleConfigurationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("TruLoad.Backend.Models.Infrastructure.VehicleMake", "Make")
+                        .WithMany("Models")
+                        .HasForeignKey("MakeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AxleConfiguration");
+
+                    b.Navigation("Make");
+                });
+
             modelBuilder.Entity("TruLoad.Backend.Models.Infrastructure.WeighbridgeHardware", b =>
                 {
                     b.HasOne("TruLoad.Backend.Models.Station", "Station")
@@ -6818,8 +7261,7 @@ namespace TruLoad.Backend.Migrations
                     b.HasOne("TruLoad.Backend.Models.Weighing.VehicleOwner", "Owner")
                         .WithMany("Vehicles")
                         .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("TruLoad.Backend.Models.Weighing.Transporter", "Transporter")
                         .WithMany("Vehicles")
@@ -6957,6 +7399,10 @@ namespace TruLoad.Backend.Migrations
 
             modelBuilder.Entity("TruLoad.Backend.Models.Yard.VehicleTag", b =>
                 {
+                    b.HasOne("TruLoad.Backend.Models.CaseManagement.CaseRegister", "CaseRegister")
+                        .WithMany()
+                        .HasForeignKey("CaseRegisterId");
+
                     b.HasOne("TruLoad.Backend.Models.Identity.ApplicationUser", "ClosedBy")
                         .WithMany()
                         .HasForeignKey("ClosedById")
@@ -6973,6 +7419,8 @@ namespace TruLoad.Backend.Migrations
                         .HasForeignKey("TagCategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("CaseRegister");
 
                     b.Navigation("ClosedBy");
 
@@ -7122,6 +7570,11 @@ namespace TruLoad.Backend.Migrations
             modelBuilder.Entity("TruLoad.Backend.Models.Identity.ApplicationUser", b =>
                 {
                     b.Navigation("UserShifts");
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Infrastructure.VehicleMake", b =>
+                {
+                    b.Navigation("Models");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.Organization", b =>
