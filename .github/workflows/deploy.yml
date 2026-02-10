@@ -231,12 +231,8 @@ jobs:
         GIT_USER: ${{ secrets.GIT_USER || 'TruLoad Bot' }}
         GIT_EMAIL: ${{ secrets.GIT_EMAIL || 'dev@truload.io' }}
         # Shared database passwords from INFRA namespace
-        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-        REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-        RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
-        RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME || 'user' }}
-        # .NET secrets
-        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        # Shared database passwords are already injected above; avoid duplicate keys here
+        # .NET secrets are already injected above as well
         ASPNET_SECRET: ${{ secrets.ASPNET_SECRET }}
       run: |
         chmod +x build.sh
