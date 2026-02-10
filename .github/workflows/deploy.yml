@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# Deployment secrets are stored in devops-k8s repo and synced here on demand.
+# The sync-secrets job checks which secrets are missing and only requests those.
+# GH_PAT must exist in THIS repo to authenticate cross-repo workflow triggers.
+
 jobs:
   sync-secrets:
     runs-on: ubuntu-latest
@@ -22,9 +26,10 @@ jobs:
           _POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           _REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
           _RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          _JWT_SECRET: ${{ secrets.JWT_SECRET }}
           _KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         run: |
-          REQUIRED_SECRETS="REGISTRY_USERNAME REGISTRY_PASSWORD REGISTRY_EMAIL POSTGRES_PASSWORD REDIS_PASSWORD RABBITMQ_PASSWORD KUBE_CONFIG"
+          REQUIRED_SECRETS="REGISTRY_USERNAME REGISTRY_PASSWORD REGISTRY_EMAIL POSTGRES_PASSWORD REDIS_PASSWORD RABBITMQ_PASSWORD JWT_SECRET KUBE_CONFIG"
 
           # Step 1: Delete any secrets that exist but have empty values.
           # gh secret list reports empty-value secrets as "existing", so the
@@ -176,6 +181,7 @@ jobs:
         check_secret "KUBE_CONFIG"        1000 "$KUBE_CONFIG"
         check_secret "POSTGRES_PASSWORD"  8    "$POSTGRES_PASSWORD"
         check_secret "REDIS_PASSWORD"     8    "$REDIS_PASSWORD"
+        check_secret "JWT_SECRET"         32   "$JWT_SECRET"
 
         if [[ $FAIL -eq 1 ]]; then
           echo ""
@@ -190,6 +196,7 @@ jobs:
         KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
     - name: Debug available secrets
       if: needs.sync-secrets.outputs.result != 'synced'
@@ -205,6 +212,10 @@ jobs:
         GH_PAT: ${{ secrets.GH_PAT }}
         REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
         REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+        RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
         GITHUB_SHA: ${{ github.sha }}
         DEPLOY: true
         SETUP_DATABASES: true

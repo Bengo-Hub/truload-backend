@@ -71,7 +71,8 @@ if [[ ${DEPLOY} == "true" ]]; then
   SYNC_SCRIPT=$(mktemp)
   if curl -fsSL https://raw.githubusercontent.com/Bengo-Hub/devops-k8s/main/scripts/tools/check-and-sync-secrets.sh -o "$SYNC_SCRIPT" 2>/dev/null; then
     source "$SYNC_SCRIPT"
-    check_and_sync_secrets "REGISTRY_USERNAME" "REGISTRY_PASSWORD" "GIT_TOKEN" "POSTGRES_PASSWORD" "REDIS_PASSWORD" "KUBE_CONFIG" || warn "Secret sync failed - continuing with existing secrets"
+    # Note: GH_PAT is passed directly from workflow, not synced from devops-k8s
+    check_and_sync_secrets "REGISTRY_USERNAME" "REGISTRY_PASSWORD" "POSTGRES_PASSWORD" "REDIS_PASSWORD" "RABBITMQ_PASSWORD" "KUBE_CONFIG" || warn "Secret sync failed - continuing with existing secrets"
     rm -f "$SYNC_SCRIPT"
   else
     warn "Unable to download secret sync script - continuing with existing secrets"
@@ -192,6 +193,15 @@ if kubectl -n "$NAMESPACE" get secret "$ENV_SECRET_NAME" >/dev/null 2>&1; then
 
       kubectl -n "$NAMESPACE" patch secret "$ENV_SECRET_NAME" -p "{\"stringData\":{\"ConnectionStrings__DefaultConnection\":\"$DOTNET_CONN\"}}" || warn "Failed to add .NET connection string"
       success "Added ConnectionStrings__DefaultConnection to secret"
+    fi
+  fi
+
+  # Add JWT_SECRET if provided and not already in secret
+  if [[ -n "${JWT_SECRET:-}" ]]; then
+    if ! kubectl -n "$NAMESPACE" get secret "$ENV_SECRET_NAME" -o jsonpath='{.data.JWT__Secret}' 2>/dev/null | grep -q .; then
+      info "Adding JWT_SECRET to secret..."
+      kubectl -n "$NAMESPACE" patch secret "$ENV_SECRET_NAME" -p "{\"stringData\":{\"JWT__Secret\":\"$JWT_SECRET\"}}" || warn "Failed to add JWT_SECRET"
+      success "Added JWT__Secret to secret"
     fi
   fi
 fi
