@@ -60,6 +60,18 @@ public static class FinancialModuleDbContextConfiguration
             entity.Property(e => e.DueDate)
                 .HasColumnName("due_date");
 
+            entity.Property(e => e.PesaflowInvoiceNumber)
+                .HasColumnName("pesaflow_invoice_number")
+                .HasMaxLength(100);
+
+            entity.Property(e => e.PesaflowPaymentReference)
+                .HasColumnName("pesaflow_payment_reference")
+                .HasMaxLength(100);
+
+            entity.Property(e => e.PesaflowCheckoutUrl)
+                .HasColumnName("pesaflow_checkout_url")
+                .HasMaxLength(500);
+
             entity.Property(e => e.IsActive)
                 .HasColumnName("is_active")
                 .HasDefaultValue(true);
@@ -113,6 +125,10 @@ public static class FinancialModuleDbContextConfiguration
 
             entity.HasIndex(e => e.DueDate)
                 .HasDatabaseName("idx_invoices_due_date");
+
+            entity.HasIndex(e => e.PesaflowInvoiceNumber)
+                .HasDatabaseName("idx_invoices_pesaflow_invoice_no")
+                .HasFilter("pesaflow_invoice_number IS NOT NULL");
 
             // CHECK constraints
             entity.HasCheckConstraint("chk_invoice_status",
@@ -174,6 +190,10 @@ public static class FinancialModuleDbContextConfiguration
                 .HasColumnName("payment_date")
                 .HasDefaultValueSql("NOW()");
 
+            entity.Property(e => e.PaymentChannel)
+                .HasColumnName("payment_channel")
+                .HasMaxLength(50);
+
             entity.Property(e => e.IsActive)
                 .HasColumnName("is_active")
                 .HasDefaultValue(true);
@@ -221,7 +241,7 @@ public static class FinancialModuleDbContextConfiguration
 
             // CHECK constraints
             entity.HasCheckConstraint("chk_receipt_payment_method",
-                "payment_method IN ('cash', 'mobile_money', 'bank_transfer', 'card')");
+                "payment_method IN ('cash', 'mobile_money', 'bank_transfer', 'card', 'pesaflow')");
 
             entity.HasCheckConstraint("chk_receipt_currency",
                 "currency IN ('USD', 'KES', 'UGX', 'TZS')");

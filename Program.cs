@@ -51,6 +51,8 @@ using TruLoad.Backend.Services.Interfaces.System;
 using TruLoad.Backend.Services.Implementations.System;
 using TruLoad.Backend.Services.Interfaces.Analytics;
 using TruLoad.Backend.Services.Implementations.Analytics;
+using TruLoad.Backend.Services.Interfaces.Integration;
+using TruLoad.Backend.Services.Implementations.Integration;
 using TruLoad.Backend.DTOs.Analytics;
 using TruLoad.Backend.Configuration;
 
@@ -344,6 +346,20 @@ builder.Services.AddScoped<IProsecutionService, ProsecutionService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IReceiptService, ReceiptService>();
 
+// Integration & Payment services (Sprint 15: eCitizen/Pesaflow)
+builder.Services.AddSingleton<IEncryptionService, AesGcmEncryptionService>();
+builder.Services.AddScoped<IIntegrationConfigService, IntegrationConfigService>();
+builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(sp =>
+    StackExchange.Redis.ConnectionMultiplexer.Connect(redisConnection));
+builder.Services.AddHttpClient<IECitizenService, ECitizenService>(c =>
+    c.Timeout = TimeSpan.FromSeconds(30));
+
+// KeNHA & NTSA integration services
+builder.Services.AddHttpClient<IKeNHAService, KeNHAService>(c =>
+    c.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddHttpClient<INTSAService, NTSAService>(c =>
+    c.Timeout = TimeSpan.FromSeconds(30));
+
 // Yard services
 builder.Services.AddScoped<IYardService, YardService>();
 builder.Services.AddScoped<IVehicleTagService, VehicleTagService>();
@@ -432,6 +448,17 @@ try
             await dbContext.SaveChangesAsync();
 
             Log.Information("✓ Database seeding completed in {Duration}ms", sw.ElapsedMilliseconds);
+        }
+
+        // Sprint 15: Seed IntegrationConfig for eCitizen/Pesaflow (Development only)
+        if (app.Environment.IsDevelopment())
+        {
+            var encryptionService = scope.ServiceProvider.GetRequiredService<IEncryptionService>();
+            var integrationLogger = scope.ServiceProvider.GetRequiredService<ILogger<TruLoad.Backend.Data.Seeders.SystemConfiguration.IntegrationConfigSeeder>>();
+            var integrationSeeder = new TruLoad.Backend.Data.Seeders.SystemConfiguration.IntegrationConfigSeeder(
+                dbContext, encryptionService, builder.Configuration, integrationLogger);
+            await integrationSeeder.SeedAsync();
+            Log.Information("✓ Integration config seeding completed");
         }
     }
 }

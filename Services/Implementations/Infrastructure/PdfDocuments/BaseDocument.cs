@@ -7,35 +7,93 @@ namespace TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments;
 
 /// <summary>
 /// Base class for all PDF document generators.
-/// Provides common document structure and branding using centralized constants.
+/// Provides common document structure, branding, and logo rendering using centralized constants.
 /// </summary>
 public abstract class BaseDocument
 {
-    /// <summary>
-    /// Kenya Roads Authority branding color
-    /// </summary>
+    private static readonly string ImagesBasePath = Path.Combine(
+        Directory.GetCurrentDirectory(), "wwwroot", "images");
+
     protected readonly string KuraBlack = BrandingConstants.Colors.KuraBlack;
-
-    /// <summary>
-    /// Kenya Roads Authority blue color
-    /// </summary>
     protected readonly string KuraBlue = BrandingConstants.Colors.KuraBlue;
-
-    /// <summary>
-    /// Official government red for warnings/prohibitions
-    /// </summary>
     protected readonly string OfficialRed = BrandingConstants.Colors.OfficialRed;
-
-    /// <summary>
-    /// Official green for compliance/clearance
-    /// </summary>
     protected readonly string OfficialGreen = BrandingConstants.Colors.OfficialGreen;
 
-    /// <summary>
-    /// Generates the PDF document
-    /// </summary>
     public abstract byte[] Generate();
 
+    /// <summary>
+    /// Loads a logo image from wwwroot/images/ as byte array.
+    /// Returns null if the file does not exist (graceful degradation).
+    /// </summary>
+    protected static byte[]? LoadLogo(string fileName)
+    {
+        var path = Path.Combine(ImagesBasePath, fileName);
+        return File.Exists(path) ? File.ReadAllBytes(path) : null;
+    }
+
+    /// <summary>
+    /// Composes an official document header with left logo, centered title block, and right logo.
+    /// Used by all official documents for consistent branding.
+    /// </summary>
+    protected void ComposeOfficialHeaderWithLogos(
+        IContainer container,
+        string primaryLogoFile,
+        string? secondaryLogoFile,
+        string documentTitle,
+        string? subtitle = null,
+        string? referenceNumber = null,
+        string? dateText = null,
+        string? titleColor = null)
+    {
+        var primaryLogo = LoadLogo(primaryLogoFile);
+        var secondaryLogo = secondaryLogoFile != null ? LoadLogo(secondaryLogoFile) : null;
+        var headerColor = titleColor ?? KuraBlue;
+
+        container.Column(col =>
+        {
+            col.Item().Row(row =>
+            {
+                // Left logo
+                row.ConstantItem(60).AlignMiddle().Column(logoCol =>
+                {
+                    if (primaryLogo != null)
+                        logoCol.Item().Height(50).Image(primaryLogo, ImageScaling.FitArea);
+                });
+
+                // Center title block
+                row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(center =>
+                {
+                    center.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
+                        .FontSize(11).SemiBold();
+                    center.Item().AlignCenter().Text(documentTitle)
+                        .FontSize(14).Bold().FontColor(headerColor);
+                    if (!string.IsNullOrEmpty(subtitle))
+                        center.Item().AlignCenter().Text(subtitle).FontSize(9);
+                });
+
+                // Right logo
+                row.ConstantItem(60).AlignMiddle().Column(logoCol =>
+                {
+                    if (secondaryLogo != null)
+                        logoCol.Item().Height(50).Image(secondaryLogo, ImageScaling.FitArea);
+                });
+            });
+
+            // Reference number and date row
+            if (!string.IsNullOrEmpty(referenceNumber) || !string.IsNullOrEmpty(dateText))
+            {
+                col.Item().PaddingTop(3).Row(row =>
+                {
+                    if (!string.IsNullOrEmpty(referenceNumber))
+                        row.RelativeItem().Text(referenceNumber).FontSize(10).SemiBold();
+                    if (!string.IsNullOrEmpty(dateText))
+                        row.RelativeItem().AlignRight().Text(dateText).FontSize(10);
+                });
+            }
+
+            col.Item().PaddingVertical(3).LineHorizontal(1).LineColor(Colors.Black);
+        });
+    }
 
     /// <summary>
     /// Creates standard footer for official documents
@@ -48,7 +106,6 @@ public abstract class BaseDocument
 
             col.Item().PaddingTop(3).Row(row =>
             {
-                // Page numbers
                 row.RelativeItem().DefaultTextStyle(x => x.FontSize(7)).Text(t =>
                 {
                     t.Span("Page ");
@@ -57,18 +114,15 @@ public abstract class BaseDocument
                     t.TotalPages();
                 });
 
-                // Official seal text
                 row.RelativeItem().AlignCenter().DefaultTextStyle(x => x.FontSize(7).Italic())
-                    .Text("Official System Generated Document - Digitally Signed");
+                    .Text(BrandingConstants.DocumentFooter.OfficialSealText);
 
-                // Generation timestamp
                 row.RelativeItem().AlignRight().DefaultTextStyle(x => x.FontSize(7))
                     .Text($"Generated: {DateTime.UtcNow:dd/MM/yyyy HH:mm} EAT");
             });
 
-            // Disclaimer
             col.Item().PaddingTop(2).AlignCenter().DefaultTextStyle(x => x.FontSize(6).Italic())
-                .Text("This is a computer-generated document. No signature is required for validity.");
+                .Text(BrandingConstants.DocumentFooter.DisclaimerText);
         });
     }
 

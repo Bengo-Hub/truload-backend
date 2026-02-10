@@ -26,6 +26,8 @@ public class ProsecutionCaseDto
     public decimal MaxAxleFeeKes { get; set; }
     public string BestChargeBasis { get; set; } = "gvw";
     public decimal PenaltyMultiplier { get; set; }
+    public int OffenseCount { get; set; }
+    public int DemeritPoints { get; set; }
     public decimal TotalFeeUsd { get; set; }
     public decimal TotalFeeKes { get; set; }
     public decimal ForexRate { get; set; }
@@ -67,6 +69,7 @@ public class ChargeCalculationResult
     public decimal PenaltyMultiplier { get; set; } = 1.0m;
     public bool IsRepeatOffender { get; set; }
     public int PriorOffenseCount { get; set; }
+    public int DemeritPoints { get; set; }
 
     // Forex
     public decimal ForexRate { get; set; }

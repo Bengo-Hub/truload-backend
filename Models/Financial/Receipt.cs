@@ -54,6 +54,11 @@ public class Receipt : BaseEntity
     /// </summary>
     public DateTime PaymentDate { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Payment channel from Pesaflow IPN (e.g., "MPESA", "CARD", "BANK", "AIRTEL")
+    /// </summary>
+    public string? PaymentChannel { get; set; }
+
     // Navigation properties
     public Invoice? Invoice { get; set; }
     public ApplicationUser? ReceivedBy { get; set; }

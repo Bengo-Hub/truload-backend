@@ -94,6 +94,23 @@ public static class BrandingConstants
     }
 
     /// <summary>
+    /// Official logo file names relative to wwwroot/images/.
+    /// Used in PDF document headers for official branding.
+    /// </summary>
+    public static class Logos
+    {
+        public const string KuraLogo = "kura-logo.png";
+        public const string KenhaLogo = "kenha-logo.png";
+        public const string KenyaPoliceLogo = "kenya-police-logo.png";
+        public const string CourtOfArmsKenya = "court-of-arms-kenya.png";
+        public const string JudicialLogo = "judiciallogo.png";
+        public const string EacActLogo = "eac-act-logo.png";
+        public const string EcitizenLogo = "ecitizen-logo.png";
+        public const string KuraWeighLogo = "kuraweigh-logo.png";
+        public const string NtsaLogo = "ntsa-logo.png";
+    }
+
+    /// <summary>
     /// File storage folder names.
     /// </summary>
     public static class StorageFolders

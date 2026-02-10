@@ -8,6 +8,8 @@ public interface IWeighingRepository
     Task<WeighingTransaction?> GetTransactionByIdAsync(Guid id);
     Task<WeighingTransaction?> GetTransactionByTicketNumberAsync(string ticketNumber);
     Task<WeighingTransaction> UpdateTransactionAsync(WeighingTransaction transaction);
+    Task SaveTransactionWithNewAxlesAsync(WeighingTransaction transaction);
+    Task DeleteAxlesByTransactionIdAsync(Guid transactionId);
     Task DeleteTransactionAsync(Guid id);
     Task<(List<WeighingTransaction> Items, int TotalCount)> SearchTransactionsAsync(
         Guid? stationId = null,

@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using TruLoad.Backend.Services.Interfaces.Weighing;
+using TruLoad.Backend.Services.Interfaces.Integration;
+using TruLoad.Backend.Services.Interfaces.Yard;
+using TruLoad.Backend.DTOs.Integration;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.DTOs.Weighing;
@@ -20,17 +23,23 @@ public class WeighingController : ControllerBase
 {
     private readonly IWeighingService _weighingService;
     private readonly IVehicleRepository _vehicleRepository;
+    private readonly IKeNHAService _kenhaService;
+    private readonly IVehicleTagService _vehicleTagService;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<WeighingController> _logger;
 
     public WeighingController(
         IWeighingService weighingService,
         IVehicleRepository vehicleRepository,
+        IKeNHAService kenhaService,
+        IVehicleTagService vehicleTagService,
         ITenantContext tenantContext,
         ILogger<WeighingController> logger)
     {
         _weighingService = weighingService;
         _vehicleRepository = vehicleRepository;
+        _kenhaService = kenhaService;
+        _vehicleTagService = vehicleTagService;
         _tenantContext = tenantContext;
         _logger = logger;
     }
@@ -182,7 +191,8 @@ public class WeighingController : ControllerBase
                 return BadRequest("Either VehicleId or VehicleRegNo must be provided.");
             }
 
-            var transaction = await _weighingService.InitiateWeighingAsync(
+            // Run weighing initiation, KeNHA tag check, and local tag check concurrently
+            var weighingTask = _weighingService.InitiateWeighingAsync(
                 request.TicketNumber,
                 request.StationId,
                 userGuid,
@@ -194,7 +204,16 @@ public class WeighingController : ControllerBase
                 request.TransporterId,
                 request.WeighingType ?? "static");
 
+            var kenhaTagTask = CheckKeNHATagAsync(vehicleRegNo);
+            var localTagsTask = _vehicleTagService.CheckVehicleTagsAsync(vehicleRegNo);
+
+            await Task.WhenAll(weighingTask, kenhaTagTask, localTagsTask);
+
+            var transaction = weighingTask.Result;
             var dto = MapToDto(transaction);
+            dto.KeNHATagAlert = kenhaTagTask.Result;
+            dto.OpenTags = localTagsTask.Result;
+
             return CreatedAtAction(nameof(GetById), new { id = transaction.Id }, dto);
         }
         catch (InvalidOperationException ex)
@@ -333,20 +352,20 @@ public class WeighingController : ControllerBase
 
         try
         {
-            // Map DTOs to entities
+            // Map DTOs to entities (configId resolved by service layer if not provided)
             var axles = request.Axles.Select(dto => new WeighingAxle
             {
                 AxleNumber = dto.AxleNumber,
                 MeasuredWeightKg = dto.MeasuredWeightKg,
-                AxleConfigurationId = dto.AxleConfigurationId ?? Guid.Empty,
+                AxleConfigurationId = dto.AxleConfigurationId.HasValue && dto.AxleConfigurationId.Value != Guid.Empty
+                    ? dto.AxleConfigurationId.Value
+                    : Guid.Empty,
                 WeighingId = id,
                 CapturedAt = DateTime.UtcNow
             }).ToList();
 
+            // CaptureWeightsAsync saves axles, resolves config, and runs compliance
             var transaction = await _weighingService.CaptureWeightsAsync(id, axles);
-            
-            // Calculate compliance after weights are captured
-            transaction = await _weighingService.CalculateComplianceAsync(id);
 
             var resultDto = MapToResultDto(transaction);
             return Ok(resultDto);
@@ -477,9 +496,11 @@ public class WeighingController : ControllerBase
         try
         {
             var transaction = await _weighingService.InitiateReweighAsync(
-                request.OriginalWeighingId, 
-                request.ReweighTicketNumber, 
-                userGuid);
+                request.OriginalWeighingId,
+                request.ReweighTicketNumber,
+                userGuid,
+                request.ReliefTruckRegNumber,
+                request.ReliefTruckEmptyWeightKg);
             
             var dto = MapToDto(transaction);
             return CreatedAtAction(nameof(GetById), new { id = transaction.Id }, dto);
@@ -806,6 +827,73 @@ public class WeighingController : ControllerBase
         {
             _logger.LogError(ex, "Error getting axle violations");
             return StatusCode(500, "An error occurred while getting axle violations.");
+        }
+    }
+
+    // ============================================================================
+    // KeNHA Tag Verification
+    // ============================================================================
+
+    /// <summary>
+    /// Checks if a vehicle has an existing KeNHA tag/prohibition.
+    /// Only returns data when KeNHA integration is configured and active.
+    /// Called by the capture screen after vehicle number plate is entered.
+    /// </summary>
+    /// <param name="regNo">Vehicle registration number</param>
+    /// <returns>Tag alert if found, null if no tag or integration unavailable</returns>
+    [HttpGet("kenha-tag-check/{regNo}")]
+    [Authorize(Policy = "Permission:weighing.read")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(KeNHATagAlertDto), 200)]
+    [ProducesResponseType(204)]
+    public async Task<IActionResult> CheckKeNHATag(string regNo)
+    {
+        var alert = await CheckKeNHATagAsync(regNo);
+        if (alert == null)
+            return NoContent();
+
+        return Ok(alert);
+    }
+
+    /// <summary>
+    /// Background KeNHA tag check. Returns null if integration is unavailable or no tag found.
+    /// Gracefully handles all errors to never block the weighing workflow.
+    /// </summary>
+    private async Task<KeNHATagAlertDto?> CheckKeNHATagAsync(string regNo)
+    {
+        try
+        {
+            if (!await _kenhaService.IsAvailableAsync())
+                return null;
+
+            var result = await _kenhaService.VerifyVehicleTagAsync(regNo);
+            if (result == null || !result.HasTag)
+                return null;
+
+            var alertLevel = result.TagStatus?.ToLower() switch
+            {
+                "open" => "critical",
+                "closed" => "info",
+                _ => "warning"
+            };
+
+            return new KeNHATagAlertDto
+            {
+                HasTag = true,
+                TagStatus = result.TagStatus,
+                TagCategory = result.TagCategory,
+                Reason = result.Reason,
+                Station = result.Station,
+                TagDate = result.TagDate,
+                TagUid = result.TagUid,
+                AlertLevel = alertLevel,
+                Message = $"Vehicle has an existing KeNHA tag ({result.TagStatus}): {result.Reason ?? result.TagCategory ?? "Unknown reason"}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "KeNHA tag check failed for {RegNo}, continuing without tag data", regNo);
+            return null;
         }
     }
 

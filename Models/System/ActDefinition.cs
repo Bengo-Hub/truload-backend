@@ -16,6 +16,12 @@ public class ActDefinition : BaseEntity
     public string? Description { get; set; }
     public DateOnly? EffectiveDate { get; set; }
 
+    /// <summary>
+    /// Default charging currency for fines under this act.
+    /// Traffic Act charges in KES, EAC Act charges in USD.
+    /// </summary>
+    public string ChargingCurrency { get; set; } = "KES";
+
     // ===== Navigation Properties =====
     public ICollection<CaseRegister> CaseRegisters { get; set; } = [];
 }

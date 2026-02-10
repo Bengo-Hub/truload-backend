@@ -1624,6 +1624,7 @@ A comprehensive audit was conducted comparing KenloadV2 (existing KeNHA system) 
 - **Sprint 11:** Axle grouping compliance (2 weeks) - P0 Critical
 - **Sprint 12:** Weight ticket format update (1 week) - P0 Critical
 - **Sprint 13:** Demerit points & prosecution enhancement (2 weeks) - P1 High
+- **Sprint 16:** KeNHA & NTSA External API Integrations (1 week) - P1 High - **COMPLETED Feb 2026**
 
 For full details, see [KenloadV2 vs TruLoad Comparison](./KENLOAD_VS_TRULOAD_COMPARISON.md).
 

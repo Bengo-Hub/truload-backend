@@ -244,14 +244,37 @@
 
 Can be added to existing `WeighingOperationsSeeder` or new `CaseManagementSeeder`
 
-### Integration Points
-⏳ **Auto-Trigger from Weighing:**
-- Requires update to WeighingService to auto-create cases on prohibition
-- Currently manual via API endpoint
+### Integration Points — ALL IMPLEMENTED (February 2026)
 
-⏳ **eCitizen Integration:**
-- Invoice generation pending Prosecution module
-- Payment status webhooks pending
+✅ **Auto-Triggers in WeighingService (CaptureWeightsAsync):**
+
+| Trigger | When | Action | Status |
+|---------|------|--------|--------|
+| Auto-Case Creation | Overload detected during weight capture | CaseRegisterService.CreateCaseFromWeighingAsync() | ✅ Implemented |
+| Auto-Yard Entry | Overload detected (same trigger) | YardService.CreateAsync() with reason=gvw_overload | ✅ Implemented |
+| Auto-Memo Creation | Invoice fully paid | LoadCorrectionMemo auto-created in ReceiptService | ✅ Implemented |
+| Auto-Close Cascade | Compliant reweigh captured | Case closed + Yard released + Certificate generated | ✅ Implemented |
+| Rich Closure Narration | Case auto-closed | closingReason includes Invoice/Receipt/Fine details | ✅ Implemented |
+| Compliance Certificate | Compliant reweigh | ComplianceCertificate auto-generated, linked to memo | ✅ Implemented |
+| Relief Truck Support | Reweigh initiated | reliefTruckRegNumber/EmptyWeightKg stored on memo | ✅ Implemented |
+
+**Correct Workflow Order:**
+1. Overload detected → Case + Yard auto-created
+2. Prosecution → Invoice generated
+3. Invoice paid → **Load Correction Memo auto-created** (in ReceiptService)
+4. Memo enables reweigh (with optional relief truck info)
+5. Compliant reweigh → Compliance Certificate + Case auto-close + Yard release
+
+✅ **eCitizen/Pesaflow Integration:**
+- ECitizenService with PushInvoiceToECitizen endpoint
+- IPN webhook at `/api/v1/payments/webhook/ecitizen-pesaflow`
+- IntegrationConfig table with AES-GCM encrypted credentials
+- Graceful handling when credentials not configured
+
+✅ **E2E Test Verification:**
+- 19-step Python E2E test at `Tests/e2e/compliancee2e/compliance_e2e.py`
+- **ALL 19 STEPS PASSING** (February 10, 2026)
+- Full lifecycle: Login → Metadata → Scale test → Autoweigh → Capture → Case → Yard → Prosecution → Invoice → Pesaflow → Payment → Memo → Reweigh → Compliance → Close → Release → Certificate
 
 ---
 

@@ -1,13 +1,22 @@
+using Microsoft.EntityFrameworkCore;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.Data.Repositories.Weighing;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.CaseManagement;
 using TruLoad.Backend.Services.Interfaces.Weighing;
+using TruLoad.Backend.Services.Interfaces.CaseManagement;
+using TruLoad.Backend.Services.Interfaces.Yard;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using TruLoad.Backend.Data.Repositories.Infrastructure;
 using TruLoad.Backend.Models.Infrastructure;
 using TruLoad.Backend.DTOs.Weighing;
+using TruLoad.Backend.DTOs.CaseManagement;
+using TruLoad.Backend.DTOs.Yard;
 using TruLoad.Backend.Repositories.Infrastructure;
+using TruLoad.Backend.Models.Prosecution;
+using TruLoad.Backend.Models.Financial;
 
 namespace TruLoad.Backend.Services.Implementations.Weighing;
 
@@ -25,6 +34,10 @@ public class WeighingService : IWeighingService
     private readonly IAxleGroupAggregationService _axleGroupAggregationService;
     private readonly IScaleTestRepository _scaleTestRepository;
     private readonly IVehicleRepository _vehicleRepository;
+    private readonly ICaseRegisterService _caseRegisterService;
+    private readonly IYardService _yardService;
+    private readonly IVehicleTagService _vehicleTagService;
+    private readonly TruLoadDbContext _dbContext;
     private readonly ILogger<WeighingService> _logger;
 
     public WeighingService(
@@ -40,6 +53,10 @@ public class WeighingService : IWeighingService
         IAxleGroupAggregationService axleGroupAggregationService,
         IScaleTestRepository scaleTestRepository,
         IVehicleRepository vehicleRepository,
+        ICaseRegisterService caseRegisterService,
+        IYardService yardService,
+        IVehicleTagService vehicleTagService,
+        TruLoadDbContext dbContext,
         ILogger<WeighingService> logger)
     {
         _weighingRepository = weighingRepository;
@@ -54,6 +71,10 @@ public class WeighingService : IWeighingService
         _axleGroupAggregationService = axleGroupAggregationService;
         _scaleTestRepository = scaleTestRepository;
         _vehicleRepository = vehicleRepository;
+        _caseRegisterService = caseRegisterService;
+        _yardService = yardService;
+        _vehicleTagService = vehicleTagService;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -117,7 +138,8 @@ public class WeighingService : IWeighingService
         return await _weighingRepository.CreateTransactionAsync(transaction);
     }
 
-    public async Task<WeighingTransaction> InitiateReweighAsync(Guid originalTransactionId, string ticketNumber, Guid userId)
+    public async Task<WeighingTransaction> InitiateReweighAsync(Guid originalTransactionId, string ticketNumber, Guid userId,
+        string? reliefTruckRegNumber = null, int? reliefTruckEmptyWeightKg = null)
     {
         var original = await _weighingRepository.GetTransactionByIdAsync(originalTransactionId);
         if (original == null) throw new KeyNotFoundException($"Original weighing transaction {originalTransactionId} not found");
@@ -136,13 +158,34 @@ public class WeighingService : IWeighingService
             DriverId = original.DriverId,
             TransporterId = original.TransporterId,
             WeighedByUserId = userId,
-            OriginalWeighingId = original.OriginalWeighingId ?? original.Id, // Link to the very first weighing if possible
+            OriginalWeighingId = original.OriginalWeighingId ?? original.Id,
             ReweighCycleNo = original.ReweighCycleNo + 1,
             ControlStatus = "Pending",
             WeighedAt = DateTime.UtcNow
         };
 
-        return await _weighingRepository.CreateTransactionAsync(transaction);
+        var created = await _weighingRepository.CreateTransactionAsync(transaction);
+
+        // Update LoadCorrectionMemo with relief truck info and link reweigh transaction
+        var rootWeighingId = original.OriginalWeighingId ?? original.Id;
+        var memo = await _dbContext.LoadCorrectionMemos
+            .FirstOrDefaultAsync(m => m.WeighingId == rootWeighingId);
+        if (memo != null)
+        {
+            memo.ReweighWeighingId = created.Id;
+            memo.ReweighScheduledAt = DateTime.UtcNow;
+            if (!string.IsNullOrWhiteSpace(reliefTruckRegNumber))
+            {
+                memo.ReliefTruckRegNumber = reliefTruckRegNumber;
+                memo.ReliefTruckEmptyWeightKg = reliefTruckEmptyWeightKg;
+                memo.RedistributionType = "offload";
+            }
+            await _dbContext.SaveChangesAsync();
+            _logger.LogInformation("Updated LoadCorrectionMemo {MemoNo} with reweigh {ReweighId} and relief truck {Truck}",
+                memo.MemoNo, created.Id, reliefTruckRegNumber ?? "N/A");
+        }
+
+        return created;
     }
 
     public async Task<WeighingTransaction> CaptureWeightsAsync(Guid transactionId, List<WeighingAxle> axles)
@@ -154,6 +197,44 @@ public class WeighingService : IWeighingService
 
         var transaction = await _weighingRepository.GetTransactionByIdAsync(transactionId);
         if (transaction == null) throw new KeyNotFoundException($"Weighing transaction {transactionId} not found");
+
+        // Resolve axle configuration if not set on the incoming axles
+        var needsConfigResolution = axles.Any(a => a.AxleConfigurationId == Guid.Empty);
+        if (needsConfigResolution)
+        {
+            AxleConfiguration? resolvedConfig = null;
+            var firstValidConfigId = axles.FirstOrDefault(a => a.AxleConfigurationId != Guid.Empty)?.AxleConfigurationId;
+            if (firstValidConfigId.HasValue)
+            {
+                resolvedConfig = await _axleConfigurationRepository.GetByIdAsync(firstValidConfigId.Value, includeWeightReferences: true);
+            }
+            if (resolvedConfig == null)
+            {
+                resolvedConfig = await _axleConfigurationRepository.GetStandardByAxleCountAsync(axles.Count);
+            }
+            if (resolvedConfig != null)
+            {
+                foreach (var axle in axles)
+                {
+                    if (axle.AxleConfigurationId == Guid.Empty)
+                    {
+                        axle.AxleConfigurationId = resolvedConfig.Id;
+                        var weightRef = resolvedConfig.AxleWeightReferences?
+                            .FirstOrDefault(r => r.AxlePosition == axle.AxleNumber);
+                        if (weightRef != null)
+                        {
+                            axle.AxleWeightReferenceId = weightRef.Id;
+                            axle.PermissibleWeightKg = weightRef.AxleLegalWeightKg;
+                            axle.AxleGrouping = weightRef.AxleGrouping;
+                            axle.AxleGroupId = weightRef.AxleGroupId;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Delete existing axles before saving new ones (handles re-capture scenario)
+        await _weighingRepository.DeleteAxlesByTransactionIdAsync(transactionId);
 
         transaction.WeighingAxles = axles;
         transaction.GvwMeasuredKg = axles.Sum(a => a.MeasuredWeightKg);
@@ -169,10 +250,11 @@ public class WeighingService : IWeighingService
                 transactionId);
         }
 
-        // Initial simplified compliance check
-        await CalculateComplianceAsync(transactionId); // Should be called explicitly usually, but good to have here
+        // Save axles first so compliance calculation can find them
+        await _weighingRepository.SaveTransactionWithNewAxlesAsync(transaction);
 
-        await _weighingRepository.UpdateTransactionAsync(transaction);
+        // Calculate compliance (re-fetches from DB with saved axles)
+        transaction = await CalculateComplianceAsync(transactionId);
         return transaction;
     }
 
@@ -191,11 +273,34 @@ public class WeighingService : IWeighingService
         var firstAxle = transaction.WeighingAxles.OrderBy(a => a.AxleNumber).First();
         var configId = firstAxle.AxleConfigurationId;
 
-        // 3. Fetch Configuration Details
-        var axleConfig = await _axleConfigurationRepository.GetByIdAsync(configId, includeWeightReferences: true);
+        // 3. Fetch Configuration Details (with fallback by axle count)
+        AxleConfiguration? axleConfig = null;
+        if (configId != Guid.Empty)
+        {
+            axleConfig = await _axleConfigurationRepository.GetByIdAsync(configId, includeWeightReferences: true);
+        }
+
+        // Fallback: look up standard config by axle count if no explicit config
+        if (axleConfig == null)
+        {
+            var axleCount = transaction.WeighingAxles.Count;
+            axleConfig = await _axleConfigurationRepository.GetStandardByAxleCountAsync(axleCount);
+
+            // Update axles with resolved config ID for future lookups
+            if (axleConfig != null)
+            {
+                foreach (var axle in transaction.WeighingAxles)
+                {
+                    axle.AxleConfigurationId = axleConfig.Id;
+                }
+            }
+        }
+
         if (axleConfig == null)
         {
              transaction.ControlStatus = "Configuration Error";
+             _logger.LogWarning("No axle configuration found for transaction {TransactionId} with {AxleCount} axles",
+                 transactionId, transaction.WeighingAxles.Count);
              await _weighingRepository.UpdateTransactionAsync(transaction);
              return transaction;
         }
@@ -232,9 +337,28 @@ public class WeighingService : IWeighingService
         var gvwOverload = transaction.GvwMeasuredKg - transaction.GvwPermissibleKg;
         transaction.OverloadKg = Math.Max(0, gvwOverload);
 
-        // 7. Query Tolerance Settings (Replace hardcoded 200kg)
-        // Default to Traffic Act (stricter: 0% GVW tolerance, 5% axle group tolerance)
-        string legalFramework = "TRAFFIC_ACT";
+        // 7. Resolve applicable Act from settings (default: TRAFFIC_ACT)
+        string legalFramework;
+        if (transaction.ActId.HasValue)
+        {
+            var existingAct = await _dbContext.ActDefinitions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == transaction.ActId.Value);
+            legalFramework = existingAct?.Code ?? "TRAFFIC_ACT";
+        }
+        else
+        {
+            var defaultActSetting = await _dbContext.ApplicationSettings
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.SettingKey == "compliance.default_act_code");
+            legalFramework = defaultActSetting?.SettingValue ?? "TRAFFIC_ACT";
+            var resolvedAct = await _dbContext.ActDefinitions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Code == legalFramework);
+            if (resolvedAct != null)
+                transaction.ActId = resolvedAct.Id;
+        }
+
         int gvwToleranceKg = await _toleranceRepository.CalculateToleranceKgAsync(
             legalFramework, "GVW", transaction.GvwPermissibleKg);
 
@@ -312,19 +436,323 @@ public class WeighingService : IWeighingService
             }
         }
 
-        // 9. Persist Updates
+        // 9. MANUAL TAG ENFORCEMENT: Check for open manual KeNHA tags on weight-compliant vehicles
+        // Per FRD A.2: Manual tags from KeNHA can bar vehicle from exiting even if weight-compliant
+        if (transaction.ControlStatus is "Compliant" or "Warning")
+        {
+            try
+            {
+                var openTags = await _vehicleTagService.CheckVehicleTagsAsync(transaction.VehicleRegNumber);
+                var manualTags = openTags.Where(t => t.TagType.Equals("manual", StringComparison.OrdinalIgnoreCase)).ToList();
+
+                if (manualTags.Count > 0)
+                {
+                    var tagReasons = string.Join("; ", manualTags.Select(t => $"[{t.TagCategoryName}] {t.Reason}"));
+                    _logger.LogInformation(
+                        "Vehicle {VehicleReg} has {TagCount} open manual tag(s): {TagReasons}. Overriding to TagHold.",
+                        transaction.VehicleRegNumber, manualTags.Count, tagReasons);
+
+                    transaction.ControlStatus = "TagHold";
+                    transaction.IsSentToYard = true;
+                    transaction.ViolationReason = string.IsNullOrEmpty(transaction.ViolationReason)
+                        ? $"Manual KeNHA tag hold: {tagReasons}"
+                        : $"{transaction.ViolationReason}; Manual KeNHA tag hold: {tagReasons}";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to check vehicle tags for {VehicleReg}. Proceeding without tag enforcement.",
+                    transaction.VehicleRegNumber);
+                // Don't block weighing if tag check fails
+            }
+        }
+
+        // 10. Persist Updates
         await _weighingRepository.UpdateTransactionAsync(transaction);
 
-        // 10. Generate Weight Ticket PDF
-        await SaveTransactionDocumentAsync(transaction);
+        // 11. AUTO-TRIGGER: Create Case Register + Special Release for within-tolerance overload
+        if (transaction.ControlStatus == "Warning" && !transaction.IsCompliant)
+        {
+            try
+            {
+                var existingCase = await _caseRegisterService.GetByWeighingIdAsync(transactionId);
+                if (existingCase == null)
+                {
+                    var caseDto = await _caseRegisterService.CreateCaseFromWeighingAsync(
+                        transactionId, transaction.WeighedByUserId);
+                    _logger.LogInformation(
+                        "Auto-created case register {CaseNo} for within-tolerance weighing {TransactionId}",
+                        caseDto.CaseNo, transactionId);
 
-        // 11. Generate Prohibition Order PDF if created
+                    // Auto-create special release with TOLERANCE type
+                    var toleranceReleaseType = await _dbContext.ReleaseTypes
+                        .FirstOrDefaultAsync(rt => rt.Code == "TOLERANCE");
+
+                    if (toleranceReleaseType != null)
+                    {
+                        var opTolerance = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_TOLERANCE");
+                        int opToleranceKg = opTolerance?.ToleranceKg ?? 200;
+
+                        var year = DateTime.UtcNow.Year;
+                        var certCount = await _dbContext.SpecialReleases
+                            .CountAsync(sr => sr.CreatedAt.Year == year);
+                        var specialRelease = new Models.CaseManagement.SpecialRelease
+                        {
+                            CaseRegisterId = caseDto.Id,
+                            CertificateNo = $"SR-TOL-{year}-{(certCount + 1):D6}",
+                            ReleaseTypeId = toleranceReleaseType.Id,
+                            OverloadKg = transaction.OverloadKg,
+                            RedistributionAllowed = false,
+                            ReweighRequired = false,
+                            Reason = $"GVW overload of {transaction.OverloadKg}kg is within operational tolerance ({opToleranceKg}kg). Auto-released with warning.",
+                            AuthorizedById = transaction.WeighedByUserId,
+                            CreatedById = transaction.WeighedByUserId,
+                            IssuedAt = DateTime.UtcNow,
+                            IsApproved = true,
+                            ApprovedById = transaction.WeighedByUserId,
+                            ApprovedAt = DateTime.UtcNow,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        _dbContext.SpecialReleases.Add(specialRelease);
+
+                        // Auto-close case with SPECIAL_RELEASE disposition
+                        var specialReleaseDisposition = await _dbContext.DispositionTypes
+                            .FirstOrDefaultAsync(dt => dt.Code == "SPECIAL_RELEASE");
+                        if (specialReleaseDisposition != null)
+                        {
+                            await _caseRegisterService.CloseCaseAsync(caseDto.Id,
+                                new CloseCaseRequest
+                                {
+                                    DispositionTypeId = specialReleaseDisposition.Id,
+                                    ClosingReason = $"Auto-closed: GVW overload within tolerance ({transaction.OverloadKg}kg <= {opToleranceKg}kg). Special release certificate {specialRelease.CertificateNo} issued."
+                                },
+                                transaction.WeighedByUserId);
+                        }
+
+                        await _dbContext.SaveChangesAsync();
+                        _logger.LogInformation(
+                            "Auto-created special release {CertNo} for within-tolerance case {CaseNo}",
+                            specialRelease.CertificateNo, caseDto.CaseNo);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed auto-special-release for within-tolerance weighing {TransactionId}. Manual intervention required.",
+                    transactionId);
+            }
+        }
+
+        // 11. AUTO-TRIGGER: Create Case Register + Yard Entry + Load Correction Memo on overload (per FRD B.1)
         if (transaction.ControlStatus == "Overloaded" && !transaction.IsCompliant)
         {
-            var prohibition = await _prohibitionRepository.GetByWeighingIdAsync(transactionId);
-            if (prohibition != null)
+            try
             {
-                await SaveProhibitionDocumentAsync(prohibition, transaction);
+                var existingCase = await _caseRegisterService.GetByWeighingIdAsync(transactionId);
+                if (existingCase == null)
+                {
+                    var caseDto = await _caseRegisterService.CreateCaseFromWeighingAsync(
+                        transactionId, transaction.WeighedByUserId);
+                    _logger.LogInformation(
+                        "Auto-created case register {CaseNo} for overloaded weighing {TransactionId}",
+                        caseDto.CaseNo, transactionId);
+
+                    // Auto-create Yard Entry when vehicle sent to yard
+                    if (transaction.IsSentToYard)
+                    {
+                        var existingYard = await _yardService.GetByWeighingIdAsync(transactionId);
+                        if (existingYard == null)
+                        {
+                            var yardDto = await _yardService.CreateAsync(
+                                new CreateYardEntryRequest
+                                {
+                                    WeighingId = transactionId,
+                                    StationId = transaction.StationId,
+                                    Reason = "gvw_overload"
+                                },
+                                transaction.WeighedByUserId);
+                            _logger.LogInformation(
+                                "Auto-created yard entry for vehicle {VehicleReg} at station {StationId}",
+                                transaction.VehicleRegNumber, transaction.StationId);
+                        }
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to auto-create case/yard for weighing {TransactionId}. Manual intervention required.",
+                    transactionId);
+                // Don't throw — weighing result is still valid
+            }
+        }
+
+        // 13. AUTO-TRIGGER: Create Case Register + Yard Entry for manual KeNHA tag hold (per FRD A.2)
+        if (transaction.ControlStatus == "TagHold")
+        {
+            try
+            {
+                var existingCase = await _caseRegisterService.GetByWeighingIdAsync(transactionId);
+                if (existingCase == null)
+                {
+                    // Get TAG violation type for case creation
+                    var tagViolationType = await _dbContext.ViolationTypes
+                        .FirstOrDefaultAsync(vt => vt.Code == "TAG");
+
+                    if (tagViolationType != null)
+                    {
+                        var caseRequest = new DTOs.CaseManagement.CreateCaseRegisterRequest
+                        {
+                            WeighingId = transactionId,
+                            VehicleId = transaction.VehicleId,
+                            DriverId = transaction.DriverId,
+                            ViolationTypeId = tagViolationType.Id,
+                            ViolationDetails = transaction.ViolationReason ?? "Vehicle held due to manual KeNHA tag"
+                        };
+                        var caseDto = await _caseRegisterService.CreateCaseAsync(caseRequest, transaction.WeighedByUserId);
+                        _logger.LogInformation(
+                            "Auto-created case register {CaseNo} for tag hold on vehicle {VehicleReg}",
+                            caseDto.CaseNo, transaction.VehicleRegNumber);
+                    }
+                }
+
+                // Auto-create Yard Entry for tag hold
+                var existingYard = await _yardService.GetByWeighingIdAsync(transactionId);
+                if (existingYard == null)
+                {
+                    await _yardService.CreateAsync(
+                        new CreateYardEntryRequest
+                        {
+                            WeighingId = transactionId,
+                            StationId = transaction.StationId,
+                            Reason = "tag_hold"
+                        },
+                        transaction.WeighedByUserId);
+                    _logger.LogInformation(
+                        "Auto-created yard entry for tag hold on vehicle {VehicleReg}",
+                        transaction.VehicleRegNumber);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed auto-create case/yard for tag hold on weighing {TransactionId}. Manual intervention required.",
+                    transactionId);
+            }
+        }
+
+        // 14. AUTO-TRIGGER: Close case + release yard + compliance cert on compliant reweigh (per FRD B.1)
+        if (transaction.IsCompliant && transaction.OriginalWeighingId.HasValue)
+        {
+            try
+            {
+                var originalWeighingId = transaction.OriginalWeighingId.Value;
+                var caseDto = await _caseRegisterService.GetByWeighingIdAsync(originalWeighingId);
+                if (caseDto != null)
+                {
+                    // Build rich closing narration with payment details
+                    var closingNarration = $"Vehicle reweighed and found compliant. Reweigh ticket: {transaction.TicketNumber}.";
+                    var prosecution = await _dbContext.ProsecutionCases
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(p => p.CaseRegisterId == caseDto.Id);
+                    if (prosecution != null)
+                    {
+                        var invoice = await _dbContext.Invoices
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(i => i.ProsecutionCaseId == prosecution.Id && i.Status == "paid");
+                        if (invoice != null)
+                        {
+                            var receipt = await _dbContext.Receipts
+                                .AsNoTracking()
+                                .FirstOrDefaultAsync(r => r.InvoiceId == invoice.Id);
+                            closingNarration = $"Vehicle reweighed and found compliant. Reweigh ticket: {transaction.TicketNumber}. " +
+                                $"Prosecution charged under {prosecution.BestChargeBasis} basis. " +
+                                $"Invoice: {invoice.InvoiceNo}, Fine: {invoice.AmountDue:N2} {invoice.Currency}, Status: {invoice.Status}." +
+                                (receipt != null ? $" Receipt: {receipt.ReceiptNo}, Paid: {receipt.AmountPaid:N2} {receipt.Currency}." : "");
+                        }
+                        else
+                        {
+                            // Invoice exists but not paid
+                            var pendingInvoice = await _dbContext.Invoices
+                                .AsNoTracking()
+                                .FirstOrDefaultAsync(i => i.ProsecutionCaseId == prosecution.Id);
+                            if (pendingInvoice != null)
+                            {
+                                closingNarration += $" Invoice: {pendingInvoice.InvoiceNo}, Amount: {pendingInvoice.AmountDue:N2} {pendingInvoice.Currency}, Status: {pendingInvoice.Status}.";
+                            }
+                        }
+                    }
+
+                    // Close the case with COMPLIANCE_ACHIEVED disposition
+                    var complianceDisposition = await _dbContext.DispositionTypes
+                        .FirstOrDefaultAsync(dt => dt.Code == "COMPLIANCE_ACHIEVED");
+                    if (complianceDisposition != null)
+                    {
+                        await _caseRegisterService.CloseCaseAsync(caseDto.Id,
+                            new CloseCaseRequest
+                            {
+                                DispositionTypeId = complianceDisposition.Id,
+                                ClosingReason = closingNarration
+                            },
+                            transaction.WeighedByUserId);
+                        _logger.LogInformation(
+                            "Auto-closed case {CaseNo} after compliant reweigh {TransactionId}",
+                            caseDto.CaseNo, transactionId);
+                    }
+
+                    // Release vehicle from yard
+                    var yardEntry = await _yardService.GetByWeighingIdAsync(originalWeighingId);
+                    if (yardEntry != null && yardEntry.Status != "released")
+                    {
+                        await _yardService.ReleaseAsync(yardEntry.Id,
+                            new ReleaseYardEntryRequest
+                            {
+                                Notes = $"Auto-released after compliant reweigh. Ticket: {transaction.TicketNumber}"
+                            },
+                            transaction.WeighedByUserId);
+                        _logger.LogInformation(
+                            "Auto-released vehicle {VehicleReg} from yard after compliant reweigh",
+                            transaction.VehicleRegNumber);
+                    }
+
+                    // Find LoadCorrectionMemo and mark compliance achieved
+                    var memo = await _dbContext.LoadCorrectionMemos
+                        .FirstOrDefaultAsync(m => m.WeighingId == originalWeighingId);
+                    if (memo != null)
+                    {
+                        memo.ComplianceAchieved = true;
+                        memo.ReweighWeighingId = transactionId;
+                    }
+
+                    // Generate compliance certificate (linked to memo if exists)
+                    var year = DateTime.UtcNow.Year;
+                    var certCount = await _dbContext.ComplianceCertificates
+                        .CountAsync(c => c.CreatedAt.Year == year);
+                    var certificate = new ComplianceCertificate
+                    {
+                        CertificateNo = $"COMP-{year}-{(certCount + 1):D6}",
+                        CaseRegisterId = caseDto.Id,
+                        WeighingId = transactionId,
+                        LoadCorrectionMemoId = memo?.Id,
+                        IssuedById = transaction.WeighedByUserId,
+                        IssuedAt = DateTime.UtcNow
+                    };
+                    _dbContext.ComplianceCertificates.Add(certificate);
+                    await _dbContext.SaveChangesAsync();
+                    _logger.LogInformation(
+                        "Auto-generated compliance certificate {CertNo} for case {CaseNo}",
+                        certificate.CertificateNo, caseDto.CaseNo);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed auto-close/release/certificate for compliant reweigh {TransactionId}. Manual intervention required.",
+                    transactionId);
+                // Don't throw — weighing result is still valid
             }
         }
 
@@ -472,77 +900,6 @@ public class WeighingService : IWeighingService
 
         // Update transaction total fee
         transaction.TotalFeeUsd = totalFeeUsd;
-    }
-
-    private async Task SaveTransactionDocumentAsync(WeighingTransaction transaction)
-    {
-        try
-        {
-            var pdfBytes = await _pdfService.GenerateWeightTicketAsync(transaction);
-            var fileName = $"WeightTicket_{transaction.TicketNumber}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf";
-
-            using var ms = new MemoryStream(pdfBytes);
-            var (filePath, checksum, fileSize) = await _storageService.SaveAsync(ms, fileName, "weighing/tickets");
-
-            var doc = new Document
-            {
-                FileName = fileName,
-                MimeType = "application/pdf",
-                FileSize = fileSize,
-                FilePath = filePath,
-                FileUrl = _storageService.GetFileUrl(filePath),
-                DocumentType = "WeightTicket",
-                RelatedEntityType = "WeighingTransaction",
-                RelatedEntityId = transaction.Id,
-                UploadedById = transaction.WeighedByUserId,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            await _documentRepository.CreateAsync(doc);
-        }
-        catch (Exception ex)
-        {
-            // Log the error but don't break the weighing flow if PDF fails
-            // In production, this could be queued for retry
-            _logger.LogError(ex,
-                "Failed to generate weight ticket PDF for transaction {TransactionId}, ticket {TicketNumber}",
-                transaction.Id, transaction.TicketNumber);
-        }
-    }
-
-    private async Task SaveProhibitionDocumentAsync(ProhibitionOrder order, WeighingTransaction transaction)
-    {
-        try
-        {
-            var pdfBytes = await _pdfService.GenerateProhibitionOrderAsync(order);
-            var fileName = $"ProhibitionOrder_{order.ProhibitionNo}.pdf";
-
-            using var ms = new MemoryStream(pdfBytes);
-            var (filePath, checksum, fileSize) = await _storageService.SaveAsync(ms, fileName, "weighing/prohibitions");
-
-            var doc = new Document
-            {
-                FileName = fileName,
-                MimeType = "application/pdf",
-                FileSize = fileSize,
-                FilePath = filePath,
-                FileUrl = _storageService.GetFileUrl(filePath),
-                DocumentType = "ProhibitionOrder",
-                RelatedEntityType = "ProhibitionOrder",
-                RelatedEntityId = order.Id,
-                UploadedById = transaction.WeighedByUserId,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            await _documentRepository.CreateAsync(doc);
-        }
-        catch (Exception ex)
-        {
-            // Log the error but don't break the weighing flow if PDF fails
-            _logger.LogError(ex,
-                "Failed to generate prohibition order PDF for order {ProhibitionNo}, transaction {TransactionId}",
-                order.ProhibitionNo, transaction.Id);
-        }
     }
 
     public async Task<WeighingTransaction?> GetTransactionAsync(Guid id)
@@ -807,39 +1164,74 @@ public class WeighingService : IWeighingService
             }
         }
 
-        // 7. Capture axle weights
-        var axles = request.Axles.Select(dto => new WeighingAxle
+        // 7. Resolve axle configuration for proper FK references
+        AxleConfiguration? resolvedConfig = null;
+        var axleCount = request.Axles.Count;
+        var firstAxleConfigId = request.Axles.FirstOrDefault()?.AxleConfigurationId;
+
+        if (firstAxleConfigId.HasValue && firstAxleConfigId.Value != Guid.Empty)
         {
-            AxleNumber = dto.AxleNumber,
-            MeasuredWeightKg = dto.MeasuredWeightKg,
-            AxleConfigurationId = dto.AxleConfigurationId ?? Guid.Empty,
-            WeighingId = transaction.Id,
-            CapturedAt = request.CapturedAt ?? DateTime.UtcNow
+            resolvedConfig = await _axleConfigurationRepository.GetByIdAsync(firstAxleConfigId.Value, includeWeightReferences: true);
+        }
+
+        if (resolvedConfig == null)
+        {
+            resolvedConfig = await _axleConfigurationRepository.GetStandardByAxleCountAsync(axleCount);
+        }
+
+        // 8. Capture axle weights with resolved config
+        var axles = request.Axles.Select(dto =>
+        {
+            var axle = new WeighingAxle
+            {
+                AxleNumber = dto.AxleNumber,
+                MeasuredWeightKg = dto.MeasuredWeightKg,
+                WeighingId = transaction.Id,
+                CapturedAt = request.CapturedAt ?? DateTime.UtcNow
+            };
+
+            // Set config references from resolved config
+            if (resolvedConfig != null)
+            {
+                axle.AxleConfigurationId = resolvedConfig.Id;
+                var weightRef = resolvedConfig.AxleWeightReferences?
+                    .FirstOrDefault(r => r.AxlePosition == dto.AxleNumber);
+                if (weightRef != null)
+                {
+                    axle.AxleWeightReferenceId = weightRef.Id;
+                    axle.PermissibleWeightKg = weightRef.AxleLegalWeightKg;
+                    axle.AxleGrouping = weightRef.AxleGrouping;
+                    axle.AxleGroupId = weightRef.AxleGroupId;
+                }
+            }
+            else
+            {
+                axle.AxleConfigurationId = dto.AxleConfigurationId ?? Guid.Empty;
+            }
+
+            return axle;
         }).ToList();
 
         // Calculate GVW from axles
         var calculatedGvw = axles.Sum(a => a.MeasuredWeightKg);
 
+        // Save axles directly (avoid CaptureWeightsAsync which changes status to "captured")
         if (isUpdate)
         {
-            // For updates, clear old axles and add new ones
-            transaction.WeighingAxles = axles;
-            transaction.GvwMeasuredKg = calculatedGvw;
-            transaction = await _weighingRepository.UpdateTransactionAsync(transaction);
-        }
-        else
-        {
-            transaction = await CaptureWeightsAsync(transaction.Id, axles);
+            await _weighingRepository.DeleteAxlesByTransactionIdAsync(transaction.Id);
         }
 
-        // 8. For auto-weigh (preliminary), store GVW in AutoweighGvwKg field
+        transaction.WeighingAxles = axles;
+        transaction.GvwMeasuredKg = calculatedGvw;
+
         if (!request.IsFinalCapture)
         {
             transaction.AutoweighGvwKg = calculatedGvw;
-            await _weighingRepository.UpdateTransactionAsync(transaction);
         }
 
-        // 9. Calculate compliance (already includes GVW calculation, fees, prohibition generation)
+        await _weighingRepository.SaveTransactionWithNewAxlesAsync(transaction);
+
+        // Calculate compliance (GVW calculation, fees, prohibition generation)
         transaction = await CalculateComplianceAsync(transaction.Id);
 
         _logger.LogInformation(

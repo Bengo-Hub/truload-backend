@@ -536,75 +536,199 @@ No bound switching
 
 ### Overview
 
-Integration with eCitizen payment gateway for invoice creation, payment processing, and receipt confirmation.
+Integration with eCitizen/Pesaflow payment gateway for invoice creation, payment processing, and receipt confirmation. **Fully implemented (February 2026).**
 
 ### Architecture
 
-**Service Configuration:**
-- Gateway URL: `ECITIZEN_GATEWAY_URL` (environment variable)
-- API Key: `ECITIZEN_API_KEY` (K8s secret)
-- Webhook URL: `ECITIZEN_WEBHOOK_URL` (callback endpoint)
+**Credential Storage (IntegrationConfig Table):**
+- All credentials stored encrypted in `integration_configs` table
+- Encryption: AES-GCM (256-bit key from K8s secret)
+- Provider: `ecitizen_pesaflow`
+- Fields: base_url, callback_url, webhook_url, encrypted_credentials, endpoints_json
+- Service: `IntegrationConfigService` with `IEncryptionService` (AES-GCM)
 
-**Authentication:**
-- API key authentication via Authorization header
-- Webhook signature verification for callbacks
+**Key Files:**
+- `Services/Implementations/Financial/ECitizenService.cs` — Push invoice, initiate checkout
+- `Controllers/Financial/ECitizenWebhookController.cs` — IPN webhook handler
+- `Controllers/Financial/PaymentController.cs` — Payment-related endpoints
+- `Models/System/IntegrationConfig.cs` — Encrypted credential model
+- `Infrastructure/Security/AesGcmEncryptionService.cs` — AES-GCM encryption
+- `Configuration/ECitizenOptions.cs` — Configuration options
+- `Data/Seeders/SystemConfiguration/IntegrationConfigSeeder.cs` — Seeds test config
 
 ### Implementation Details
 
-**Invoice Creation:**
-- POST request to `/api/v1/invoices/create`
-- Request includes: case ID, amount, description, customer details
-- Response includes: invoice ID, payment URL, invoice number
-- Invoice stored in `invoices` table with external reference
+**Push Invoice to Pesaflow (Create Invoice API):**
+- Endpoint: `POST /api/v1/invoices/{invoiceId}/pesaflow`
+- Service: `ECitizenService.CreatePesaflowInvoiceAsync()`
+- Pesaflow API: `POST {BaseUrl}/api/invoice/create` (JSON body, Bearer token auth)
+- Flow: Decrypt credentials → Get OAuth token → Build JSON payload with `account_id`, `client_invoice_ref`, `items[]`, etc. → Store `PesaflowInvoiceNumber` on invoice
+- Required body fields: `account_id`, `amount_expected`, `amount_net`, `client_invoice_ref`, `currency`, `items[]`, `name`, `notification_url`, `callback_url`
+- No `secure_hash` needed (Bearer token auth is used instead)
 
-**Payment Webhook:**
-- Webhook endpoint: `/api/v1/payments/webhook/ecitizen`
-- Signature verification: Validate webhook signature
-- Payment confirmation: Update invoice status, create receipt record
-- Background jobs: Trigger load correction memo and reweigh workflow
+**Online Checkout (Iframe/STK):**
+- Endpoint: `POST /api/v1/invoices/{invoiceId}/checkout`
+- Service: `ECitizenService.InitiateCheckoutAsync()`
+- Pesaflow API: `POST {BaseUrl}/PaymentAPI/iframev2.1.php` (form-encoded, with `secureHash`)
+- Returns iframe HTML or redirect URL for immediate payment
 
-**Error Handling:**
-- Retry logic: Polly with exponential backoff (3 retries)
-- Circuit breaker: Opens after 5 consecutive failures
-- Manual reconciliation: Admin interface for failed payments
+**IPN Webhook (Payment Confirmation):**
+- Endpoint: `POST /api/v1/payments/webhook/ecitizen-pesaflow`
+- Signature verification: HMAC-SHA256 against `token_hash` (mandatory - unsigned webhooks rejected)
+- Idempotency: `TransactionReference` (payment_reference) prevents duplicate receipts
+- On success: Update invoice status → Create receipt → Auto-create LoadCorrectionMemo
+
+**Manual Payment Recording:**
+- Endpoint: `POST /api/v1/invoices/{invoiceId}/payments`
+- Service: `ReceiptService.RecordPaymentAsync()`
+- When invoice fully paid:
+  1. Invoice.Status = "paid"
+  2. ProsecutionCase.Status = "paid"
+  3. **LoadCorrectionMemo auto-created** (new auto-trigger)
+
+### Auto-Triggers from Payment
+
+**Payment → LoadCorrectionMemo (ReceiptService):**
+- When invoice status changes to "paid"
+- Traces: Invoice → ProsecutionCase → CaseRegister → WeighingTransaction
+- Creates LoadCorrectionMemo with overload details, issued by payment officer
+- Memo number format: `LCM-{YEAR}-{SEQUENCE}`
+- Fail-safe: try-catch, logged but doesn't block payment
+
+**Reweigh → Memo Update (WeighingService):**
+- When reweigh initiated: Links reweighWeighingId to existing memo
+- Relief truck info stored on memo (reliefTruckRegNumber, reliefTruckEmptyWeightKg)
+
+**Compliant Reweigh → Case Close (WeighingService):**
+- When reweigh is compliant:
+  1. Case closed with rich narration (Invoice/Receipt/Fine details)
+  2. Yard entry auto-released
+  3. Memo.ComplianceAchieved = true
+  4. ComplianceCertificate auto-generated (linked to memo)
+
+### Error Handling
+- Pesaflow API down: Graceful skip with 400 response (invoice remains pending)
+- Webhook delivery failure: Manual reconciliation via admin
+- Duplicate payments: Idempotency key prevents double-processing
+- Payment failure: Receipt not created, invoice stays pending
 
 ---
 
 ## Third-Party API Integrations
 
-### NTSA Vehicle Search API
+### NTSA Vehicle Search API (Implemented February 2026)
 
-**Purpose:** Vehicle registration lookup and verification
+**Purpose:** Vehicle registration lookup, owner details, inspection status, and caveat info from NTSA database. Integrated into case register workflows.
 
-**Configuration:**
-- API URL: `NTSA_API_URL` (environment variable)
-- API Key: `NTSA_API_KEY` (K8s secret)
+**Architecture:**
+- **Service:** `NTSAService` (`Services/Implementations/Integration/NTSAService.cs`, 344 lines)
+- **Interface:** `INTSAService` (`Services/Interfaces/Integration/INTSAService.cs`)
+- **DTOs:** `NTSAVehicleSearchResult` (`DTOs/Integration/IntegrationDtos.cs`)
+- **Controller:** `ExternalIntegrationController` (`Controllers/Integration/ExternalIntegrationController.cs`)
+- **DI Registration:** `Program.cs` — `AddHttpClient<INTSAService, NTSAService>(c => c.Timeout = 30s)`
 
-**Endpoints:**
-- `GET /api/v1/vehicles/search?regNo={regNo}` - Search vehicle by registration
+**Credential Storage (IntegrationConfig Table):**
+- Provider: `ntsa`
+- Credentials encrypted via AES-256-GCM
+- Seeded as **inactive** in development (awaiting live NTSA API credentials)
+- Activated via admin API: `PUT /api/v1/system/integrations/ntsa`
+
+**API Pattern (KenLoad V2 style):**
+- POST to NTSA API with `{ "regno": "KAA123X" }` body
+- Bearer token authentication
+- Results cached in Redis (24-hour TTL per vehicle)
+- Supports both POST (default) and GET template URL formats
+
+**TruLoad API Endpoints:**
+- `GET /api/v1/integration/ntsa/vehicle/{regNo}` - Search vehicle (requires `case.read` permission)
+- `GET /api/v1/integration/health` - Health check for all integrations (requires `config.read`)
+
+**Response Fields:**
+- Owner: first/last name, type, address, town, phone
+- Vehicle: chassis no, make, model, body type, year, registration date, logbook
+- Inspection: center, date, expiry, status
+- Caveat: reason, status, type
 
 **Error Handling:**
-- API unavailability: Cache last known vehicle data
-- Rate limiting: Respect rate limits, queue requests
-- Invalid responses: Log error, return null
+- API unavailability: Returns 503 with message, graceful degradation
+- Redis cache miss: Falls through to API call
+- Invalid/error response: Marks `Found = false`, logs warning
+- Timeout: 30-second HttpClient timeout, returns null
 
-### KeNHA Tags API
+**Configuration (appsettings):**
+```json
+"NTSA": {
+  "BaseUrl": "https://api.ntsa.go.ke",
+  "Endpoints": {
+    "VehicleSearch": "/vsearch/sp/qregno",
+    "VehicleDetails": "/api/vehicle/details?reg_no={reg_no}&api_key={api_key}"
+  },
+  "ApiKey": "AWAITING_LIVE_CREDENTIALS"
+}
+```
 
-**Purpose:** Tag synchronization with KeNHA system
+---
 
-**Configuration:**
-- API URL: `KENHA_TAGS_API_URL` (environment variable)
-- API Key: `KENHA_TAGS_API_KEY` (K8s secret)
+### KeNHA Vehicle Tag Verification API (Implemented February 2026)
 
-**Endpoints:**
-- `POST /api/v1/tags` - Create tag in KeNHA system
-- `GET /api/v1/tags/{tagId}` - Get tag status
-- `PUT /api/v1/tags/{tagId}/close` - Close tag
+**Purpose:** Verify if a vehicle has an existing KeNHA tag/prohibition. Triggered automatically during weighing capture when KeNHA integration is active.
+
+**Architecture:**
+- **Service:** `KeNHAService` (`Services/Implementations/Integration/KeNHAService.cs`, 294 lines)
+- **Interface:** `IKeNHAService` (`Services/Interfaces/Integration/IKeNHAService.cs`)
+- **DTOs:** `KeNHATagVerificationResult`, `KeNHATagAlertDto` (`DTOs/Integration/IntegrationDtos.cs`, `DTOs/Weighing/WeighingTransactionDto.cs`)
+- **Controller:** `ExternalIntegrationController` + `WeighingController` (background check)
+- **DI Registration:** `Program.cs` — `AddHttpClient<IKeNHAService, KeNHAService>(c => c.Timeout = 15s)`
+
+**Credential Storage (IntegrationConfig Table):**
+- Provider: `kenha`
+- Credentials encrypted via AES-256-GCM
+- Seeded as **inactive** in development (awaiting live KeNHA API credentials)
+- Activated via admin API: `PUT /api/v1/system/integrations/kenha`
+
+**Weighing Integration Flow:**
+1. Operator enters vehicle reg no on capture screen
+2. `POST /api/v1/weighing-transactions` is called
+3. **Three concurrent tasks execute:**
+   - `InitiateWeighingAsync()` — creates weighing transaction
+   - `CheckKeNHATagAsync()` — queries KeNHA API for tags (background, non-blocking)
+   - `CheckVehicleTagsAsync()` — queries local TruLoad tags
+4. Response includes `KeNHATagAlert` (if KeNHA tag found) and `OpenTags` (local tags)
+5. Frontend shows both tag types on the decision page
+
+**Alert Levels:**
+- `critical` — KeNHA tag status is "open" (active prohibition)
+- `warning` — KeNHA tag status is unknown
+- `info` — KeNHA tag status is "closed" (historical)
+
+**TruLoad API Endpoints:**
+- `GET /api/v1/weighing-transactions/kenha-tag-check/{regNo}` - Standalone tag check (requires `weighing.read`)
+- `GET /api/v1/integration/kenha/tag/{regNo}` - Direct KeNHA tag verification (requires `weighing.read`)
+- Background check integrated into `POST /api/v1/weighing-transactions`
+
+**Response Fields:**
+- hasTag, tagStatus, tagCategory, reason, station, tagDate, tagUid
+- alertLevel, message (enriched for decision page display)
 
 **Error Handling:**
-- Retry logic for failed tag submissions
-- Queue tags for later submission if API unavailable
-- Manual tag export interface for reconciliation
+- Integration unavailable: Returns null (never blocks weighing)
+- API timeout: 15-second HttpClient limit, returns null
+- Cache: Redis 1-hour TTL per vehicle
+- Parsing: Handles both array and object KeNHA responses (KenLoad V2 compatibility)
+
+**Configuration (appsettings):**
+```json
+"KeNHA": {
+  "BaseUrl": "https://kenload.kenha.co.ke",
+  "Endpoints": {
+    "VerifyTag": "/api/v3/vehicle/tag/verify",
+    "WeighbridgeData": "/api/weighbridge/data?api_key={api_key}"
+  },
+  "ApiKey": "AWAITING_LIVE_CREDENTIALS"
+}
+```
+
+---
 
 ### KeNHA Permit API
 

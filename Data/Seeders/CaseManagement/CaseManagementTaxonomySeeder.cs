@@ -220,6 +220,14 @@ public static class CaseManagementTaxonomySeeder
             },
             new()
             {
+                Code = "TAG",
+                Name = "Vehicle Tag Violation",
+                Description = "Vehicle held due to manual KeNHA tag. Administrative hold pending tag resolution.",
+                Severity = "medium",
+                IsActive = true
+            },
+            new()
+            {
                 Code = "OTHER",
                 Name = "Other Violation",
                 Description = "Miscellaneous traffic or load control violations not categorized above.",

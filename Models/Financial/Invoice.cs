@@ -56,6 +56,21 @@ public class Invoice : BaseEntity
     /// </summary>
     public DateTime? DueDate { get; set; }
 
+    /// <summary>
+    /// Pesaflow invoice number returned after creation on their platform
+    /// </summary>
+    public string? PesaflowInvoiceNumber { get; set; }
+
+    /// <summary>
+    /// Pesaflow unique payment reference returned after payment confirmation
+    /// </summary>
+    public string? PesaflowPaymentReference { get; set; }
+
+    /// <summary>
+    /// Pesaflow checkout URL for iframe or redirect payment
+    /// </summary>
+    public string? PesaflowCheckoutUrl { get; set; }
+
     // Navigation properties
     public CaseRegister? CaseRegister { get; set; }
     public ProsecutionCase? ProsecutionCase { get; set; }

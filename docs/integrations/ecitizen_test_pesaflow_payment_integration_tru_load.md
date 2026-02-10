@@ -235,20 +235,215 @@ Key principles:
 
 ---
 
-## 12. Final Summary
+## 12. API Reference (Production-Ready)
 
-Pesaflow fully supports TruLoad’s required payment models:
+### 12.1 Create Invoice API
 
-✔ Pay-now invoices
-✔ Pay-later via eCitizen
-✔ Reliable backend confirmation
-✔ Clean receipt triggering
+**URL:** `POST {BaseUrl}/api/invoice/create`
+**Auth:** Bearer token (from OAuth endpoint)
+**Content-Type:** `application/json`
 
-When integrated correctly, TruLoad can treat Pesaflow as a **trusted external payment authority**, while maintaining full control over invoice and receipt lifecycles.
+**Request Body:**
+```json
+{
+  "account_id": "588",
+  "amount_expected": "100.00",
+  "amount_net": "100.00",
+  "amount_settled_offline": "0",
+  "callback_url": "https://your-domain/api/v1/payments/callback/ecitizen-pesaflow",
+  "client_invoice_ref": "INV-2026-000001",
+  "commission": "0",
+  "currency": "USD",
+  "email": "driver@example.com",
+  "format": "json",
+  "id_number": "12345678",
+  "items": [
+    {
+      "account_id": "588",
+      "desc": "Overload Fine",
+      "item_ref": "INV-2026-000001",
+      "price": "100.00",
+      "quantity": "1",
+      "require_settlement": "true",
+      "currency": "USD"
+    }
+  ],
+  "msisdn": "254700000000",
+  "name": "John Doe",
+  "notification_url": "https://your-domain/api/v1/payments/webhook/ecitizen-pesaflow"
+}
+```
+
+**Response:** Returns `invoice_number` (Pesaflow's unique reference).
+
+**Key Notes:**
+- `account_id` = Pesaflow service ID (provided on activation)
+- `client_invoice_ref` = TruLoad's InvoiceNo (used to match IPN callbacks)
+- `notification_url` = IPN webhook endpoint (Pesaflow sends payment confirmations here)
+- `callback_url` = redirect URL after user completes payment in browser
+- `items` array is mandatory with at least one line item
+- Bearer token is required (no `secure_hash` needed for this endpoint)
+
+### 12.2 Online Checkout API (Iframe)
+
+**URL:** `POST {BaseUrl}/PaymentAPI/iframev2.1.php`
+**Content-Type:** `application/x-www-form-urlencoded`
+
+**Parameters:**
+
+| Parameter | Description |
+|-----------|-------------|
+| `apiClientID` | API client ID (provided on activation) |
+| `serviceID` | Service ID (provided on activation) |
+| `billDesc` | Description of the bill |
+| `currency` | KES or USD |
+| `billRefNumber` | Invoice reference number (unique) |
+| `clientMSISDN` | Customer phone (e.g. 254700000000) |
+| `clientName` | Customer name |
+| `clientIDNumber` | Customer ID/passport |
+| `clientEmail` | Customer email |
+| `amountExpected` | Total amount |
+| `callBackURLONSuccess` | Redirect URL after payment |
+| `notificationURL` | IPN webhook URL |
+| `secureHash` | HMAC-SHA256 signature (see below) |
+| `format` | "json" or "iframe" |
+| `sendSTK` | "true" or "false" (push STK on create) |
+
+### 12.3 Secure Hash Computation
+
+**Algorithm:** `Base64(hex(HMAC-SHA256(key, data)))`
+
+**For Online Checkout:**
+```
+data = apiClientID + amount + serviceID + clientIDNumber + currency +
+       billRefNumber + billDesc + clientName + secret
+key  = Consumer Key (ApiKey)
+```
+
+**For Payment Status Query:**
+```
+data = api_client_id + ref_no
+key  = Consumer Key (ApiKey)
+```
+
+**C# Implementation:**
+```csharp
+var keyBytes = Encoding.UTF8.GetBytes(apiKey);
+var dataBytes = Encoding.UTF8.GetBytes(dataString);
+using var hmac = new HMACSHA256(keyBytes);
+var hashBytes = hmac.ComputeHash(dataBytes);
+var hexHash = Convert.ToHexStringLower(hashBytes);
+return Convert.ToBase64String(Encoding.UTF8.GetBytes(hexHash));
+```
+
+### 12.4 IPN Webhook Payload
+
+Pesaflow sends HTTPS POST to `notification_url` with these fields:
+
+| Field | Description |
+|-------|-------------|
+| `payment_channel` | MPESA, CARD, BANK, AIRTEL, etc. |
+| `client_invoice_ref` | Our InvoiceNo (from `billRefNumber` / `client_invoice_ref`) |
+| `payment_reference` | Pesaflow's unique payment ID |
+| `currency` | Transaction currency |
+| `amount_paid` | Total paid to date (includes partial payments) |
+| `invoice_amount` | Original invoice amount |
+| `status` | "PAID" or "SUCCESS" |
+| `invoice_number` | Pesaflow's invoice reference |
+| `payment_date` | Payment timestamp |
+| `token_hash` | HMAC signature for verification (mandatory) |
+| `last_payment_amount` | Current payment amount |
+
+**Webhook Signature Verification:**
+```
+verification_data = invoice_number + amount_paid + secret
+expected_hash = Base64(hex(HMAC-SHA256(ApiKey, verification_data)))
+```
+If `token_hash` does not match, reject the webhook.
+
+### 12.5 Payment Status Query
+
+**URL:** `GET {BaseUrl}/api/invoice/payment/status`
+**Parameters:** `api_client_id`, `ref_no`, `secure_hash`
+
+Used for manual reconciliation when webhooks fail.
 
 ---
 
-**Audience:** TruLoad Engineering Team  
-**Target Runtime:** .NET 10  
+## 13. Production Configuration
+
+### 13.1 Credential Sources
+
+| Environment | Source |
+|-------------|--------|
+| Development | `appsettings.Development.json` (seeded to DB by `IntegrationConfigSeeder`) |
+| Staging | Environment variables or K8s secrets |
+| Production | Azure Key Vault / K8s secrets (never appsettings) |
+
+### 13.2 URL Switching
+
+| Environment | BaseUrl |
+|-------------|---------|
+| Test | `https://test.pesaflow.com` |
+| Production | `https://api.pesaflow.com` (confirm with Pesaflow) |
+
+### 13.3 Required Credentials
+
+- **Consumer Key** (`ApiKey`) - HMAC signing key and Basic auth username
+- **Consumer Secret** (`ApiSecret`) - Appended to hash data strings and Basic auth password
+- **API Client ID** (`ApiClientId`) - Service identifier (e.g. "588")
+
+All stored encrypted (AES-256-GCM) in `IntegrationConfig.EncryptedCredentials`.
+
+---
+
+## 14. TruLoad Integration Points
+
+### 14.1 Prosecution Workflow Integration
+
+```
+Overload Detected
+    -> Case Register auto-created
+    -> Yard Entry auto-created
+    -> Prosecution created (charges calculated)
+    -> Invoice generated
+    -> Invoice pushed to Pesaflow (Create Invoice API)
+    -> Payment received (IPN webhook or manual cash)
+    -> Receipt generated
+    -> Load Correction Memo auto-created
+    -> Reweigh initiated (with relief truck)
+    -> Compliant reweigh triggers:
+       - Case auto-closed (with payment narration)
+       - Yard entry auto-released
+       - Compliance certificate generated
+```
+
+### 14.2 Auto-Trigger Chain
+
+| Event | Trigger | Service |
+|-------|---------|---------|
+| Invoice paid | Auto-create Load Correction Memo | `ReceiptService.RecordPaymentAsync` |
+| Invoice paid | Update ProsecutionCase.Status to "paid" | `ReceiptService.RecordPaymentAsync` |
+| Compliant reweigh | Auto-close case + release yard + issue cert | `WeighingService.CalculateComplianceAsync` |
+
+---
+
+## 15. Final Summary
+
+Pesaflow fully supports TruLoad's required payment models:
+
+- Pay-now invoices (Online Checkout with iframe/STK)
+- Pay-later via eCitizen portal (Create Invoice API)
+- Reliable backend confirmation (IPN webhook with mandatory signature verification)
+- Clean receipt triggering (event-driven, idempotent)
+- Payment reconciliation (Status Query API for failed webhooks)
+
+When integrated correctly, TruLoad treats Pesaflow as a **trusted external payment authority**, while maintaining full control over invoice and receipt lifecycles.
+
+---
+
+**Audience:** TruLoad Engineering Team
+**Target Runtime:** .NET 10
 **Integration Style:** Secure, Event-Driven, Asynchronous
+**Last Updated:** February 2026
 

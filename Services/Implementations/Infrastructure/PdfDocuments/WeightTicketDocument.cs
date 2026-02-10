@@ -1,6 +1,7 @@
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Models.Weighing;
 
 namespace TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments;
@@ -38,27 +39,14 @@ public class WeightTicketDocument : BaseDocument
 
     private void ComposeHeader(IContainer container)
     {
-        container.Column(col =>
-        {
-            col.Item().Row(row =>
-            {
-                row.RelativeItem().Column(c =>
-                {
-                    c.Item().Text("REPUBLIC OF KENYA").FontSize(12).SemiBold();
-                    c.Item().Text("WEIGHT CERTIFICATE").FontSize(14).SemiBold().FontColor("#0066CC");
-                    c.Item().Text(_transaction.Station?.Name ?? "Weighbridge Station").FontSize(9);
-                });
-
-                row.ConstantItem(100).AlignRight().Column(c =>
-                {
-                    c.Item().Text($"No: {_transaction.TicketNumber}").FontSize(10).SemiBold();
-                    c.Item().Text($"{_transaction.WeighedAt:dd/MM/yyyy}").FontSize(8);
-                    c.Item().Text($"{_transaction.WeighedAt:HH:mm}").FontSize(8);
-                });
-            });
-
-            col.Item().PaddingVertical(3).LineHorizontal(1).LineColor(Colors.Black);
-        });
+        ComposeOfficialHeaderWithLogos(
+            container,
+            BrandingConstants.Logos.KuraLogo,
+            BrandingConstants.Logos.CourtOfArmsKenya,
+            "WEIGHT CERTIFICATE",
+            subtitle: _transaction.Station?.Name ?? "Weighbridge Station",
+            referenceNumber: $"No: {_transaction.TicketNumber}",
+            dateText: $"{_transaction.WeighedAt:dd/MM/yyyy HH:mm}");
     }
 
     private void ComposeContent(IContainer container)

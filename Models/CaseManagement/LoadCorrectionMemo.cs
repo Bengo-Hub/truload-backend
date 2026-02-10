@@ -51,6 +51,16 @@ public class LoadCorrectionMemo : BaseEntity
     public bool ComplianceAchieved { get; set; } = false;
 
     /// <summary>
+    /// Relief truck registration number (if offload method used)
+    /// </summary>
+    public string? ReliefTruckRegNumber { get; set; }
+
+    /// <summary>
+    /// Relief truck empty weight in kg (before loading offloaded cargo)
+    /// </summary>
+    public int? ReliefTruckEmptyWeightKg { get; set; }
+
+    /// <summary>
     /// Officer who issued the memo
     /// </summary>
     public Guid IssuedById { get; set; }

@@ -19,6 +19,7 @@ public class ReceiptDto
     public Guid? ReceivedById { get; set; }
     public string? ReceivedByName { get; set; }
     public DateTime PaymentDate { get; set; }
+    public string? PaymentChannel { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

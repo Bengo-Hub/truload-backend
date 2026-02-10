@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using TruLoad.Backend.DTOs.Shared;
+using TruLoad.Backend.DTOs.Yard;
 
 namespace TruLoad.Backend.DTOs.Weighing;
 
@@ -98,6 +99,10 @@ public class WeighingTransactionDto
     // Axles
     public List<WeighingAxleDto> WeighingAxles { get; set; } = new();
 
+    // Tag Alerts (populated on decision page after weighing)
+    public KeNHATagAlertDto? KeNHATagAlert { get; set; }
+    public List<VehicleTagDto> OpenTags { get; set; } = new();
+
     // Display Helpers
     public string StatusBadgeColor { get; set; } = "gray"; // green, red, yellow, gray
     public string ComplianceIcon { get; set; } = ""; // tagged, warned, legal, overload
@@ -116,6 +121,24 @@ public class WeighingAxleDto
     public Guid AxleConfigurationId { get; set; }
     public Guid? AxleWeightReferenceId { get; set; }
     public DateTime CapturedAt { get; set; }
+}
+
+/// <summary>
+/// Alert DTO when a vehicle has an existing KeNHA tag/prohibition.
+/// Populated by background KeNHA API check during weighing initiation.
+/// Only populated when KeNHA integration is configured and active.
+/// </summary>
+public class KeNHATagAlertDto
+{
+    public bool HasTag { get; set; }
+    public string? TagStatus { get; set; }
+    public string? TagCategory { get; set; }
+    public string? Reason { get; set; }
+    public string? Station { get; set; }
+    public DateTime? TagDate { get; set; }
+    public string? TagUid { get; set; }
+    public string AlertLevel { get; set; } = "info"; // info, warning, critical
+    public string? Message { get; set; }
 }
 
 /// <summary>
@@ -254,6 +277,17 @@ public class InitiateReweighRequest
     [Required]
     [StringLength(50)]
     public string ReweighTicketNumber { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Relief truck registration number (if offloading excess weight to another truck)
+    /// </summary>
+    [StringLength(20)]
+    public string? ReliefTruckRegNumber { get; set; }
+
+    /// <summary>
+    /// Relief truck empty weight in kg (before loading the offloaded cargo)
+    /// </summary>
+    public int? ReliefTruckEmptyWeightKg { get; set; }
 }
 
 /// <summary>

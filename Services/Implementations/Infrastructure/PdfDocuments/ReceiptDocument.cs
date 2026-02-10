@@ -1,6 +1,7 @@
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Models.Financial;
 
 namespace TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments;
@@ -42,21 +43,42 @@ public class ReceiptDocument : BaseDocument
 
     private void ComposeHeader(IContainer container)
     {
+        var primaryLogo = LoadLogo(BrandingConstants.Logos.KuraLogo);
+        var secondaryLogo = LoadLogo(BrandingConstants.Logos.EcitizenLogo);
+
         container.Column(col =>
         {
+            // Logo row with organization branding
             col.Item().Row(row =>
             {
-                row.RelativeItem().Column(org =>
+                row.ConstantItem(50).AlignMiddle().Column(logoCol =>
                 {
-                    org.Item().Text(_organizationName).FontSize(12).SemiBold().FontColor(KuraBlue);
-                    org.Item().Text(_organizationAddress).FontSize(8);
+                    if (primaryLogo != null)
+                        logoCol.Item().Height(40).Image(primaryLogo, ImageScaling.FitArea);
                 });
 
-                row.ConstantItem(100).AlignRight().Background(OfficialGreen).Padding(6).AlignCenter()
-                    .Text("RECEIPT").FontSize(14).Bold().FontColor(Colors.White);
+                row.RelativeItem().PaddingHorizontal(5).Column(org =>
+                {
+                    org.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
+                        .FontSize(10).SemiBold();
+                    org.Item().AlignCenter().Text(_organizationName).FontSize(12).SemiBold().FontColor(KuraBlue);
+                    org.Item().AlignCenter().Text(_organizationAddress).FontSize(8);
+                });
+
+                row.ConstantItem(50).AlignMiddle().Column(logoCol =>
+                {
+                    if (secondaryLogo != null)
+                        logoCol.Item().Height(40).Image(secondaryLogo, ImageScaling.FitArea);
+                });
             });
 
-            col.Item().PaddingTop(10).Row(row =>
+            // Receipt badge
+            col.Item().PaddingTop(6).AlignCenter()
+                .Background(OfficialGreen).Padding(6)
+                .Text("RECEIPT").FontSize(14).Bold().FontColor(Colors.White);
+
+            // Receipt details row
+            col.Item().PaddingTop(8).Row(row =>
             {
                 row.RelativeItem().Column(c =>
                 {

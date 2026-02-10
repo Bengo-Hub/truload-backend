@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.CaseManagement;
 using TruLoad.Backend.Models.CaseManagement;
+using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Repositories.CaseManagement;
 using TruLoad.Backend.Services.Interfaces.CaseManagement;
 
@@ -123,6 +124,18 @@ public class CaseRegisterService : ICaseRegisterService
         var prohibitionOrder = await _context.ProhibitionOrders
             .FirstOrDefaultAsync(po => po.WeighingId == weighingId);
 
+        // Resolve ActId: use weighing's ActId if set, otherwise fall back to default act from settings
+        Guid? actId = weighing.ActId;
+        if (!actId.HasValue)
+        {
+            var defaultActSetting = await _context.ApplicationSettings
+                .FirstOrDefaultAsync(s => s.SettingKey == SettingKeys.DefaultActCode);
+            var actCode = defaultActSetting?.SettingValue ?? "TRAFFIC_ACT";
+            var defaultAct = await _context.ActDefinitions
+                .FirstOrDefaultAsync(a => a.Code == actCode);
+            actId = defaultAct?.Id;
+        }
+
         // Create case register entry
         var request = new CreateCaseRegisterRequest
         {
@@ -132,7 +145,7 @@ public class CaseRegisterService : ICaseRegisterService
             DriverId = weighing.DriverId,
             ViolationTypeId = overloadViolationType.Id,
             ViolationDetails = $"GVW Overload: {weighing.OverloadKg:N0} kg. Control Status: {weighing.ControlStatus}",
-            ActId = null // WeighingTransaction doesn't have ActId
+            ActId = actId
         };
 
         return await CreateCaseAsync(request, userId);
@@ -220,7 +233,9 @@ public class CaseRegisterService : ICaseRegisterService
             ?? throw new InvalidOperationException("CLOSED case status not found");
 
         caseRegister.CaseStatusId = closedStatus.Id;
+        caseRegister.CaseStatus = null; // Detach stale navigation to prevent EF conflict
         caseRegister.DispositionTypeId = request.DispositionTypeId;
+        caseRegister.DispositionType = null; // Detach stale navigation
         caseRegister.ClosingReason = request.ClosingReason;
         caseRegister.ClosedAt = DateTime.UtcNow;
         caseRegister.ClosedById = userId;

@@ -71,6 +71,14 @@ public static class ProsecutionModuleDbContextConfiguration
                 .HasColumnType("decimal(5,2)")
                 .HasDefaultValue(1.0m);
 
+            entity.Property(e => e.OffenseCount)
+                .HasColumnName("offense_count")
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.DemeritPoints)
+                .HasColumnName("demerit_points")
+                .HasDefaultValue(0);
+
             entity.Property(e => e.TotalFeeUsd)
                 .HasColumnName("total_fee_usd")
                 .HasColumnType("decimal(18,2)");

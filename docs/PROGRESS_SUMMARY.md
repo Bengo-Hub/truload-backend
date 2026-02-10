@@ -72,6 +72,9 @@ Sprint 14 (Production Readiness) in progress. Security features complete (2FA, b
 | Prosecution Module | Complete | 100% |
 | Court Proceedings | Complete | 100% |
 | Invoice/Receipt Management | Complete | 100% |
+| eCitizen/Pesaflow Integration | Complete | 100% |
+| KeNHA Tag Verification API | Complete | 100% |
+| NTSA Vehicle Search API | Complete | 100% |
 | Status Lookup Service | Complete | 100% |
 | Data Analytics | In Progress | 50% |
 | System Settings | Complete | 100% |
@@ -281,7 +284,8 @@ Sprint 14 (Production Readiness) in progress. Security features complete (2FA, b
 ### Test Coverage
 - Backend Tests: 20+ tests passing
 - Frontend Tests: Not implemented
-- E2E Tests: Not implemented
+- E2E Tests: **19-step compliance E2E test PASSING** (February 10, 2026)
+  - Full lifecycle: Overload → Case → Yard → Prosecution → Invoice → Payment → Memo → Reweigh → Certificate → Close
 
 ---
 

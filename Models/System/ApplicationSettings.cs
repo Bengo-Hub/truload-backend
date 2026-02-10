@@ -108,10 +108,14 @@ public static class SettingKeys
     public const string BackupRetentionDays = "backup.retention_days";
     public const string BackupStoragePath = "backup.storage_path";
 
+    // Compliance
+    public const string DefaultActCode = "compliance.default_act_code";
+
     // Categories
     public const string CategorySecurity = "Security";
     public const string CategoryShifts = "Shifts";
     public const string CategoryBackup = "Backup";
     public const string CategoryNotifications = "Notifications";
     public const string CategoryIntegrations = "Integrations";
+    public const string CategoryCompliance = "Compliance";
 }

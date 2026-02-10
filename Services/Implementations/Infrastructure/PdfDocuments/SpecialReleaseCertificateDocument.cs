@@ -1,6 +1,7 @@
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Models.CaseManagement;
 
 namespace TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments;
@@ -40,11 +41,29 @@ public class SpecialReleaseCertificateDocument : BaseDocument
 
     private void ComposeHeader(IContainer container)
     {
+        var primaryLogo = LoadLogo(BrandingConstants.Logos.KuraLogo);
+
         container.Column(col =>
         {
-            col.Item().AlignCenter().Text("REPUBLIC OF KENYA").FontSize(14).SemiBold();
-            col.Item().AlignCenter().Text("KENYA ROADS AUTHORITY").FontSize(11);
-            col.Item().AlignCenter().Text("VEHICLE LOAD CONTROL UNIT").FontSize(9);
+            col.Item().Row(row =>
+            {
+                row.ConstantItem(60).AlignMiddle().Column(logoCol =>
+                {
+                    if (primaryLogo != null)
+                        logoCol.Item().Height(50).Image(primaryLogo, ImageScaling.FitArea);
+                });
+
+                row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(center =>
+                {
+                    center.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
+                        .FontSize(14).SemiBold();
+                    center.Item().AlignCenter().Text(BrandingConstants.Organization.KenyaRoadsAuthority)
+                        .FontSize(11);
+                    center.Item().AlignCenter().Text("VEHICLE LOAD CONTROL UNIT").FontSize(9);
+                });
+
+                row.ConstantItem(60); // No secondary logo for special release
+            });
 
             col.Item().PaddingVertical(10).AlignCenter()
                 .Background(Colors.Orange.Darken2)

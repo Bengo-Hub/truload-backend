@@ -31,6 +31,7 @@ namespace TruLoad.Backend.Migrations
                     full_name = table.Column<string>(type: "text", nullable: true),
                     description = table.Column<string>(type: "text", nullable: true),
                     effective_date = table.Column<DateOnly>(type: "date", nullable: true),
+                    ChargingCurrency = table.Column<string>(type: "text", nullable: false),
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -467,6 +468,33 @@ namespace TruLoad.Backend.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_hearing_types", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "integration_configs",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    provider_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    base_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    encrypted_credentials = table.Column<string>(type: "text", nullable: false),
+                    endpoints_json = table.Column<string>(type: "text", nullable: false, defaultValue: "{}"),
+                    webhook_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    callback_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    app_base_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    environment = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true, defaultValue: "test"),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    credentials_rotated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_integration_configs", x => x.id);
+                    table.CheckConstraint("chk_integration_config_environment", "environment IN ('test', 'sandbox', 'production')");
                 });
 
             migrationBuilder.CreateTable(
@@ -2272,6 +2300,8 @@ namespace TruLoad.Backend.Migrations
                     reweigh_scheduled_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     reweigh_weighing_id = table.Column<Guid>(type: "uuid", nullable: true),
                     compliance_achieved = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    ReliefTruckRegNumber = table.Column<string>(type: "text", nullable: true),
+                    ReliefTruckEmptyWeightKg = table.Column<int>(type: "integer", nullable: true),
                     issued_by_id = table.Column<Guid>(type: "uuid", nullable: false),
                     issued_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
@@ -2568,6 +2598,9 @@ namespace TruLoad.Backend.Migrations
                     status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "pending"),
                     generated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     due_date = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    pesaflow_invoice_number = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    pesaflow_payment_reference = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    pesaflow_checkout_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
@@ -2614,6 +2647,7 @@ namespace TruLoad.Backend.Migrations
                     idempotency_key = table.Column<Guid>(type: "uuid", nullable: false),
                     received_by_id = table.Column<Guid>(type: "uuid", nullable: true),
                     payment_date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    payment_channel = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
@@ -2624,7 +2658,7 @@ namespace TruLoad.Backend.Migrations
                     table.PrimaryKey("PK_receipts", x => x.id);
                     table.CheckConstraint("chk_receipt_amount", "amount_paid > 0");
                     table.CheckConstraint("chk_receipt_currency", "currency IN ('USD', 'KES', 'UGX', 'TZS')");
-                    table.CheckConstraint("chk_receipt_payment_method", "payment_method IN ('cash', 'mobile_money', 'bank_transfer', 'card')");
+                    table.CheckConstraint("chk_receipt_payment_method", "payment_method IN ('cash', 'mobile_money', 'bank_transfer', 'card', 'pesaflow')");
                     table.ForeignKey(
                         name: "FK_receipts_asp_net_users_received_by_id",
                         column: x => x.received_by_id,
@@ -3314,6 +3348,17 @@ namespace TruLoad.Backend.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "idx_integration_configs_is_active",
+                table: "integration_configs",
+                column: "is_active");
+
+            migrationBuilder.CreateIndex(
+                name: "idx_integration_configs_provider_name",
+                table: "integration_configs",
+                column: "provider_name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "idx_invoices_case_register_id",
                 table: "invoices",
                 column: "case_register_id");
@@ -3333,6 +3378,12 @@ namespace TruLoad.Backend.Migrations
                 table: "invoices",
                 column: "invoice_no",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "idx_invoices_pesaflow_invoice_no",
+                table: "invoices",
+                column: "pesaflow_invoice_number",
+                filter: "pesaflow_invoice_number IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "idx_invoices_prosecution_case_id",
@@ -4273,6 +4324,9 @@ namespace TruLoad.Backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "hardware_health_logs");
+
+            migrationBuilder.DropTable(
+                name: "integration_configs");
 
             migrationBuilder.DropTable(
                 name: "penalty_schedules");

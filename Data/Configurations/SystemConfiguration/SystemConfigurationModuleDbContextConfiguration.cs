@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.System;
+using IntegrationConfig = TruLoad.Backend.Models.System.IntegrationConfig;
 
 namespace TruLoad.Backend.Data.Configurations.SystemConfiguration;
 
@@ -367,6 +368,93 @@ public static class SystemConfigurationModuleDbContextConfiguration
             // Index for penalty lookup by points range
             entity.HasIndex(e => new { e.PointsMin, e.PointsMax, e.IsActive })
                 .HasDatabaseName("idx_penalty_points_range");
+        });
+
+        // ===== IntegrationConfig Entity Configuration (Sprint 15: eCitizen Integration) =====
+        modelBuilder.Entity<IntegrationConfig>(entity =>
+        {
+            entity.ToTable("integration_configs");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasColumnName("id")
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.ProviderName)
+                .HasColumnName("provider_name")
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.DisplayName)
+                .HasColumnName("display_name")
+                .HasMaxLength(255)
+                .IsRequired();
+
+            entity.Property(e => e.BaseUrl)
+                .HasColumnName("base_url")
+                .HasMaxLength(500)
+                .IsRequired();
+
+            entity.Property(e => e.EncryptedCredentials)
+                .HasColumnName("encrypted_credentials")
+                .HasColumnType("text")
+                .IsRequired();
+
+            entity.Property(e => e.EndpointsJson)
+                .HasColumnName("endpoints_json")
+                .HasColumnType("text")
+                .HasDefaultValue("{}");
+
+            entity.Property(e => e.WebhookUrl)
+                .HasColumnName("webhook_url")
+                .HasMaxLength(500);
+
+            entity.Property(e => e.CallbackUrl)
+                .HasColumnName("callback_url")
+                .HasMaxLength(500);
+
+            entity.Property(e => e.AppBaseUrl)
+                .HasColumnName("app_base_url")
+                .HasMaxLength(500);
+
+            entity.Property(e => e.Environment)
+                .HasColumnName("environment")
+                .HasMaxLength(20)
+                .HasDefaultValue("test");
+
+            entity.Property(e => e.Description)
+                .HasColumnName("description")
+                .HasMaxLength(500);
+
+            entity.Property(e => e.CredentialsRotatedAt)
+                .HasColumnName("credentials_rotated_at");
+
+            entity.Property(e => e.IsActive)
+                .HasColumnName("is_active")
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at")
+                .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.DeletedAt)
+                .HasColumnName("deleted_at");
+
+            // Indexes
+            entity.HasIndex(e => e.ProviderName)
+                .IsUnique()
+                .HasDatabaseName("idx_integration_configs_provider_name");
+
+            entity.HasIndex(e => e.IsActive)
+                .HasDatabaseName("idx_integration_configs_is_active");
+
+            // CHECK constraint
+            entity.HasCheckConstraint("chk_integration_config_environment",
+                "environment IN ('test', 'sandbox', 'production')");
         });
 
         return modelBuilder;

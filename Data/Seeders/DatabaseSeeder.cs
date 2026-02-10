@@ -79,6 +79,10 @@ public static class DatabaseSeeder
             logger.LogInformation("Seeding case management taxonomies...");
             await CaseManagementTaxonomySeeder.SeedAsync(context);
 
+            // Seed act definitions (Traffic Act Cap 403, EAC Act 2016) - required for prosecution
+            logger.LogInformation("Seeding act definitions...");
+            await ActDefinitionSeeder.SeedAsync(context);
+
             logger.LogInformation("=== Database seeding completed successfully ===");
         }
         catch (Exception ex)

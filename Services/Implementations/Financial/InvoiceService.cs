@@ -85,6 +85,7 @@ public class InvoiceService : IInvoiceService
     public async Task<InvoiceDto> GenerateInvoiceAsync(Guid prosecutionCaseId, Guid userId, CancellationToken ct = default)
     {
         var prosecutionCase = await _context.ProsecutionCases
+            .Include(p => p.Act)
             .FirstOrDefaultAsync(p => p.Id == prosecutionCaseId && p.DeletedAt == null, ct)
             ?? throw new InvalidOperationException($"Prosecution case {prosecutionCaseId} not found");
 
@@ -99,6 +100,13 @@ public class InvoiceService : IInvoiceService
 
         var invoiceNo = await GenerateInvoiceNumberAsync(ct);
 
+        // Determine currency from the Act definition
+        // Traffic Act (Cap 403) charges in KES, EAC Act charges in USD
+        var chargingCurrency = prosecutionCase.Act?.ChargingCurrency ?? "KES";
+        var amountDue = chargingCurrency == "KES"
+            ? prosecutionCase.TotalFeeKes
+            : prosecutionCase.TotalFeeUsd;
+
         var invoice = new Invoice
         {
             Id = Guid.NewGuid(),
@@ -106,8 +114,8 @@ public class InvoiceService : IInvoiceService
             CaseRegisterId = prosecutionCase.CaseRegisterId,
             ProsecutionCaseId = prosecutionCaseId,
             WeighingId = prosecutionCase.WeighingId,
-            AmountDue = prosecutionCase.TotalFeeUsd,
-            Currency = "USD",
+            AmountDue = amountDue,
+            Currency = chargingCurrency,
             Status = "pending",
             GeneratedAt = DateTime.UtcNow,
             DueDate = DateTime.UtcNow.AddDays(30),
@@ -219,6 +227,9 @@ public class InvoiceService : IInvoiceService
             Status = invoice.Status,
             GeneratedAt = invoice.GeneratedAt,
             DueDate = invoice.DueDate,
+            PesaflowInvoiceNumber = invoice.PesaflowInvoiceNumber,
+            PesaflowPaymentReference = invoice.PesaflowPaymentReference,
+            PesaflowCheckoutUrl = invoice.PesaflowCheckoutUrl,
             CreatedAt = invoice.CreatedAt,
             UpdatedAt = invoice.UpdatedAt
         };

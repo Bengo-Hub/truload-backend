@@ -1,6 +1,7 @@
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Models.Financial;
 
 namespace TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments;
@@ -42,25 +43,43 @@ public class InvoiceDocument : BaseDocument
 
     private void ComposeHeader(IContainer container)
     {
+        var primaryLogo = LoadLogo(BrandingConstants.Logos.KuraLogo);
+        var secondaryLogo = LoadLogo(BrandingConstants.Logos.EcitizenLogo);
+
         container.Column(col =>
         {
+            // Logo row with organization branding
             col.Item().Row(row =>
             {
-                row.RelativeItem().Column(org =>
+                row.ConstantItem(60).AlignMiddle().Column(logoCol =>
                 {
-                    org.Item().Text(_organizationName).FontSize(14).SemiBold().FontColor(KuraBlue);
-                    org.Item().Text(_organizationAddress).FontSize(9);
-                    org.Item().Text("Tel: +254 20 XXXXXXX | Email: info@kura.go.ke").FontSize(8);
+                    if (primaryLogo != null)
+                        logoCol.Item().Height(50).Image(primaryLogo, ImageScaling.FitArea);
                 });
 
-                row.ConstantItem(120).AlignRight().Column(inv =>
+                row.RelativeItem().PaddingHorizontal(5).Column(org =>
                 {
-                    inv.Item().Background(KuraBlue).Padding(8).AlignCenter()
-                        .Text("INVOICE").FontSize(16).Bold().FontColor(Colors.White);
+                    org.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
+                        .FontSize(11).SemiBold();
+                    org.Item().AlignCenter().Text(_organizationName).FontSize(14).SemiBold().FontColor(KuraBlue);
+                    org.Item().AlignCenter().Text(_organizationAddress).FontSize(9);
+                    org.Item().AlignCenter().Text("Tel: +254 20 XXXXXXX | Email: info@kura.go.ke").FontSize(8);
+                });
+
+                row.ConstantItem(60).AlignMiddle().Column(logoCol =>
+                {
+                    if (secondaryLogo != null)
+                        logoCol.Item().Height(50).Image(secondaryLogo, ImageScaling.FitArea);
                 });
             });
 
-            col.Item().PaddingTop(15).Row(row =>
+            // Invoice badge
+            col.Item().PaddingTop(8).AlignCenter()
+                .Background(KuraBlue).Padding(8)
+                .Text("INVOICE").FontSize(16).Bold().FontColor(Colors.White);
+
+            // Invoice details row
+            col.Item().PaddingTop(10).Row(row =>
             {
                 row.RelativeItem().Column(c =>
                 {
@@ -76,7 +95,7 @@ public class InvoiceDocument : BaseDocument
                 });
             });
 
-            col.Item().PaddingTop(10).LineHorizontal(1).LineColor(Colors.Black);
+            col.Item().PaddingTop(5).LineHorizontal(1).LineColor(Colors.Black);
         });
     }
 

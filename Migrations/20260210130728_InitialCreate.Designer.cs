@@ -14,7 +14,7 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Backend.Migrations
 {
     [DbContext(typeof(TruLoadDbContext))]
-    [Migration("20260207111851_InitialCreate")]
+    [Migration("20260210130728_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -158,6 +158,10 @@ namespace TruLoad.Backend.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("act_type");
+
+                    b.Property<string>("ChargingCurrency")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Code")
                         .IsRequired()
@@ -2198,6 +2202,12 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("redistribution_type");
 
+                    b.Property<int?>("ReliefTruckEmptyWeightKg")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReliefTruckRegNumber")
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("ReweighScheduledAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("reweigh_scheduled_at");
@@ -2764,6 +2774,21 @@ namespace TruLoad.Backend.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
+                    b.Property<string>("PesaflowCheckoutUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("pesaflow_checkout_url");
+
+                    b.Property<string>("PesaflowInvoiceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("pesaflow_invoice_number");
+
+                    b.Property<string>("PesaflowPaymentReference")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("pesaflow_payment_reference");
+
                     b.Property<Guid?>("ProsecutionCaseId")
                         .HasColumnType("uuid")
                         .HasColumnName("prosecution_case_id");
@@ -2800,6 +2825,10 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("InvoiceNo")
                         .IsUnique()
                         .HasDatabaseName("idx_invoices_invoice_no");
+
+                    b.HasIndex("PesaflowInvoiceNumber")
+                        .HasDatabaseName("idx_invoices_pesaflow_invoice_no")
+                        .HasFilter("pesaflow_invoice_number IS NOT NULL");
 
                     b.HasIndex("ProsecutionCaseId")
                         .HasDatabaseName("idx_invoices_prosecution_case_id");
@@ -2864,6 +2893,11 @@ namespace TruLoad.Backend.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
+                    b.Property<string>("PaymentChannel")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("payment_channel");
+
                     b.Property<DateTime>("PaymentDate")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -2927,7 +2961,7 @@ namespace TruLoad.Backend.Migrations
 
                             t.HasCheckConstraint("chk_receipt_currency", "currency IN ('USD', 'KES', 'UGX', 'TZS')");
 
-                            t.HasCheckConstraint("chk_receipt_payment_method", "payment_method IN ('cash', 'mobile_money', 'bank_transfer', 'card')");
+                            t.HasCheckConstraint("chk_receipt_payment_method", "payment_method IN ('cash', 'mobile_money', 'bank_transfer', 'card', 'pesaflow')");
                         });
                 });
 
@@ -4753,6 +4787,112 @@ namespace TruLoad.Backend.Migrations
                         .HasDatabaseName("idx_demerit_violation_overload");
 
                     b.ToTable("demerit_point_schedules", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.System.IntegrationConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("AppBaseUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("app_base_url");
+
+                    b.Property<string>("BaseUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("base_url");
+
+                    b.Property<string>("CallbackUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("callback_url");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("CredentialsRotatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("credentials_rotated_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("EncryptedCredentials")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_credentials");
+
+                    b.Property<string>("EndpointsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("{}")
+                        .HasColumnName("endpoints_json");
+
+                    b.Property<string>("Environment")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("test")
+                        .HasColumnName("environment");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("ProviderName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("provider_name");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("WebhookUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("webhook_url");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("idx_integration_configs_is_active");
+
+                    b.HasIndex("ProviderName")
+                        .IsUnique()
+                        .HasDatabaseName("idx_integration_configs_provider_name");
+
+                    b.ToTable("integration_configs", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_integration_config_environment", "environment IN ('test', 'sandbox', 'production')");
+                        });
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.System.PenaltySchedule", b =>

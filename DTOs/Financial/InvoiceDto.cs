@@ -22,6 +22,9 @@ public class InvoiceDto
     public string Status { get; set; } = "pending";
     public DateTime GeneratedAt { get; set; }
     public DateTime? DueDate { get; set; }
+    public string? PesaflowInvoiceNumber { get; set; }
+    public string? PesaflowPaymentReference { get; set; }
+    public string? PesaflowCheckoutUrl { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

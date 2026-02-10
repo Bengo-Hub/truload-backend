@@ -76,6 +76,17 @@ public class ProsecutionCase : BaseEntity
     public decimal PenaltyMultiplier { get; set; } = 1.0m;
 
     /// <summary>
+    /// Number of prior offenses for same vehicle within 12 months
+    /// </summary>
+    public int OffenseCount { get; set; }
+
+    /// <summary>
+    /// Total demerit points calculated for this prosecution
+    /// Per Kenya Traffic Act Cap 403 Section 117A for NTSA license management
+    /// </summary>
+    public int DemeritPoints { get; set; }
+
+    /// <summary>
     /// Total charge in USD (best basis * multiplier)
     /// </summary>
     public decimal TotalFeeUsd { get; set; }

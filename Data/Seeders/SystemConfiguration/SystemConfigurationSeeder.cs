@@ -283,6 +283,23 @@ public class SystemConfigurationSeeder
                 UpdatedAt = DateTime.UtcNow
             },
 
+            // Compliance Settings
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.DefaultActCode,
+                SettingValue = "TRAFFIC_ACT",
+                SettingType = "String",
+                Category = SettingKeys.CategoryCompliance,
+                DisplayName = "Default Act for Charging & Compliance",
+                Description = "Default legal act code used for overload violations and compliance checks. Options: TRAFFIC_ACT, EAC_ACT",
+                DefaultValue = "TRAFFIC_ACT",
+                IsEditable = true,
+                SortOrder = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+
             // Backup Settings
             new ApplicationSettings
             {
@@ -664,6 +681,44 @@ public class SystemConfigurationSeeder
                 LegalFramework = "TRAFFIC_ACT",
                 EffectiveFrom = effectiveDate,
                 EffectiveTo = null
+            },
+
+            // ── EAC Vehicle Load Control Act 2016 ──
+            // Rates ~20% higher than Traffic Act (cross-border penalties)
+            new AxleTypeOverloadFeeSchedule
+            {
+                OverloadMinKg = 0, OverloadMaxKg = 2000,
+                SteeringAxleFeeUsd = 60.00m, SingleDriveAxleFeeUsd = 90.00m,
+                TandemAxleFeeUsd = 120.00m, TridemAxleFeeUsd = 150.00m, QuadAxleFeeUsd = 180.00m,
+                LegalFramework = "EAC", EffectiveFrom = effectiveDate, EffectiveTo = null
+            },
+            new AxleTypeOverloadFeeSchedule
+            {
+                OverloadMinKg = 2001, OverloadMaxKg = 5000,
+                SteeringAxleFeeUsd = 120.00m, SingleDriveAxleFeeUsd = 180.00m,
+                TandemAxleFeeUsd = 240.00m, TridemAxleFeeUsd = 300.00m, QuadAxleFeeUsd = 360.00m,
+                LegalFramework = "EAC", EffectiveFrom = effectiveDate, EffectiveTo = null
+            },
+            new AxleTypeOverloadFeeSchedule
+            {
+                OverloadMinKg = 5001, OverloadMaxKg = 10000,
+                SteeringAxleFeeUsd = 240.00m, SingleDriveAxleFeeUsd = 360.00m,
+                TandemAxleFeeUsd = 480.00m, TridemAxleFeeUsd = 600.00m, QuadAxleFeeUsd = 720.00m,
+                LegalFramework = "EAC", EffectiveFrom = effectiveDate, EffectiveTo = null
+            },
+            new AxleTypeOverloadFeeSchedule
+            {
+                OverloadMinKg = 10001, OverloadMaxKg = 20000,
+                SteeringAxleFeeUsd = 480.00m, SingleDriveAxleFeeUsd = 720.00m,
+                TandemAxleFeeUsd = 960.00m, TridemAxleFeeUsd = 1200.00m, QuadAxleFeeUsd = 1440.00m,
+                LegalFramework = "EAC", EffectiveFrom = effectiveDate, EffectiveTo = null
+            },
+            new AxleTypeOverloadFeeSchedule
+            {
+                OverloadMinKg = 20001, OverloadMaxKg = null,
+                SteeringAxleFeeUsd = 960.00m, SingleDriveAxleFeeUsd = 1440.00m,
+                TandemAxleFeeUsd = 1920.00m, TridemAxleFeeUsd = 2400.00m, QuadAxleFeeUsd = 2880.00m,
+                LegalFramework = "EAC", EffectiveFrom = effectiveDate, EffectiveTo = null
             }
         };
 
@@ -727,7 +782,39 @@ public class SystemConfigurationSeeder
             new DemeritPointSchedule { ViolationType = "GVW", OverloadMinKg = 2001, OverloadMaxKg = 5000, Points = 2, LegalFramework = "TRAFFIC_ACT", EffectiveFrom = effectiveDate },
             new DemeritPointSchedule { ViolationType = "GVW", OverloadMinKg = 5001, OverloadMaxKg = 10000, Points = 3, LegalFramework = "TRAFFIC_ACT", EffectiveFrom = effectiveDate },
             new DemeritPointSchedule { ViolationType = "GVW", OverloadMinKg = 10001, OverloadMaxKg = 20000, Points = 5, LegalFramework = "TRAFFIC_ACT", EffectiveFrom = effectiveDate },
-            new DemeritPointSchedule { ViolationType = "GVW", OverloadMinKg = 20001, OverloadMaxKg = null, Points = 10, LegalFramework = "TRAFFIC_ACT", EffectiveFrom = effectiveDate }
+            new DemeritPointSchedule { ViolationType = "GVW", OverloadMinKg = 20001, OverloadMaxKg = null, Points = 10, LegalFramework = "TRAFFIC_ACT", EffectiveFrom = effectiveDate },
+
+            // ── EAC Vehicle Load Control Act 2016 ──
+            // Slightly higher demerit points for cross-border transit violations
+            new DemeritPointSchedule { ViolationType = "STEERING", OverloadMinKg = 0, OverloadMaxKg = 2000, Points = 1, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "STEERING", OverloadMinKg = 2001, OverloadMaxKg = 5000, Points = 2, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "STEERING", OverloadMinKg = 5001, OverloadMaxKg = 10000, Points = 4, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "STEERING", OverloadMinKg = 10001, OverloadMaxKg = 20000, Points = 6, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "STEERING", OverloadMinKg = 20001, OverloadMaxKg = null, Points = 12, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+
+            new DemeritPointSchedule { ViolationType = "SINGLE_DRIVE", OverloadMinKg = 0, OverloadMaxKg = 2000, Points = 1, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "SINGLE_DRIVE", OverloadMinKg = 2001, OverloadMaxKg = 5000, Points = 2, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "SINGLE_DRIVE", OverloadMinKg = 5001, OverloadMaxKg = 10000, Points = 4, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "SINGLE_DRIVE", OverloadMinKg = 10001, OverloadMaxKg = 20000, Points = 6, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "SINGLE_DRIVE", OverloadMinKg = 20001, OverloadMaxKg = null, Points = 12, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+
+            new DemeritPointSchedule { ViolationType = "TANDEM", OverloadMinKg = 0, OverloadMaxKg = 2000, Points = 2, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "TANDEM", OverloadMinKg = 2001, OverloadMaxKg = 5000, Points = 3, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "TANDEM", OverloadMinKg = 5001, OverloadMaxKg = 10000, Points = 5, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "TANDEM", OverloadMinKg = 10001, OverloadMaxKg = 20000, Points = 8, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "TANDEM", OverloadMinKg = 20001, OverloadMaxKg = null, Points = 14, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+
+            new DemeritPointSchedule { ViolationType = "TRIDEM", OverloadMinKg = 0, OverloadMaxKg = 2000, Points = 2, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "TRIDEM", OverloadMinKg = 2001, OverloadMaxKg = 5000, Points = 4, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "TRIDEM", OverloadMinKg = 5001, OverloadMaxKg = 10000, Points = 6, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "TRIDEM", OverloadMinKg = 10001, OverloadMaxKg = 20000, Points = 9, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "TRIDEM", OverloadMinKg = 20001, OverloadMaxKg = null, Points = 15, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+
+            new DemeritPointSchedule { ViolationType = "GVW", OverloadMinKg = 0, OverloadMaxKg = 2000, Points = 1, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "GVW", OverloadMinKg = 2001, OverloadMaxKg = 5000, Points = 3, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "GVW", OverloadMinKg = 5001, OverloadMaxKg = 10000, Points = 4, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "GVW", OverloadMinKg = 10001, OverloadMaxKg = 20000, Points = 6, LegalFramework = "EAC", EffectiveFrom = effectiveDate },
+            new DemeritPointSchedule { ViolationType = "GVW", OverloadMinKg = 20001, OverloadMaxKg = null, Points = 12, LegalFramework = "EAC", EffectiveFrom = effectiveDate }
         };
 
         foreach (var schedule in demeritSchedules)

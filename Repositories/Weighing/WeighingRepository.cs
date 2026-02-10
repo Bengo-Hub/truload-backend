@@ -46,9 +46,62 @@ public class WeighingRepository : IWeighingRepository
 
     public async Task<WeighingTransaction> UpdateTransactionAsync(WeighingTransaction transaction)
     {
-        _context.WeighingTransactions.Update(transaction);
+        // Detach all tracked entities to prevent conflicts
+        foreach (var entry in _context.ChangeTracker.Entries().ToList())
+        {
+            entry.State = EntityState.Detached;
+        }
+
+        // Only mark the transaction itself as Modified (not the entire navigation graph)
+        _context.Entry(transaction).State = EntityState.Modified;
+
+        // Also mark existing axles as Modified if present
+        if (transaction.WeighingAxles != null)
+        {
+            foreach (var axle in transaction.WeighingAxles)
+            {
+                _context.Entry(axle).State = EntityState.Modified;
+            }
+        }
+
         await _context.SaveChangesAsync();
         return transaction;
+    }
+
+    public async Task SaveTransactionWithNewAxlesAsync(WeighingTransaction transaction)
+    {
+        // Detach all tracked entities to prevent conflicts
+        foreach (var entry in _context.ChangeTracker.Entries().ToList())
+        {
+            entry.State = EntityState.Detached;
+        }
+
+        // Mark transaction as Modified
+        _context.Entry(transaction).State = EntityState.Modified;
+
+        // Mark axles as Added (they are new, not yet in DB)
+        if (transaction.WeighingAxles != null)
+        {
+            foreach (var axle in transaction.WeighingAxles)
+            {
+                _context.Entry(axle).State = EntityState.Added;
+            }
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteAxlesByTransactionIdAsync(Guid transactionId)
+    {
+        var axles = await _context.WeighingAxles
+            .Where(a => a.WeighingId == transactionId)
+            .ToListAsync();
+
+        if (axles.Any())
+        {
+            _context.WeighingAxles.RemoveRange(axles);
+            await _context.SaveChangesAsync();
+        }
     }
 
     public async Task DeleteTransactionAsync(Guid id)
@@ -203,6 +256,7 @@ public class WeighingRepository : IWeighingRepository
         var today = DateTime.UtcNow.Date;
 
         var query = _context.WeighingTransactions
+            .AsNoTracking()
             .Include(t => t.WeighingAxles)
             .Where(t => t.VehicleRegNumber.ToUpper() == normalizedRegNumber)
             .Where(t => t.StationId == stationId)

@@ -247,6 +247,9 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     // ===== System Settings =====
     public DbSet<ApplicationSettings> ApplicationSettings { get; set; } = null!;
 
+    // ===== Integration Configuration (Sprint 15: eCitizen) =====
+    public DbSet<IntegrationConfig> IntegrationConfigs { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

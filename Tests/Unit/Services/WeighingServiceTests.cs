@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Moq;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TruLoad.Backend.Data.Repositories.Weighing;
 using TruLoad.Backend.Models;
@@ -10,6 +11,9 @@ using TruLoad.Backend.Services.Interfaces.Weighing;
 using TruLoad.Backend.DTOs.Weighing;
 using Xunit;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
+using TruLoad.Backend.Services.Interfaces.CaseManagement;
+using TruLoad.Backend.Services.Interfaces.Yard;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.Data.Repositories.Infrastructure;
 using TruLoad.Backend.Repositories.Infrastructure;
 using System.Threading;
@@ -32,6 +36,10 @@ public class WeighingServiceTests
     private readonly Mock<IAxleGroupAggregationService> _mockAxleGroupAggregationService;
     private readonly Mock<IScaleTestRepository> _mockScaleTestRepository;
     private readonly Mock<IVehicleRepository> _mockVehicleRepository;
+    private readonly Mock<ICaseRegisterService> _mockCaseRegisterService;
+    private readonly Mock<IYardService> _mockYardService;
+    private readonly Mock<IVehicleTagService> _mockVehicleTagService;
+    private readonly TruLoadDbContext _dbContext;
     private readonly Mock<ILogger<WeighingService>> _mockLogger;
     private readonly WeighingService _service;
 
@@ -49,6 +57,13 @@ public class WeighingServiceTests
         _mockAxleGroupAggregationService = new Mock<IAxleGroupAggregationService>();
         _mockScaleTestRepository = new Mock<IScaleTestRepository>();
         _mockVehicleRepository = new Mock<IVehicleRepository>();
+        _mockCaseRegisterService = new Mock<ICaseRegisterService>();
+        _mockYardService = new Mock<IYardService>();
+        _mockVehicleTagService = new Mock<IVehicleTagService>();
+        var dbOptions = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<TruLoadDbContext>()
+            .UseInMemoryDatabase(databaseName: $"WeighingTest_{Guid.NewGuid()}")
+            .Options;
+        _dbContext = new TruLoadDbContext(dbOptions);
         _mockLogger = new Mock<ILogger<WeighingService>>();
 
         // Setup default behavior for aggregation service
@@ -73,6 +88,10 @@ public class WeighingServiceTests
             _mockAxleGroupAggregationService.Object,
             _mockScaleTestRepository.Object,
             _mockVehicleRepository.Object,
+            _mockCaseRegisterService.Object,
+            _mockYardService.Object,
+            _mockVehicleTagService.Object,
+            _dbContext,
             _mockLogger.Object
         );
     }

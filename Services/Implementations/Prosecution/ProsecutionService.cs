@@ -127,6 +127,9 @@ public class ProsecutionService : IProsecutionService
         var totalFeeUsd = baseFeeUsd * multiplier;
         var totalFeeKes = totalFeeUsd * forexRate;
 
+        // Get demerit points from compliance result
+        var demeritPoints = compliance.DemeritPoints?.TotalPoints ?? 0;
+
         return new ChargeCalculationResult
         {
             WeighingId = weighingId,
@@ -153,6 +156,7 @@ public class ProsecutionService : IProsecutionService
             PenaltyMultiplier = multiplier,
             IsRepeatOffender = isRepeatOffender,
             PriorOffenseCount = priorOffenseCount,
+            DemeritPoints = demeritPoints,
             ForexRate = forexRate,
             CalculatedAt = DateTime.UtcNow
         };
@@ -200,6 +204,8 @@ public class ProsecutionService : IProsecutionService
             MaxAxleFeeKes = chargeCalculation?.MaxAxleFeeKes ?? 0,
             BestChargeBasis = chargeCalculation?.BestChargeBasis ?? "gvw",
             PenaltyMultiplier = chargeCalculation?.PenaltyMultiplier ?? 1.0m,
+            OffenseCount = chargeCalculation?.PriorOffenseCount ?? 0,
+            DemeritPoints = chargeCalculation?.DemeritPoints ?? 0,
             TotalFeeUsd = chargeCalculation?.TotalFeeUsd ?? 0,
             TotalFeeKes = chargeCalculation?.TotalFeeKes ?? 0,
             ForexRate = chargeCalculation?.ForexRate ?? DefaultForexRate,
@@ -359,6 +365,8 @@ public class ProsecutionService : IProsecutionService
             MaxAxleFeeKes = p.MaxAxleFeeKes,
             BestChargeBasis = p.BestChargeBasis,
             PenaltyMultiplier = p.PenaltyMultiplier,
+            OffenseCount = p.OffenseCount,
+            DemeritPoints = p.DemeritPoints,
             TotalFeeUsd = p.TotalFeeUsd,
             TotalFeeKes = p.TotalFeeKes,
             ForexRate = p.ForexRate,

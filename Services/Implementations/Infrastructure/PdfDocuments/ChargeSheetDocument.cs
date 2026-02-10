@@ -1,6 +1,7 @@
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Models.Prosecution;
 using TruLoad.Backend.Models.CaseManagement;
 
@@ -41,27 +42,18 @@ public class ChargeSheetDocument : BaseDocument
 
     private void ComposeHeader(IContainer container)
     {
-        container.Column(col =>
-        {
-            col.Item().AlignCenter().Text("REPUBLIC OF KENYA").FontSize(14).SemiBold();
-            col.Item().AlignCenter().Text("IN THE TRAFFIC COURT").FontSize(12).SemiBold();
-            col.Item().PaddingTop(5).AlignCenter().Text("CHARGE SHEET").FontSize(16).Bold().FontColor(KuraBlue);
+        // Select logo based on legal framework: EAC Act vs Traffic Act
+        var isEac = _prosecution.Act?.Name?.Contains("EAC", StringComparison.OrdinalIgnoreCase) ?? false;
+        var primaryLogoFile = isEac ? BrandingConstants.Logos.EacActLogo : BrandingConstants.Logos.KenyaPoliceLogo;
 
-            col.Item().PaddingTop(10).Row(row =>
-            {
-                row.RelativeItem().Column(c =>
-                {
-                    c.Item().Text($"Certificate No: {_prosecution.CertificateNo}").FontSize(10).SemiBold();
-                    c.Item().Text($"Case No: {_caseRegister?.CaseNo ?? "N/A"}").FontSize(10);
-                });
-                row.ConstantItem(150).AlignRight().Column(c =>
-                {
-                    c.Item().Text($"Date: {_prosecution.CreatedAt:dd/MM/yyyy}").FontSize(10);
-                });
-            });
-
-            col.Item().PaddingTop(5).LineHorizontal(1.5f).LineColor(Colors.Black);
-        });
+        ComposeOfficialHeaderWithLogos(
+            container,
+            primaryLogoFile,
+            BrandingConstants.Logos.JudicialLogo,
+            "CHARGE SHEET",
+            subtitle: "IN THE TRAFFIC COURT",
+            referenceNumber: $"Cert No: {_prosecution.CertificateNo} | Case No: {_caseRegister?.CaseNo ?? "N/A"}",
+            dateText: $"Date: {_prosecution.CreatedAt:dd/MM/yyyy}");
     }
 
     private void ComposeContent(IContainer container)

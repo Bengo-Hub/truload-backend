@@ -1,6 +1,7 @@
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Models.CaseManagement;
 
 namespace TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments;
@@ -40,28 +41,14 @@ public class CourtMinutesDocument : BaseDocument
 
     private void ComposeHeader(IContainer container)
     {
-        container.Column(col =>
-        {
-            col.Item().AlignCenter().Text("REPUBLIC OF KENYA").FontSize(14).SemiBold();
-            col.Item().AlignCenter().Text("IN THE TRAFFIC COURT").FontSize(12).SemiBold();
-            col.Item().PaddingTop(8).AlignCenter().Text("COURT HEARING MINUTES").FontSize(16).Bold().FontColor(KuraBlue);
-
-            col.Item().PaddingTop(10).Row(row =>
-            {
-                row.RelativeItem().Column(c =>
-                {
-                    c.Item().Text($"Case No: {_caseRegister?.CaseNo ?? "N/A"}").FontSize(10).SemiBold();
-                    c.Item().Text($"Hearing Ref: {_hearing.Id.ToString()[..8].ToUpper()}").FontSize(9);
-                });
-                row.ConstantItem(150).AlignRight().Column(c =>
-                {
-                    c.Item().Text($"Hearing Date: {_hearing.HearingDate:dd/MM/yyyy}").FontSize(10).SemiBold();
-                    c.Item().Text($"Time: {_hearing.HearingTime?.ToString(@"hh\:mm") ?? "N/A"}").FontSize(9);
-                });
-            });
-
-            col.Item().PaddingTop(5).LineHorizontal(1.5f).LineColor(Colors.Black);
-        });
+        ComposeOfficialHeaderWithLogos(
+            container,
+            BrandingConstants.Logos.JudicialLogo,
+            BrandingConstants.Logos.CourtOfArmsKenya,
+            "COURT HEARING MINUTES",
+            subtitle: "IN THE TRAFFIC COURT",
+            referenceNumber: $"Case No: {_caseRegister?.CaseNo ?? "N/A"} | Ref: {_hearing.Id.ToString()[..8].ToUpper()}",
+            dateText: $"{_hearing.HearingDate:dd/MM/yyyy} {_hearing.HearingTime?.ToString(@"hh\:mm") ?? ""}");
     }
 
     private void ComposeContent(IContainer container)

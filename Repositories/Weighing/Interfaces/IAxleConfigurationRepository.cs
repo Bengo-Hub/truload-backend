@@ -61,6 +61,14 @@ public interface IAxleConfigurationRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Get standard axle configuration by axle count (fallback lookup)
+    /// Returns the first active standard config matching the axle count
+    /// </summary>
+    Task<AxleConfiguration?> GetStandardByAxleCountAsync(
+        int axleCount,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Validate derived configuration against business rules
     /// </summary>
     Task<(bool IsValid, List<string> Errors)> ValidateDerivedConfigAsync(

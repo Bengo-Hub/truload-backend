@@ -166,6 +166,32 @@ public class AxleConfigurationRepository : IAxleConfigurationRepository
         return true;
     }
 
+    public async Task<AxleConfiguration?> GetStandardByAxleCountAsync(
+        int axleCount,
+        CancellationToken cancellationToken = default)
+    {
+        // Prefer configs with weight references, then shortest code (e.g., "3A" over "3*S|DD||")
+        var config = await _context.AxleConfigurations
+            .Include(ac => ac.AxleWeightReferences.OrderBy(wr => wr.AxlePosition))
+            .Where(ac => ac.IsStandard && ac.IsActive && ac.AxleNumber == axleCount)
+            .OrderByDescending(ac => ac.AxleWeightReferences.Count)
+            .ThenBy(ac => ac.AxleCode.Length)
+            .ThenBy(ac => ac.AxleCode)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (config != null)
+        {
+            _logger.LogInformation("Found standard axle config {AxleCode} for {AxleCount} axles (GVW: {GVW}kg)",
+                config.AxleCode, axleCount, config.GvwPermissibleKg);
+        }
+        else
+        {
+            _logger.LogWarning("No standard axle configuration found for {AxleCount} axles", axleCount);
+        }
+
+        return config;
+    }
+
     public async Task<bool> CodeExistsAsync(
         string code,
         Guid? excludeId = null,

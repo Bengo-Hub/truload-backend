@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Financial;
 using TruLoad.Backend.Models.Financial;
+using TruLoad.Backend.Models.CaseManagement;
 using TruLoad.Backend.Services.Interfaces.Financial;
 
 namespace TruLoad.Backend.Services.Implementations.Financial;
@@ -12,10 +14,12 @@ namespace TruLoad.Backend.Services.Implementations.Financial;
 public class ReceiptService : IReceiptService
 {
     private readonly TruLoadDbContext _context;
+    private readonly ILogger<ReceiptService> _logger;
 
-    public ReceiptService(TruLoadDbContext context)
+    public ReceiptService(TruLoadDbContext context, ILogger<ReceiptService> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<ReceiptDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -141,6 +145,54 @@ public class ReceiptService : IReceiptService
 
         await _context.SaveChangesAsync(ct);
 
+        // Auto-create Load Correction Memo when invoice is fully paid
+        // Per FRD: Memo is issued after payment, enabling the reweigh process
+        if (invoice.Status == "paid" && invoice.ProsecutionCase != null)
+        {
+            try
+            {
+                var prosecution = invoice.ProsecutionCase;
+                var weighingId = prosecution.WeighingId;
+                if (weighingId.HasValue)
+                {
+                    var existingMemo = await _context.LoadCorrectionMemos
+                        .AnyAsync(m => m.WeighingId == weighingId.Value, ct);
+                    if (!existingMemo)
+                    {
+                        var weighing = await _context.WeighingTransactions
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(w => w.Id == weighingId.Value, ct);
+
+                        var year = DateTime.UtcNow.Year;
+                        var memoCount = await _context.LoadCorrectionMemos
+                            .CountAsync(m => m.CreatedAt.Year == year, ct);
+                        var memo = new LoadCorrectionMemo
+                        {
+                            MemoNo = $"LCM-{year}-{(memoCount + 1):D6}",
+                            CaseRegisterId = prosecution.CaseRegisterId,
+                            WeighingId = weighingId.Value,
+                            OverloadKg = weighing?.OverloadKg ?? 0,
+                            RedistributionType = "redistribute",
+                            IssuedById = userId,
+                            IssuedAt = DateTime.UtcNow
+                        };
+                        _context.LoadCorrectionMemos.Add(memo);
+                        await _context.SaveChangesAsync(ct);
+                        _logger.LogInformation(
+                            "Auto-created load correction memo {MemoNo} for case {CaseId} after payment (overload: {OverloadKg}kg)",
+                            memo.MemoNo, prosecution.CaseRegisterId, memo.OverloadKg);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to auto-create load correction memo after payment for invoice {InvoiceId}. Manual intervention required.",
+                    invoiceId);
+                // Don't throw — payment was already recorded successfully
+            }
+        }
+
         return (await GetByIdAsync(receipt.Id, ct))!;
     }
 
@@ -235,6 +287,7 @@ public class ReceiptService : IReceiptService
             ReceivedById = receipt.ReceivedById,
             ReceivedByName = receipt.ReceivedBy?.FullName,
             PaymentDate = receipt.PaymentDate,
+            PaymentChannel = receipt.PaymentChannel,
             CreatedAt = receipt.CreatedAt,
             UpdatedAt = receipt.UpdatedAt
         };
