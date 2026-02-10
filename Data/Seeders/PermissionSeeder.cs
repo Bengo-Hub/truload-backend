@@ -103,8 +103,10 @@ public static class PermissionSeeder
         ("station.export", "Export Stations", "Station", "Export station data"),
         ("station.audit", "Audit Stations", "Station", "View station audit logs"),
 
-        // Configuration Category (8 permissions)
+        // Configuration Category (10 permissions)
         ("config.read", "Read Configuration", "Configuration", "Read system configurations"),
+        ("config.create", "Create Configuration", "Configuration", "Create system configuration records"),
+        ("config.update", "Update Configuration", "Configuration", "Update system configuration records"),
         ("config.manage_axle", "Manage Axle", "Configuration", "Configure axle types and references"),
         ("config.manage_permits", "Manage Permits", "Configuration", "Configure permit types and rules"),
         ("config.manage_fees", "Manage Fees", "Configuration", "Configure fee schedules"),

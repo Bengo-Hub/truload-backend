@@ -318,13 +318,7 @@ jobs:
         
         echo "::group::ArgoCD Application Status"
         mkdir -p ~/.kube
-        # Robustly handle kubeconfig which may be raw YAML or base64-encoded
-        if echo "$KUBE_CONFIG_B64" | base64 -d > ~/.kube/config 2>/dev/null; then
-          echo "KUBE_CONFIG decoded from base64"
-        else
-          echo "KUBE_CONFIG does not appear base64; writing raw content"
-          echo "$KUBE_CONFIG_B64" > ~/.kube/config
-        fi
+        echo "$KUBE_CONFIG_B64" | base64 -d > ~/.kube/config
         
         # Note: ArgoCD applications are configured with automated sync
         # They will automatically detect git changes and sync when repository is updated
@@ -373,13 +367,7 @@ jobs:
 
         echo "::group::Health check"
         mkdir -p ~/.kube
-        # Robustly handle kubeconfig which may be raw YAML or base64-encoded
-        if echo "$KUBE_CONFIG_B64" | base64 -d > ~/.kube/config 2>/dev/null; then
-          echo "KUBE_CONFIG decoded from base64"
-        else
-          echo "KUBE_CONFIG does not appear base64; writing raw content"
-          echo "$KUBE_CONFIG_B64" > ~/.kube/config
-        fi
+        echo "$KUBE_CONFIG_B64" | base64 -d > ~/.kube/config
 
         # Check if deployment exists before checking rollout status
         if kubectl get deployment truload-backend -n ${NS} >/dev/null 2>&1; then

@@ -1,6 +1,6 @@
 # TruLoad Project Progress Report
 
-**Report Date:** February 5, 2026
+**Report Date:** February 11, 2026
 **Project:** TruLoad - Intelligent Weighing & Enforcement Solution
 **Overall Completion:** 90%
 
@@ -11,7 +11,7 @@
 TruLoad is a cloud-hosted intelligent weighing and enforcement platform enabling roadside officers to capture vehicle weights, verify compliance with EAC Vehicle Load Control Act (2016) and Kenya Traffic Act (Cap 403), and manage enforcement actions including prosecution and special releases.
 
 ### Key Achievements
-- Robust backend foundation with 90+ API endpoints
+- Robust backend foundation with 120+ API endpoints
 - Complete case management and special release workflows with approval/rejection
 - Legal compliance engines for EAC and Kenya Traffic Acts
 - Professional PDF document generation system (9 document types)
@@ -62,6 +62,14 @@ Sprint 14 (Production Readiness) in progress. Security features complete (2FA, b
 | Weighing Core Operations | Complete | 98% |
 | Axle Grouping & Compliance | Complete | 100% |
 | Case Register | Complete | 100% |
+| Case Subfiles (Doc Management) | Complete | 100% |
+| Case Parties | Complete | 100% |
+| Case Assignment (IO Tracking) | Complete | 100% |
+| Case Closure Checklist | Complete | 100% |
+| Arrest Warrants | Complete | 100% |
+| Courts Registry | Complete | 100% |
+| Load Correction Memos | Complete | 100% |
+| Compliance Certificates | Complete | 100% |
 | Special Release | Complete | 100% |
 | Shift Management | Complete | 95% |
 | Document Generation | Complete | 100% |
@@ -161,10 +169,10 @@ Sprint 14 (Production Readiness) in progress. Security features complete (2FA, b
 - **Seeded Data:** 612 axle configs, 1233 weight refs, 77 permissions
 
 ### API Inventory
-- **Total Endpoints:** 85+
+- **Total Endpoints:** 120+
 - **User Management:** 25+ endpoints
 - **Weighing Operations:** 20+ endpoints
-- **Case Management:** 19 endpoints
+- **Case Management:** 50+ endpoints (register, subfiles, parties, assignments, warrants, checklist, memos, certificates, courts)
 - **Shift Management:** 13+ endpoints
 
 ---
@@ -265,7 +273,7 @@ Sprint 14 (Production Readiness) in progress. Security features complete (2FA, b
 - Idempotency for payment recording
 
 ### Authorization Framework
-- 77 granular permissions across 8 categories
+- 111 granular permissions across 11 categories
 - 6 predefined roles with policy-based handlers
 - 1-hour Redis cache for performance
 - StatusLookupService for cached status/type lookups
@@ -284,8 +292,13 @@ Sprint 14 (Production Readiness) in progress. Security features complete (2FA, b
 ### Test Coverage
 - Backend Tests: 20+ tests passing
 - Frontend Tests: Not implemented
-- E2E Tests: **19-step compliance E2E test PASSING** (February 10, 2026)
-  - Full lifecycle: Overload → Case → Yard → Prosecution → Invoice → Payment → Memo → Reweigh → Certificate → Close
+- E2E Tests: **6 comprehensive E2E test scenarios** (February 11, 2026)
+  - Scenario 1: Overload → Case → Yard → Prosecution → Invoice → Payment → Memo → Reweigh → Certificate → Close (19 steps)
+  - Scenario 2: Within-Tolerance → Auto Special Release (12 steps)
+  - Scenario 3: Manual KeNHA Tag → TagHold → Yard → Special Release (18 steps)
+  - Scenario 4: Compliant Vehicle → Weight Ticket Only (10 steps)
+  - Scenario 5: Overload → Court Escalation (18 steps)
+  - Scenario 6: Full Court Case Lifecycle → Investigation → Hearings → Subfiles → Warrants → Closure Review (26 steps)
 
 ---
 
@@ -425,12 +438,31 @@ Sprint 14 (Production Readiness) in progress. Security features complete (2FA, b
 
 ---
 
-**Document Version:** 4.5
-**Last Updated:** February 5, 2026
-**Next Review:** February 12, 2026
+**Document Version:** 5.0
+**Last Updated:** February 11, 2026
+**Next Review:** February 18, 2026
 **Audited By:** Claude Code Comprehensive Audit
 
-### Recent Updates (v4.5) - Sprint 13 Complete
+### Recent Updates (v5.0) - Full Case Management Lifecycle
+- **8 New Service Layers Implemented** — Complete CRUD for all case management entities:
+  - CourtService (6 endpoints: CRUD + search + by-code)
+  - CaseSubfileService (8 endpoints: CRUD + search + completion tracking)
+  - CasePartyService (4 endpoints: add/update/remove parties)
+  - ArrestWarrantService (6 endpoints: create/execute/drop + search)
+  - CaseClosureChecklistService (5 endpoints: update/request-review/approve/reject)
+  - CaseAssignmentLogService (3 endpoints: log/current/history)
+  - LoadCorrectionMemoService (3 endpoints: read-only queries)
+  - ComplianceCertificateService (3 endpoints: read-only queries)
+- **8 New Controllers** — RESTful API endpoints for all 8 entities
+- **8 New DTOs** — Request/response models for all entities
+- **Manual Tag Enforcement** — WeighingService now checks KeNHA tags, auto-creates TagHold cases
+- **Database Migration** — Added offense_count and demerit_points to prosecution_cases
+- **TAG Violation Type** — Added to taxonomy for manual tag hold cases
+- **6 E2E Test Scenarios** — Comprehensive compliance lifecycle coverage (103 total steps)
+- **2 New Permissions** — config.create, config.update added to seeder
+- **Build: 0 errors** — Clean compilation verified
+
+### Previous Updates (v4.5) - Sprint 13 Complete
 - ✅ **Backend AuditLogController Created** - New controller exposing audit log endpoints
   - `GET /api/v1/audit-logs` - Paginated audit logs with filters
   - `GET /api/v1/audit-logs/{id}` - Get audit log by ID

@@ -60,7 +60,7 @@ public class ArrestWarrantController : ControllerBase
     /// Create a new arrest warrant
     /// </summary>
     [HttpPost("api/v1/case/warrants")]
-    [HasPermission("case.warrant")]
+    [HasPermission("case.arrest_warrant")]
     public async Task<IActionResult> Create([FromBody] CreateArrestWarrantRequest request, CancellationToken ct)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -82,7 +82,7 @@ public class ArrestWarrantController : ControllerBase
     /// Execute a warrant
     /// </summary>
     [HttpPost("api/v1/case/warrants/{id}/execute")]
-    [HasPermission("case.warrant")]
+    [HasPermission("case.arrest_warrant")]
     public async Task<IActionResult> Execute(Guid id, [FromBody] ExecuteWarrantRequest request, CancellationToken ct)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -102,7 +102,7 @@ public class ArrestWarrantController : ControllerBase
     /// Drop a warrant
     /// </summary>
     [HttpPost("api/v1/case/warrants/{id}/drop")]
-    [HasPermission("case.warrant")]
+    [HasPermission("case.arrest_warrant")]
     public async Task<IActionResult> Drop(Guid id, [FromBody] DropWarrantRequest request, CancellationToken ct)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);

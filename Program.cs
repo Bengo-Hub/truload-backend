@@ -338,6 +338,14 @@ builder.Services.AddScoped<ISpecialReleaseRepository, SpecialReleaseRepository>(
 builder.Services.AddScoped<ICaseRegisterService, CaseRegisterService>();
 builder.Services.AddScoped<ISpecialReleaseService, SpecialReleaseService>();
 builder.Services.AddScoped<ICourtHearingService, CourtHearingService>();
+builder.Services.AddScoped<ICourtService, CourtService>();
+builder.Services.AddScoped<ICaseSubfileService, CaseSubfileService>();
+builder.Services.AddScoped<ICasePartyService, CasePartyService>();
+builder.Services.AddScoped<IArrestWarrantService, ArrestWarrantService>();
+builder.Services.AddScoped<ICaseClosureChecklistService, CaseClosureChecklistService>();
+builder.Services.AddScoped<ICaseAssignmentLogService, CaseAssignmentLogService>();
+builder.Services.AddScoped<ILoadCorrectionMemoService, LoadCorrectionMemoService>();
+builder.Services.AddScoped<IComplianceCertificateService, ComplianceCertificateService>();
 
 // Prosecution services
 builder.Services.AddScoped<IProsecutionService, ProsecutionService>();
