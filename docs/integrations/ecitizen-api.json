@@ -1,0 +1,148 @@
+{
+  "info": {
+    "name": "Pesaflow Payment Integration API",
+    "_postman_id": "d4a9a7c1-1b6e-4f63-bf70-isp-pesaflow",
+    "description": "Pesaflow / eCitizen Payment Integration APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://test.pesaflow.com" },
+    { "key": "api_client_id", "value": "" },
+    { "key": "service_id", "value": "" },
+    { "key": "consumer_key", "value": "" },
+    { "key": "consumer_secret", "value": "" },
+    { "key": "bearer_token", "value": "" },
+    { "key": "notification_url", "value": "" },
+    { "key": "callback_url", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Online Checkout (Iframe)",
+      "item": [
+        {
+          "name": "Create Checkout Session",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/PaymentAPI/iframev2.1.php",
+              "host": ["{{base_url}}"],
+              "path": ["PaymentAPI", "iframev2.1.php"]
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "apiClientID", "value": "{{api_client_id}}" },
+                { "key": "serviceID", "value": "{{service_id}}" },
+                { "key": "billDesc", "value": "Service Payment" },
+                { "key": "currency", "value": "KES" },
+                { "key": "billRefNumber", "value": "INV-001" },
+                { "key": "clientMSISDN", "value": "254700000000" },
+                { "key": "clientName", "value": "John Doe" },
+                { "key": "clientIDNumber", "value": "12345678" },
+                { "key": "clientEmail", "value": "john@example.com" },
+                { "key": "amountExpected", "value": "1000" },
+                { "key": "callBackURLONSuccess", "value": "{{callback_url}}" },
+                { "key": "notificationURL", "value": "{{notification_url}}" },
+                { "key": "secureHash", "value": "" },
+                { "key": "format", "value": "json" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "IPN – Instant Payment Notification",
+      "item": [
+        {
+          "name": "Receive Payment Notification",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{notification_url}}",
+              "host": ["{{notification_url}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_channel\": \"MPESA\",\n  \"client_invoice_ref\": \"INV-001\",\n  \"payment_reference\": \"PF123456\",\n  \"currency\": \"KES\",\n  \"amount_paid\": 1000,\n  \"invoice_amount\": 1000,\n  \"status\": \"SUCCESS\",\n  \"invoice_number\": \"PF-INV-001\",\n  \"payment_date\": \"2024-01-01\",\n  \"token_hash\": \"abc123\",\n  \"last_payment_amount\": 1000\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Query Payment Status",
+      "item": [
+        {
+          "name": "Get Invoice Payment Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/invoice/payment/status?api_client_id={{api_client_id}}&ref_no=INV-001&secure_hash=",
+              "host": ["{{base_url}}"],
+              "path": ["api", "invoice", "payment", "status"],
+              "query": [
+                { "key": "api_client_id", "value": "{{api_client_id}}" },
+                { "key": "ref_no", "value": "INV-001" },
+                { "key": "secure_hash", "value": "" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invoice",
+      "item": [
+        {
+          "name": "Create Invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/invoice/create",
+              "host": ["{{base_url}}"],
+              "path": ["api", "invoice", "create"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_id\": \"{{service_id}}\",\n  \"amount_expected\": \"1000\",\n  \"amount_net\": \"1000\",\n  \"amount_settled_offline\": \"0\",\n  \"callback_url\": \"{{callback_url}}\",\n  \"client_invoice_ref\": \"INV-001\",\n  \"commission\": \"0\",\n  \"currency\": \"KES\",\n  \"email\": \"john@example.com\",\n  \"format\": \"json\",\n  \"id_number\": \"12345678\",\n  \"items\": [],\n  \"msisdn\": \"254700000000\",\n  \"name\": \"John Doe\",\n  \"notification_url\": \"{{notification_url}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "OAuth",
+      "item": [
+        {
+          "name": "Generate Bearer Token",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/oauth/generate/token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "oauth", "generate", "token"]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                { "key": "username", "value": "{{consumer_key}}" },
+                { "key": "password", "value": "{{consumer_secret}}" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
