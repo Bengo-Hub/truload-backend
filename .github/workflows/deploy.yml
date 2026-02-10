@@ -121,13 +121,51 @@ jobs:
         echo "Workflow re-triggered. This run will exit gracefully."
         exit 0
 
-    - name: Abort if sync was partial
+    - name: Retry and verify secrets if sync was partial
       if: needs.sync-secrets.outputs.result == 'partial'
+      env:
+        GH_TOKEN: ${{ secrets.GH_PAT }}
       run: |
-        echo "Secret sync timed out — some secrets may not have been created."
-        echo "Check the devops-k8s sync-secrets workflow run for errors:"
-        echo "  https://github.com/Bengo-Hub/devops-k8s/actions"
-        exit 1
+        echo "Secret sync reported partial. Verifying required secrets before aborting..."
+        REQUIRED_SECRETS="REGISTRY_USERNAME REGISTRY_PASSWORD REGISTRY_EMAIL POSTGRES_PASSWORD REDIS_PASSWORD RABBITMQ_PASSWORD JWT_SECRET KUBE_CONFIG"
+
+        CURRENT=$(gh secret list --repo "${{ github.repository }}" --json name -q '.[].name' 2>/dev/null || echo "")
+        STILL_MISSING=0
+        for secret in $REQUIRED_SECRETS; do
+          if echo "$CURRENT" | grep -qx "$secret"; then
+            echo "  $secret — present"
+          else
+            echo "  $secret — missing"
+            STILL_MISSING=$((STILL_MISSING + 1))
+          fi
+        done
+
+        if [ $STILL_MISSING -eq 0 ]; then
+          echo "All required secrets present after initial sync — continuing."
+        else
+          echo "Some secrets still missing — triggering devops-k8s sync and waiting up to 5 minutes..."
+          gh workflow run sync-secrets.yml --repo Bengo-Hub/devops-k8s --ref main -f target_repo="${{ github.repository }}"
+          for i in $(seq 1 30); do
+            sleep 10
+            CURRENT=$(gh secret list --repo "${{ github.repository }}" --json name -q '.[].name' 2>/dev/null || echo "")
+            STILL_MISSING=0
+            for secret in $REQUIRED_SECRETS; do
+              echo "$CURRENT" | grep -qx "$secret" || STILL_MISSING=$((STILL_MISSING + 1))
+            done
+            if [ $STILL_MISSING -eq 0 ]; then
+              echo "All required secrets synced after $((i * 10))s"
+              break
+            fi
+            echo "  ${STILL_MISSING} still missing ($((i * 10))s)..."
+          done
+
+          if [ $STILL_MISSING -ne 0 ]; then
+            echo "Secret sync timed out — some secrets may not have been created."
+            echo "Check the devops-k8s sync-secrets workflow run for errors:"
+            echo "  https://github.com/Bengo-Hub/devops-k8s/actions"
+            exit 1
+          fi
+        fi
 
     - name: Checkout code
       if: needs.sync-secrets.outputs.result != 'synced'
