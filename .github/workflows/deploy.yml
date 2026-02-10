@@ -318,7 +318,20 @@ jobs:
         
         echo "::group::ArgoCD Application Status"
         mkdir -p ~/.kube
-        echo "$KUBE_CONFIG_B64" | base64 -d > ~/.kube/config
+        # KUBE_CONFIG may be stored as base64 or as plain kubeconfig YAML.
+        # Try to decode as base64; if that fails, write the value directly.
+        if printf '%s' "$KUBE_CONFIG_B64" | base64 -d >/tmp/kubeconfig.dec 2>/dev/null; then
+          # Decoded successfully — use decoded content if it looks like kubeconfig
+          if grep -Eq 'apiVersion|clusters|kind' /tmp/kubeconfig.dec; then
+            mv /tmp/kubeconfig.dec ~/.kube/config
+          else
+            # Decoded content doesn't look like kubeconfig; fall back to raw value
+            echo "$KUBE_CONFIG_B64" > ~/.kube/config
+          fi
+        else
+          # Not valid base64 — write raw kubeconfig
+          echo "$KUBE_CONFIG_B64" > ~/.kube/config
+        fi
         
         # Note: ArgoCD applications are configured with automated sync
         # They will automatically detect git changes and sync when repository is updated
@@ -367,7 +380,15 @@ jobs:
 
         echo "::group::Health check"
         mkdir -p ~/.kube
-        echo "$KUBE_CONFIG_B64" | base64 -d > ~/.kube/config
+        if printf '%s' "$KUBE_CONFIG_B64" | base64 -d >/tmp/kubeconfig.dec 2>/dev/null; then
+          if grep -Eq 'apiVersion|clusters|kind' /tmp/kubeconfig.dec; then
+            mv /tmp/kubeconfig.dec ~/.kube/config
+          else
+            echo "$KUBE_CONFIG_B64" > ~/.kube/config
+          fi
+        else
+          echo "$KUBE_CONFIG_B64" > ~/.kube/config
+        fi
 
         # Check if deployment exists before checking rollout status
         if kubectl get deployment truload-backend -n ${NS} >/dev/null 2>&1; then
