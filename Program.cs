@@ -487,6 +487,10 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "v1/docs"; // Serve Swagger UI at /v1/docs
 });
 
+// Support legacy Swagger URLS (/swagger and /swagger/index.html)
+app.MapGet("/swagger", () => Results.Redirect("/v1/docs", false));
+app.MapGet("/swagger/index.html", () => Results.Redirect("/v1/docs", false));
+
 app.UseSerilogRequestLogging();
 
 // Global exception handler
