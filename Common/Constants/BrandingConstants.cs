@@ -53,7 +53,7 @@ public static class BrandingConstants
     public static class Organization
     {
         public const string RepublicOfKenya = "REPUBLIC OF KENYA";
-        public const string KenyaRoadsAuthority = "KENYA ROADS AUTHORITY (KeNHA/KURA/KENHA)";
+        public const string KenyaRoadsAuthority = "KENYA ROADS AUTHORITY (KeNHA/KURA/KE\nNHA)";
         public const string RoadsEnforcementDivision = "ROADS ENFORCEMENT DIVISION";
         public const string TruLoadSystemName = "TRULOAD WEIGHING SYSTEM";
     }
