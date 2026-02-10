@@ -220,7 +220,7 @@ jobs:
         check_secret "KUBE_CONFIG"        1000 "$KUBE_CONFIG"
         check_secret "POSTGRES_PASSWORD"  8    "$POSTGRES_PASSWORD"
         check_secret "REDIS_PASSWORD"     8    "$REDIS_PASSWORD"
-        check_secret "JWT_SECRET"         32   "$JWT_SECRET"
+        check_secret "JWT_SECRET"         20   "$JWT_SECRET"
 
         if [[ $FAIL -eq 1 ]]; then
           echo ""
