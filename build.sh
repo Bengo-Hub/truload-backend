@@ -217,9 +217,21 @@ if [[ "${SETUP_DATABASES}" == "true" && -f "scripts/run_migrations.sh" ]]; then
 fi
 
 # Update Helm values using centralized script
-source "${HOME}/devops-k8s/scripts/helm/update-values.sh" 2>/dev/null || {
-  warn "Centralized helm update script not available"
-}
+# Update Helm values using centralized script. Try local copy first,
+# otherwise fetch from devops-k8s main branch so builds outside CI still work.
+UPDATE_SCRIPT_PATH="${DEVOPS_DIR}/scripts/helm/update-values.sh"
+TEMP_UPDATE_SCRIPT="$(mktemp)"
+if [[ -f "$UPDATE_SCRIPT_PATH" ]]; then
+  source "$UPDATE_SCRIPT_PATH"
+else
+  if curl -fsSL "https://raw.githubusercontent.com/${DEVOPS_REPO}/main/scripts/helm/update-values.sh" -o "$TEMP_UPDATE_SCRIPT"; then
+    source "$TEMP_UPDATE_SCRIPT"
+    rm -f "$TEMP_UPDATE_SCRIPT"
+  else
+    warn "Centralized helm update script not available"
+  fi
+fi
+
 if declare -f update_helm_values >/dev/null 2>&1; then
   update_helm_values "$APP_NAME" "$GIT_COMMIT_ID" "$IMAGE_REPO"
 else
