@@ -47,9 +47,33 @@ public class IntegrationConfig : BaseEntity
 
     /// <summary>
     /// Auto-generated callback URL for payment success redirects.
-    /// Example: "https://api.truload.co.ke/api/v1/payments/callback/ecitizen"
+    /// Example: "https://api.truload.co.ke/api/v1/payments/callback/success"
     /// </summary>
     public string? CallbackUrl { get; set; }
+
+    /// <summary>
+    /// Auto-generated callback URL for payment failure redirects.
+    /// Example: "https://api.truload.co.ke/api/v1/payments/callback/failure"
+    /// </summary>
+    public string? CallbackFailureUrl { get; set; }
+
+    /// <summary>
+    /// Auto-generated callback URL for payment timeout redirects.
+    /// Example: "https://api.truload.co.ke/api/v1/payments/callback/timeout"
+    /// </summary>
+    public string? CallbackTimeoutUrl { get; set; }
+
+    /// <summary>
+    /// Pesaflow payment status polling endpoint.
+    /// Example: "https://test.pesaflow.com/api/payment/co/getStatus"
+    /// </summary>
+    public string? PaymentPollingEndpoint { get; set; }
+
+    /// <summary>
+    /// Pesaflow payment confirmation endpoint (for M-Pesa reconciliation).
+    /// Example: "https://pesaflow.ecitizen.go.ke/mpesa_recon_alpha.php"
+    /// </summary>
+    public string? PaymentConfirmationEndpoint { get; set; }
 
     /// <summary>
     /// Application's public base URL used to auto-generate webhook/callback URLs.

@@ -411,7 +411,28 @@ public static class SystemConfigurationModuleDbContextConfiguration
 
             entity.Property(e => e.CallbackUrl)
                 .HasColumnName("callback_url")
-                .HasMaxLength(500);
+                .HasMaxLength(500)
+                .HasComment("Success callback URL");
+
+            entity.Property(e => e.CallbackFailureUrl)
+                .HasColumnName("callback_failure_url")
+                .HasMaxLength(500)
+                .HasComment("Failure callback URL for payment failures");
+
+            entity.Property(e => e.CallbackTimeoutUrl)
+                .HasColumnName("callback_timeout_url")
+                .HasMaxLength(500)
+                .HasComment("Timeout callback URL for payment timeouts");
+
+            entity.Property(e => e.PaymentPollingEndpoint)
+                .HasColumnName("payment_polling_endpoint")
+                .HasMaxLength(500)
+                .HasComment("Endpoint for polling payment status as fallback");
+
+            entity.Property(e => e.PaymentConfirmationEndpoint)
+                .HasColumnName("payment_confirmation_endpoint")
+                .HasMaxLength(500)
+                .HasComment("Endpoint for manual payment confirmation/reconciliation");
 
             entity.Property(e => e.AppBaseUrl)
                 .HasColumnName("app_base_url")

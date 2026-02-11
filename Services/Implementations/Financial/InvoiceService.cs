@@ -229,7 +229,11 @@ public class InvoiceService : IInvoiceService
             DueDate = invoice.DueDate,
             PesaflowInvoiceNumber = invoice.PesaflowInvoiceNumber,
             PesaflowPaymentReference = invoice.PesaflowPaymentReference,
-            PesaflowCheckoutUrl = invoice.PesaflowCheckoutUrl,
+            PesaflowPaymentLink = invoice.PesaflowPaymentLink,
+            PesaflowGatewayFee = invoice.PesaflowGatewayFee,
+            PesaflowAmountNet = invoice.PesaflowAmountNet,
+            PesaflowTotalAmount = invoice.PesaflowTotalAmount,
+            PesaflowSyncStatus = invoice.PesaflowSyncStatus,
             CreatedAt = invoice.CreatedAt,
             UpdatedAt = invoice.UpdatedAt
         };

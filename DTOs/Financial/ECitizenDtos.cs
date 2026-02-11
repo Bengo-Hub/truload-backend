@@ -3,7 +3,8 @@ namespace TruLoad.Backend.DTOs.Financial;
 // ===== Pesaflow API Request/Response DTOs =====
 
 /// <summary>
-/// Request to create a Pesaflow invoice via the Create Invoice API.
+/// Request to create a Pesaflow invoice via iframe endpoint.
+/// Creates invoice and returns payment link in one step.
 /// </summary>
 public class CreatePesaflowInvoiceRequest
 {
@@ -12,41 +13,22 @@ public class CreatePesaflowInvoiceRequest
     public string? ClientEmail { get; set; }
     public string? ClientMsisdn { get; set; }
     public string? ClientIdNumber { get; set; }
-}
-
-/// <summary>
-/// Request to initiate an Online Checkout (iframe) session.
-/// </summary>
-public class InitiateCheckoutRequest
-{
-    public Guid LocalInvoiceId { get; set; }
-    public string ClientName { get; set; } = string.Empty;
-    public string? ClientEmail { get; set; }
-    public string? ClientMsisdn { get; set; }
-    public string? ClientIdNumber { get; set; }
     public bool SendStk { get; set; }
-    public string? PictureUrl { get; set; }
 }
 
 /// <summary>
-/// Response from Pesaflow Create Invoice API.
+/// Response from Pesaflow iframe invoice creation.
+/// The iframe endpoint returns invoice_number, invoice_link, commission, amount_net, amount_expected.
 /// </summary>
 public class PesaflowInvoiceResponse
 {
     public bool Success { get; set; }
     public string? PesaflowInvoiceNumber { get; set; }
-    public string? Message { get; set; }
-    public string? CheckoutUrl { get; set; }
-}
-
-/// <summary>
-/// Response from Pesaflow Online Checkout API.
-/// </summary>
-public class PesaflowCheckoutResponse
-{
-    public bool Success { get; set; }
-    public string? CheckoutUrl { get; set; }
-    public string? IframeHtml { get; set; }
+    public string? PaymentLink { get; set; }
+    public decimal? GatewayFee { get; set; }
+    public decimal? AmountNet { get; set; }
+    public decimal? TotalAmount { get; set; }
+    public string? Currency { get; set; }
     public string? Message { get; set; }
 }
 
@@ -95,6 +77,10 @@ public class IntegrationConfigDto
     public string EndpointsJson { get; set; } = "{}";
     public string? WebhookUrl { get; set; }
     public string? CallbackUrl { get; set; }
+    public string? CallbackFailureUrl { get; set; }
+    public string? CallbackTimeoutUrl { get; set; }
+    public string? PaymentPollingEndpoint { get; set; }
+    public string? PaymentConfirmationEndpoint { get; set; }
     public string? AppBaseUrl { get; set; }
     public string? Environment { get; set; }
     public string? Description { get; set; }

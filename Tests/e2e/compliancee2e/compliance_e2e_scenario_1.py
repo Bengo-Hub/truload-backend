@@ -444,10 +444,10 @@ class ComplianceE2ETest:
         return True, f"Invoice {inv.get('invoiceNo')}: {inv.get('amountDue')} {inv.get('currency')}"
 
     def step_11_pesaflow_push(self):
-        """Push invoice to Pesaflow (eCitizen) -- validates integration with real client details."""
+        """Push invoice to Pesaflow (eCitizen) via iframe endpoint - returns payment_link + invoice details."""
         inv_id = self.data["invoiceId"]
 
-        # Send proper client details required by Create Invoice API
+        # Send proper client details required by iframe endpoint
         body = {
             "clientName": "John E2E Kamau",
             "clientEmail": "e2e-test@truload.co.ke",
@@ -460,12 +460,24 @@ class ComplianceE2ETest:
         if r.status_code in (200, 201):
             pesaflow = r.json()
             pesaflow_inv = pesaflow.get("pesaflowInvoiceNumber")
+            payment_link = pesaflow.get("paymentLink")
+            gateway_fee = pesaflow.get("gatewayFee")
+            amount_net = pesaflow.get("amountNet")
+            total_amount = pesaflow.get("totalAmount")
+
             self.data["pesaflowInvoiceNo"] = pesaflow_inv
+            self.data["pesaflowPaymentLink"] = payment_link
+
             print(f"    pesaflowInvoiceNo: {pesaflow_inv}")
+            print(f"    paymentLink: {payment_link}")
+            print(f"    gatewayFee: {gateway_fee}")
+            print(f"    amountNet: {amount_net}")
+            print(f"    totalAmount: {total_amount}")
             print(f"    success: {pesaflow.get('success')}")
             print(f"    message: {pesaflow.get('message')}")
+
             if pesaflow.get("success"):
-                return True, f"Pushed to Pesaflow: {pesaflow_inv}"
+                return True, f"Pushed to Pesaflow: {pesaflow_inv}, payment link: {payment_link}"
             else:
                 # API returned 200 but success=false (e.g. Pesaflow rejected the request)
                 print(f"    WARNING: Pesaflow returned success=false: {pesaflow.get('message')}")

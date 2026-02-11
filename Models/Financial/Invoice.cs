@@ -57,9 +57,29 @@ public class Invoice : BaseEntity
     public DateTime? DueDate { get; set; }
 
     /// <summary>
-    /// Pesaflow invoice number returned after creation on their platform
+    /// Pesaflow invoice number returned after creation on their platform (via iframe endpoint)
     /// </summary>
     public string? PesaflowInvoiceNumber { get; set; }
+
+    /// <summary>
+    /// Pesaflow payment link (invoice_link from iframe response) - user pays here
+    /// </summary>
+    public string? PesaflowPaymentLink { get; set; }
+
+    /// <summary>
+    /// Pesaflow gateway fee (commission) added to the invoice amount
+    /// </summary>
+    public decimal? PesaflowGatewayFee { get; set; }
+
+    /// <summary>
+    /// Original invoice amount before gateway fees (amount_net from Pesaflow)
+    /// </summary>
+    public decimal? PesaflowAmountNet { get; set; }
+
+    /// <summary>
+    /// Total amount expected including gateway fees (amount_expected from Pesaflow)
+    /// </summary>
+    public decimal? PesaflowTotalAmount { get; set; }
 
     /// <summary>
     /// Pesaflow unique payment reference returned after payment confirmation
@@ -67,9 +87,10 @@ public class Invoice : BaseEntity
     public string? PesaflowPaymentReference { get; set; }
 
     /// <summary>
-    /// Pesaflow checkout URL for iframe or redirect payment
+    /// Pesaflow sync status: null (not synced), pending, synced, failed
+    /// Used when Pesaflow is unreachable during invoice creation - background task will retry
     /// </summary>
-    public string? PesaflowCheckoutUrl { get; set; }
+    public string? PesaflowSyncStatus { get; set; }
 
     // Navigation properties
     public CaseRegister? CaseRegister { get; set; }

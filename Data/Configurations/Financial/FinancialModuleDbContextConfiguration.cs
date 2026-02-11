@@ -68,9 +68,30 @@ public static class FinancialModuleDbContextConfiguration
                 .HasColumnName("pesaflow_payment_reference")
                 .HasMaxLength(100);
 
-            entity.Property(e => e.PesaflowCheckoutUrl)
-                .HasColumnName("pesaflow_checkout_url")
-                .HasMaxLength(500);
+            entity.Property(e => e.PesaflowPaymentLink)
+                .HasColumnName("pesaflow_payment_link")
+                .HasMaxLength(500)
+                .HasComment("Customer payment URL from Pesaflow iframe response");
+
+            entity.Property(e => e.PesaflowGatewayFee)
+                .HasColumnName("pesaflow_gateway_fee")
+                .HasColumnType("decimal(18,2)")
+                .HasComment("Commission charged by Pesaflow gateway");
+
+            entity.Property(e => e.PesaflowAmountNet)
+                .HasColumnName("pesaflow_amount_net")
+                .HasColumnType("decimal(18,2)")
+                .HasComment("Original invoice amount before gateway fees");
+
+            entity.Property(e => e.PesaflowTotalAmount)
+                .HasColumnName("pesaflow_total_amount")
+                .HasColumnType("decimal(18,2)")
+                .HasComment("Total amount including gateway fees (amount_expected from Pesaflow)");
+
+            entity.Property(e => e.PesaflowSyncStatus)
+                .HasColumnName("pesaflow_sync_status")
+                .HasMaxLength(20)
+                .HasComment("Sync status: null (not applicable), pending, synced, failed");
 
             entity.Property(e => e.IsActive)
                 .HasColumnName("is_active")

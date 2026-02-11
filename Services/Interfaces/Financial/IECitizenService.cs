@@ -10,7 +10,6 @@ public interface IECitizenService
 {
     Task<string> GetAccessTokenAsync(CancellationToken ct = default);
     Task<PesaflowInvoiceResponse> CreatePesaflowInvoiceAsync(CreatePesaflowInvoiceRequest request, CancellationToken ct = default);
-    Task<PesaflowCheckoutResponse> InitiateCheckoutAsync(InitiateCheckoutRequest request, CancellationToken ct = default);
     Task<PesaflowPaymentStatusResponse?> QueryPaymentStatusAsync(string invoiceRefNo, CancellationToken ct = default);
     string ComputeSecureHash(string dataString, string apiKey);
     bool VerifyWebhookToken(string tokenHash, string expectedData, string apiKey);

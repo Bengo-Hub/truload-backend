@@ -6,6 +6,8 @@ using System.Text;
 using Serilog;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Hangfire;
+using Hangfire.PostgreSql;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Repositories.UserManagement;
@@ -381,7 +383,20 @@ builder.Services.Configure<SupersetOptions>(builder.Configuration.GetSection(Sup
 builder.Services.Configure<OllamaOptions>(builder.Configuration.GetSection(OllamaOptions.SectionName));
 builder.Services.AddHttpClient<ISupersetService, SupersetService>();
 
-// TODO: Add MediatR, AutoMapper, MassTransit (RabbitMQ), etc.
+// ===== Hangfire Background Jobs =====
+builder.Services.AddHangfire(config =>
+    config.UsePostgreSqlStorage(c =>
+        c.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection"))));
+
+builder.Services.AddHangfireServer(options =>
+{
+    options.WorkerCount = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production" ? 10 : 5;
+    options.Queues = new[] { "critical", "default", "payments" };
+    options.ServerName = $"TruLoad-{Environment.MachineName}";
+});
+
+// Register background job services
+builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.PesaflowInvoiceSyncJob>();
 
 // ===== App Configuration =====
 var app = builder.Build();
@@ -540,6 +555,24 @@ app.UseTenantContext();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Hangfire Dashboard (admin access only)
+app.MapHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
+{
+    Authorization = new[] { new TruLoad.Backend.Infrastructure.Authorization.HangfireAuthorizationFilter() },
+    DashboardTitle = "TruLoad Background Jobs"
+});
+
+// Schedule recurring jobs
+Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.PesaflowInvoiceSyncJob>(
+    "pesaflow-invoice-sync",
+    job => job.ExecuteAsync(default),
+    "*/5 * * * *", // Every 5 minutes
+    new Hangfire.RecurringJobOptions
+    {
+        TimeZone = TimeZoneInfo.Utc,
+        QueueName = "payments"
+    });
 
 // Health endpoint
 app.MapHealthChecks("/health");

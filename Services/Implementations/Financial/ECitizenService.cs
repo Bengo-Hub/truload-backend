@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Financial;
@@ -20,7 +21,7 @@ public class ECitizenService : IECitizenService
 {
     private const string ProviderName = "ecitizen_pesaflow";
     private const string RedisTokenKey = "ecitizen:oauth:token";
-    private const string ServiceId = "588"; // Pesaflow service ID
+    private const string ServiceId = "235330"; // Pesaflow service ID
 
     private readonly HttpClient _httpClient;
     private readonly TruLoadDbContext _context;
@@ -112,121 +113,53 @@ public class ECitizenService : IECitizenService
         var config = await _integrationConfigService.GetByProviderAsync(ProviderName, ct)
             ?? throw new InvalidOperationException("eCitizen integration config not found");
 
-        var apiClientId = credentials.GetValueOrDefault("ApiClientId") ?? ServiceId;
-
-        var token = await GetAccessTokenAsync(ct);
-
-        // Build Create Invoice API payload per Pesaflow spec Section 6.
-        // This API uses Bearer token auth (no secure_hash needed) and JSON body.
-        var amount = invoice.AmountDue.ToString("F2");
-
-        var invoicePayload = new Dictionary<string, object>
-        {
-            ["account_id"] = apiClientId,
-            ["amount_expected"] = amount,
-            ["amount_net"] = amount,
-            ["amount_settled_offline"] = "0",
-            ["callback_url"] = config.CallbackUrl ?? "",
-            ["client_invoice_ref"] = invoice.InvoiceNo,
-            ["commission"] = "0",
-            ["currency"] = invoice.Currency,
-            ["email"] = request.ClientEmail ?? "",
-            ["format"] = "json",
-            ["id_number"] = request.ClientIdNumber ?? "",
-            ["items"] = new[]
-            {
-                new Dictionary<string, string>
-                {
-                    ["account_id"] = apiClientId,
-                    ["desc"] = "Overload Fine",
-                    ["item_ref"] = invoice.InvoiceNo,
-                    ["price"] = amount,
-                    ["quantity"] = "1",
-                    ["require_settlement"] = "true",
-                    ["currency"] = invoice.Currency
-                }
-            },
-            ["msisdn"] = request.ClientMsisdn ?? "",
-            ["name"] = request.ClientName,
-            ["notification_url"] = config.WebhookUrl ?? ""
-        };
-
-        var jsonContent = JsonSerializer.Serialize(invoicePayload);
-        var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{config.BaseUrl}/api/invoice/create")
-        {
-            Content = new StringContent(jsonContent, Encoding.UTF8, "application/json")
-        };
-        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        var response = await _httpClient.SendAsync(httpRequest, ct);
-        var responseBody = await response.Content.ReadAsStringAsync(ct);
-
-        _logger.LogInformation("Pesaflow CreateInvoice response: {StatusCode} {Body}",
-            response.StatusCode, responseBody);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return new PesaflowInvoiceResponse
-            {
-                Success = false,
-                Message = $"Pesaflow API error: {response.StatusCode} - {responseBody}"
-            };
-        }
-
-        using var doc = JsonDocument.Parse(responseBody);
-        var root = doc.RootElement;
-
-        var pesaflowInvoiceNo = root.TryGetProperty("invoice_number", out var invNo)
-            ? invNo.GetString() : null;
-
-        // Update local invoice with Pesaflow references
-        invoice.PesaflowInvoiceNumber = pesaflowInvoiceNo;
-        invoice.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync(ct);
-
-        return new PesaflowInvoiceResponse
-        {
-            Success = true,
-            PesaflowInvoiceNumber = pesaflowInvoiceNo,
-            Message = "Invoice created on Pesaflow"
-        };
-    }
-
-    public async Task<PesaflowCheckoutResponse> InitiateCheckoutAsync(
-        InitiateCheckoutRequest request, CancellationToken ct = default)
-    {
-        var invoice = await _context.Invoices
-            .FirstOrDefaultAsync(i => i.Id == request.LocalInvoiceId && i.DeletedAt == null, ct)
-            ?? throw new InvalidOperationException($"Invoice {request.LocalInvoiceId} not found");
-
-        var credentials = await _integrationConfigService.GetDecryptedCredentialsAsync(ProviderName, ct);
-        var config = await _integrationConfigService.GetByProviderAsync(ProviderName, ct)
-            ?? throw new InvalidOperationException("eCitizen integration config not found");
-
         var apiKey = credentials.GetValueOrDefault("ApiKey")!;
         var apiSecret = credentials.GetValueOrDefault("ApiSecret")!;
         var apiClientId = credentials.GetValueOrDefault("ApiClientId") ?? ServiceId;
 
+        // Prefer explicit ServiceId from integration config when present
+        string? serviceIdFromConfig = null;
+        try
+        {
+            var prop = config.GetType().GetProperty("ServiceId");
+            if (prop != null)
+                serviceIdFromConfig = prop.GetValue(config)?.ToString();
+        }
+        catch { /* ignore reflection errors */ }
+
+        var serviceId = !string.IsNullOrEmpty(serviceIdFromConfig)
+            ? serviceIdFromConfig!
+            : (credentials.GetValueOrDefault("ServiceId") ?? apiClientId ?? ServiceId);
+
+        // Pesaflow expects amount with two decimal places
         var amount = invoice.AmountDue.ToString("F2");
-        var dataString = $"{apiClientId}{amount}{apiClientId}{request.ClientIdNumber ?? ""}{invoice.Currency}{invoice.InvoiceNo}Overload Fine{request.ClientName}{apiSecret}";
+        var clientIdNumber = request.ClientIdNumber ?? "";
+        var billDesc = "Overload Fine";
+
+        // Compose secure hash: apiClientID + amount + serviceID + clientIDNumber + currency + billRefNumber + billDesc + clientName + secret
+        var dataString = $"{apiClientId}{amount}{serviceId}{clientIdNumber}{invoice.Currency}{invoice.InvoiceNo}{billDesc}{request.ClientName}{apiSecret}";
         var secureHash = ComputeSecureHash(dataString, apiKey);
 
+        // Use iframe endpoint (correct Pesaflow flow) with form-urlencoded and camelCase keys
         var formData = new Dictionary<string, string>
         {
-            ["api_client_id"] = apiClientId,
-            ["bill_ref_number"] = invoice.InvoiceNo,
-            ["bill_desc"] = "Overload Fine",
-            ["client_name"] = request.ClientName,
-            ["client_email"] = request.ClientEmail ?? "",
-            ["client_msisdn"] = request.ClientMsisdn ?? "",
-            ["amount"] = amount,
+            ["apiClientID"] = apiClientId,
+            ["serviceID"] = serviceId,
+            ["billDesc"] = billDesc,
             ["currency"] = invoice.Currency,
-            ["service_id"] = apiClientId,
-            ["notification_url"] = config.WebhookUrl ?? "",
-            ["call_back_url"] = config.CallbackUrl ?? "",
-            ["send_stk"] = request.SendStk ? "1" : "0",
-            ["picture_url"] = request.PictureUrl ?? "",
-            ["secure_hash"] = secureHash
+            ["billRefNumber"] = invoice.InvoiceNo,
+            ["clientMSISDN"] = request.ClientMsisdn ?? "",
+            ["clientName"] = request.ClientName,
+            ["clientIDNumber"] = clientIdNumber,
+            ["clientEmail"] = request.ClientEmail ?? "",
+            ["amountExpected"] = amount,
+            ["callBackURLOnSuccess"] = config.CallbackUrl ?? "",
+            ["callBackURLOnFailure"] = config.CallbackFailureUrl ?? "",
+            ["callBackURLOnTimeout"] = config.CallbackTimeoutUrl ?? "",
+            ["notificationURL"] = config.WebhookUrl ?? "",
+            ["secureHash"] = secureHash,
+            ["format"] = "json",
+            ["sendSTK"] = "false"
         };
 
         var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{config.BaseUrl}/PaymentAPI/iframev2.1.php")
@@ -234,36 +167,79 @@ public class ECitizenService : IECitizenService
             Content = new FormUrlEncodedContent(formData)
         };
 
-        var response = await _httpClient.SendAsync(httpRequest, ct);
-        var responseBody = await response.Content.ReadAsStringAsync(ct);
-
-        _logger.LogInformation("Pesaflow Checkout response: {StatusCode} {BodyLength}chars",
-            response.StatusCode, responseBody.Length);
-
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            return new PesaflowCheckoutResponse
+            var response = await _httpClient.SendAsync(httpRequest, ct);
+            var responseBody = await response.Content.ReadAsStringAsync(ct);
+
+            _logger.LogInformation("Pesaflow iframe invoice creation response: {StatusCode} {Body}",
+                response.StatusCode, responseBody);
+
+            if (!response.IsSuccessStatusCode)
             {
-                Success = false,
-                Message = $"Checkout failed: {response.StatusCode}"
+                // Mark invoice for background sync retry
+                invoice.PesaflowSyncStatus = "failed";
+                invoice.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync(ct);
+
+                return new PesaflowInvoiceResponse
+                {
+                    Success = false,
+                    Message = $"Pesaflow API error: {response.StatusCode} - {responseBody}"
+                };
+            }
+
+            using var doc = JsonDocument.Parse(responseBody);
+            var root = doc.RootElement;
+
+            var pesaflowInvoiceNo = root.TryGetProperty("invoice_number", out var invNo)
+                ? invNo.GetString() : null;
+            var paymentLink = root.TryGetProperty("invoice_link", out var link)
+                ? link.GetString() : null;
+            var commission = root.TryGetProperty("commission", out var comm)
+                ? decimal.Parse(comm.GetString() ?? "0") : 0m;
+            var amountNet = root.TryGetProperty("amount_net", out var net)
+                ? decimal.Parse(net.GetString() ?? "0") : 0m;
+            var amountExpected = root.TryGetProperty("amount_expected", out var expected)
+                ? decimal.Parse(expected.GetString() ?? "0") : 0m;
+
+            // Update local invoice with complete Pesaflow details
+            invoice.PesaflowInvoiceNumber = pesaflowInvoiceNo;
+            invoice.PesaflowPaymentLink = paymentLink;
+            invoice.PesaflowGatewayFee = commission;
+            invoice.PesaflowAmountNet = amountNet;
+            invoice.PesaflowTotalAmount = amountExpected;
+            invoice.PesaflowSyncStatus = "synced";
+            invoice.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(ct);
+
+            return new PesaflowInvoiceResponse
+            {
+                Success = true,
+                PesaflowInvoiceNumber = pesaflowInvoiceNo,
+                PaymentLink = paymentLink,
+                GatewayFee = commission,
+                AmountNet = amountNet,
+                TotalAmount = amountExpected,
+                Currency = invoice.Currency,
+                Message = "Invoice created on Pesaflow via iframe endpoint"
             };
         }
-
-        // The checkout endpoint returns HTML for iframe embedding or a redirect URL
-        var checkoutUrl = $"{config.BaseUrl}/PaymentAPI/iframev2.1.php";
-
-        // Update invoice with checkout URL
-        invoice.PesaflowCheckoutUrl = checkoutUrl;
-        invoice.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync(ct);
-
-        return new PesaflowCheckoutResponse
+        catch (Exception ex)
         {
-            Success = true,
-            CheckoutUrl = checkoutUrl,
-            IframeHtml = responseBody,
-            Message = "Checkout session initiated"
-        };
+            _logger.LogError(ex, "Pesaflow invoice creation failed for invoice {InvoiceId}", invoice.Id);
+
+            // Mark invoice for background sync retry (queue background task)
+            invoice.PesaflowSyncStatus = "pending";
+            invoice.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(ct);
+
+            return new PesaflowInvoiceResponse
+            {
+                Success = false,
+                Message = $"Pesaflow unreachable. Invoice saved locally. Background sync queued. Error: {ex.Message}"
+            };
+        }
     }
 
     public async Task<PesaflowPaymentStatusResponse?> QueryPaymentStatusAsync(
@@ -349,17 +325,43 @@ public class ECitizenService : IECitizenService
             .Include(i => i.Receipts)
             .FirstOrDefaultAsync(i => i.InvoiceNo == payload.client_invoice_ref && i.DeletedAt == null, ct);
 
+        // 2. Log webhook event to PaymentCallback table (audit trail)
+        var callbackRecord = new TruLoad.Backend.Models.Financial.PaymentCallback
+        {
+            InvoiceId = invoice?.Id,
+            CallbackType = "ipn_webhook",
+            PesaflowInvoiceNumber = payload.invoice_number,
+            PaymentReference = payload.payment_reference,
+            Amount = payload.amount_paid,
+            Currency = payload.currency,
+            PaymentDate = DateTime.TryParse(payload.payment_date, out var pd) ? pd : null,
+            RawPayload = JsonSerializer.Serialize(payload),
+            SignatureVerified = null, // Will update after verification
+            Metadata = JsonSerializer.Serialize(new
+            {
+                status = payload.status,
+                payment_channel = payload.payment_channel,
+                last_payment_amount = payload.last_payment_amount,
+                invoice_amount = payload.invoice_amount
+            })
+        };
+        _context.PaymentCallbacks.Add(callbackRecord);
+        await _context.SaveChangesAsync(ct);
+
         if (invoice == null)
         {
             _logger.LogWarning("IPN: Invoice not found for ref {InvoiceRef}", payload.client_invoice_ref);
             return WebhookProcessingResult.InvoiceNotFound;
         }
 
-        // 2. Verify token_hash (mandatory - reject webhooks without valid signatures)
+        // 3. Verify token_hash (mandatory - reject webhooks without valid signatures)
         if (string.IsNullOrEmpty(payload.token_hash))
         {
             _logger.LogWarning("IPN: Missing token_hash for invoice {InvoiceRef} - rejecting unsigned webhook",
                 payload.client_invoice_ref);
+            
+            callbackRecord.SignatureVerified = false;
+            await _context.SaveChangesAsync(ct);
             return WebhookProcessingResult.InvalidSignature;
         }
 
@@ -370,14 +372,19 @@ public class ECitizenService : IECitizenService
 
             // Token hash verification data: invoice_number + amount + secret
             var verificationData = $"{payload.invoice_number}{payload.amount_paid}{apiSecret}";
-            if (!VerifyWebhookToken(payload.token_hash, verificationData, apiKey))
+            var isValid = VerifyWebhookToken(payload.token_hash, verificationData, apiKey);
+            
+            callbackRecord.SignatureVerified = isValid;
+            await _context.SaveChangesAsync(ct);
+            
+            if (!isValid)
             {
                 _logger.LogWarning("IPN: Invalid token_hash for invoice {InvoiceRef}", payload.client_invoice_ref);
                 return WebhookProcessingResult.InvalidSignature;
             }
         }
 
-        // 3. Check payment status
+        // 4. Check payment status
         if (!string.Equals(payload.status, "PAID", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(payload.status, "SUCCESS", StringComparison.OrdinalIgnoreCase))
         {
@@ -386,7 +393,7 @@ public class ECitizenService : IECitizenService
             return WebhookProcessingResult.PaymentFailed;
         }
 
-        // 4. Idempotency check: existing receipt with same transaction reference
+        // 5. Idempotency check: existing receipt with same transaction reference
         if (!string.IsNullOrEmpty(payload.payment_reference))
         {
             var existingReceipt = await _context.Receipts
@@ -400,7 +407,7 @@ public class ECitizenService : IECitizenService
             }
         }
 
-        // 5. Record payment via ReceiptService
+        // 6. Record payment via ReceiptService
         var paymentRequest = new RecordPaymentRequest
         {
             AmountPaid = payload.amount_paid,
@@ -412,7 +419,7 @@ public class ECitizenService : IECitizenService
 
         await _receiptService.RecordPaymentAsync(invoice.Id, paymentRequest, Guid.Empty, ct);
 
-        // 6. Update the receipt with PaymentChannel (ReceiptService doesn't know about channels)
+        // 7. Update the receipt with PaymentChannel (ReceiptService doesn't know about channels)
         if (!string.IsNullOrEmpty(payload.payment_channel))
         {
             var receipt = await _context.Receipts
@@ -426,7 +433,7 @@ public class ECitizenService : IECitizenService
             }
         }
 
-        // 7. Update invoice with Pesaflow references
+        // 8. Update invoice with Pesaflow references
         invoice.PesaflowInvoiceNumber ??= payload.invoice_number;
         invoice.PesaflowPaymentReference = payload.payment_reference;
         invoice.UpdatedAt = DateTime.UtcNow;

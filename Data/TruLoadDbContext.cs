@@ -239,6 +239,7 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
 
     // ===== Financial Module =====
     public DbSet<Invoice> Invoices { get; set; } = null!;
+    public DbSet<PaymentCallback> PaymentCallbacks { get; set; } = null!;
     public DbSet<Receipt> Receipts { get; set; } = null!;
 
     // ===== Offline Support Module =====

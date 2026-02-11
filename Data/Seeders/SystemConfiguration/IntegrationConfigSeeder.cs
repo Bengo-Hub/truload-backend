@@ -88,7 +88,11 @@ public class IntegrationConfigSeeder
             EndpointsJson = JsonSerializer.Serialize(endpoints),
             AppBaseUrl = appBaseUrl,
             WebhookUrl = $"{appBaseUrl}/api/v1/payments/webhook/ecitizen-pesaflow",
-            CallbackUrl = $"{appBaseUrl}/api/v1/payments/callback/ecitizen-pesaflow",
+            CallbackUrl = $"{appBaseUrl}/api/v1/payments/callback/success",
+            CallbackFailureUrl = $"{appBaseUrl}/api/v1/payments/callback/failure",
+            CallbackTimeoutUrl = $"{appBaseUrl}/api/v1/payments/callback/timeout",
+            PaymentPollingEndpoint = "/api/payment/co/getStatus",
+            PaymentConfirmationEndpoint = "https://pesaflow.ecitizen.go.ke/mpesa_recon_alpha.php",
             Environment = "test",
             Description = "eCitizen Pesaflow test environment for overload fine payments",
             CredentialsRotatedAt = DateTime.UtcNow

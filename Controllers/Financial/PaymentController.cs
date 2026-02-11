@@ -44,25 +44,6 @@ public class PaymentController : ControllerBase
     }
 
     /// <summary>
-    /// Initiate an Online Checkout session (returns iframe HTML or redirect URL).
-    /// </summary>
-    [HttpPost("api/v1/invoices/{invoiceId}/checkout")]
-    [HasPermission("invoice.create")]
-    public async Task<IActionResult> InitiateCheckout(
-        Guid invoiceId,
-        [FromBody] InitiateCheckoutRequest request,
-        CancellationToken ct)
-    {
-        request.LocalInvoiceId = invoiceId;
-        var result = await _eCitizenService.InitiateCheckoutAsync(request, ct);
-
-        if (!result.Success)
-            return BadRequest(result);
-
-        return Ok(result);
-    }
-
-    /// <summary>
     /// Query payment status from Pesaflow for a given invoice.
     /// </summary>
     [HttpGet("api/v1/invoices/{invoiceId}/payment-status")]

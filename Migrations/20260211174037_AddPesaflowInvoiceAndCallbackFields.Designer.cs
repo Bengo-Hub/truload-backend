@@ -3,6 +3,7 @@ using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Backend.Migrations
 {
     [DbContext(typeof(TruLoadDbContext))]
-    partial class TruLoadDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260211174037_AddPesaflowInvoiceAndCallbackFields")]
+    partial class AddPesaflowInvoiceAndCallbackFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2866,74 +2869,6 @@ namespace TruLoad.Backend.Migrations
 
                             t.HasCheckConstraint("chk_invoice_status", "status IN ('pending', 'paid', 'cancelled', 'void')");
                         });
-                });
-
-            modelBuilder.Entity("TruLoad.Backend.Models.Financial.PaymentCallback", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<decimal?>("Amount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
-                        .HasColumnName("amount");
-
-                    b.Property<string>("CallbackType")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("callback_type");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Currency")
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)")
-                        .HasColumnName("currency");
-
-                    b.Property<Guid?>("InvoiceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("invoice_id");
-
-                    b.Property<string>("Metadata")
-                        .HasColumnType("text")
-                        .HasColumnName("metadata");
-
-                    b.Property<DateTime?>("PaymentDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("payment_date");
-
-                    b.Property<string>("PaymentReference")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("payment_reference");
-
-                    b.Property<string>("PesaflowInvoiceNumber")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("pesaflow_invoice_number");
-
-                    b.Property<DateTime>("ProcessedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("processed_at");
-
-                    b.Property<string>("RawPayload")
-                        .HasColumnType("text")
-                        .HasColumnName("raw_payload");
-
-                    b.Property<bool?>("SignatureVerified")
-                        .HasColumnType("boolean")
-                        .HasColumnName("signature_verified");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("InvoiceId");
-
-                    b.ToTable("payment_callbacks");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.Financial.Receipt", b =>
@@ -7194,15 +7129,6 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("ProsecutionCase");
 
                     b.Navigation("Weighing");
-                });
-
-            modelBuilder.Entity("TruLoad.Backend.Models.Financial.PaymentCallback", b =>
-                {
-                    b.HasOne("TruLoad.Backend.Models.Financial.Invoice", "Invoice")
-                        .WithMany()
-                        .HasForeignKey("InvoiceId");
-
-                    b.Navigation("Invoice");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.Financial.Receipt", b =>
