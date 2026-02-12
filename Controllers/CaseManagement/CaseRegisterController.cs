@@ -168,6 +168,7 @@ public class CaseRegisterController : ControllerBase
     /// <summary>
     /// Escalate case to case manager
     /// </summary>
+    [HasPermission("case.escalate")]
     [HttpPost("{id}/escalate")]
     public async Task<IActionResult> EscalateToCaseManager(Guid id, [FromBody] Guid caseManagerId)
     {
@@ -188,6 +189,7 @@ public class CaseRegisterController : ControllerBase
     /// <summary>
     /// Assign investigating officer
     /// </summary>
+    [HasPermission("case.assign")]
     [HttpPost("{id}/assign-io")]
     public async Task<IActionResult> AssignInvestigatingOfficer(Guid id, [FromBody] Guid officerId)
     {
