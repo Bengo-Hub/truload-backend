@@ -73,15 +73,15 @@ class ComplianceE2EScenario3:
         return {**self.headers, "Authorization": f"Bearer {self.token}"}
 
     def _get(self, path: str, **kwargs) -> requests.Response:
-        return requests.get(self._url(path), headers=self._auth_headers(), timeout=30, **kwargs)
+        return requests.get(self._url(path), headers=self._auth_headers(), timeout=60, **kwargs)
 
     def _post(self, path: str, body: Any = None, **kwargs) -> requests.Response:
         return requests.post(self._url(path), headers=self._auth_headers(),
-                             json=body, timeout=30, **kwargs)
+                             json=body, timeout=60, **kwargs)
 
     def _put(self, path: str, body: Any = None, **kwargs) -> requests.Response:
         return requests.put(self._url(path), headers=self._auth_headers(),
-                            json=body, timeout=30, **kwargs)
+                            json=body, timeout=60, **kwargs)
 
     def _step(self, num: int, name: str, fn):
         """Execute a test step with error handling and reporting."""
@@ -111,7 +111,7 @@ class ComplianceE2EScenario3:
             self._url("auth/login"),
             headers=self.headers,
             json={"email": LOGIN_EMAIL, "password": LOGIN_PASSWORD},
-            timeout=30,
+            timeout=60,
         )
         print(f"    POST /auth/login -> {r.status_code}")
         assert r.status_code == 200, f"Login failed: {r.status_code} {r.text[:200]}"
@@ -476,101 +476,34 @@ class ComplianceE2EScenario3:
         return is_closed, f"Tag closed: status={tag.get('status')}, at={tag.get('closedAt')}"
 
     def step_12_fetch_release_types(self):
-        """Fetch release types to get the ADMIN_DISCRETION release type ID.
+        """Fetch release types to get the ADMIN_DISCRETION release type ID."""
+        r = self._get("case/taxonomy/release-types")
+        print(f"    GET /case/taxonomy/release-types -> {r.status_code}")
+        assert r.status_code == 200, f"Failed to fetch release types: {r.status_code} {r.text[:200]}"
 
-        NOTE: There is no dedicated /case/release-types API endpoint.
-        We attempt several fallback strategies:
-          1. Try GET /case/release-types (in case it was added)
-          2. Look at existing special releases for a releaseTypeId
-          3. Use the special release request which may accept release type code
-        """
-        # Strategy 1: Try dedicated endpoint (may not exist)
-        r = self._get("case/release-types")
-        print(f"    GET /case/release-types -> {r.status_code}")
+        release_types = r.json()
+        if isinstance(release_types, dict):
+            release_types = release_types.get("items", release_types.get("data", []))
 
-        if r.status_code == 200:
-            release_types = r.json()
-            if isinstance(release_types, dict):
-                release_types = release_types.get("items", release_types.get("data", []))
-            if release_types:
-                admin_disc = None
-                for rt in release_types:
-                    code = rt.get("code", "")
-                    print(f"      - {code}: {rt.get('name')} (id={rt.get('id')})")
-                    if code == "ADMIN_DISCRETION":
-                        admin_disc = rt
-                if admin_disc:
-                    self.data["adminDiscretionReleaseTypeId"] = admin_disc["id"]
-                    return True, f"ADMIN_DISCRETION: {admin_disc['id']}"
-                else:
-                    # Use first available as fallback
-                    self.data["adminDiscretionReleaseTypeId"] = release_types[0]["id"]
-                    return True, f"Fallback to first release type: {release_types[0].get('code')} ({release_types[0]['id']})"
+        for rt in release_types:
+            code = rt.get("code", "")
+            print(f"      - {code}: {rt.get('name')} (id={rt.get('id')})")
+            if code == "ADMIN_DISCRETION":
+                self.data["adminDiscretionReleaseTypeId"] = rt["id"]
+                return True, f"ADMIN_DISCRETION: {rt['id']}"
 
-        # Strategy 2: Try via taxonomy/lookups endpoint
-        for path in ["case/taxonomies/release-types", "case/lookups/release-types", "lookups/release-types"]:
-            r = self._get(path)
-            print(f"    GET /{path} -> {r.status_code}")
-            if r.status_code == 200:
-                release_types = r.json()
-                if isinstance(release_types, dict):
-                    release_types = release_types.get("items", release_types.get("data", []))
-                if release_types:
-                    for rt in release_types:
-                        if rt.get("code") == "ADMIN_DISCRETION":
-                            self.data["adminDiscretionReleaseTypeId"] = rt["id"]
-                            return True, f"ADMIN_DISCRETION: {rt['id']}"
-                    self.data["adminDiscretionReleaseTypeId"] = release_types[0]["id"]
-                    return True, f"Fallback: {release_types[0].get('code')} ({release_types[0]['id']})"
+        # Use first available if ADMIN_DISCRETION not found
+        if release_types:
+            self.data["adminDiscretionReleaseTypeId"] = release_types[0]["id"]
+            return True, f"Fallback to first release type: {release_types[0].get('code')} ({release_types[0]['id']})"
 
-        # Strategy 3: Check existing special releases from Scenario 2 (tolerance auto-release)
-        # to extract a known releaseTypeId pattern
-        r = self._get("case/special-releases/pending?pageNumber=1&pageSize=1")
-        print(f"    GET /case/special-releases/pending -> {r.status_code}")
-        if r.status_code == 200:
-            pending = r.json()
-            if isinstance(pending, dict):
-                pending = pending.get("items", pending.get("data", []))
-            if isinstance(pending, list) and pending:
-                rt_id = pending[0].get("releaseTypeId")
-                if rt_id:
-                    # We found a releaseTypeId, but it may not be ADMIN_DISCRETION.
-                    # Log it and note we'll try the request anyway.
-                    print(f"    Found releaseTypeId from existing release: {rt_id}")
-
-        # Strategy 4: We'll proceed without it and let the special release creation
-        # attempt reveal the correct ID in the error message, or we'll try with a
-        # placeholder. The CaseManagementTaxonomySeeder seeds ADMIN_DISCRETION but
-        # there's no REST endpoint to query it. We'll mark this step as a soft pass
-        # and attempt the special release creation with releaseTypeId=None.
-        print("    WARNING: No release-types endpoint found. Will attempt special release")
-        print("             and extract releaseTypeId from error or DB seed data.")
-        self.data["adminDiscretionReleaseTypeId"] = None
-        return True, "WARN -- No release-types endpoint; will attempt special release discovery"
+        return False, "No release types found in taxonomy"
 
     def step_13_create_special_release(self):
         """Create special release for the tag-hold case (ADMIN_DISCRETION)."""
         cid = self.data["caseId"]
         release_type_id = self.data.get("adminDiscretionReleaseTypeId")
-
-        # If we don't have a releaseTypeId, try to discover it by creating with
-        # a dummy and seeing what comes back, or search for it via the DB
-        if not release_type_id:
-            # Last-resort: try fetching all special releases by case to see if
-            # one was auto-created that reveals the release type structure
-            print("    Attempting release type discovery via special releases by-case...")
-            r = self._get(f"case/special-releases/by-case/{cid}")
-            if r.status_code == 200:
-                existing = r.json()
-                if isinstance(existing, list) and existing:
-                    release_type_id = existing[0].get("releaseTypeId")
-                    print(f"    Discovered releaseTypeId from existing: {release_type_id}")
-
-        if not release_type_id:
-            print("    ERROR: Cannot determine ADMIN_DISCRETION releaseTypeId.")
-            print("    The CaseManagementTaxonomySeeder seeds release types but no REST")
-            print("    endpoint exposes them. A /case/release-types endpoint is needed.")
-            return False, "Missing releaseTypeId -- no release-types lookup endpoint available"
+        assert release_type_id, "adminDiscretionReleaseTypeId not set from step 12"
 
         body = {
             "caseRegisterId": cid,

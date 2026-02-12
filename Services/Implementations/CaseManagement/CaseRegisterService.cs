@@ -170,7 +170,8 @@ public class CaseRegisterService : ICaseRegisterService
 
     public async Task<CaseRegisterDto> UpdateCaseAsync(Guid id, UpdateCaseRegisterRequest request, Guid userId)
     {
-        var caseRegister = await _caseRegisterRepository.GetByIdAsync(id)
+        // Use FindAsync to get a tracked entity (avoids AsNoTracking conflicts)
+        var caseRegister = await _context.CaseRegisters.FindAsync(id)
             ?? throw new InvalidOperationException($"Case {id} not found");
 
         // Update fields
@@ -201,8 +202,13 @@ public class CaseRegisterService : ICaseRegisterService
         if (request.InvestigatingOfficerId.HasValue)
             caseRegister.InvestigatingOfficerId = request.InvestigatingOfficerId;
 
-        var updated = await _caseRegisterRepository.UpdateAsync(caseRegister);
-        return MapToDto(updated);
+        caseRegister.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        // Re-fetch with includes to populate navigation properties for DTO mapping
+        var refreshed = await _caseRegisterRepository.GetByIdAsync(caseRegister.Id)
+            ?? throw new InvalidOperationException($"Case {caseRegister.Id} not found after update");
+        return MapToDto(refreshed);
     }
 
     public async Task<CaseRegisterDto> CloseCaseAsync(Guid id, CloseCaseRequest request, Guid userId)

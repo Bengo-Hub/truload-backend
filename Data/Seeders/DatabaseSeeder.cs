@@ -8,6 +8,7 @@ using TruLoad.Backend.Data.Seeders.UserManagement;
 using TruLoad.Backend.Data.Seeders.WeighingOperations;
 using TruLoad.Backend.Data.Seeders.SystemConfiguration;
 using TruLoad.Backend.Data.Seeders.CaseManagement;
+using TruLoad.Backend.Data.Seeders.Yard;
 
 namespace TruLoad.Data.Seeders;
 
@@ -74,6 +75,10 @@ public static class DatabaseSeeder
             logger.LogInformation("Seeding system configuration data...");
             var systemConfigSeeder = new SystemConfigurationSeeder(context);
             await systemConfigSeeder.SeedAsync();
+
+            // Seed tag categories for vehicle tagging (KeNHA, KURA, etc.)
+            logger.LogInformation("Seeding tag categories...");
+            await TagCategorySeeder.SeedAsync(context);
 
             // Seed case management taxonomies (case statuses, disposition types, violation types, etc.)
             logger.LogInformation("Seeding case management taxonomies...");

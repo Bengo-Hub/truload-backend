@@ -34,7 +34,8 @@ public static class AuthorizationServiceExtensions
         "station.export", "station.audit",
 
         // Configuration
-        "config.read", "config.manage_axle", "config.manage_permits", "config.manage_fees",
+        "config.read", "config.create", "config.update",
+        "config.manage_axle", "config.manage_permits", "config.manage_fees",
         "config.manage_acts", "config.manage_taxonomy", "config.manage_references", "config.audit",
 
         // Vehicle

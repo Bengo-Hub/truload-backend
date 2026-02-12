@@ -122,18 +122,26 @@ window.open(url, '_blank');
 
 ## Development Status
 
-**Last Updated:** February 5, 2026, 18:00 UTC
+**Last Updated:** February 12, 2026
 
-### Current Phase: Sprint 12 Complete ✅ - Sprint 13 Frontend Completion Ready
+### Current Phase: Sprint 17 Complete ✅ - E2E Scenarios Hardened + Frontend Adaptation
 
 **Build Status:** ✅ **HEALTHY** (54 warnings, 0 errors)
 **Application Status:** ✅ **RUNNING** (localhost:4000)
 **Database:** ✅ **UP-TO-DATE** (All migrations applied)
-**Test Status:** ✅ **ALL PASSED** (80+ tests passed, 0 failed)
-**API Endpoints:** 90+ endpoints operational
+**Test Status:** ✅ **ALL PASSED** (80+ unit tests, 0 failed)
+**E2E Status:** ✅ **109/109 PASSING** (6 compliance scenarios, sequential fresh-DB run)
+**API Endpoints:** 100+ endpoints operational
 **PDF Documents:** 9 document types implemented
 
 ---
+
+### Sprint 17 Completion (E2E Test Hardening - February 12, 2026):
+- ✅ All 6 compliance E2E scenarios passing 109/109 steps sequentially on fresh database
+- ✅ Fixed Scenario 3: Corrected `/case/release-types` (404) to `case/taxonomy/release-types`, removed multi-strategy fallback
+- ✅ Fixed Scenario 5: Increased HTTP timeouts from 30s to 60s across all 6 test scripts
+- ✅ Created `run_all_scenarios.py` runner script for sequential execution with TEST_RESULTS.md output
+- ✅ Scenario coverage: Overload detection, yard management, special release, court escalation, prosecution, case closure with IO assignment and closure checklist review
 
 ### Sprint 12 Completion (Prosecution Enhancement - February 5, 2026):
 - ✅ Court Proceedings - CourtHearingService with full CRUD operations
@@ -170,11 +178,11 @@ window.open(url, '_blank');
 - ✅ Sprint 4: Weighing Core (Compliance engine, PDF generation)
 - ✅ Sprint 7: Shift Management (13 API endpoints)
 
-### Next Sprint: Sprint 13 - Static Weighing & Frontend Completion
-- ⏳ Static Weighing Page (frontend)
-- ⏳ Security UI completion (6 TODO items)
-- ⏳ Dashboard enhancement
-- ⏳ Production build fix
+### Next Steps
+- ⏳ Integration testing with frontend against running backend
+- ⏳ Performance optimization and bundle analysis
+- ⏳ PWA offline-first with background sync
+- ⏳ Superset SDK integration for BI dashboards
 
 ---
 
@@ -1317,8 +1325,9 @@ For detailed sprint tasks and deliverables, refer to the [sprints](./sprints/) f
 | Sprint 12 | Prosecution Enhancement | 100% | ✅ Complete | Evidence, witnesses, court minutes PDFs |
 | Sprint 14 | Production Readiness | 77% | ⚠️ Partial | Backend + Frontend CI/CD complete, monitoring pending |
 | Sprint 15 | Background Jobs & Payments | 75% | 🚧 In Progress | IPN webhook, callbacks, sync job done; tests pending |
+| Sprint 17 | E2E Test Hardening | 100% | ✅ Complete | 109/109 steps, 6 scenarios, endpoint + timeout fixes |
 
-**Totals: 10/15 Complete (67%), 3/15 Partial (20%), 1/15 In Progress (7%), 1/15 Pending (7%)**
+**Totals: 11/16 Complete (69%), 3/16 Partial (19%), 1/16 In Progress (6%), 1/16 Pending (6%)**
 
 ---
 

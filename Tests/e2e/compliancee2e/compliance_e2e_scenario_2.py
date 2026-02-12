@@ -68,15 +68,15 @@ class ComplianceE2EScenario2:
         return {**self.headers, "Authorization": f"Bearer {self.token}"}
 
     def _get(self, path: str, **kwargs) -> requests.Response:
-        return requests.get(self._url(path), headers=self._auth_headers(), timeout=30, **kwargs)
+        return requests.get(self._url(path), headers=self._auth_headers(), timeout=60, **kwargs)
 
     def _post(self, path: str, body: Any = None, **kwargs) -> requests.Response:
         return requests.post(self._url(path), headers=self._auth_headers(),
-                             json=body, timeout=30, **kwargs)
+                             json=body, timeout=60, **kwargs)
 
     def _put(self, path: str, body: Any = None, **kwargs) -> requests.Response:
         return requests.put(self._url(path), headers=self._auth_headers(),
-                            json=body, timeout=30, **kwargs)
+                            json=body, timeout=60, **kwargs)
 
     def _step(self, num: int, name: str, fn):
         """Execute a test step with error handling and reporting."""
@@ -106,7 +106,7 @@ class ComplianceE2EScenario2:
             self._url("auth/login"),
             headers=self.headers,
             json={"email": LOGIN_EMAIL, "password": LOGIN_PASSWORD},
-            timeout=30,
+            timeout=60,
         )
         print(f"    POST /auth/login -> {r.status_code}")
         assert r.status_code == 200, f"Login failed: {r.status_code} {r.text[:200]}"
@@ -413,22 +413,20 @@ class ComplianceE2EScenario2:
 
         self.data["specialReleaseId"] = sr.get("id")
         sr_type = sr.get("releaseType") or sr.get("type")
-        sr_status = sr.get("status") or sr.get("approvalStatus")
-        is_auto = sr.get("isAutoApproved") or sr.get("isAuto")
+        is_approved = sr.get("isApproved", False)
+        approved_at = sr.get("approvedAt")
 
         print(f"    specialReleaseId: {self.data['specialReleaseId']}")
         print(f"    releaseType:      {sr_type}")
-        print(f"    status:           {sr_status}")
-        print(f"    isAutoApproved:   {is_auto}")
+        print(f"    isApproved:       {is_approved}")
         print(f"    reason:           {sr.get('reason', '')[:80]}")
-        print(f"    approvedAt:       {sr.get('approvedAt')}")
-        print(f"    approvedBy:       {sr.get('approvedBy')}")
+        print(f"    approvedAt:       {approved_at}")
+        print(f"    approvedBy:       {sr.get('approvedByName')}")
 
         is_tolerance = sr_type and "tolerance" in str(sr_type).lower()
-        is_approved = sr_status and "approved" in str(sr_status).lower()
 
-        return is_tolerance and is_approved, (
-            f"Special release: type={sr_type}, status={sr_status}, auto={is_auto}"
+        return is_tolerance and bool(is_approved), (
+            f"Special release: type={sr_type}, isApproved={is_approved}, approvedAt={approved_at}"
         )
 
     def step_10_verify_case_closed(self):
@@ -453,7 +451,7 @@ class ComplianceE2EScenario2:
         print(f"    closingReason:   {closing_reason[:120]}")
 
         is_closed = "closed" in status.lower() if status else False
-        is_special_release = "special_release" in disposition.lower() if disposition else False
+        is_special_release = "special release" in disposition.lower().replace("_", " ") if disposition else False
 
         print(f"    -> Case closed: {is_closed}")
         print(f"    -> Disposition is SPECIAL_RELEASE: {is_special_release}")

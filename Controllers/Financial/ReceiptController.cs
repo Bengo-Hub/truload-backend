@@ -287,6 +287,10 @@ public class ReceiptController : ControllerBase
         {
             return NotFound(ex.Message);
         }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Failed to generate receipt PDF: {ex.Message}");
+        }
     }
 
     private Guid GetCurrentUserId()

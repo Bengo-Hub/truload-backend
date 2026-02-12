@@ -77,15 +77,15 @@ class ComplianceE2ETest:
         return {**self.headers, "Authorization": f"Bearer {self.token}"}
 
     def _get(self, path: str, **kwargs) -> requests.Response:
-        return requests.get(self._url(path), headers=self._auth_headers(), timeout=30, **kwargs)
+        return requests.get(self._url(path), headers=self._auth_headers(), timeout=60, **kwargs)
 
     def _post(self, path: str, body: Any = None, **kwargs) -> requests.Response:
         return requests.post(self._url(path), headers=self._auth_headers(),
-                             json=body, timeout=30, **kwargs)
+                             json=body, timeout=60, **kwargs)
 
     def _put(self, path: str, body: Any = None, **kwargs) -> requests.Response:
         return requests.put(self._url(path), headers=self._auth_headers(),
-                            json=body, timeout=30, **kwargs)
+                            json=body, timeout=60, **kwargs)
 
     def _step(self, num: int, name: str, fn):
         """Execute a test step with error handling and reporting."""
@@ -115,7 +115,7 @@ class ComplianceE2ETest:
             self._url("auth/login"),
             headers=self.headers,
             json={"email": LOGIN_EMAIL, "password": LOGIN_PASSWORD},
-            timeout=30,
+            timeout=60,
         )
         print(f"    POST /auth/login -> {r.status_code}")
         assert r.status_code == 200, f"Login failed: {r.status_code} {r.text[:200]}"

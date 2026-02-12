@@ -20,6 +20,7 @@ public static class CaseManagementTaxonomySeeder
         await SeedClosureTypesAsync(context);
         await SeedHearingTypesAsync(context);
         await SeedHearingStatusesAsync(context);
+        await SeedHearingOutcomesAsync(context);
         await SeedSubfileTypesAsync(context);
         await SeedCaseReviewStatusesAsync(context);
         await SeedWarrantStatusesAsync(context);
@@ -460,6 +461,67 @@ public static class CaseManagementTaxonomySeeder
         };
 
         await context.HearingStatuses.AddRangeAsync(statuses);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedHearingOutcomesAsync(TruLoadDbContext context)
+    {
+        if (await context.HearingOutcomes.AnyAsync()) return;
+
+        var outcomes = new List<HearingOutcome>
+        {
+            new()
+            {
+                Code = "CONVICTED",
+                Name = "Convicted",
+                Description = "Defendant found guilty. Sentence and/or fine to be imposed.",
+                IsActive = true
+            },
+            new()
+            {
+                Code = "ACQUITTED",
+                Name = "Acquitted",
+                Description = "Defendant found not guilty. Case dismissed on merits.",
+                IsActive = true
+            },
+            new()
+            {
+                Code = "ADJOURNED",
+                Name = "Adjourned",
+                Description = "Hearing postponed to a future date for further proceedings.",
+                IsActive = true
+            },
+            new()
+            {
+                Code = "DISMISSED",
+                Name = "Dismissed",
+                Description = "Case dismissed by court on procedural or jurisdictional grounds.",
+                IsActive = true
+            },
+            new()
+            {
+                Code = "PLEA_ENTERED",
+                Name = "Plea Entered",
+                Description = "Defendant entered a plea (guilty or not guilty). Trial to proceed.",
+                IsActive = true
+            },
+            new()
+            {
+                Code = "SENTENCED",
+                Name = "Sentenced",
+                Description = "Sentence pronounced following conviction. Fine, imprisonment, or both.",
+                IsActive = true
+            },
+            new()
+            {
+                Code = "WITHDRAWN",
+                Name = "Withdrawn",
+                Description = "Prosecution withdrew charges before verdict.",
+                IsActive = true
+            }
+        };
+
+        await context.HearingOutcomes.AddRangeAsync(outcomes);
         await context.SaveChangesAsync();
     }
 

@@ -117,8 +117,8 @@ public class CaseClosureChecklistService : ICaseClosureChecklistService
             ?? throw new InvalidOperationException($"Checklist for case {caseRegisterId} not found");
 
         var requestedStatus = await _context.CaseReviewStatuses
-            .FirstOrDefaultAsync(s => s.Code == "REQUESTED", ct)
-            ?? throw new InvalidOperationException("REQUESTED review status not found");
+            .FirstOrDefaultAsync(s => s.Code == "PENDING", ct)
+            ?? throw new InvalidOperationException("PENDING review status not found");
 
         checklist.ReviewStatusId = requestedStatus.Id;
         checklist.ReviewRequestedAt = DateTime.UtcNow;

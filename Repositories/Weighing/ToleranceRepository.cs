@@ -46,12 +46,19 @@ public class ToleranceRepository : IToleranceRepository
     {
         var now = DateTime.UtcNow.Date;
 
+        var upperFramework = legalFramework.ToUpper();
+        var upperAppliesTo = appliesTo.ToUpper();
+
         return await _context.ToleranceSettings
-            .Where(t => (t.LegalFramework == legalFramework.ToUpper() || t.LegalFramework == "BOTH"))
-            .Where(t => t.AppliesTo == appliesTo.ToUpper() || t.AppliesTo == "BOTH")
+            .Where(t => (t.LegalFramework == upperFramework || t.LegalFramework == "BOTH"))
+            .Where(t => t.AppliesTo == upperAppliesTo || t.AppliesTo == "BOTH")
             .Where(t => t.IsActive)
             .Where(t => t.EffectiveFrom <= now && (t.EffectiveTo == null || t.EffectiveTo >= now))
-            .OrderByDescending(t => t.EffectiveFrom)
+            // Prefer exact legal-framework match over "BOTH" wildcard,
+            // then exact appliesTo match over "BOTH", then most recent effective date
+            .OrderByDescending(t => t.LegalFramework == upperFramework ? 1 : 0)
+            .ThenByDescending(t => t.AppliesTo == upperAppliesTo ? 1 : 0)
+            .ThenByDescending(t => t.EffectiveFrom)
             .FirstOrDefaultAsync(cancellationToken);
     }
 

@@ -1,0 +1,387 @@
+D:\Projects\BengoBox\Truload\truload-backend\Tests\e2e\compliancee2e\compliance_e2e_scenario_6.py:1079: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  print(f"  Started: {datetime.utcnow().isoformat()}Z")
+D:\Projects\BengoBox\Truload\truload-backend\Tests\e2e\compliancee2e\compliance_e2e_scenario_6.py:607: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f"Date: {datetime.utcnow().strftime('%Y-%m-%d')}. "
+
+======================================================================
+  TRULOAD COMPLIANCE E2E TEST -- SCENARIO 6
+  Full Court Case Lifecycle
+  Target: http://localhost:4000
+  Started: 2026-02-12T12:13:34.410061Z
+======================================================================
+
+  Workflow: Metadata -> Autoweigh -> Overload -> Case+Yard
+         -> Escalate -> Court -> IO -> Parties -> Subfiles
+         -> Hearings -> Warrants -> Closure -> Review -> Close
+
+
+======================================================================
+  STEP 1: Login
+======================================================================
+    POST /auth/login -> 200
+    userId:    019c51c2-33b8-7778-b136-109758177216
+    stationId: 8793b521-5855-41ab-a794-84e9617f9c15
+
+  [PASS] Login
+    -> Logged in as gadmin@masterspace.co.ke
+
+======================================================================
+  STEP 2: Setup metadata (driver, transporter, cargo, locs)
+======================================================================
+    Driver found: John E2E (56a75875-7812-444e-859f-644a3b60f9e0)
+    Transporter found: E2E Test Transporters Ltd
+    Cargo type found: Agricultural Produce
+    Origin: Busia Border
+    Destination: Eldoret
+
+  [PASS] Setup metadata (driver, transporter, cargo, locs)
+    -> Metadata: driverId=OK, transporterId=OK, cargoId=OK, originId=OK, destinationId=OK
+
+======================================================================
+  STEP 3: Create scale test
+======================================================================
+    POST /scale-tests -> 201
+
+  [PASS] Create scale test
+    -> Scale test created: 0f99d24c-5e76-4696-829f-996c749f6706
+
+======================================================================
+  STEP 4: Autoweigh overloaded vehicle (KDG 606L, GVW=27500)
+======================================================================
+    POST /weighing-transactions/autoweigh -> 201
+    weighingId:    c5f511ca-293f-4383-8bb3-d6c3635a77b2
+    vehicleId:     41663cf7-de42-42c6-ae66-46676780ecdf
+    captureStatus: auto
+    gvwMeasuredKg: 27500
+
+  [PASS] Autoweigh overloaded vehicle (KDG 606L, GVW=27500)
+    -> Autoweigh created: c5f511ca-293f-4383-8bb3-d6c3635a77b2
+
+======================================================================
+  STEP 5: Update weighing metadata (driver, transporter)
+======================================================================
+    PUT /weighing-transactions/c5f511ca-293f-4383-8bb3-d6c3635a77b2 -> 200
+
+  [PASS] Update weighing metadata (driver, transporter)
+    -> Linked: driver, transporter
+
+======================================================================
+  STEP 6: Capture weights (triggers compliance + auto-case)
+======================================================================
+    POST /weighing-transactions/c5f511ca-293f-4383-8bb3-d6c3635a77b2/capture-weights -> 200
+    captureStatus: captured
+    controlStatus: Overloaded
+    isCompliant:   False
+    overloadKg:    1500
+    gvwMeasuredKg: 27500
+
+  [PASS] Capture weights (triggers compliance + auto-case)
+    -> ControlStatus=Overloaded, GVW=27500kg
+
+======================================================================
+  STEP 7: Verify case auto-created
+======================================================================
+    GET /case/cases/by-weighing/c5f511ca-293f-4383-8bb3-d6c3635a77b2 -> 200
+    caseId:     5b3749fe-42a3-4d2d-ad67-4a2ad34218bd
+    caseNo:     NRB-MOBILE-01-2026-00002
+    caseStatus: Open
+
+  [PASS] Verify case auto-created
+    -> Case auto-created: NRB-MOBILE-01-2026-00002
+
+======================================================================
+  STEP 8: Verify yard entry auto-created
+======================================================================
+    GET /yard-entries/by-weighing/c5f511ca-293f-4383-8bb3-d6c3635a77b2 -> 200
+    yardEntryId: a4256583-205b-4a4a-9cf4-b512962d1348
+    status:      pending
+
+  [PASS] Verify yard entry auto-created
+    -> Yard entry exists: a4256583-205b-4a4a-9cf4-b512962d1348
+
+======================================================================
+  STEP 9: Escalate to court
+======================================================================
+    GET /case/taxonomy/disposition-types -> 200
+    Disposition type: COURT_ESCALATION -> 416eae16-2a3d-4a77-9dbc-ee1bc12fcaa9
+    PUT /case/cases/5b3749fe-42a3-4d2d-ad67-4a2ad34218bd -> 200
+    dispositionType: Court Escalation
+
+  [PASS] Escalate to court
+    -> Escalated to court, disposition=Court Escalation
+
+======================================================================
+  STEP 10: Create court record
+======================================================================
+    POST /courts -> 201
+    courtId: a79ef21d-7cba-4446-86cf-91e4d882bb7e
+    code:    E2E-MCT-975725DB
+    name:    E2E Magistrates Court 975725DB
+
+  [PASS] Create court record
+    -> Court created: E2E Magistrates Court 975725DB (a79ef21d-7cba-4446-86cf-91e4d882bb7e)
+
+======================================================================
+  STEP 11: Assign IO (initial assignment)
+======================================================================
+    POST /cases/5b3749fe-42a3-4d2d-ad67-4a2ad34218bd/assignments -> 201
+    assignmentId: e25ef2c7-0eed-4563-89cb-0e239f5b7059
+    isCurrent:    True
+
+  [PASS] Assign IO (initial assignment)
+    -> IO assigned, isCurrent=True
+
+======================================================================
+  STEP 12: Add case parties (IO + defendant driver)
+======================================================================
+    POST /cases/5b3749fe-42a3-4d2d-ad67-4a2ad34218bd/parties (IO) -> 201
+    IO party id: 5f9573f4-bf8f-4ddb-bfab-0dcbd24912f0
+    POST /cases/5b3749fe-42a3-4d2d-ad67-4a2ad34218bd/parties (driver) -> 201
+    Driver party id: 5c166533-9dad-46cd-87b6-22ae71cc4987
+    Total parties on case: 2
+
+  [PASS] Add case parties (IO + defendant driver)
+    -> Added 2 parties, total on case: 2
+
+======================================================================
+  STEP 13: Upload Subfile B (document evidence)
+======================================================================
+    GET /case/taxonomy/subfile-types -> 200
+    Subfile type B: EVIDENCE -> 8a868038-b8e7-44c8-af35-0805499bf7fc
+    POST /case/subfiles (type B) -> 201
+    subfileId: 77058444-cf1d-4733-b212-3681b2b46a95
+
+  [PASS] Upload Subfile B (document evidence)
+    -> Subfile B (Evidence) created: 77058444-cf1d-4733-b212-3681b2b46a95
+
+======================================================================
+  STEP 14: Upload Subfile D (witness statement)
+======================================================================
+    GET /case/taxonomy/subfile-types -> 200
+    Subfile type D: DRIVER_DOCS -> 994e39ea-6f87-4937-a9ac-7b6b2abea6b6
+    POST /case/subfiles (type D) -> 201
+    subfileId: 631e49da-24ea-473d-9b2d-909622f38a6e
+
+  [PASS] Upload Subfile D (witness statement)
+    -> Subfile D (Witness Statement) created: 631e49da-24ea-473d-9b2d-909622f38a6e
+
+======================================================================
+  STEP 15: Upload Subfile F (investigation diary)
+======================================================================
+    GET /case/taxonomy/subfile-types -> 200
+    Subfile type F: LEGAL_NOTICES -> 5c5cd3a3-2b83-4500-bb1c-7a2f3e965005
+    POST /case/subfiles (type F) -> 201
+    subfileId: dfd7fe2e-25d8-4fad-89c0-4883b9595b30
+
+  [PASS] Upload Subfile F (investigation diary)
+    -> Subfile F (Investigation Diary) created: dfd7fe2e-25d8-4fad-89c0-4883b9595b30
+
+======================================================================
+  STEP 16: Upload Subfile G (charge sheet)
+======================================================================
+    GET /case/taxonomy/subfile-types -> 200
+    Subfile type G: COURT_FILINGS -> 7c27df15-fc1d-4621-a21a-e9e1f5115567
+    POST /case/subfiles (type G) -> 201
+    subfileId: 3c22098c-9db6-4c94-940a-3150f7c3f134
+
+  [PASS] Upload Subfile G (charge sheet)
+    -> Subfile G (Charge Sheet) created: 3c22098c-9db6-4c94-940a-3150f7c3f134D:\Projects\BengoBox\Truload\truload-backend\Tests\e2e\compliancee2e\compliance_e2e_scenario_6.py:698: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  tomorrow = (datetime.utcnow() + timedelta(days=1)).strftime("%Y-%m-%dT10:00:00Z")
+D:\Projects\BengoBox\Truload\truload-backend\Tests\e2e\compliancee2e\compliance_e2e_scenario_6.py:723: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  next_week = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%dT10:00:00Z")
+
+
+======================================================================
+  STEP 17: Check subfile completion
+======================================================================
+    GET /case/subfiles/by-case/5b3749fe-42a3-4d2d-ad67-4a2ad34218bd/completion -> 200
+    completedTypes: 4
+    totalTypes:     8
+
+  [PASS] Check subfile completion
+    -> Completed 4/8 subfile types
+
+======================================================================
+  STEP 18: Schedule first hearing (mention)
+======================================================================
+    GET /case/taxonomy/hearing-types -> 200
+    Hearing type: MENTION -> 7c2b905b-f84b-4c36-b4d3-e503333b6b2c
+    POST /cases/5b3749fe-42a3-4d2d-ad67-4a2ad34218bd/hearings -> 201
+    hearingId: 3061a200-f016-465c-acb0-3ddc4ff99031
+    date:      2026-02-13T10:00:00Z
+    type:      Mention Hearing
+
+  [PASS] Schedule first hearing (mention)
+    -> First hearing (mention) scheduled: 3061a200-f016-465c-acb0-3ddc4ff99031
+
+======================================================================
+  STEP 19: Adjourn first hearing
+======================================================================
+    POST /hearings/3061a200-f016-465c-acb0-3ddc4ff99031/adjourn -> 200
+    hearingStatusName: Adjourned
+
+  [PASS] Adjourn first hearing
+    -> Hearing adjourned, status=Adjourned
+
+======================================================================
+  STEP 20: Verify next hearing auto-created
+======================================================================
+    GET /cases/5b3749fe-42a3-4d2d-ad67-4a2ad34218bd/hearings -> 200
+    Total hearings: 2
+    Hearing 1: id=fa341584-4a8d-49d3-82f8-e83b2db7bdee, type=Mention Hearing, status=Scheduled
+    Hearing 2: id=3061a200-f016-465c-acb0-3ddc4ff99031, type=Mention Hearing, status=Adjourned
+    Second hearing saved: fa341584-4a8d-49d3-82f8-e83b2db7bdee
+
+  [PASS] Verify next hearing auto-created
+    -> Found 2 hearings (expected >= 2)
+
+======================================================================
+  STEP 21: Issue arrest warrant
+======================================================================
+    POST /case/warrants -> 201
+    warrantId: 9ff9af45-7f00-4b55-850d-b1c9d141fba1
+    warrantNo: WAR-2026-00001
+    status:    Issued
+
+  [PASS] Issue arrest warrant
+    -> Warrant issued: WAR-2026-00001
+
+======================================================================
+  STEP 22: Execute warrant
+======================================================================
+    POST /case/warrants/9ff9af45-7f00-4b55-850d-b1c9d141fba1/execute -> 200
+    warrantStatusName: Executed
+
+  [PASS] Execute warrant
+    -> Warrant status: Executed
+
+======================================================================
+  STEP 23: Complete second hearing (plea with conviction)
+======================================================================
+    GET /case/taxonomy/hearing-types -> 200
+    Plea type: PLEA -> 9c857418-d4de-4415-9d16-71a490a68206
+    GET /case/taxonomy/hearing-outcomes -> 200
+    Convicted outcome: CONVICTED -> d1c29c96-1f65-4e0d-881a-cd3e3551f866
+    POST /hearings/fa341584-4a8d-49d3-82f8-e83b2db7bdee/complete -> 200
+    outcome:  Convicted
+    status:   Completed
+
+  [PASS] Complete second hearing (plea with conviction)
+    -> Second hearing completed with conviction, fine=KES 50,000
+
+======================================================================
+  STEP 24: Create closure checklist
+======================================================================
+    GET /case/taxonomy/closure-types -> 200
+    Closure type: CONVICTION -> 3e3e3a20-e9c0-4b7f-b3b3-0fb4d8ddd73f
+    PUT /cases/5b3749fe-42a3-4d2d-ad67-4a2ad34218bd/closure-checklist -> 200
+    allSubfilesVerified: True
+
+  [PASS] Create closure checklist
+    -> Closure checklist created, allSubfilesVerified=True
+
+======================================================================
+  STEP 25: Request closure review
+======================================================================
+    POST /cases/5b3749fe-42a3-4d2d-ad67-4a2ad34218bd/closure-checklist/request-review -> 200
+    reviewStatusName: Pending Review
+
+  [PASS] Request closure review
+    -> Review status: Pending Review
+
+======================================================================
+  STEP 26: Approve closure review
+======================================================================
+    POST /cases/5b3749fe-42a3-4d2d-ad67-4a2ad34218bd/closure-checklist/approve-review -> 200
+    reviewStatusName: Approved
+
+  [PASS] Approve closure review
+    -> Review status: Approved
+
+======================================================================
+  STEP 27: Close the case
+======================================================================
+    POST /case/cases/5b3749fe-42a3-4d2d-ad67-4a2ad34218bd/close -> 200
+    caseStatus: Closed
+
+  [PASS] Close the case
+    -> Case status: Closed
+
+======================================================================
+  STEP 28: Verify final state
+======================================================================
+    GET /case/cases/5b3749fe-42a3-4d2d-ad67-4a2ad34218bd -> 200
+    Case status: Closed -> PASS
+    Parties: 2 -> PASS
+    Subfiles: 4 -> PASS
+    Hearings: 2 -> PASS
+    Warrants: 1 -> PASS
+    Closure checklist verified: True -> PASS
+    Assignments: 1 -> PASS
+
+  [PASS] Verify final state
+    -> Final state: caseStatus=PASS (Closed); parties=PASS (2); subfiles=PASS (4); hearings=PASS (2); warrants=PASS (1); closureChecklist=PASS (verified=True); assignments=PASS (1)
+
+
+======================================================================
+  E2E TEST SUMMARY -- SCENARIO 6: Full Court Case Lifecycle
+======================================================================
+  Step  Status   Name
+  ---   ------   --------------------------------------------------
+  1     [PASS]   Login
+  2     [PASS]   Setup metadata (driver, transporter, cargo, locs)
+  3     [PASS]   Create scale test
+  4     [PASS]   Autoweigh overloaded vehicle (KDG 606L, GVW=27500)
+  5     [PASS]   Update weighing metadata (driver, transporter)
+  6     [PASS]   Capture weights (triggers compliance + auto-case)
+  7     [PASS]   Verify case auto-created
+  8     [PASS]   Verify yard entry auto-created
+  9     [PASS]   Escalate to court
+  10    [PASS]   Create court record
+  11    [PASS]   Assign IO (initial assignment)
+  12    [PASS]   Add case parties (IO + defendant driver)
+  13    [PASS]   Upload Subfile B (document evidence)
+  14    [PASS]   Upload Subfile D (witness statement)
+  15    [PASS]   Upload Subfile F (investigation diary)
+  16    [PASS]   Upload Subfile G (charge sheet)
+  17    [PASS]   Check subfile completion
+  18    [PASS]   Schedule first hearing (mention)
+  19    [PASS]   Adjourn first hearing
+  20    [PASS]   Verify next hearing auto-created
+  21    [PASS]   Issue arrest warrant
+  22    [PASS]   Execute warrant
+  23    [PASS]   Complete second hearing (plea with conviction)
+  24    [PASS]   Create closure checklist
+  25    [PASS]   Request closure review
+  26    [PASS]   Approve closure review
+  27    [PASS]   Close the case
+  28    [PASS]   Verify final state
+
+  ============================================================
+  TOTAL: 28  |  PASS: 28  |  FAIL: 0
+
+  ALL 28 STEPS PASSED
+
+  Collected IDs:
+    weighingId: c5f511ca-293f-4383-8bb3-d6c3635a77b2
+    vehicleId: 41663cf7-de42-42c6-ae66-46676780ecdf
+    caseId: 5b3749fe-42a3-4d2d-ad67-4a2ad34218bd
+    caseNo: NRB-MOBILE-01-2026-00002
+    yardEntryId: a4256583-205b-4a4a-9cf4-b512962d1348
+    courtId: a79ef21d-7cba-4446-86cf-91e4d882bb7e
+    assignmentId: e25ef2c7-0eed-4563-89cb-0e239f5b7059
+    hearingId1: 3061a200-f016-465c-acb0-3ddc4ff99031
+    hearingId2: fa341584-4a8d-49d3-82f8-e83b2db7bdee
+    warrantId: 9ff9af45-7f00-4b55-850d-b1c9d141fba1
+    subfileBId: 77058444-cf1d-4733-b212-3681b2b46a95
+    subfileDId: 631e49da-24ea-473d-9b2d-909622f38a6e
+    subfileFId: dfd7fe2e-25d8-4fad-89c0-4883b9595b30
+    subfileGId: 3c22098c-9db6-4c94-940a-3150f7c3f134
+    closureTypeId: 3e3e3a20-e9c0-4b7f-b3b3-0fb4d8ddd73f
+    courtDispositionTypeId: 416eae16-2a3d-4a77-9dbc-ee1bc12fcaa9
+    convictedOutcomeId: d1c29c96-1f65-4e0d-881a-cd3e3551f866
+    scaleTestId: 0f99d24c-5e76-4696-829f-996c749f6706
+    driverId: 56a75875-7812-444e-859f-644a3b60f9e0
+    transporterId: 3259fa35-e04d-4db4-8ca0-b0b20c3e3f67
+    userId: 019c51c2-33b8-7778-b136-109758177216
+======================================================================

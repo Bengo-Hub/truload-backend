@@ -20,7 +20,7 @@ public static class YardModuleDbContextConfiguration
             entity.ToTable("yard_entries", t =>
             {
                 t.HasCheckConstraint("chk_yard_entry_status", "status IN ('pending', 'processing', 'released', 'escalated')");
-                t.HasCheckConstraint("chk_yard_entry_reason", "reason IN ('redistribution', 'gvw_overload', 'permit_check', 'offload')");
+                t.HasCheckConstraint("chk_yard_entry_reason", "reason IN ('redistribution', 'gvw_overload', 'permit_check', 'offload', 'tag_hold')");
             });
             entity.HasKey(e => e.Id);
 

@@ -6,15 +6,34 @@ Full Court Case Lifecycle: escalation -> investigation -> hearings ->
 subfiles -> diary -> arrest warrants -> review -> closure.
 
 Workflow:
-  1. Overload detected -> Case + Yard auto-created
-  2. Escalate to court
-  3. Create court record, assign IO, add case parties
-  4. Upload subfiles (B, D, F, G) for evidence and investigation
-  5. Schedule hearings (mention -> adjourn -> plea)
-  6. Issue and execute arrest warrant
-  7. Complete second hearing with conviction
-  8. Closure checklist -> request review -> approve -> close case
-  9. Verify final state (parties, subfiles, hearings, warrants, assignments)
+  1. Login
+  2. Setup metadata (driver, transporter, cargo, locations)
+  3. Scale test
+  4. Autoweigh overloaded vehicle (KDG 606L, GVW=27500)
+  5. Update metadata on transaction
+  6. Capture weights (triggers compliance + case/yard auto-triggers)
+  7. Verify case auto-created
+  8. Verify yard entry auto-created
+  9. Escalate to court
+ 10. Create court record
+ 11. Assign IO (initial assignment)
+ 12. Add case parties (IO + defendant driver)
+ 13. Upload Subfile B (document evidence)
+ 14. Upload Subfile D (witness statement)
+ 15. Upload Subfile F (investigation diary)
+ 16. Upload Subfile G (charge sheet)
+ 17. Check subfile completion
+ 18. Schedule first hearing (mention)
+ 19. Adjourn first hearing
+ 20. Verify next hearing auto-created
+ 21. Issue arrest warrant
+ 22. Execute warrant
+ 23. Complete second hearing (plea with conviction)
+ 24. Create closure checklist
+ 25. Request closure review
+ 26. Approve closure review
+ 27. Close the case
+ 28. Verify final state
 
 Usage:
     python compliance_e2e_scenario_6.py [--base-url http://localhost:4000]
@@ -37,7 +56,7 @@ except ImportError:
     print("ERROR: 'requests' package required. Install with: pip install requests")
     sys.exit(1)
 
-# --- Configuration -----------------------------------------------------------
+# ─── Configuration ──────────────────────────────────────────────────────────
 
 DEFAULT_BASE_URL = "http://localhost:4000"
 API_PREFIX = "/api/v1"
@@ -54,7 +73,7 @@ OVERLOADED_AXLES = [
 VEHICLE_REG = "KDG 606L"
 
 
-# --- Test Runner --------------------------------------------------------------
+# ─── Test Runner ────────────────────────────────────────────────────────────
 
 class ComplianceE2ETest:
     def __init__(self, base_url: str):
@@ -72,15 +91,15 @@ class ComplianceE2ETest:
         return {**self.headers, "Authorization": f"Bearer {self.token}"}
 
     def _get(self, path: str, **kwargs) -> requests.Response:
-        return requests.get(self._url(path), headers=self._auth_headers(), timeout=30, **kwargs)
+        return requests.get(self._url(path), headers=self._auth_headers(), timeout=60, **kwargs)
 
     def _post(self, path: str, body: Any = None, **kwargs) -> requests.Response:
         return requests.post(self._url(path), headers=self._auth_headers(),
-                             json=body, timeout=30, **kwargs)
+                             json=body, timeout=60, **kwargs)
 
     def _put(self, path: str, body: Any = None, **kwargs) -> requests.Response:
         return requests.put(self._url(path), headers=self._auth_headers(),
-                            json=body, timeout=30, **kwargs)
+                            json=body, timeout=60, **kwargs)
 
     def _step(self, num: int, name: str, fn):
         """Execute a test step with error handling and reporting."""
@@ -102,7 +121,7 @@ class ComplianceE2ETest:
             print(f"    -> {e}")
             return False
 
-    # -- Helper: find taxonomy item by code ------------------------------------
+    # ── Helper: find taxonomy item by code ─────────────────────────────────
 
     def _find_taxonomy(self, taxonomy_path: str, code: str) -> Optional[dict]:
         """GET a taxonomy list and find the item matching the given code."""
@@ -126,7 +145,7 @@ class ComplianceE2ETest:
             return items[0]
         return None
 
-    # -- Step Implementations --------------------------------------------------
+    # ── Step Implementations ─────────────────────────────────────────────
 
     def step_01_login(self):
         """Authenticate and get JWT token + user info."""
@@ -151,187 +170,204 @@ class ComplianceE2ETest:
 
         return True, f"Logged in as {user.get('email', LOGIN_EMAIL)}"
 
-    def step_02_lookup_metadata(self):
-        """Lookup vehicle, driver, and station IDs for the test."""
-        found = []
+    def step_02_setup_metadata(self):
+        """Create or fetch driver, transporter, cargo, origin, destination."""
+        created = []
 
-        # -- Vehicle --
-        r = self._get(f"vehicles/search?query={VEHICLE_REG}")
-        print(f"    GET /vehicles/search?query={VEHICLE_REG} -> {r.status_code}")
-        vehicles = r.json() if r.status_code == 200 else []
-        if isinstance(vehicles, dict):
-            vehicles = vehicles.get("items", vehicles.get("data", []))
-        if vehicles:
-            self.data["vehicleId"] = vehicles[0]["id"]
-            print(f"    Vehicle found: {vehicles[0].get('registrationNumber', 'N/A')} ({self.data['vehicleId']})")
-            found.append("vehicle")
-        else:
-            # Try broader search
-            r2 = self._get("vehicles")
-            all_v = r2.json() if r2.status_code == 200 else []
-            if isinstance(all_v, dict):
-                all_v = all_v.get("items", all_v.get("data", []))
-            if all_v:
-                self.data["vehicleId"] = all_v[0]["id"]
-                found.append("vehicle(fallback)")
-
-        # -- Driver --
+        # ── Driver ──
         r = self._get("drivers/search?query=E2E")
-        print(f"    GET /drivers/search?query=E2E -> {r.status_code}")
         drivers = r.json() if r.status_code == 200 else []
         if isinstance(drivers, dict):
             drivers = drivers.get("items", drivers.get("data", []))
         if drivers:
             self.data["driverId"] = drivers[0]["id"]
-            self.data["driverLicenseNo"] = drivers[0].get("drivingLicenseNo", "E2E-DL-001")
             print(f"    Driver found: {drivers[0].get('fullNames', 'N/A')} ({self.data['driverId']})")
-            found.append("driver")
         else:
-            # Fallback: search for any driver
-            r2 = self._get("drivers/search?query=")
-            all_d = r2.json() if r2.status_code == 200 else []
-            if isinstance(all_d, dict):
-                all_d = all_d.get("items", all_d.get("data", []))
-            if all_d:
-                self.data["driverId"] = all_d[0]["id"]
-                self.data["driverLicenseNo"] = all_d[0].get("drivingLicenseNo", "DL-001")
-                found.append("driver(fallback)")
+            r = self._post("drivers", {
+                "fullNames": "John E2E",
+                "surname": "Kamau",
+                "idNumber": "E2E-ID-006",
+                "drivingLicenseNo": "E2E-DL-006",
+                "licenseClass": "BCE",
+                "nationality": "Kenyan",
+                "phoneNumber": "+254700000006",
+            })
+            print(f"    POST /drivers -> {r.status_code}")
+            if r.status_code in (200, 201):
+                drv = r.json()
+                self.data["driverId"] = drv.get("id")
+                created.append("driver")
+            else:
+                # Fallback: search for any driver
+                r2 = self._get("drivers/search?query=")
+                all_drivers = r2.json() if r2.status_code == 200 else []
+                if isinstance(all_drivers, dict):
+                    all_drivers = all_drivers.get("items", all_drivers.get("data", []))
+                if all_drivers:
+                    self.data["driverId"] = all_drivers[0]["id"]
+                    print(f"    Driver fallback: {all_drivers[0].get('fullNames', 'N/A')}")
 
-        # -- Station (from login) --
-        if self.data.get("stationId"):
-            r = self._get(f"stations/{self.data['stationId']}")
-            print(f"    GET /stations/{self.data['stationId']} -> {r.status_code}")
-            if r.status_code == 200:
-                station = r.json()
-                print(f"    Station: {station.get('name', 'N/A')}")
-                found.append("station")
+        # ── Transporter ──
+        r = self._get("transporters/search?query=E2E")
+        transporters = r.json() if r.status_code == 200 else []
+        if isinstance(transporters, dict):
+            transporters = transporters.get("items", transporters.get("data", []))
+        if transporters:
+            self.data["transporterId"] = transporters[0]["id"]
+            print(f"    Transporter found: {transporters[0].get('name', 'N/A')}")
         else:
-            r = self._get("stations")
-            stations = r.json() if r.status_code == 200 else []
-            if isinstance(stations, dict):
-                stations = stations.get("items", stations.get("data", []))
-            if stations:
-                self.data["stationId"] = stations[0]["id"]
-                found.append("station(fallback)")
+            r = self._post("transporters", {
+                "code": "E2E-TRANS-006",
+                "name": "E2E Test Transporters S6 Ltd",
+                "registrationNo": "PVT-E2E-006",
+                "phone": "+254700000062",
+                "email": "e2e-transport-s6@test.co.ke",
+                "address": "Mombasa Road, Nairobi",
+                "ntacNo": "NTAC-E2E-006",
+            })
+            print(f"    POST /transporters -> {r.status_code}")
+            if r.status_code in (200, 201):
+                trans = r.json()
+                self.data["transporterId"] = trans.get("id")
+                created.append("transporter")
+            else:
+                # Fallback
+                r2 = self._get("transporters/search?query=")
+                all_trans = r2.json() if r2.status_code == 200 else []
+                if isinstance(all_trans, dict):
+                    all_trans = all_trans.get("items", all_trans.get("data", []))
+                if all_trans:
+                    self.data["transporterId"] = all_trans[0]["id"]
 
-        # -- Axle Config --
-        r = self._get("axle-configurations")
-        print(f"    GET /axle-configurations -> {r.status_code}")
-        axle_configs = r.json() if r.status_code == 200 else []
-        if isinstance(axle_configs, dict):
-            axle_configs = axle_configs.get("items", axle_configs.get("data", []))
-        if axle_configs:
-            # Try to find a 3-axle config
-            for cfg in axle_configs:
-                if cfg.get("axleCount") == 3 or "3" in str(cfg.get("code", "")):
-                    self.data["axleConfigId"] = cfg["id"]
-                    break
-            if not self.data.get("axleConfigId"):
-                self.data["axleConfigId"] = axle_configs[0]["id"]
-            found.append("axleConfig")
-
-        # -- Cargo Type --
+        # ── Cargo Type ──
         r = self._get("cargo-types")
-        print(f"    GET /cargo-types -> {r.status_code}")
         cargos = r.json() if r.status_code == 200 else []
         if isinstance(cargos, dict):
             cargos = cargos.get("items", cargos.get("data", []))
         if cargos:
-            self.data["cargoTypeId"] = cargos[0]["id"]
-            found.append("cargoType")
+            self.data["cargoId"] = cargos[0]["id"]
+            print(f"    Cargo type found: {cargos[0].get('name', 'N/A')}")
 
-        # -- Origins & Destinations --
+        # ── Origins & Destinations ──
         r = self._get("origins-destinations")
-        print(f"    GET /origins-destinations -> {r.status_code}")
         locations = r.json() if r.status_code == 200 else []
         if isinstance(locations, dict):
             locations = locations.get("items", locations.get("data", []))
         if len(locations) >= 2:
             self.data["originId"] = locations[0]["id"]
             self.data["destinationId"] = locations[1]["id"]
-            found.append("origin+destination")
+            print(f"    Origin: {locations[0].get('name', 'N/A')}")
+            print(f"    Destination: {locations[1].get('name', 'N/A')}")
         elif len(locations) == 1:
             self.data["originId"] = locations[0]["id"]
             self.data["destinationId"] = locations[0]["id"]
-            found.append("origin(single)")
 
-        summary = ", ".join(found)
-        all_ok = all(self.data.get(k) for k in ["stationId", "driverId"])
-        return all_ok, f"Found: {summary}"
+        summary_parts = []
+        for key in ["driverId", "transporterId", "cargoId", "originId", "destinationId"]:
+            val = self.data.get(key, "MISSING")
+            summary_parts.append(f"{key}={'OK' if val != 'MISSING' else 'MISSING'}")
 
-    def step_03_start_weighing(self):
-        """Start a weighing session for the vehicle."""
+        all_present = all(self.data.get(k) for k in ["driverId", "transporterId"])
+        return all_present, f"Metadata: {', '.join(summary_parts)}"
+
+    def step_03_scale_test(self):
+        """Create passing scale test for the station."""
+        body = {
+            "stationId": self.data["stationId"],
+            "testType": "standard",
+            "status": "passed",
+            "targetWeight": 10000,
+            "measuredWeight": 10005,
+            "deviationPercent": 0.05,
+            "instrumentId": "WIM-001",
+            "testedByUserId": self.data["userId"],
+            "notes": "E2E scenario 6 calibration",
+        }
+        r = self._post("scale-tests", body)
+        print(f"    POST /scale-tests -> {r.status_code}")
+        if r.status_code in (200, 201):
+            data = r.json()
+            self.data["scaleTestId"] = data.get("id")
+            return True, f"Scale test created: {self.data['scaleTestId']}"
+        return False, f"Failed: {r.status_code} {r.text[:200]}"
+
+    def step_04_autoweigh_overloaded(self):
+        """Autoweigh 3-axle overloaded vehicle (KDG 606L, GVW=27500)."""
         body = {
             "stationId": self.data["stationId"],
             "vehicleRegNumber": VEHICLE_REG,
-            "driverLicenseNo": self.data.get("driverLicenseNo", "E2E-DL-001"),
+            "weighingMode": "static",
+            "source": "Middleware",
+            "axles": OVERLOADED_AXLES,
         }
-        if self.data.get("axleConfigId"):
-            body["axleConfigId"] = self.data["axleConfigId"]
-        if self.data.get("cargoTypeId"):
-            body["cargoTypeId"] = self.data["cargoTypeId"]
-        if self.data.get("originId"):
-            body["originId"] = self.data["originId"]
-        if self.data.get("destinationId"):
-            body["destinationId"] = self.data["destinationId"]
-
-        r = self._post("weighing/start", body)
-        print(f"    POST /weighing/start -> {r.status_code}")
-
-        if r.status_code not in (200, 201):
-            # Try alternate endpoint
-            r = self._post("weighing-transactions/start", body)
-            print(f"    POST /weighing-transactions/start -> {r.status_code}")
-
-        assert r.status_code in (200, 201), f"Start weighing failed: {r.status_code} {r.text[:300]}"
+        r = self._post("weighing-transactions/autoweigh", body)
+        print(f"    POST /weighing-transactions/autoweigh -> {r.status_code}")
+        assert r.status_code in (200, 201), f"Autoweigh failed: {r.status_code} {r.text[:300]}"
 
         data = r.json()
         txn = data.get("transaction", data)
         self.data["weighingId"] = txn.get("weighingId") or txn.get("id")
-        print(f"    weighingId: {self.data['weighingId']}")
+        self.data["vehicleId"] = txn.get("vehicleId")
 
-        return True, f"Weighing started: {self.data['weighingId']}"
+        print(f"    weighingId:    {self.data['weighingId']}")
+        print(f"    vehicleId:     {self.data['vehicleId']}")
+        print(f"    captureStatus: {txn.get('captureStatus')}")
+        print(f"    gvwMeasuredKg: {txn.get('gvwMeasuredKg')}")
 
-    def step_04_complete_weighing_overloaded(self):
-        """Complete weighing with overloaded axle weights. Assert ControlStatus == 'Overloaded'."""
+        return True, f"Autoweigh created: {self.data['weighingId']}"
+
+    def step_05_update_metadata(self):
+        """Link driver and transporter to the weighing transaction."""
         wid = self.data["weighingId"]
-        body = {
-            "axles": OVERLOADED_AXLES,
-        }
+        body = {}
+        if self.data.get("driverId"):
+            body["driverId"] = self.data["driverId"]
+        if self.data.get("transporterId"):
+            body["transporterId"] = self.data["transporterId"]
 
-        r = self._post(f"weighing/{wid}/complete", body)
-        print(f"    POST /weighing/{wid}/complete -> {r.status_code}")
+        if not body:
+            return True, "No metadata to update (IDs missing)"
 
-        if r.status_code not in (200, 201):
-            # Try alternate endpoints
-            r = self._post(f"weighing-transactions/{wid}/capture-weights", body)
-            print(f"    POST /weighing-transactions/{wid}/capture-weights -> {r.status_code}")
+        r = self._put(f"weighing-transactions/{wid}", body)
+        print(f"    PUT /weighing-transactions/{wid} -> {r.status_code}")
 
-        assert r.status_code in (200, 201), f"Complete weighing failed: {r.status_code} {r.text[:300]}"
+        if r.status_code == 200:
+            txn = r.json()
+            linked = []
+            if txn.get("driverId"):
+                linked.append("driver")
+            if txn.get("transporterId"):
+                linked.append("transporter")
+            return True, f"Linked: {', '.join(linked) if linked else 'none'}"
+        else:
+            print(f"    Response: {r.text[:300]}")
+            return False, f"Update failed: {r.status_code}"
+
+    def step_06_capture_weights(self):
+        """Capture weights -- triggers compliance check + case/yard auto-triggers."""
+        wid = self.data["weighingId"]
+        body = {"axles": OVERLOADED_AXLES}
+        r = self._post(f"weighing-transactions/{wid}/capture-weights", body)
+        print(f"    POST /weighing-transactions/{wid}/capture-weights -> {r.status_code}")
+        assert r.status_code == 200, f"Capture failed: {r.status_code} {r.text[:300]}"
 
         txn = r.json()
-        control_status = txn.get("controlStatus", "")
-        print(f"    controlStatus: {control_status}")
+        print(f"    captureStatus: {txn.get('captureStatus')}")
+        print(f"    controlStatus: {txn.get('controlStatus')}")
         print(f"    isCompliant:   {txn.get('isCompliant')}")
-        print(f"    gvwMeasuredKg: {txn.get('gvwMeasuredKg')}")
         print(f"    overloadKg:    {txn.get('overloadKg')}")
+        print(f"    gvwMeasuredKg: {txn.get('gvwMeasuredKg')}")
 
-        is_overloaded = control_status == "Overloaded" or txn.get("isCompliant") is False
-        return is_overloaded, f"ControlStatus={control_status}, GVW={txn.get('gvwMeasuredKg')}kg"
+        is_overloaded = txn.get("controlStatus") == "Overloaded" or txn.get("isCompliant") is False
+        return is_overloaded, f"ControlStatus={txn.get('controlStatus')}, GVW={txn.get('gvwMeasuredKg')}kg"
 
-    def step_05_verify_case_auto_created(self):
+    def step_07_verify_case_auto_created(self):
         """Verify case register was auto-created on overload detection."""
         wid = self.data["weighingId"]
         time.sleep(1)
 
-        r = self._get(f"cases/by-weighing/{wid}")
-        print(f"    GET /cases/by-weighing/{wid} -> {r.status_code}")
-
-        if r.status_code != 200:
-            # Try alternate path
-            r = self._get(f"case/cases/by-weighing/{wid}")
-            print(f"    GET /case/cases/by-weighing/{wid} -> {r.status_code}")
-
+        r = self._get(f"case/cases/by-weighing/{wid}")
+        print(f"    GET /case/cases/by-weighing/{wid} -> {r.status_code}")
         assert r.status_code == 200, f"No case found: {r.status_code} {r.text[:200]}"
 
         case = r.json()
@@ -344,17 +380,12 @@ class ComplianceE2ETest:
         has_case = bool(self.data["caseId"])
         return has_case, f"Case auto-created: {case.get('caseNo')}"
 
-    def step_06_verify_yard_entry_auto_created(self):
+    def step_08_verify_yard_entry(self):
         """Verify yard entry was auto-created."""
         wid = self.data["weighingId"]
 
-        r = self._get(f"yard/by-weighing/{wid}")
-        print(f"    GET /yard/by-weighing/{wid} -> {r.status_code}")
-
-        if r.status_code != 200:
-            # Try alternate paths
-            r = self._get(f"yard-entries/by-weighing/{wid}")
-            print(f"    GET /yard-entries/by-weighing/{wid} -> {r.status_code}")
+        r = self._get(f"yard-entries/by-weighing/{wid}")
+        print(f"    GET /yard-entries/by-weighing/{wid} -> {r.status_code}")
 
         if r.status_code != 200:
             return False, f"No yard entry found: {r.status_code}"
@@ -366,12 +397,12 @@ class ComplianceE2ETest:
 
         return True, f"Yard entry exists: {self.data['yardEntryId']}"
 
-    def step_07_escalate_to_court(self):
-        """Escalate case to court via PUT cases/{caseId} with disposition type."""
+    def step_09_escalate_to_court(self):
+        """Escalate case to court via PUT case/cases/{caseId} with disposition type."""
         cid = self.data["caseId"]
 
         # Find COURT_ESCALATION disposition type
-        disp = self._find_taxonomy("taxonomy/disposition-types", "COURT_ESCALATION")
+        disp = self._find_taxonomy("case/taxonomy/disposition-types", "COURT_ESCALATION")
         if not disp:
             return False, "Could not find COURT_ESCALATION disposition type"
 
@@ -381,21 +412,15 @@ class ComplianceE2ETest:
         body = {
             "dispositionTypeId": disp["id"],
         }
-        r = self._put(f"cases/{cid}", body)
-        print(f"    PUT /cases/{cid} -> {r.status_code}")
-
-        if r.status_code not in (200, 201):
-            # Try alternate path
-            r = self._put(f"case/cases/{cid}", body)
-            print(f"    PUT /case/cases/{cid} -> {r.status_code}")
-
+        r = self._put(f"case/cases/{cid}", body)
+        print(f"    PUT /case/cases/{cid} -> {r.status_code}")
         assert r.status_code == 200, f"Escalation failed: {r.status_code} {r.text[:300]}"
 
         case = r.json()
         print(f"    dispositionType: {case.get('dispositionType')}")
         return True, f"Escalated to court, disposition={case.get('dispositionType', disp.get('code'))}"
 
-    def step_08_create_court_record(self):
+    def step_10_create_court_record(self):
         """Create a court record for hearings."""
         unique_suffix = str(uuid.uuid4())[:8].upper()
         body = {
@@ -428,7 +453,7 @@ class ComplianceE2ETest:
 
         return True, f"Court created: {court.get('name')} ({self.data['courtId']})"
 
-    def step_09_assign_io(self):
+    def step_11_assign_io(self):
         """Assign Investigating Officer (IO) to the case."""
         cid = self.data["caseId"]
         user_id = self.data["userId"]
@@ -442,12 +467,6 @@ class ComplianceE2ETest:
 
         r = self._post(f"cases/{cid}/assignments", body)
         print(f"    POST /cases/{cid}/assignments -> {r.status_code}")
-
-        if r.status_code not in (200, 201):
-            # Try alternate path
-            r = self._post(f"case/cases/{cid}/assignments", body)
-            print(f"    POST /case/cases/{cid}/assignments -> {r.status_code}")
-
         assert r.status_code in (200, 201), f"Assignment failed: {r.status_code} {r.text[:300]}"
 
         assignment = r.json()
@@ -458,7 +477,7 @@ class ComplianceE2ETest:
 
         return is_current, f"IO assigned, isCurrent={is_current}"
 
-    def step_10_add_case_parties(self):
+    def step_12_add_case_parties(self):
         """Add case parties: investigating officer and defendant driver."""
         cid = self.data["caseId"]
         user_id = self.data["userId"]
@@ -509,12 +528,12 @@ class ComplianceE2ETest:
 
         return total_parties >= 2, f"Added {parties_added} parties, total on case: {total_parties}"
 
-    def step_11_upload_subfile_b(self):
+    def step_13_upload_subfile_b(self):
         """Upload Subfile B (Document Evidence)."""
         cid = self.data["caseId"]
 
-        # Find subfile type B
-        subfile_type = self._find_taxonomy("taxonomy/subfile-types", "B")
+        # Find subfile type EVIDENCE (maps to Subfile B - Document Evidence)
+        subfile_type = self._find_taxonomy("case/taxonomy/subfile-types", "EVIDENCE")
         if not subfile_type:
             return False, "Could not find subfile type B"
 
@@ -531,7 +550,6 @@ class ComplianceE2ETest:
 
         r = self._post("case/subfiles", body)
         print(f"    POST /case/subfiles (type B) -> {r.status_code}")
-
         assert r.status_code in (200, 201), f"Subfile B failed: {r.status_code} {r.text[:300]}"
 
         sf = r.json()
@@ -540,11 +558,11 @@ class ComplianceE2ETest:
 
         return True, f"Subfile B (Evidence) created: {self.data['subfileBId']}"
 
-    def step_12_upload_subfile_d(self):
+    def step_14_upload_subfile_d(self):
         """Upload Subfile D (Witness Statement)."""
         cid = self.data["caseId"]
 
-        subfile_type = self._find_taxonomy("taxonomy/subfile-types", "D")
+        subfile_type = self._find_taxonomy("case/taxonomy/subfile-types", "DRIVER_DOCS")
         if not subfile_type:
             return False, "Could not find subfile type D"
 
@@ -561,7 +579,6 @@ class ComplianceE2ETest:
 
         r = self._post("case/subfiles", body)
         print(f"    POST /case/subfiles (type D) -> {r.status_code}")
-
         assert r.status_code in (200, 201), f"Subfile D failed: {r.status_code} {r.text[:300]}"
 
         sf = r.json()
@@ -570,11 +587,11 @@ class ComplianceE2ETest:
 
         return True, f"Subfile D (Witness Statement) created: {self.data['subfileDId']}"
 
-    def step_13_upload_subfile_f(self):
+    def step_15_upload_subfile_f(self):
         """Upload Subfile F (Investigation Diary)."""
         cid = self.data["caseId"]
 
-        subfile_type = self._find_taxonomy("taxonomy/subfile-types", "F")
+        subfile_type = self._find_taxonomy("case/taxonomy/subfile-types", "LEGAL_NOTICES")
         if not subfile_type:
             return False, "Could not find subfile type F"
 
@@ -594,7 +611,6 @@ class ComplianceE2ETest:
 
         r = self._post("case/subfiles", body)
         print(f"    POST /case/subfiles (type F) -> {r.status_code}")
-
         assert r.status_code in (200, 201), f"Subfile F failed: {r.status_code} {r.text[:300]}"
 
         sf = r.json()
@@ -603,11 +619,11 @@ class ComplianceE2ETest:
 
         return True, f"Subfile F (Investigation Diary) created: {self.data['subfileFId']}"
 
-    def step_14_upload_subfile_g(self):
+    def step_16_upload_subfile_g(self):
         """Upload Subfile G (Charge Sheet)."""
         cid = self.data["caseId"]
 
-        subfile_type = self._find_taxonomy("taxonomy/subfile-types", "G")
+        subfile_type = self._find_taxonomy("case/taxonomy/subfile-types", "COURT_FILINGS")
         if not subfile_type:
             return False, "Could not find subfile type G"
 
@@ -625,7 +641,6 @@ class ComplianceE2ETest:
 
         r = self._post("case/subfiles", body)
         print(f"    POST /case/subfiles (type G) -> {r.status_code}")
-
         assert r.status_code in (200, 201), f"Subfile G failed: {r.status_code} {r.text[:300]}"
 
         sf = r.json()
@@ -634,7 +649,7 @@ class ComplianceE2ETest:
 
         return True, f"Subfile G (Charge Sheet) created: {self.data['subfileGId']}"
 
-    def step_15_check_subfile_completion(self):
+    def step_17_check_subfile_completion(self):
         """Check subfile completion status for the case."""
         cid = self.data["caseId"]
 
@@ -665,13 +680,15 @@ class ComplianceE2ETest:
 
         return completed_types >= 4, f"Completed {completed_types}/{total_types} subfile types"
 
-    def step_16_schedule_first_hearing(self):
+    def step_18_schedule_first_hearing(self):
         """Schedule first hearing (mention) for the case."""
         cid = self.data["caseId"]
-        court_id = self.data["courtId"]
+        court_id = self.data.get("courtId")
+        if not court_id:
+            return False, "No court ID available (step 10 may have failed)"
 
         # Find MENTION hearing type
-        hearing_type = self._find_taxonomy("taxonomy/hearing-types", "MENTION")
+        hearing_type = self._find_taxonomy("case/taxonomy/hearing-types", "MENTION")
         if not hearing_type:
             return False, "Could not find MENTION hearing type"
 
@@ -689,12 +706,6 @@ class ComplianceE2ETest:
 
         r = self._post(f"cases/{cid}/hearings", body)
         print(f"    POST /cases/{cid}/hearings -> {r.status_code}")
-
-        if r.status_code not in (200, 201):
-            # Try alternate path
-            r = self._post(f"case/cases/{cid}/hearings", body)
-            print(f"    POST /case/cases/{cid}/hearings -> {r.status_code}")
-
         assert r.status_code in (200, 201), f"Schedule hearing failed: {r.status_code} {r.text[:300]}"
 
         hearing = r.json()
@@ -705,7 +716,7 @@ class ComplianceE2ETest:
 
         return True, f"First hearing (mention) scheduled: {self.data['hearingId1']}"
 
-    def step_17_adjourn_first_hearing(self):
+    def step_19_adjourn_first_hearing(self):
         """Adjourn the first hearing."""
         hearing_id = self.data["hearingId1"]
 
@@ -718,12 +729,6 @@ class ComplianceE2ETest:
 
         r = self._post(f"hearings/{hearing_id}/adjourn", body)
         print(f"    POST /hearings/{hearing_id}/adjourn -> {r.status_code}")
-
-        if r.status_code not in (200, 201):
-            # Try alternate path
-            r = self._post(f"case/hearings/{hearing_id}/adjourn", body)
-            print(f"    POST /case/hearings/{hearing_id}/adjourn -> {r.status_code}")
-
         assert r.status_code in (200, 201), f"Adjourn failed: {r.status_code} {r.text[:300]}"
 
         hearing = r.json()
@@ -733,18 +738,12 @@ class ComplianceE2ETest:
         adjourned = "adjourned" in status_name.lower() if status_name else False
         return adjourned, f"Hearing adjourned, status={status_name}"
 
-    def step_18_verify_next_hearing_auto_created(self):
+    def step_20_verify_next_hearing_auto_created(self):
         """Verify that a next hearing was auto-created after adjournment."""
         cid = self.data["caseId"]
 
         r = self._get(f"cases/{cid}/hearings")
         print(f"    GET /cases/{cid}/hearings -> {r.status_code}")
-
-        if r.status_code != 200:
-            # Try alternate path
-            r = self._get(f"case/cases/{cid}/hearings")
-            print(f"    GET /case/cases/{cid}/hearings -> {r.status_code}")
-
         assert r.status_code == 200, f"Fetch hearings failed: {r.status_code}"
 
         hearings = r.json()
@@ -768,7 +767,7 @@ class ComplianceE2ETest:
 
         return len(hearings) >= 2, f"Found {len(hearings)} hearings (expected >= 2)"
 
-    def step_19_issue_arrest_warrant(self):
+    def step_21_issue_arrest_warrant(self):
         """Issue an arrest warrant for the case."""
         cid = self.data["caseId"]
 
@@ -782,7 +781,6 @@ class ComplianceE2ETest:
 
         r = self._post("case/warrants", body)
         print(f"    POST /case/warrants -> {r.status_code}")
-
         assert r.status_code in (200, 201), f"Warrant creation failed: {r.status_code} {r.text[:300]}"
 
         warrant = r.json()
@@ -795,7 +793,7 @@ class ComplianceE2ETest:
         starts_with_war = warrant_no.startswith("WAR-") if warrant_no else False
         return starts_with_war or bool(self.data["warrantId"]), f"Warrant issued: {warrant_no}"
 
-    def step_20_execute_warrant(self):
+    def step_22_execute_warrant(self):
         """Execute the arrest warrant."""
         warrant_id = self.data["warrantId"]
 
@@ -803,9 +801,9 @@ class ComplianceE2ETest:
             "executionDetails": "Accused arrested and brought to court",
         }
 
-        r = self._post(f"case/warrants/{warrant_id}/execute", body)
+        r = requests.post(self._url(f"case/warrants/{warrant_id}/execute"),
+                          headers=self._auth_headers(), json=body, timeout=60)
         print(f"    POST /case/warrants/{warrant_id}/execute -> {r.status_code}")
-
         assert r.status_code in (200, 201), f"Warrant execution failed: {r.status_code} {r.text[:300]}"
 
         warrant = r.json()
@@ -815,19 +813,19 @@ class ComplianceE2ETest:
         executed = "executed" in status_name.lower() if status_name else False
         return executed, f"Warrant status: {status_name}"
 
-    def step_21_complete_second_hearing(self):
+    def step_23_complete_second_hearing(self):
         """Complete the second hearing (plea) with conviction."""
         hearing_id = self.data.get("hearingId2")
         if not hearing_id:
             return False, "No second hearing ID available"
 
         # Find PLEA hearing type
-        plea_type = self._find_taxonomy("taxonomy/hearing-types", "PLEA")
+        plea_type = self._find_taxonomy("case/taxonomy/hearing-types", "PLEA")
         if plea_type:
             print(f"    Plea type: {plea_type.get('code')} -> {plea_type['id']}")
 
-        # Find CONVICTED hearing outcome
-        convicted = self._find_taxonomy("taxonomy/hearing-outcomes", "CONVICTED")
+        # Find CONVICTED hearing outcome from taxonomy
+        convicted = self._find_taxonomy("case/taxonomy/hearing-outcomes", "CONVICTED")
         if not convicted:
             return False, "Could not find CONVICTED hearing outcome"
 
@@ -847,12 +845,6 @@ class ComplianceE2ETest:
 
         r = self._post(f"hearings/{hearing_id}/complete", body)
         print(f"    POST /hearings/{hearing_id}/complete -> {r.status_code}")
-
-        if r.status_code not in (200, 201):
-            # Try alternate path
-            r = self._post(f"case/hearings/{hearing_id}/complete", body)
-            print(f"    POST /case/hearings/{hearing_id}/complete -> {r.status_code}")
-
         assert r.status_code in (200, 201), f"Complete hearing failed: {r.status_code} {r.text[:300]}"
 
         hearing = r.json()
@@ -861,12 +853,12 @@ class ComplianceE2ETest:
 
         return True, f"Second hearing completed with conviction, fine=KES 50,000"
 
-    def step_22_create_closure_checklist(self):
+    def step_24_create_closure_checklist(self):
         """Create/update closure checklist with all subfiles marked complete."""
         cid = self.data["caseId"]
 
-        # Look up closure type CONVICTED
-        closure_type = self._find_taxonomy("taxonomy/closure-types", "CONVICTED")
+        # Look up closure type CONVICTION
+        closure_type = self._find_taxonomy("case/taxonomy/closure-types", "CONVICTION")
         if closure_type:
             self.data["closureTypeId"] = closure_type["id"]
             print(f"    Closure type: {closure_type.get('code')} -> {closure_type['id']}")
@@ -889,12 +881,6 @@ class ComplianceE2ETest:
 
         r = self._put(f"cases/{cid}/closure-checklist", body)
         print(f"    PUT /cases/{cid}/closure-checklist -> {r.status_code}")
-
-        if r.status_code not in (200, 201):
-            # Try alternate path
-            r = self._put(f"case/cases/{cid}/closure-checklist", body)
-            print(f"    PUT /case/cases/{cid}/closure-checklist -> {r.status_code}")
-
         assert r.status_code in (200, 201), f"Closure checklist failed: {r.status_code} {r.text[:300]}"
 
         checklist = r.json()
@@ -903,7 +889,7 @@ class ComplianceE2ETest:
 
         return all_verified, f"Closure checklist created, allSubfilesVerified={all_verified}"
 
-    def step_23_request_closure_review(self):
+    def step_25_request_closure_review(self):
         """Request closure review for the case."""
         cid = self.data["caseId"]
 
@@ -913,22 +899,16 @@ class ComplianceE2ETest:
 
         r = self._post(f"cases/{cid}/closure-checklist/request-review", body)
         print(f"    POST /cases/{cid}/closure-checklist/request-review -> {r.status_code}")
-
-        if r.status_code not in (200, 201):
-            # Try alternate path
-            r = self._post(f"case/cases/{cid}/closure-checklist/request-review", body)
-            print(f"    POST /case/cases/{cid}/closure-checklist/request-review -> {r.status_code}")
-
         assert r.status_code in (200, 201), f"Request review failed: {r.status_code} {r.text[:300]}"
 
         review = r.json()
         review_status = review.get("reviewStatusName", review.get("reviewStatus", ""))
         print(f"    reviewStatusName: {review_status}")
 
-        requested = "requested" in review_status.lower() if review_status else False
+        requested = ("pending" in review_status.lower() or "requested" in review_status.lower()) if review_status else False
         return requested, f"Review status: {review_status}"
 
-    def step_24_approve_closure_review(self):
+    def step_26_approve_closure_review(self):
         """Approve the closure review."""
         cid = self.data["caseId"]
 
@@ -938,12 +918,6 @@ class ComplianceE2ETest:
 
         r = self._post(f"cases/{cid}/closure-checklist/approve-review", body)
         print(f"    POST /cases/{cid}/closure-checklist/approve-review -> {r.status_code}")
-
-        if r.status_code not in (200, 201):
-            # Try alternate path
-            r = self._post(f"case/cases/{cid}/closure-checklist/approve-review", body)
-            print(f"    POST /case/cases/{cid}/closure-checklist/approve-review -> {r.status_code}")
-
         assert r.status_code in (200, 201), f"Approve review failed: {r.status_code} {r.text[:300]}"
 
         review = r.json()
@@ -953,11 +927,12 @@ class ComplianceE2ETest:
         approved = "approved" in review_status.lower() if review_status else False
         return approved, f"Review status: {review_status}"
 
-    def step_25_close_case(self):
+    def step_27_close_case(self):
         """Close the case with conviction disposition."""
         cid = self.data["caseId"]
 
-        disposition_id = self.data.get("closureTypeId") or self.data.get("courtDispositionTypeId")
+        # Use the court disposition type (from disposition_types table, NOT closure_types)
+        disposition_id = self.data.get("courtDispositionTypeId")
 
         body = {
             "closingReason": "Case concluded. Accused convicted and fined.",
@@ -965,14 +940,8 @@ class ComplianceE2ETest:
         if disposition_id:
             body["dispositionTypeId"] = disposition_id
 
-        r = self._post(f"cases/{cid}/close", body)
-        print(f"    POST /cases/{cid}/close -> {r.status_code}")
-
-        if r.status_code not in (200, 201):
-            # Try alternate path
-            r = self._post(f"case/cases/{cid}/close", body)
-            print(f"    POST /case/cases/{cid}/close -> {r.status_code}")
-
+        r = self._post(f"case/cases/{cid}/close", body)
+        print(f"    POST /case/cases/{cid}/close -> {r.status_code}")
         assert r.status_code in (200, 201), f"Close case failed: {r.status_code} {r.text[:300]}"
 
         case = r.json()
@@ -982,16 +951,15 @@ class ComplianceE2ETest:
         is_closed = "closed" in case_status.lower() if case_status else False
         return is_closed, f"Case status: {case_status}"
 
-    def step_26_verify_final_state(self):
+    def step_28_verify_final_state(self):
         """Verify the complete final state of the closed case."""
         cid = self.data["caseId"]
         checks = []
         all_pass = True
 
         # 1. Verify case status is Closed
-        r = self._get(f"cases/{cid}")
-        if r.status_code != 200:
-            r = self._get(f"case/cases/{cid}")
+        r = self._get(f"case/cases/{cid}")
+        print(f"    GET /case/cases/{cid} -> {r.status_code}")
         if r.status_code == 200:
             case = r.json()
             case_status = case.get("caseStatus", "")
@@ -1038,8 +1006,6 @@ class ComplianceE2ETest:
 
         # 4. Verify hearings >= 2
         r = self._get(f"cases/{cid}/hearings")
-        if r.status_code != 200:
-            r = self._get(f"case/cases/{cid}/hearings")
         if r.status_code == 200:
             hearings = r.json()
             if isinstance(hearings, dict):
@@ -1072,8 +1038,6 @@ class ComplianceE2ETest:
 
         # 6. Verify closure checklist allSubfilesVerified == true
         r = self._get(f"cases/{cid}/closure-checklist")
-        if r.status_code != 200:
-            r = self._get(f"case/cases/{cid}/closure-checklist")
         if r.status_code == 200:
             checklist = r.json()
             verified = checklist.get("allSubfilesVerified", False)
@@ -1087,8 +1051,6 @@ class ComplianceE2ETest:
 
         # 7. Verify assignments >= 1
         r = self._get(f"cases/{cid}/assignments")
-        if r.status_code != 200:
-            r = self._get(f"case/cases/{cid}/assignments")
         if r.status_code == 200:
             assignments = r.json()
             if isinstance(assignments, dict):
@@ -1106,7 +1068,7 @@ class ComplianceE2ETest:
         summary = "; ".join(checks)
         return all_pass, f"Final state: {summary}"
 
-    # -- Runner ----------------------------------------------------------------
+    # ── Runner ───────────────────────────────────────────────────────────
 
     def run(self):
         """Execute all steps in order."""
@@ -1117,44 +1079,46 @@ class ComplianceE2ETest:
         print(f"  Started: {datetime.utcnow().isoformat()}Z")
         print("=" * 70)
         print()
-        print("  Workflow: Overload -> Case+Yard -> Escalate -> Court -> IO")
-        print("         -> Parties -> Subfiles -> Hearings -> Warrants")
-        print("         -> Closure Checklist -> Review -> Close")
+        print("  Workflow: Metadata -> Autoweigh -> Overload -> Case+Yard")
+        print("         -> Escalate -> Court -> IO -> Parties -> Subfiles")
+        print("         -> Hearings -> Warrants -> Closure -> Review -> Close")
         print()
 
         steps = [
             (1,  "Login",                                              self.step_01_login),
-            (2,  "Lookup vehicle/driver/station metadata",             self.step_02_lookup_metadata),
-            (3,  "Start weighing",                                     self.step_03_start_weighing),
-            (4,  "Complete weighing with overload",                    self.step_04_complete_weighing_overloaded),
-            (5,  "Verify case auto-created",                           self.step_05_verify_case_auto_created),
-            (6,  "Verify yard entry auto-created",                     self.step_06_verify_yard_entry_auto_created),
-            (7,  "Escalate to court",                                  self.step_07_escalate_to_court),
-            (8,  "Create court record",                                self.step_08_create_court_record),
-            (9,  "Assign IO (initial assignment)",                     self.step_09_assign_io),
-            (10, "Add case parties (IO + defendant driver)",           self.step_10_add_case_parties),
-            (11, "Upload Subfile B (document evidence)",               self.step_11_upload_subfile_b),
-            (12, "Upload Subfile D (witness statement)",               self.step_12_upload_subfile_d),
-            (13, "Upload Subfile F (investigation diary)",             self.step_13_upload_subfile_f),
-            (14, "Upload Subfile G (charge sheet)",                    self.step_14_upload_subfile_g),
-            (15, "Check subfile completion",                           self.step_15_check_subfile_completion),
-            (16, "Schedule first hearing (mention)",                   self.step_16_schedule_first_hearing),
-            (17, "Adjourn first hearing",                              self.step_17_adjourn_first_hearing),
-            (18, "Verify next hearing auto-created",                   self.step_18_verify_next_hearing_auto_created),
-            (19, "Issue arrest warrant",                               self.step_19_issue_arrest_warrant),
-            (20, "Execute warrant",                                    self.step_20_execute_warrant),
-            (21, "Complete second hearing (plea with conviction)",     self.step_21_complete_second_hearing),
-            (22, "Create closure checklist",                           self.step_22_create_closure_checklist),
-            (23, "Request closure review",                             self.step_23_request_closure_review),
-            (24, "Approve closure review",                             self.step_24_approve_closure_review),
-            (25, "Close the case",                                     self.step_25_close_case),
-            (26, "Verify final state",                                 self.step_26_verify_final_state),
+            (2,  "Setup metadata (driver, transporter, cargo, locs)",  self.step_02_setup_metadata),
+            (3,  "Create scale test",                                  self.step_03_scale_test),
+            (4,  "Autoweigh overloaded vehicle (KDG 606L, GVW=27500)", self.step_04_autoweigh_overloaded),
+            (5,  "Update weighing metadata (driver, transporter)",     self.step_05_update_metadata),
+            (6,  "Capture weights (triggers compliance + auto-case)",  self.step_06_capture_weights),
+            (7,  "Verify case auto-created",                           self.step_07_verify_case_auto_created),
+            (8,  "Verify yard entry auto-created",                     self.step_08_verify_yard_entry),
+            (9,  "Escalate to court",                                  self.step_09_escalate_to_court),
+            (10, "Create court record",                                self.step_10_create_court_record),
+            (11, "Assign IO (initial assignment)",                     self.step_11_assign_io),
+            (12, "Add case parties (IO + defendant driver)",           self.step_12_add_case_parties),
+            (13, "Upload Subfile B (document evidence)",               self.step_13_upload_subfile_b),
+            (14, "Upload Subfile D (witness statement)",               self.step_14_upload_subfile_d),
+            (15, "Upload Subfile F (investigation diary)",             self.step_15_upload_subfile_f),
+            (16, "Upload Subfile G (charge sheet)",                    self.step_16_upload_subfile_g),
+            (17, "Check subfile completion",                           self.step_17_check_subfile_completion),
+            (18, "Schedule first hearing (mention)",                   self.step_18_schedule_first_hearing),
+            (19, "Adjourn first hearing",                              self.step_19_adjourn_first_hearing),
+            (20, "Verify next hearing auto-created",                   self.step_20_verify_next_hearing_auto_created),
+            (21, "Issue arrest warrant",                               self.step_21_issue_arrest_warrant),
+            (22, "Execute warrant",                                    self.step_22_execute_warrant),
+            (23, "Complete second hearing (plea with conviction)",     self.step_23_complete_second_hearing),
+            (24, "Create closure checklist",                           self.step_24_create_closure_checklist),
+            (25, "Request closure review",                             self.step_25_request_closure_review),
+            (26, "Approve closure review",                             self.step_26_approve_closure_review),
+            (27, "Close the case",                                     self.step_27_close_case),
+            (28, "Verify final state",                                 self.step_28_verify_final_state),
         ]
 
         for num, name, fn in steps:
             passed = self._step(num, name, fn)
-            if not passed and num <= 5:
-                # Critical steps -- abort if login/setup/weighing/case fail
+            if not passed and num <= 8:
+                # Critical steps -- abort if login/setup/weighing/case/yard fail
                 print(f"\n  *** ABORTING: Critical step {num} failed ***")
                 break
 
@@ -1189,11 +1153,12 @@ class ComplianceE2ETest:
 
         # Print collected IDs
         print(f"\n  Collected IDs:")
-        for key in ["weighingId", "caseId", "caseNo", "yardEntryId", "courtId",
-                     "assignmentId", "hearingId1", "hearingId2", "warrantId",
-                     "subfileBId", "subfileDId", "subfileFId", "subfileGId",
-                     "closureTypeId", "courtDispositionTypeId",
-                     "driverId", "vehicleId", "userId"]:
+        for key in ["weighingId", "vehicleId", "caseId", "caseNo", "yardEntryId",
+                     "courtId", "assignmentId", "hearingId1", "hearingId2",
+                     "warrantId", "subfileBId", "subfileDId", "subfileFId",
+                     "subfileGId", "closureTypeId", "courtDispositionTypeId",
+                     "convictedOutcomeId", "scaleTestId",
+                     "driverId", "transporterId", "userId"]:
             val = self.data.get(key, "---")
             print(f"    {key}: {val}")
 
@@ -1201,7 +1166,7 @@ class ComplianceE2ETest:
         return fail_count == 0
 
 
-# --- Main --------------------------------------------------------------------
+# ─── Main ───────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="TruLoad Compliance E2E Test - Scenario 6: Full Court Case Lifecycle")

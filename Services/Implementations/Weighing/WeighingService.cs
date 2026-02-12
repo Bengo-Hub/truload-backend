@@ -376,22 +376,36 @@ public class WeighingService : IWeighingService
             violationReasons.Add($"GVW Overload: {transaction.OverloadKg}kg (Permissible: {transaction.GvwPermissibleKg}kg, Tolerance: {gvwToleranceKg}kg)");
         }
 
-        // Check for axle group violations (not individual axles)
-        var groupViolations = transaction.WeighingAxles
+        // Check for axle group violations (accounting for regulatory tolerance)
+        // Kenya Traffic Act Cap 403: 5% tolerance for single axles, 0% for grouped (Tandem/Tridem)
+        var groupedAxleData = transaction.WeighingAxles
             .Where(a => a.GroupAggregateWeightKg.HasValue && a.GroupPermissibleWeightKg.HasValue)
             .GroupBy(a => a.AxleGrouping)
-            .Select(g => g.First())
-            .Where(a => (a.GroupAggregateWeightKg!.Value - a.GroupPermissibleWeightKg!.Value) > 0);
+            .Select(g => new
+            {
+                FirstAxle = g.First(),
+                AxleCount = g.Count()
+            })
+            .ToList();
 
-        foreach (var groupAxle in groupViolations)
+        bool hasGroupViolation = false;
+        foreach (var group in groupedAxleData)
         {
-            var groupOverload = groupAxle.GroupAggregateWeightKg!.Value - groupAxle.GroupPermissibleWeightKg!.Value;
-            violationReasons.Add($"Axle Group {groupAxle.AxleGrouping} Overload: {groupOverload}kg");
+            // 5% tolerance for single axles, 0% for multi-axle groups (Tandem/Tridem)
+            int axleToleranceKg = group.AxleCount == 1
+                ? (int)Math.Round(group.FirstAxle.GroupPermissibleWeightKg!.Value * 0.05m)
+                : 0;
+            int effectiveOverload = group.FirstAxle.GroupAggregateWeightKg!.Value
+                - group.FirstAxle.GroupPermissibleWeightKg!.Value
+                - axleToleranceKg;
+            if (effectiveOverload > 0)
+            {
+                hasGroupViolation = true;
+                violationReasons.Add($"Axle Group {group.FirstAxle.AxleGrouping} Overload: {effectiveOverload}kg (Tolerance: {axleToleranceKg}kg)");
+            }
         }
 
         transaction.ViolationReason = string.Join("; ", violationReasons);
-
-        bool hasGroupViolation = groupViolations.Any();
 
         if (transaction.OverloadKg <= gvwToleranceKg && !hasGroupViolation)
         {
@@ -517,17 +531,24 @@ public class WeighingService : IWeighingService
                         _dbContext.SpecialReleases.Add(specialRelease);
 
                         // Auto-close case with SPECIAL_RELEASE disposition
+                        // Note: We update the case directly via DbContext to avoid tracking conflicts,
+                        // since CreateCaseAsync already has the entity tracked in this scope.
                         var specialReleaseDisposition = await _dbContext.DispositionTypes
                             .FirstOrDefaultAsync(dt => dt.Code == "SPECIAL_RELEASE");
-                        if (specialReleaseDisposition != null)
+                        var closedStatus = await _dbContext.CaseStatuses
+                            .FirstOrDefaultAsync(cs => cs.Code == "CLOSED");
+                        if (specialReleaseDisposition != null && closedStatus != null)
                         {
-                            await _caseRegisterService.CloseCaseAsync(caseDto.Id,
-                                new CloseCaseRequest
-                                {
-                                    DispositionTypeId = specialReleaseDisposition.Id,
-                                    ClosingReason = $"Auto-closed: GVW overload within tolerance ({transaction.OverloadKg}kg <= {opToleranceKg}kg). Special release certificate {specialRelease.CertificateNo} issued."
-                                },
-                                transaction.WeighedByUserId);
+                            var trackedCase = await _dbContext.CaseRegisters.FindAsync(caseDto.Id);
+                            if (trackedCase != null)
+                            {
+                                trackedCase.CaseStatusId = closedStatus.Id;
+                                trackedCase.DispositionTypeId = specialReleaseDisposition.Id;
+                                trackedCase.ClosingReason = $"Auto-closed: GVW overload within tolerance ({transaction.OverloadKg}kg <= {opToleranceKg}kg). Special release certificate {specialRelease.CertificateNo} issued.";
+                                trackedCase.ClosedAt = DateTime.UtcNow;
+                                trackedCase.ClosedById = transaction.WeighedByUserId;
+                                trackedCase.UpdatedAt = DateTime.UtcNow;
+                            }
                         }
 
                         await _dbContext.SaveChangesAsync();
@@ -839,7 +860,12 @@ public class WeighingService : IWeighingService
             {
                 processedGroups.Add(axle.AxleGrouping);
 
-                int groupOverload = axle.GroupAggregateWeightKg.Value - axle.GroupPermissibleWeightKg.Value;
+                // Apply regulatory tolerance: 5% for single axles, 0% for grouped
+                int groupAxleCount = transaction.WeighingAxles.Count(a => a.AxleGrouping == axle.AxleGrouping);
+                int axleToleranceKg = groupAxleCount == 1
+                    ? (int)Math.Round(axle.GroupPermissibleWeightKg.Value * 0.05m)
+                    : 0;
+                int groupOverload = axle.GroupAggregateWeightKg.Value - axle.GroupPermissibleWeightKg.Value - axleToleranceKg;
 
                 if (groupOverload > 0)
                 {

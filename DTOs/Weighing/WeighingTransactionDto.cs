@@ -241,16 +241,21 @@ public class WeighingResultDto
     public int GvwPermissibleKg { get; set; }
     public int GvwOverloadKg { get; set; }
     
+    public int OverloadKg { get; set; }
+
     public bool IsCompliant { get; set; }
     public string ControlStatus { get; set; } = string.Empty;
     public string ViolationReason { get; set; } = string.Empty;
-    
+    public bool IsSentToYard { get; set; }
+    public string CaptureStatus { get; set; } = string.Empty;
+
+    public Guid? VehicleId { get; set; }
     public decimal TotalFeeUsd { get; set; }
     public bool HasPermit { get; set; }
     public int ReweighCycleNo { get; set; }
-    
+
     public List<AxleComplianceDto> AxleCompliance { get; set; } = new();
-    
+
     public DateTime WeighedAt { get; set; }
 }
 

@@ -178,6 +178,10 @@ public class ProsecutionController : ControllerBase
         {
             return NotFound(ex.Message);
         }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Failed to generate charge sheet PDF: {ex.Message}");
+        }
     }
 
     private Guid GetCurrentUserId()
