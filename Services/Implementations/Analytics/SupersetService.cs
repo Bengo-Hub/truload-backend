@@ -224,21 +224,26 @@ public class SupersetService : ISupersetService
 
         var schemaInfo = schemaContext ?? GetDefaultSchemaContext();
 
-        var prompt = $@"You are a SQL expert. Convert the following natural language question to a PostgreSQL query.
+        var prompt = $@"You are a PostgreSQL expert. Generate ONLY a single SQL SELECT query for the question below.
 
-Database Schema:
+DATABASE SCHEMA:
 {schemaInfo}
 
-Question: {question}
+QUESTION: {question}
 
-Rules:
-1. Only return the SQL query, no explanations
-2. Use PostgreSQL syntax
-3. Always include appropriate WHERE clauses for safety
-4. Limit results to 1000 rows maximum
-5. Use table aliases for readability
+STRICT RULES:
+1. Output ONLY the SQL query. No explanations, no markdown, no comments.
+2. Use PostgreSQL syntax (date_trunc, INTERVAL, CURRENT_DATE, COALESCE, etc.).
+3. NEVER use DELETE, UPDATE, INSERT, DROP, ALTER, TRUNCATE, or CREATE statements.
+4. NEVER join tables unless the question explicitly requires data from multiple tables.
+5. Always add LIMIT 1000 at the end.
+6. Use table aliases (e.g., wt for weighing_transactions).
+7. For date filters, use: created_at >= CURRENT_DATE - INTERVAL '30 days'
+8. For counts, use: SELECT COUNT(*) as total FROM ...
+9. For aggregations, use meaningful column aliases.
+10. Prefer the simplest possible query that answers the question.
 
-SQL Query:";
+SQL:";
 
         var ollamaRequest = new
         {
@@ -347,13 +352,61 @@ SQL Query:";
     private static string GetDefaultSchemaContext()
     {
         return @"
-Tables:
-- weighing_transactions (id, ticket_number, registration_number, gross_weight_kg, tare_weight_kg, net_weight_kg, created_at, station_id)
-- case_registers (id, case_no, status, violation_type, created_at, closed_at)
-- invoices (id, invoice_number, amount_usd, status, created_at)
-- receipts (id, receipt_number, amount_usd, payment_method, created_at)
-- yard_entries (id, registration_number, entry_time, release_time, status)
-- vehicle_tags (id, registration_number, tag_type, is_open, created_at)
+TABLES AND COLUMNS:
+
+weighing_transactions (
+  id UUID PK, ticket_number VARCHAR, vehicle_reg_number VARCHAR,
+  gross_weight_kg INT, tare_weight_kg INT, net_weight_kg INT,
+  permissible_gvw_kg INT, overload_kg INT, is_overloaded BOOLEAN,
+  weighing_status VARCHAR, reweigh_cycle_no INT,
+  station_id UUID FK, vehicle_id UUID FK, driver_id UUID FK, transporter_id UUID FK,
+  created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ, deleted_at TIMESTAMPTZ NULL
+)
+
+case_registers (
+  id UUID PK, case_no VARCHAR, vehicle_id UUID FK, weighing_id UUID FK NULL,
+  violation_type_id UUID FK, case_status_id UUID FK, disposition_type_id UUID FK NULL,
+  escalated_to_case_manager BOOLEAN, created_at TIMESTAMPTZ, closed_at TIMESTAMPTZ NULL,
+  deleted_at TIMESTAMPTZ NULL
+)
+
+invoices (
+  id UUID PK, invoice_no VARCHAR, amount_due DECIMAL, currency VARCHAR,
+  status VARCHAR, generated_at TIMESTAMPTZ, due_date TIMESTAMPTZ,
+  prosecution_case_id UUID FK NULL, deleted_at TIMESTAMPTZ NULL
+)
+
+receipts (
+  id UUID PK, receipt_no VARCHAR, amount_paid DECIMAL, payment_method VARCHAR,
+  invoice_id UUID FK, created_at TIMESTAMPTZ, deleted_at TIMESTAMPTZ NULL
+)
+
+yard_entries (
+  id UUID PK, vehicle_reg_number VARCHAR, entry_time TIMESTAMPTZ,
+  release_time TIMESTAMPTZ NULL, status VARCHAR, weighing_id UUID FK NULL,
+  created_at TIMESTAMPTZ, deleted_at TIMESTAMPTZ NULL
+)
+
+stations (
+  id UUID PK, name VARCHAR, code VARCHAR, county VARCHAR, road VARCHAR,
+  is_active BOOLEAN
+)
+
+EXAMPLE QUERIES:
+-- Count all weighing transactions
+SELECT COUNT(*) as total FROM weighing_transactions WHERE deleted_at IS NULL;
+
+-- Overloaded vehicles in last 30 days
+SELECT vehicle_reg_number, overload_kg, created_at
+FROM weighing_transactions
+WHERE is_overloaded = true AND deleted_at IS NULL
+  AND created_at >= CURRENT_DATE - INTERVAL '30 days'
+ORDER BY created_at DESC LIMIT 1000;
+
+-- Total revenue by currency
+SELECT currency, SUM(amount_due) as total_revenue, COUNT(*) as invoice_count
+FROM invoices WHERE deleted_at IS NULL AND status != 'cancelled'
+GROUP BY currency;
 ";
     }
 

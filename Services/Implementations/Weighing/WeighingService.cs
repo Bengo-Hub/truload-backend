@@ -17,6 +17,8 @@ using TruLoad.Backend.DTOs.Yard;
 using TruLoad.Backend.Repositories.Infrastructure;
 using TruLoad.Backend.Models.Prosecution;
 using TruLoad.Backend.Models.Financial;
+using TruLoad.Backend.Models.System;
+using TruLoad.Backend.Services.Interfaces.System;
 
 namespace TruLoad.Backend.Services.Implementations.Weighing;
 
@@ -38,6 +40,7 @@ public class WeighingService : IWeighingService
     private readonly IYardService _yardService;
     private readonly IVehicleTagService _vehicleTagService;
     private readonly TruLoadDbContext _dbContext;
+    private readonly ISettingsService _settingsService;
     private readonly ILogger<WeighingService> _logger;
 
     public WeighingService(
@@ -57,6 +60,7 @@ public class WeighingService : IWeighingService
         IYardService yardService,
         IVehicleTagService vehicleTagService,
         TruLoadDbContext dbContext,
+        ISettingsService settingsService,
         ILogger<WeighingService> logger)
     {
         _weighingRepository = weighingRepository;
@@ -75,6 +79,7 @@ public class WeighingService : IWeighingService
         _yardService = yardService;
         _vehicleTagService = vehicleTagService;
         _dbContext = dbContext;
+        _settingsService = settingsService;
         _logger = logger;
     }
 
@@ -144,9 +149,10 @@ public class WeighingService : IWeighingService
         var original = await _weighingRepository.GetTransactionByIdAsync(originalTransactionId);
         if (original == null) throw new KeyNotFoundException($"Original weighing transaction {originalTransactionId} not found");
 
-        if (original.ReweighCycleNo >= 8)
+        var maxReweighCycles = await _settingsService.GetSettingValueAsync(SettingKeys.WeighingMaxReweighCycles, 8);
+        if (original.ReweighCycleNo >= maxReweighCycles)
         {
-            throw new InvalidOperationException("Maximum reweigh cycles (8) reached for this transaction.");
+            throw new InvalidOperationException($"Maximum reweigh cycles ({maxReweighCycles}) reached for this transaction.");
         }
 
         var transaction = new WeighingTransaction

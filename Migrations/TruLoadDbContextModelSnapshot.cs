@@ -2715,6 +2715,50 @@ namespace TruLoad.Backend.Migrations
                     b.ToTable("Districts");
                 });
 
+            modelBuilder.Entity("TruLoad.Backend.Models.Financial.ExchangeRate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("EffectiveDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("FromCurrency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("Rate")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ToCurrency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("exchange_rates");
+                });
+
             modelBuilder.Entity("TruLoad.Backend.Models.Financial.Invoice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4888,6 +4932,71 @@ namespace TruLoad.Backend.Migrations
                     b.ToTable("demerit_point_schedules", (string)null);
                 });
 
+            modelBuilder.Entity("TruLoad.Backend.Models.System.ExchangeRateApiSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ApiEndpoint")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EncryptedAccessKey")
+                        .HasColumnType("text");
+
+                    b.Property<TimeOnly>("FetchTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastFetchAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastFetchError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("LastFetchStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("ProviderName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SourceCurrency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("TargetCurrenciesJson")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("exchange_rate_api_settings");
+                });
+
             modelBuilder.Entity("TruLoad.Backend.Models.System.IntegrationConfig", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6997,6 +7106,11 @@ namespace TruLoad.Backend.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "Weighing")
+                        .WithMany()
+                        .HasForeignKey("WeighingId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("ActDefinition");
 
                     b.Navigation("CaseManager");
@@ -7006,6 +7120,8 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("DispositionType");
 
                     b.Navigation("ViolationType");
+
+                    b.Navigation("Weighing");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.CaseManagement.CaseSubfile", b =>

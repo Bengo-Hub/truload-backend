@@ -303,16 +303,20 @@ public class CourtHearingService : ICourtHearingService
     {
         var stats = new Dictionary<string, int>();
 
-        var total = await _context.CourtHearings
-            .CountAsync(h => h.DeletedAt == null, ct);
-        stats["Total"] = total;
+        // Single grouped query to avoid N+1
+        var statusCounts = await _context.CourtHearings
+            .AsNoTracking()
+            .Where(h => h.DeletedAt == null)
+            .GroupBy(h => h.HearingStatus!.Name)
+            .Select(g => new { StatusName = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
 
-        var statuses = await _context.HearingStatuses.ToListAsync(ct);
-        foreach (var status in statuses)
+        var total = statusCounts.Sum(sc => sc.Count);
+        stats["Total"] = total;
+        foreach (var sc in statusCounts)
         {
-            var count = await _context.CourtHearings
-                .CountAsync(h => h.HearingStatusId == status.Id && h.DeletedAt == null, ct);
-            stats[status.Name] = count;
+            if (!string.IsNullOrEmpty(sc.StatusName))
+                stats[sc.StatusName] = sc.Count;
         }
 
         // Upcoming hearings (next 7 days)

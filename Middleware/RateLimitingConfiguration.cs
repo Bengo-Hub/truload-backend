@@ -6,12 +6,15 @@ namespace TruLoad.Backend.Middleware;
 /// <summary>
 /// Configuration for rate limiting middleware to prevent API abuse and ensure fair usage.
 /// Uses ASP.NET Core's built-in rate limiting features from .NET 10.
+/// All limits are read from RateLimitSettings singleton (populated from DB at startup,
+/// refreshable via admin endpoint without restart).
 ///
-/// Policy summary (per user, per minute unless noted):
-///   Global (authenticated): 300/min  - baseline for all endpoints
+/// Policy summary (per user, defaults shown):
+///   Global (authenticated): 600/min  - baseline for all endpoints
 ///   Global (anonymous):      30/min  - stricter for unauthenticated
-///   "weighing":             600/min  - core weighing operations (dashboard, transactions, compliance)
-///   "autoweigh":           1000/min  - machine-to-machine TruConnect middleware traffic
+///   "dashboard":            800/min  - statistics/trend/analytics endpoints
+///   "weighing":             600/min  - core weighing operations
+///   "autoweigh":           1000/min  - machine-to-machine TruConnect traffic
 ///   "api":                  200/min  - general API endpoints
 ///   "search":               120/min  - search/list endpoints
 ///   "reports":               30/5min - heavy operations (PDF, exports)
@@ -21,6 +24,8 @@ public static class RateLimitingConfiguration
 {
     /// <summary>
     /// Configures rate limiting services with multiple policies for different use cases.
+    /// All values are read from the RateLimitSettings singleton, which is populated
+    /// from the database at startup and can be refreshed at runtime.
     /// </summary>
     public static IServiceCollection AddTruLoadRateLimiting(this IServiceCollection services)
     {
@@ -29,34 +34,42 @@ public static class RateLimitingConfiguration
             // Global default policy - per-user partitioning
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
             {
+                var settings = httpContext.RequestServices.GetRequiredService<RateLimitSettings>();
                 var userId = httpContext.User.Identity?.IsAuthenticated == true
                     ? httpContext.User.FindFirst("sub")?.Value ?? "anonymous"
                     : "anonymous";
 
-                // Anonymous users get stricter limits
                 if (userId == "anonymous")
                 {
                     return RateLimitPartition.GetFixedWindowLimiter(
                         partitionKey: "anonymous",
                         factory: _ => new FixedWindowRateLimiterOptions
                         {
-                            PermitLimit = 30,
+                            PermitLimit = settings.GlobalAnonymousPermit,
                             Window = TimeSpan.FromMinutes(1),
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                             QueueLimit = 5
                         });
                 }
 
-                // Authenticated users - generous limit so essential workflows aren't blocked
                 return RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: userId,
                     factory: _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 300,
-                        Window = TimeSpan.FromMinutes(1),
+                        PermitLimit = settings.GlobalAuthenticatedPermit,
+                        Window = TimeSpan.FromMinutes(settings.GlobalAuthenticatedWindowMinutes),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                        QueueLimit = 20
+                        QueueLimit = 30
                     });
+            });
+
+            // Dashboard statistics/trend endpoints
+            options.AddFixedWindowLimiter("dashboard", opts =>
+            {
+                opts.PermitLimit = 800;
+                opts.Window = TimeSpan.FromMinutes(1);
+                opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                opts.QueueLimit = 40;
             });
 
             // API policy - general API endpoints
@@ -68,8 +81,7 @@ public static class RateLimitingConfiguration
                 opts.QueueLimit = 15;
             });
 
-            // Weighing operations - high limits for core operational workflows
-            // (dashboard polling, transaction creation, weight capture, compliance checks)
+            // Weighing operations
             options.AddFixedWindowLimiter("weighing", opts =>
             {
                 opts.PermitLimit = 600;
@@ -78,8 +90,7 @@ public static class RateLimitingConfiguration
                 opts.QueueLimit = 30;
             });
 
-            // Autoweigh/webhook - highest limits for machine-to-machine traffic
-            // (TruConnect middleware sends bursts of autoweigh data)
+            // Autoweigh/webhook - machine-to-machine traffic
             options.AddFixedWindowLimiter("autoweigh", opts =>
             {
                 opts.PermitLimit = 1000;
@@ -88,7 +99,7 @@ public static class RateLimitingConfiguration
                 opts.QueueLimit = 50;
             });
 
-            // Authentication endpoints - strict limits to prevent brute force
+            // Authentication endpoints - strict limits for brute-force protection
             options.AddFixedWindowLimiter("auth", opts =>
             {
                 opts.PermitLimit = 10;
@@ -97,7 +108,7 @@ public static class RateLimitingConfiguration
                 opts.QueueLimit = 2;
             });
 
-            // Heavy operations (reports, exports, PDF generation) - lower limits
+            // Heavy operations (reports, exports, PDF generation)
             options.AddFixedWindowLimiter("reports", opts =>
             {
                 opts.PermitLimit = 30;
@@ -106,7 +117,7 @@ public static class RateLimitingConfiguration
                 opts.QueueLimit = 5;
             });
 
-            // Search endpoints - moderate limits
+            // Search endpoints
             options.AddFixedWindowLimiter("search", opts =>
             {
                 opts.PermitLimit = 120;
@@ -137,6 +148,42 @@ public static class RateLimitingConfiguration
         });
 
         return services;
+    }
+
+    /// <summary>
+    /// Loads rate limit values from the database into the RateLimitSettings singleton.
+    /// Called at startup and can be called again to refresh values at runtime.
+    /// </summary>
+    public static async Task LoadRateLimitSettingsFromDbAsync(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var settingsService = scope.ServiceProvider
+            .GetRequiredService<Services.Interfaces.System.ISettingsService>();
+        var rateLimitSettings = scope.ServiceProvider
+            .GetRequiredService<RateLimitSettings>();
+
+        rateLimitSettings.GlobalAuthenticatedPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitGlobalAuthenticatedPermit, 600);
+        rateLimitSettings.GlobalAuthenticatedWindowMinutes = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitGlobalAuthenticatedWindowMinutes, 1);
+        rateLimitSettings.GlobalAnonymousPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitGlobalAnonymousPermit, 30);
+        rateLimitSettings.DashboardPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitDashboardPermit, 800);
+        rateLimitSettings.ApiPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitApiPermit, 200);
+        rateLimitSettings.WeighingPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitWeighingPermit, 600);
+        rateLimitSettings.AutoweighPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitAutoweighPermit, 1000);
+        rateLimitSettings.AuthPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitAuthPermit, 10);
+        rateLimitSettings.AuthWindowMinutes = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitAuthWindowMinutes, 5);
+        rateLimitSettings.ReportsPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitReportsPermit, 30);
+        rateLimitSettings.SearchPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitSearchPermit, 120);
     }
 
     /// <summary>

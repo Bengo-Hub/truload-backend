@@ -30,6 +30,10 @@ public interface ISettingsService
     // Security overview
     Task<SecurityOverviewDto> GetSecurityOverviewAsync(CancellationToken ct = default);
 
+    // Restore defaults
+    Task<ApplicationSettingDto> RestoreDefaultAsync(string key, Guid userId, CancellationToken ct = default);
+    Task<List<ApplicationSettingDto>> RestoreCategoryDefaultsAsync(string category, Guid userId, CancellationToken ct = default);
+
     // Cache management
     void InvalidateCache();
 }

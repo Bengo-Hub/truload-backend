@@ -4,6 +4,9 @@ using TruLoad.Backend.DTOs.Prosecution;
 using TruLoad.Backend.Models.Prosecution;
 using TruLoad.Backend.Services.Interfaces.Prosecution;
 using TruLoad.Backend.Services.Interfaces.Weighing;
+using TruLoad.Backend.Models.System;
+using TruLoad.Backend.Services.Interfaces.Financial;
+using TruLoad.Backend.Services.Interfaces.System;
 
 namespace TruLoad.Backend.Services.Implementations.Prosecution;
 
@@ -15,16 +18,19 @@ public class ProsecutionService : IProsecutionService
 {
     private readonly TruLoadDbContext _context;
     private readonly IAxleGroupAggregationService _axleGroupService;
-
-    // Default forex rate (should be fetched from external API in production)
-    private const decimal DefaultForexRate = 130.0m;
+    private readonly ISettingsService _settingsService;
+    private readonly ICurrencyService _currencyService;
 
     public ProsecutionService(
         TruLoadDbContext context,
-        IAxleGroupAggregationService axleGroupService)
+        IAxleGroupAggregationService axleGroupService,
+        ISettingsService settingsService,
+        ICurrencyService currencyService)
     {
         _context = context;
         _axleGroupService = axleGroupService;
+        _settingsService = settingsService;
+        _currencyService = currencyService;
     }
 
     public async Task<ProsecutionCaseDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -67,6 +73,9 @@ public class ProsecutionService : IProsecutionService
         if (criteria.WeighingId.HasValue)
             query = query.Where(p => p.WeighingId == criteria.WeighingId.Value);
 
+        if (criteria.StationId.HasValue)
+            query = query.Where(p => p.Weighing != null && p.Weighing.StationId == criteria.StationId.Value);
+
         if (criteria.ActId.HasValue)
             query = query.Where(p => p.ActId == criteria.ActId.Value);
 
@@ -104,8 +113,12 @@ public class ProsecutionService : IProsecutionService
         // Calculate compliance with group-based fees
         var compliance = await _axleGroupService.CalculateComplianceAsync(weighingId);
 
-        // Get forex rate (in production, fetch from external API)
-        var forexRate = DefaultForexRate;
+        // Resolve the charging currency from the act definition for this legal framework
+        var chargingCurrency = await GetChargingCurrencyAsync(legalFramework, ct);
+
+        // Get live forex rate from currency service (falls back to latest DB rate)
+        var currentRateResponse = await _currencyService.GetCurrentRateAsync("USD", "KES", ct);
+        var forexRate = currentRateResponse.Rate;
 
         // Calculate GVW-based fee
         var gvwOverloadKg = weighing.OverloadKg;
@@ -158,6 +171,7 @@ public class ProsecutionService : IProsecutionService
             PriorOffenseCount = priorOffenseCount,
             DemeritPoints = demeritPoints,
             ForexRate = forexRate,
+            ChargingCurrency = chargingCurrency,
             CalculatedAt = DateTime.UtcNow
         };
     }
@@ -188,6 +202,8 @@ public class ProsecutionService : IProsecutionService
 
         // Generate certificate number
         var certificateNo = await GenerateCertificateNumberAsync(ct);
+        var defaultForexRateResponse = await _currencyService.GetCurrentRateAsync("USD", "KES", ct);
+        var defaultForexRate = defaultForexRateResponse.Rate;
 
         var prosecutionCase = new ProsecutionCase
         {
@@ -208,7 +224,7 @@ public class ProsecutionService : IProsecutionService
             DemeritPoints = chargeCalculation?.DemeritPoints ?? 0,
             TotalFeeUsd = chargeCalculation?.TotalFeeUsd ?? 0,
             TotalFeeKes = chargeCalculation?.TotalFeeKes ?? 0,
-            ForexRate = chargeCalculation?.ForexRate ?? DefaultForexRate,
+            ForexRate = chargeCalculation?.ForexRate ?? defaultForexRate,
             CertificateNo = certificateNo,
             CaseNotes = request.CaseNotes,
             Status = "pending",
@@ -344,6 +360,21 @@ public class ProsecutionService : IProsecutionService
         return act?.Code ?? "TRAFFIC_ACT";
     }
 
+    /// <summary>
+    /// Resolves the charging currency for a given legal framework.
+    /// Traffic Act charges in KES, EAC Act charges in USD.
+    /// </summary>
+    private async Task<string> GetChargingCurrencyAsync(string legalFramework, CancellationToken ct)
+    {
+        var act = await _context.ActDefinitions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => (a.Code == legalFramework ||
+                (legalFramework == "EAC" && a.ActType == "EAC") ||
+                (legalFramework == "TRAFFIC_ACT" && a.ActType == "Traffic"))
+                && a.IsActive && a.DeletedAt == null, ct);
+        return act?.ChargingCurrency ?? "KES";
+    }
+
     private ProsecutionCaseDto MapToDto(ProsecutionCase p)
     {
         return new ProsecutionCaseDto
@@ -357,6 +388,7 @@ public class ProsecutionService : IProsecutionService
             ProsecutionOfficerName = p.ProsecutionOfficer?.FullName,
             ActId = p.ActId,
             ActName = p.Act?.Name,
+            ChargingCurrency = p.Act?.ChargingCurrency ?? "KES",
             GvwOverloadKg = p.GvwOverloadKg,
             GvwFeeUsd = p.GvwFeeUsd,
             GvwFeeKes = p.GvwFeeKes,

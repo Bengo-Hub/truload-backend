@@ -8,7 +8,7 @@ namespace TruLoad.Backend.Controllers.Reporting;
 
 /// <summary>
 /// Controller for generating and downloading reports across all modules.
-/// Supports PDF and CSV output formats.
+/// Supports PDF, CSV, and Excel (xlsx) output formats.
 /// </summary>
 [ApiController]
 [Route("api/v1/reports")]
@@ -69,8 +69,8 @@ public class ReportController : ControllerBase
         {
             var filters = new ReportFilterParams
             {
-                DateFrom = dateFrom,
-                DateTo = dateTo,
+                DateFrom = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : null,
+                DateTo = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : null,
                 StationId = stationId,
                 Status = status
             };

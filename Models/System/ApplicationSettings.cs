@@ -111,6 +111,41 @@ public static class SettingKeys
     // Compliance
     public const string DefaultActCode = "compliance.default_act_code";
 
+    // Rate Limiting
+    public const string RateLimitGlobalAuthenticatedPermit = "ratelimit.global_authenticated_permit";
+    public const string RateLimitGlobalAuthenticatedWindowMinutes = "ratelimit.global_authenticated_window_minutes";
+    public const string RateLimitGlobalAnonymousPermit = "ratelimit.global_anonymous_permit";
+    public const string RateLimitDashboardPermit = "ratelimit.dashboard_permit";
+    public const string RateLimitApiPermit = "ratelimit.api_permit";
+    public const string RateLimitWeighingPermit = "ratelimit.weighing_permit";
+    public const string RateLimitAutoweighPermit = "ratelimit.autoweigh_permit";
+    public const string RateLimitAuthPermit = "ratelimit.auth_permit";
+    public const string RateLimitAuthWindowMinutes = "ratelimit.auth_window_minutes";
+    public const string RateLimitReportsPermit = "ratelimit.reports_permit";
+    public const string RateLimitSearchPermit = "ratelimit.search_permit";
+
+    // Weighing
+    public const string WeighingMaxReweighCycles = "weighing.max_reweigh_cycles";
+    public const string WeighingOperationalToleranceKg = "weighing.operational_tolerance_kg";
+
+    // Financial
+    public const string FinancialDefaultForexRate = "financial.default_forex_rate";
+    public const string FinancialInvoiceAgingCurrentDays = "financial.invoice_aging_current_days";
+    public const string FinancialInvoiceAgingOverdueDays = "financial.invoice_aging_overdue_days";
+
+    // Cache
+    public const string CacheSettingsTtlMinutes = "cache.settings_ttl_minutes";
+    public const string CachePermissionsTtlMinutes = "cache.permissions_ttl_minutes";
+    public const string CacheIntegrationKenhaTtlMinutes = "cache.integration_kenha_ttl_minutes";
+    public const string CacheIntegrationNtsaTtlHours = "cache.integration_ntsa_ttl_hours";
+    public const string CacheSupersetTokenTtlHours = "cache.superset_token_ttl_hours";
+
+    // Integration Timeouts
+    public const string IntegrationEcitizenTimeoutSeconds = "integration.ecitizen_timeout_seconds";
+    public const string IntegrationKenhaTimeoutSeconds = "integration.kenha_timeout_seconds";
+    public const string IntegrationNtsaTimeoutSeconds = "integration.ntsa_timeout_seconds";
+    public const string IntegrationOllamaTimeoutSeconds = "integration.ollama_timeout_seconds";
+
     // Categories
     public const string CategorySecurity = "Security";
     public const string CategoryShifts = "Shifts";
@@ -118,4 +153,8 @@ public static class SettingKeys
     public const string CategoryNotifications = "Notifications";
     public const string CategoryIntegrations = "Integrations";
     public const string CategoryCompliance = "Compliance";
+    public const string CategoryRateLimiting = "Rate Limiting";
+    public const string CategoryWeighing = "Weighing";
+    public const string CategoryFinancial = "Financial";
+    public const string CategoryCache = "Cache";
 }

@@ -3,7 +3,9 @@ using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Reporting;
+using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments.Reports;
+using TruLoad.Backend.Services.Interfaces.System;
 
 namespace TruLoad.Backend.Services.Implementations.Reporting.Modules;
 
@@ -13,10 +15,12 @@ namespace TruLoad.Backend.Services.Implementations.Reporting.Modules;
 public class FinancialReportGenerator : BaseReportGenerator
 {
     private readonly TruLoadDbContext _context;
+    private readonly ISettingsService _settingsService;
 
-    public FinancialReportGenerator(TruLoadDbContext context)
+    public FinancialReportGenerator(TruLoadDbContext context, ISettingsService settingsService)
     {
         _context = context;
+        _settingsService = settingsService;
     }
 
     public override string Module => ReportModules.Financial;
@@ -156,11 +160,15 @@ public class FinancialReportGenerator : BaseReportGenerator
             // For simplicity, include all invoices when station filter is set at this level
         }
 
-        // Classify into aging buckets
-        var current = invoices.Where(i => i.AgeDays <= 30).ToList();
-        var days30 = invoices.Where(i => i.AgeDays > 30 && i.AgeDays <= 60).ToList();
-        var days60 = invoices.Where(i => i.AgeDays > 60 && i.AgeDays <= 90).ToList();
-        var days90Plus = invoices.Where(i => i.AgeDays > 90).ToList();
+        // Classify into aging buckets (configurable thresholds)
+        var currentDays = await _settingsService.GetSettingValueAsync(SettingKeys.FinancialInvoiceAgingCurrentDays, 30);
+        var overdueDays = await _settingsService.GetSettingValueAsync(SettingKeys.FinancialInvoiceAgingOverdueDays, 60);
+        var severeDays = overdueDays + currentDays; // e.g. 90
+
+        var current = invoices.Where(i => i.AgeDays <= currentDays).ToList();
+        var days30 = invoices.Where(i => i.AgeDays > currentDays && i.AgeDays <= overdueDays).ToList();
+        var days60 = invoices.Where(i => i.AgeDays > overdueDays && i.AgeDays <= severeDays).ToList();
+        var days90Plus = invoices.Where(i => i.AgeDays > severeDays).ToList();
 
         string[] headers = ["Invoice No", "Amount Due", "Paid", "Outstanding", "Currency", "Status", "Age (days)", "Bucket", "Generated", "Due Date"];
         var rows = invoices.Select(i =>
@@ -168,10 +176,10 @@ public class FinancialReportGenerator : BaseReportGenerator
             var outstanding = i.AmountDue - i.TotalPaid;
             var bucket = i.AgeDays switch
             {
-                <= 30 => "Current",
-                <= 60 => "30-60 days",
-                <= 90 => "60-90 days",
-                _ => "90+ days"
+                _ when i.AgeDays <= currentDays => "Current",
+                _ when i.AgeDays <= overdueDays => $"{currentDays}-{overdueDays} days",
+                _ when i.AgeDays <= severeDays => $"{overdueDays}-{severeDays} days",
+                _ => $"{severeDays}+ days"
             };
             return new[]
             {
@@ -202,10 +210,10 @@ public class FinancialReportGenerator : BaseReportGenerator
             Rows = rows.ToList(),
             SummaryItems =
             [
-                ("Current (0-30d)", $"{current.Count} | {FormatNumber(current.Sum(i => i.AmountDue - i.TotalPaid))}"),
-                ("30-60 days", $"{days30.Count} | {FormatNumber(days30.Sum(i => i.AmountDue - i.TotalPaid))}"),
-                ("60-90 days", $"{days60.Count} | {FormatNumber(days60.Sum(i => i.AmountDue - i.TotalPaid))}"),
-                ("90+ days", $"{days90Plus.Count} | {FormatNumber(days90Plus.Sum(i => i.AmountDue - i.TotalPaid))}"),
+                ($"Current (0-{currentDays}d)", $"{current.Count} | {FormatNumber(current.Sum(i => i.AmountDue - i.TotalPaid))}"),
+                ($"{currentDays}-{overdueDays} days", $"{days30.Count} | {FormatNumber(days30.Sum(i => i.AmountDue - i.TotalPaid))}"),
+                ($"{overdueDays}-{severeDays} days", $"{days60.Count} | {FormatNumber(days60.Sum(i => i.AmountDue - i.TotalPaid))}"),
+                ($"{severeDays}+ days", $"{days90Plus.Count} | {FormatNumber(days90Plus.Sum(i => i.AmountDue - i.TotalPaid))}"),
                 ("Total Outstanding", FormatNumber(totalOutstanding)),
                 ("Total Invoices", invoices.Count.ToString())
             ]

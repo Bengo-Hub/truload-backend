@@ -55,6 +55,9 @@ public class ReceiptService : IReceiptService
         if (criteria.InvoiceId.HasValue)
             query = query.Where(r => r.InvoiceId == criteria.InvoiceId.Value);
 
+        if (criteria.StationId.HasValue)
+            query = query.Where(r => r.Invoice != null && r.Invoice.Weighing != null && r.Invoice.Weighing.StationId == criteria.StationId.Value);
+
         if (!string.IsNullOrWhiteSpace(criteria.PaymentMethod))
             query = query.Where(r => r.PaymentMethod == criteria.PaymentMethod);
 

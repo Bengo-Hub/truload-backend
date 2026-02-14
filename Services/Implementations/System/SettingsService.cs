@@ -260,6 +260,46 @@ public class SettingsService : ISettingsService
         };
     }
 
+    public async Task<ApplicationSettingDto> RestoreDefaultAsync(string key, Guid userId, CancellationToken ct = default)
+    {
+        var setting = await _context.ApplicationSettings
+            .FirstOrDefaultAsync(s => s.SettingKey == key && s.DeletedAt == null, ct)
+            ?? throw new KeyNotFoundException($"Setting '{key}' not found");
+
+        if (string.IsNullOrEmpty(setting.DefaultValue))
+            throw new InvalidOperationException($"Setting '{key}' has no default value defined");
+
+        setting.SettingValue = setting.DefaultValue;
+        setting.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync(ct);
+
+        InvalidateCache();
+        _logger.LogInformation("Setting '{Key}' restored to default by user {UserId}", key, userId);
+        return MapToDto(setting);
+    }
+
+    public async Task<List<ApplicationSettingDto>> RestoreCategoryDefaultsAsync(string category, Guid userId, CancellationToken ct = default)
+    {
+        var settings = await _context.ApplicationSettings
+            .Where(s => s.Category == category && s.DeletedAt == null && s.IsEditable && s.DefaultValue != null)
+            .ToListAsync(ct);
+
+        if (!settings.Any())
+            throw new KeyNotFoundException($"No restorable settings found for category '{category}'");
+
+        foreach (var setting in settings)
+        {
+            setting.SettingValue = setting.DefaultValue!;
+            setting.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync(ct);
+        InvalidateCache();
+        _logger.LogInformation("Category '{Category}' settings ({Count}) restored to defaults by user {UserId}",
+            category, settings.Count, userId);
+        return settings.Select(MapToDto).ToList();
+    }
+
     public void InvalidateCache()
     {
         // Remove all cached settings

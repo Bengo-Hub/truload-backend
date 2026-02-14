@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Text;
+using ClosedXML.Excel;
+using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.DTOs.Reporting;
 using TruLoad.Backend.Services.Interfaces.Reporting;
 
@@ -96,9 +98,103 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
     /// </summary>
     protected static (DateTime from, DateTime to) GetDateRange(ReportFilterParams filters)
     {
-        var to = filters.DateTo?.Date.AddDays(1).AddTicks(-1) ?? DateTime.UtcNow;
-        var from = filters.DateFrom?.Date ?? to.AddDays(-30);
+        var to = filters.DateTo.HasValue
+            ? DateTime.SpecifyKind(filters.DateTo.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc)
+            : DateTime.UtcNow;
+        var from = filters.DateFrom.HasValue
+            ? DateTime.SpecifyKind(filters.DateFrom.Value.Date, DateTimeKind.Utc)
+            : to.AddDays(-30);
         return (from, to);
+    }
+
+    /// <summary>
+    /// Generates an Excel workbook from headers and rows with professional formatting.
+    /// </summary>
+    protected static byte[] GenerateExcel(string reportTitle, string[] headers, IEnumerable<string[]> rows,
+        DateTime? dateFrom = null, DateTime? dateTo = null)
+    {
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Report");
+
+        // Title row
+        worksheet.Cell(1, 1).Value = reportTitle;
+        worksheet.Range(1, 1, 1, headers.Length).Merge();
+        worksheet.Cell(1, 1).Style.Font.Bold = true;
+        worksheet.Cell(1, 1).Style.Font.FontSize = 14;
+        worksheet.Cell(1, 1).Style.Font.FontColor = XLColor.FromHtml(BrandingConstants.Colors.KuraBlue);
+
+        // Date range row
+        var dateRange = dateFrom.HasValue && dateTo.HasValue
+            ? $"Period: {dateFrom.Value:dd/MM/yyyy} - {dateTo.Value:dd/MM/yyyy}"
+            : $"Generated: {DateTime.UtcNow:dd/MM/yyyy HH:mm}";
+        worksheet.Cell(2, 1).Value = dateRange;
+        worksheet.Range(2, 1, 2, headers.Length).Merge();
+        worksheet.Cell(2, 1).Style.Font.Italic = true;
+        worksheet.Cell(2, 1).Style.Font.FontSize = 9;
+
+        // Header row
+        var headerRow = 4;
+        for (var i = 0; i < headers.Length; i++)
+        {
+            var cell = worksheet.Cell(headerRow, i + 1);
+            cell.Value = headers[i];
+            cell.Style.Font.Bold = true;
+            cell.Style.Font.FontColor = XLColor.White;
+            cell.Style.Fill.BackgroundColor = XLColor.FromHtml(BrandingConstants.Colors.KuraBlue);
+            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            cell.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
+        }
+
+        // Data rows with alternating colors
+        var dataRow = headerRow + 1;
+        foreach (var row in rows)
+        {
+            for (var i = 0; i < row.Length && i < headers.Length; i++)
+            {
+                var cell = worksheet.Cell(dataRow, i + 1);
+                cell.Value = row[i];
+                cell.Style.Font.FontSize = 10;
+            }
+
+            if (dataRow % 2 == 0)
+            {
+                var range = worksheet.Range(dataRow, 1, dataRow, headers.Length);
+                range.Style.Fill.BackgroundColor = XLColor.FromHtml("#F9FAFB");
+            }
+
+            dataRow++;
+        }
+
+        // Auto-fit columns
+        worksheet.Columns().AdjustToContents(4, dataRow);
+
+        // Add borders to data range
+        if (dataRow > headerRow + 1)
+        {
+            var dataRange = worksheet.Range(headerRow, 1, dataRow - 1, headers.Length);
+            dataRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            dataRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+        }
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    /// <summary>
+    /// Creates a ReportResult for Excel output.
+    /// </summary>
+    protected static ReportResult ExcelResult(byte[] data, string reportName, DateTime? dateFrom, DateTime? dateTo)
+    {
+        var suffix = dateFrom.HasValue && dateTo.HasValue
+            ? $"_{dateFrom.Value:yyyyMMdd}_to_{dateTo.Value:yyyyMMdd}"
+            : $"_{DateTime.UtcNow:yyyyMMdd}";
+        return new ReportResult
+        {
+            Content = data,
+            ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            FileName = $"{reportName}{suffix}.xlsx"
+        };
     }
 
     protected ReportDefinitionDto Def(string id, string name, string description, string[]? formats = null)
@@ -108,6 +204,6 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
             Name = name,
             Description = description,
             Module = Module,
-            SupportedFormats = formats ?? ["pdf", "csv"]
+            SupportedFormats = formats ?? ["pdf", "csv", "xlsx"]
         };
 }

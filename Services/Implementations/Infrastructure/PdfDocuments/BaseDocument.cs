@@ -96,6 +96,89 @@ public abstract class BaseDocument
     }
 
     /// <summary>
+    /// Composes a triple-logo header: left logo, center coat of arms, right logo.
+    /// Used by documents requiring all three official logos.
+    /// </summary>
+    protected void ComposeTripleLogoHeader(
+        IContainer container,
+        string leftLogoFile,
+        string centerLogoFile,
+        string rightLogoFile,
+        string documentTitle,
+        string? subtitle = null,
+        string? referenceNumber = null,
+        string? dateText = null,
+        string? titleColor = null)
+    {
+        var leftLogo = LoadLogo(leftLogoFile);
+        var centerLogo = LoadLogo(centerLogoFile);
+        var rightLogo = LoadLogo(rightLogoFile);
+        var headerColor = titleColor ?? KuraBlue;
+
+        container.Column(col =>
+        {
+            col.Item().Row(row =>
+            {
+                row.ConstantItem(55).AlignMiddle().Column(logoCol =>
+                {
+                    if (leftLogo != null)
+                        logoCol.Item().Height(45).Image(leftLogo, ImageScaling.FitArea);
+                });
+
+                row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(center =>
+                {
+                    if (centerLogo != null)
+                        center.Item().AlignCenter().Height(40).Image(centerLogo, ImageScaling.FitArea);
+
+                    center.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
+                        .FontSize(10).SemiBold();
+                    center.Item().AlignCenter().Text(documentTitle)
+                        .FontSize(13).Bold().FontColor(headerColor);
+                    if (!string.IsNullOrEmpty(subtitle))
+                        center.Item().AlignCenter().Text(subtitle).FontSize(8);
+                });
+
+                row.ConstantItem(55).AlignMiddle().Column(logoCol =>
+                {
+                    if (rightLogo != null)
+                        logoCol.Item().Height(45).Image(rightLogo, ImageScaling.FitArea);
+                });
+            });
+
+            if (!string.IsNullOrEmpty(referenceNumber) || !string.IsNullOrEmpty(dateText))
+            {
+                col.Item().PaddingTop(3).Row(row =>
+                {
+                    if (!string.IsNullOrEmpty(referenceNumber))
+                        row.RelativeItem().Text(referenceNumber).FontSize(10).SemiBold();
+                    if (!string.IsNullOrEmpty(dateText))
+                        row.RelativeItem().AlignRight().Text(dateText).FontSize(10);
+                });
+            }
+
+            col.Item().PaddingVertical(3).LineHorizontal(1).LineColor(Colors.Black);
+        });
+    }
+
+    /// <summary>
+    /// Composes a conditional cell with color based on compliance status.
+    /// </summary>
+    protected void ComposeConditionalCell(IContainer container, string text, string status)
+    {
+        var (bgColor, textColor) = status.ToLower() switch
+        {
+            "overloaded" or "violation" or "failed" => ("#FEE2E2", OfficialRed),
+            "compliant" or "passed" or "success" => ("#DCFCE7", OfficialGreen),
+            "warning" or "pending" or "tolerance" => ("#FEF3C7", "#B45309"),
+            "legal" => ("#DBEAFE", KuraBlue),
+            _ => ("#F3F4F6", KuraBlack)
+        };
+
+        container.Background(bgColor).Padding(3)
+            .Text(text).FontSize(8).FontColor(textColor).SemiBold();
+    }
+
+    /// <summary>
     /// Creates standard footer for official documents
     /// </summary>
     protected void ComposeOfficialFooter(IContainer container)

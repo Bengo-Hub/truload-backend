@@ -58,6 +58,9 @@ public class InvoiceService : IInvoiceService
         if (criteria.ProsecutionCaseId.HasValue)
             query = query.Where(i => i.ProsecutionCaseId == criteria.ProsecutionCaseId.Value);
 
+        if (criteria.StationId.HasValue)
+            query = query.Where(i => i.Weighing != null && i.Weighing.StationId == criteria.StationId.Value);
+
         if (!string.IsNullOrWhiteSpace(criteria.Status))
             query = query.Where(i => i.Status == criteria.Status);
 

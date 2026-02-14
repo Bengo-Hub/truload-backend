@@ -16,6 +16,7 @@ public class ProsecutionCaseDto
     public string? ProsecutionOfficerName { get; set; }
     public Guid ActId { get; set; }
     public string? ActName { get; set; }
+    public string ChargingCurrency { get; set; } = "KES";
 
     // Charge details
     public int GvwOverloadKg { get; set; }
@@ -71,8 +72,9 @@ public class ChargeCalculationResult
     public int PriorOffenseCount { get; set; }
     public int DemeritPoints { get; set; }
 
-    // Forex
+    // Forex & Currency
     public decimal ForexRate { get; set; }
+    public string ChargingCurrency { get; set; } = "KES";
     public DateTime CalculatedAt { get; set; } = DateTime.UtcNow;
 }
 
@@ -128,6 +130,7 @@ public class ProsecutionSearchCriteria : PagedRequest
 {
     public Guid? CaseRegisterId { get; set; }
     public Guid? WeighingId { get; set; }
+    public Guid? StationId { get; set; }
     public Guid? ActId { get; set; }
     public string? Status { get; set; }
     public DateTime? CreatedFrom { get; set; }

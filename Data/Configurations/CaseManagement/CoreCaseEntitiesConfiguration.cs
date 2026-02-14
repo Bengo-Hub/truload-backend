@@ -242,6 +242,11 @@ public static class CoreCaseEntitiesConfiguration
                 .WithOne(cc => cc.CaseRegister)
                 .HasForeignKey<CaseClosureChecklist>(cc => cc.CaseRegisterId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Weighing)
+                .WithMany()
+                .HasForeignKey(e => e.WeighingId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 

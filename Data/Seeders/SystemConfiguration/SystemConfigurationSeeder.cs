@@ -360,6 +360,391 @@ public class SystemConfigurationSeeder
                 SortOrder = 4,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
+            },
+
+            // Rate Limiting Settings
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.RateLimitGlobalAuthenticatedPermit,
+                SettingValue = "600",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryRateLimiting,
+                DisplayName = "Global Authenticated Permit Limit",
+                Description = "Maximum requests per window for authenticated users across all endpoints",
+                DefaultValue = "600",
+                IsEditable = true,
+                SortOrder = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.RateLimitGlobalAuthenticatedWindowMinutes,
+                SettingValue = "1",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryRateLimiting,
+                DisplayName = "Global Authenticated Window (minutes)",
+                Description = "Time window in minutes for the global authenticated rate limit",
+                DefaultValue = "1",
+                IsEditable = true,
+                SortOrder = 2,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.RateLimitGlobalAnonymousPermit,
+                SettingValue = "30",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryRateLimiting,
+                DisplayName = "Global Anonymous Permit Limit",
+                Description = "Maximum requests per minute for unauthenticated users",
+                DefaultValue = "30",
+                IsEditable = true,
+                SortOrder = 3,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.RateLimitDashboardPermit,
+                SettingValue = "800",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryRateLimiting,
+                DisplayName = "Dashboard Permit Limit",
+                Description = "Maximum requests per minute for dashboard endpoints",
+                DefaultValue = "800",
+                IsEditable = true,
+                SortOrder = 4,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.RateLimitApiPermit,
+                SettingValue = "200",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryRateLimiting,
+                DisplayName = "API Permit Limit",
+                Description = "Maximum requests per minute for general API endpoints",
+                DefaultValue = "200",
+                IsEditable = true,
+                SortOrder = 5,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.RateLimitWeighingPermit,
+                SettingValue = "600",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryRateLimiting,
+                DisplayName = "Weighing Permit Limit",
+                Description = "Maximum requests per minute for weighing endpoints",
+                DefaultValue = "600",
+                IsEditable = true,
+                SortOrder = 6,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.RateLimitAutoweighPermit,
+                SettingValue = "1000",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryRateLimiting,
+                DisplayName = "Auto-Weigh Permit Limit",
+                Description = "Maximum requests per minute for automated weighbridge endpoints",
+                DefaultValue = "1000",
+                IsEditable = true,
+                SortOrder = 7,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.RateLimitAuthPermit,
+                SettingValue = "10",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryRateLimiting,
+                DisplayName = "Auth Permit Limit",
+                Description = "Maximum authentication requests per window (login/register/password reset)",
+                DefaultValue = "10",
+                IsEditable = true,
+                SortOrder = 8,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.RateLimitAuthWindowMinutes,
+                SettingValue = "5",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryRateLimiting,
+                DisplayName = "Auth Window (minutes)",
+                Description = "Time window in minutes for authentication rate limiting",
+                DefaultValue = "5",
+                IsEditable = true,
+                SortOrder = 9,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.RateLimitReportsPermit,
+                SettingValue = "30",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryRateLimiting,
+                DisplayName = "Reports Permit Limit",
+                Description = "Maximum report generation requests per minute",
+                DefaultValue = "30",
+                IsEditable = true,
+                SortOrder = 10,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.RateLimitSearchPermit,
+                SettingValue = "120",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryRateLimiting,
+                DisplayName = "Search Permit Limit",
+                Description = "Maximum search requests per minute",
+                DefaultValue = "120",
+                IsEditable = true,
+                SortOrder = 11,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+
+            // Weighing Settings
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.WeighingMaxReweighCycles,
+                SettingValue = "8",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryWeighing,
+                DisplayName = "Max Re-weigh Cycles",
+                Description = "Maximum number of re-weigh attempts allowed per weighing transaction before requiring supervisor override",
+                DefaultValue = "8",
+                IsEditable = true,
+                SortOrder = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.WeighingOperationalToleranceKg,
+                SettingValue = "200",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryWeighing,
+                DisplayName = "Operational Tolerance (kg)",
+                Description = "Operational tolerance in kilograms for minor overloads that trigger auto-release with warning instead of yard detention",
+                DefaultValue = "200",
+                IsEditable = true,
+                SortOrder = 2,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+
+            // Financial Settings
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.FinancialDefaultForexRate,
+                SettingValue = "130.0",
+                SettingType = "Decimal",
+                Category = SettingKeys.CategoryFinancial,
+                DisplayName = "Default Forex Rate (KES/USD)",
+                Description = "Default KES to USD exchange rate used for financial calculations when live rate is unavailable",
+                DefaultValue = "130.0",
+                IsEditable = true,
+                SortOrder = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.FinancialInvoiceAgingCurrentDays,
+                SettingValue = "30",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryFinancial,
+                DisplayName = "Invoice Aging - Current (days)",
+                Description = "Number of days an invoice is considered 'current' before becoming overdue in aging reports",
+                DefaultValue = "30",
+                IsEditable = true,
+                SortOrder = 2,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.FinancialInvoiceAgingOverdueDays,
+                SettingValue = "60",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryFinancial,
+                DisplayName = "Invoice Aging - Overdue (days)",
+                Description = "Number of days after which an invoice is classified as 'overdue' in aging reports",
+                DefaultValue = "60",
+                IsEditable = true,
+                SortOrder = 3,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+
+            // Cache Settings
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.CacheSettingsTtlMinutes,
+                SettingValue = "5",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryCache,
+                DisplayName = "Settings Cache TTL (minutes)",
+                Description = "Time-to-live in minutes for cached application settings before refresh from database",
+                DefaultValue = "5",
+                IsEditable = true,
+                SortOrder = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.CachePermissionsTtlMinutes,
+                SettingValue = "60",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryCache,
+                DisplayName = "Permissions Cache TTL (minutes)",
+                Description = "Time-to-live in minutes for cached user permissions before refresh",
+                DefaultValue = "60",
+                IsEditable = true,
+                SortOrder = 2,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.CacheIntegrationKenhaTtlMinutes,
+                SettingValue = "60",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryCache,
+                DisplayName = "KeNHA Cache TTL (minutes)",
+                Description = "Time-to-live in minutes for cached KeNHA road network data",
+                DefaultValue = "60",
+                IsEditable = true,
+                SortOrder = 3,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.CacheIntegrationNtsaTtlHours,
+                SettingValue = "24",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryCache,
+                DisplayName = "NTSA Cache TTL (hours)",
+                Description = "Time-to-live in hours for cached NTSA vehicle/driver lookup data",
+                DefaultValue = "24",
+                IsEditable = true,
+                SortOrder = 4,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.CacheSupersetTokenTtlHours,
+                SettingValue = "4",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryCache,
+                DisplayName = "Superset Token Cache TTL (hours)",
+                Description = "Time-to-live in hours for cached Superset guest tokens",
+                DefaultValue = "4",
+                IsEditable = true,
+                SortOrder = 5,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+
+            // Integration Timeout Settings
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.IntegrationEcitizenTimeoutSeconds,
+                SettingValue = "30",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryIntegrations,
+                DisplayName = "eCitizen Timeout (seconds)",
+                Description = "HTTP request timeout in seconds for eCitizen payment gateway integration",
+                DefaultValue = "30",
+                IsEditable = true,
+                SortOrder = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.IntegrationKenhaTimeoutSeconds,
+                SettingValue = "15",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryIntegrations,
+                DisplayName = "KeNHA Timeout (seconds)",
+                Description = "HTTP request timeout in seconds for KeNHA road network API",
+                DefaultValue = "15",
+                IsEditable = true,
+                SortOrder = 2,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.IntegrationNtsaTimeoutSeconds,
+                SettingValue = "30",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryIntegrations,
+                DisplayName = "NTSA Timeout (seconds)",
+                Description = "HTTP request timeout in seconds for NTSA vehicle/driver lookup API",
+                DefaultValue = "30",
+                IsEditable = true,
+                SortOrder = 3,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.IntegrationOllamaTimeoutSeconds,
+                SettingValue = "180",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryIntegrations,
+                DisplayName = "Ollama Timeout (seconds)",
+                Description = "HTTP request timeout in seconds for Ollama AI text-to-SQL generation",
+                DefaultValue = "180",
+                IsEditable = true,
+                SortOrder = 4,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             }
         };
 

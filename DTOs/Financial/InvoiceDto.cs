@@ -61,6 +61,7 @@ public class InvoiceSearchCriteria : PagedRequest
 {
     public Guid? CaseRegisterId { get; set; }
     public Guid? ProsecutionCaseId { get; set; }
+    public Guid? StationId { get; set; }
     public string? Status { get; set; }
     public DateTime? GeneratedFrom { get; set; }
     public DateTime? GeneratedTo { get; set; }

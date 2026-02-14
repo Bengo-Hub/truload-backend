@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.Common;
+using TruLoad.Backend.Models.Weighing;
 
 namespace TruLoad.Backend.Models.CaseManagement;
 
@@ -179,7 +180,7 @@ public class CaseRegister : BaseEntity
     public string? ClosingReason { get; set; }
 
     // Navigation properties
-    // public virtual Weighing? Weighing { get; set; }
+    public virtual WeighingTransaction? Weighing { get; set; }
     // public virtual Vehicle Vehicle { get; set; } = null!;
     // public virtual Driver? Driver { get; set; }
     public virtual ViolationType ViolationType { get; set; } = null!;

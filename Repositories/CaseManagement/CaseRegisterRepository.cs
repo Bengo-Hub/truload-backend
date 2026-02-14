@@ -73,6 +73,7 @@ public class CaseRegisterRepository : ICaseRegisterRepository
     public async Task<IEnumerable<CaseRegister>> SearchAsync(
         string? caseNo = null,
         string? vehicleRegNumber = null,
+        Guid? stationId = null,
         Guid? violationTypeId = null,
         Guid? caseStatusId = null,
         Guid? dispositionTypeId = null,
@@ -85,6 +86,7 @@ public class CaseRegisterRepository : ICaseRegisterRepository
     {
         var query = _context.CaseRegisters
             .AsNoTracking()
+            .Include(c => c.Weighing)
             .Include(c => c.ViolationType)
             .Include(c => c.CaseStatus)
             .Include(c => c.DispositionType)
@@ -93,6 +95,9 @@ public class CaseRegisterRepository : ICaseRegisterRepository
 
         if (!string.IsNullOrWhiteSpace(caseNo))
             query = query.Where(c => c.CaseNo.Contains(caseNo));
+
+        if (stationId.HasValue)
+            query = query.Where(c => c.Weighing != null && c.Weighing.StationId == stationId.Value);
 
         if (violationTypeId.HasValue)
             query = query.Where(c => c.ViolationTypeId == violationTypeId.Value);

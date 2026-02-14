@@ -103,6 +103,7 @@ public class CaseSearchCriteria : PagedRequest
 {
     public string? CaseNo { get; set; }
     public string? VehicleRegNumber { get; set; }
+    public Guid? StationId { get; set; }
     public Guid? ViolationTypeId { get; set; }
     public Guid? CaseStatusId { get; set; }
     public Guid? DispositionTypeId { get; set; }

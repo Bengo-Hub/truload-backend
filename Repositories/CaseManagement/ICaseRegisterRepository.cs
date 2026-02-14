@@ -12,6 +12,7 @@ public interface ICaseRegisterRepository
     Task<IEnumerable<CaseRegister>> SearchAsync(
         string? caseNo = null,
         string? vehicleRegNumber = null,
+        Guid? stationId = null,
         Guid? violationTypeId = null,
         Guid? caseStatusId = null,
         Guid? dispositionTypeId = null,

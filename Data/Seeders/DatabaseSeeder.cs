@@ -88,6 +88,10 @@ public static class DatabaseSeeder
             logger.LogInformation("Seeding act definitions...");
             await ActDefinitionSeeder.SeedAsync(context);
 
+            // Seed exchange rate defaults (USD/KES manual rate + API settings)
+            logger.LogInformation("Seeding exchange rate defaults...");
+            await ExchangeRateSeeder.SeedAsync(context);
+
             logger.LogInformation("=== Database seeding completed successfully ===");
         }
         catch (Exception ex)

@@ -58,6 +58,7 @@ using TruLoad.Backend.Services.Interfaces.Integration;
 using TruLoad.Backend.Services.Implementations.Integration;
 using TruLoad.Backend.Services.Interfaces.Reporting;
 using TruLoad.Backend.Services.Implementations.Reporting;
+using TruLoad.Backend.Services.BackgroundJobs;
 using TruLoad.Backend.Services.Implementations.Reporting.Modules;
 using TruLoad.Backend.DTOs.Analytics;
 using TruLoad.Backend.Configuration;
@@ -245,6 +246,7 @@ builder.Services.AddAuthorizationBuilder()
     .AddPermissionPolicies();
 
 builder.Services.AddScoped<IAuthorizationHandler, PermissionRequirementHandler>();
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
 // CORS
 var allowedOrigins = builder.Configuration["CORS:AllowedOrigins"]?.Split(',')
@@ -271,6 +273,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddFluentValidationAutoValidation();
 
 // Rate Limiting (Performance optimization - prevents API abuse)
+builder.Services.AddSingleton<RateLimitSettings>();
 builder.Services.AddTruLoadRateLimiting();
 
 // Multi-tenant context (Organization/Station resolution from headers/claims/default)
@@ -359,6 +362,7 @@ builder.Services.AddScoped<ICourtHearingService, CourtHearingService>();
 builder.Services.AddScoped<ICourtService, CourtService>();
 builder.Services.AddScoped<ICaseSubfileService, CaseSubfileService>();
 builder.Services.AddScoped<ICasePartyService, CasePartyService>();
+builder.Services.AddScoped<ICaseDocumentService, CaseDocumentService>();
 builder.Services.AddScoped<IArrestWarrantService, ArrestWarrantService>();
 builder.Services.AddScoped<ICaseClosureChecklistService, CaseClosureChecklistService>();
 builder.Services.AddScoped<ICaseAssignmentLogService, CaseAssignmentLogService>();
@@ -371,6 +375,8 @@ builder.Services.AddScoped<IProsecutionService, ProsecutionService>();
 // Financial services
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IReceiptService, ReceiptService>();
+builder.Services.AddScoped<ICurrencyService, CurrencyService>();
+builder.Services.AddSingleton<ExchangeRateSyncJob>();
 
 // Integration & Payment services (Sprint 15: eCitizen/Pesaflow)
 builder.Services.AddSingleton<IEncryptionService, AesGcmEncryptionService>();
@@ -392,6 +398,7 @@ builder.Services.AddScoped<IVehicleTagService, VehicleTagService>();
 
 // System Settings services
 builder.Services.AddScoped<ISettingsService, SettingsService>();
+builder.Services.AddScoped<IActConfigurationService, ActConfigurationService>();
 builder.Services.AddScoped<IBackupService, BackupService>();
 
 // Analytics services (Superset integration)
@@ -520,6 +527,17 @@ catch (Exception ex)
     // Don't fail startup if migrations fail - let health check handle it
 }
 
+// Load rate limit settings from DB (uses defaults if DB unavailable)
+try
+{
+    await RateLimitingConfiguration.LoadRateLimitSettingsFromDbAsync(app.Services);
+    Log.Information("✓ Rate limit settings loaded from database");
+}
+catch (Exception ex)
+{
+    Log.Warning(ex, "Failed to load rate limit settings from DB, using defaults");
+}
+
 // Response Compression - MUST be first for all downstream responses
 app.UseTruLoadResponseCompression();
 
@@ -620,6 +638,16 @@ Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.Pesafl
     {
         TimeZone = TimeZoneInfo.Utc,
         QueueName = "payments"
+    });
+
+Hangfire.RecurringJob.AddOrUpdate<ExchangeRateSyncJob>(
+    "exchange-rate-sync",
+    job => job.ExecuteAsync(),
+    "0 0 * * *", // Daily at midnight UTC
+    new Hangfire.RecurringJobOptions
+    {
+        TimeZone = TimeZoneInfo.Utc,
+        QueueName = "default"
     });
 
 // Health endpoint

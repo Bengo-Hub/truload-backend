@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.DTOs.Settings;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Services.Interfaces.System;
 
 namespace TruLoad.Backend.Controllers.System;
@@ -228,5 +229,99 @@ public class SettingsController : ControllerBase
     {
         var overview = await _settingsService.GetSecurityOverviewAsync(ct);
         return Ok(overview);
+    }
+
+    // ============================================================================
+    // Restore Defaults Endpoints
+    // ============================================================================
+
+    /// <summary>
+    /// Restore a single setting to its default value.
+    /// </summary>
+    [HttpPost("key/{key}/restore-default")]
+    [HasPermission("system.security_policy")]
+    [ProducesResponseType(typeof(ApplicationSettingDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApplicationSettingDto>> RestoreDefault(string key, CancellationToken ct)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var setting = await _settingsService.RestoreDefaultAsync(key, userId, ct);
+            return Ok(setting);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Restore all settings in a category to their default values.
+    /// </summary>
+    [HttpPost("category/{category}/restore-defaults")]
+    [HasPermission("system.security_policy")]
+    [ProducesResponseType(typeof(List<ApplicationSettingDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<ApplicationSettingDto>>> RestoreCategoryDefaults(
+        string category,
+        CancellationToken ct)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var settings = await _settingsService.RestoreCategoryDefaultsAsync(category, userId, ct);
+            return Ok(settings);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    // ============================================================================
+    // Rate Limit Reload
+    // ============================================================================
+
+    /// <summary>
+    /// Reload rate limit settings from database without restarting the application.
+    /// </summary>
+    [HttpPost("reload-rate-limits")]
+    [HasPermission("system.security_policy")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> ReloadRateLimits()
+    {
+        var rateLimitSettings = HttpContext.RequestServices.GetRequiredService<RateLimitSettings>();
+        var settingsService = _settingsService;
+
+        rateLimitSettings.GlobalAuthenticatedPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitGlobalAuthenticatedPermit, 600);
+        rateLimitSettings.GlobalAuthenticatedWindowMinutes = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitGlobalAuthenticatedWindowMinutes, 1);
+        rateLimitSettings.GlobalAnonymousPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitGlobalAnonymousPermit, 30);
+        rateLimitSettings.DashboardPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitDashboardPermit, 800);
+        rateLimitSettings.ApiPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitApiPermit, 200);
+        rateLimitSettings.WeighingPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitWeighingPermit, 600);
+        rateLimitSettings.AutoweighPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitAutoweighPermit, 1000);
+        rateLimitSettings.AuthPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitAuthPermit, 10);
+        rateLimitSettings.AuthWindowMinutes = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitAuthWindowMinutes, 5);
+        rateLimitSettings.ReportsPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitReportsPermit, 30);
+        rateLimitSettings.SearchPermit = await settingsService
+            .GetSettingValueAsync(Models.System.SettingKeys.RateLimitSearchPermit, 120);
+
+        _logger.LogInformation("Rate limit settings reloaded by user {UserId}", GetUserId());
+        return Ok(new { message = "Rate limit settings reloaded successfully" });
     }
 }

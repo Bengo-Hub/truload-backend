@@ -44,6 +44,7 @@ public class CaseRegisterService : ICaseRegisterService
         var cases = await _caseRegisterRepository.SearchAsync(
             caseNo: criteria.CaseNo,
             vehicleRegNumber: criteria.VehicleRegNumber,
+            stationId: criteria.StationId,
             violationTypeId: criteria.ViolationTypeId,
             caseStatusId: criteria.CaseStatusId,
             dispositionTypeId: criteria.DispositionTypeId,
@@ -296,13 +297,19 @@ public class CaseRegisterService : ICaseRegisterService
     {
         var total = await _caseRegisterRepository.GetTotalCountAsync();
 
-        var statuses = await _context.CaseStatuses.ToListAsync();
-        var stats = new Dictionary<string, int> { { "Total", total } };
+        // Single query with GroupBy to avoid N+1
+        var statusCounts = await _context.CaseRegisters
+            .AsNoTracking()
+            .Where(c => c.DeletedAt == null)
+            .GroupBy(c => c.CaseStatus!.Name)
+            .Select(g => new { StatusName = g.Key, Count = g.Count() })
+            .ToListAsync();
 
-        foreach (var status in statuses)
+        var stats = new Dictionary<string, int> { { "Total", total } };
+        foreach (var sc in statusCounts)
         {
-            var count = await _caseRegisterRepository.GetCountByStatusAsync(status.Id);
-            stats[status.Name] = count;
+            if (!string.IsNullOrEmpty(sc.StatusName))
+                stats[sc.StatusName] = sc.Count;
         }
 
         return stats;

@@ -98,8 +98,8 @@ public class YardController : ControllerBase
         [FromQuery] DateTime? dateTo,
         CancellationToken ct)
     {
-        var from = dateFrom ?? DateTime.UtcNow.AddDays(-30);
-        var to = dateTo ?? DateTime.UtcNow;
+        var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
+        var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
         var request = new SearchYardEntriesRequest
         {

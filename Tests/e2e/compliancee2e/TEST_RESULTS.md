@@ -1,6 +1,6 @@
 # TruLoad E2E Compliance Test Results
 
-**Date**: 2026-02-12 15:28:32
+**Date**: 2026-02-14 15:40:37
 **Environment**: localhost:4000 (fresh database)
 
 ---
@@ -12,7 +12,7 @@
 ======================================================================
   TRULOAD COMPLIANCE E2E TEST
   Target: http://localhost:4000
-  Started: 2026-02-12T12:28:32.739854Z
+  Started: 2026-02-14T12:40:38.380799Z
 ======================================================================
 
   Workflow: Overload -> Case+Yard -> Prosecution -> Invoice
@@ -23,8 +23,8 @@
   STEP 1: Login
 ======================================================================
     POST /auth/login -> 200
-    userId:    019c51d2-55a6-7dae-ac70-cb8b3cbf8175
-    stationId: db485034-1eee-48dd-a5d0-bb65a48516ee
+    userId:    019c5c26-b2a4-72e4-a038-c5cec07ce373
+    stationId: 80a1d9fc-ac00-40cf-8773-c82c85e70ef1
 
   [PASS] Login
     -> Logged in as gadmin@masterspace.co.ke
@@ -47,24 +47,24 @@
     POST /scale-tests -> 201
 
   [PASS] Create scale test
-    -> Scale test created: 3e547b45-a274-4e1d-beae-498dde172099
+    -> Scale test created: 374cf8fc-bc24-4fe2-922b-35b05ad9623d
 
 ======================================================================
   STEP 4: Autoweigh overloaded vehicle
 ======================================================================
     POST /weighing-transactions/autoweigh -> 201
-    weighingId:    52d5b704-a90e-4414-b538-5ac2e799779b
-    vehicleId:     7ccd32e3-c468-4653-8b38-5db2c95d940a
+    weighingId:    f4e6e817-7ba0-4806-9185-3603dd1492a8
+    vehicleId:     ed5c5529-fbae-4109-a0f5-e240a5fd0597
     captureStatus: auto
     gvwMeasuredKg: 26550
 
   [PASS] Autoweigh overloaded vehicle
-    -> Autoweigh created: 52d5b704-a90e-4414-b538-5ac2e799779b
+    -> Autoweigh created: f4e6e817-7ba0-4806-9185-3603dd1492a8
 
 ======================================================================
   STEP 5: Update weighing metadata (driver, transporter)
 ======================================================================
-    PUT /weighing-transactions/52d5b704-a90e-4414-b538-5ac2e799779b -> 200
+    PUT /weighing-transactions/f4e6e817-7ba0-4806-9185-3603dd1492a8 -> 200
 
   [PASS] Update weighing metadata (driver, transporter)
     -> Linked: driver, transporter
@@ -72,7 +72,7 @@
 ======================================================================
   STEP 6: Capture weights (triggers compliance + case/yard auto-triggers)
 ======================================================================
-    POST /weighing-transactions/52d5b704-a90e-4414-b538-5ac2e799779b/capture-weights -> 200
+    POST /weighing-transactions/f4e6e817-7ba0-4806-9185-3603dd1492a8/capture-weights -> 200
     captureStatus: captured
     controlStatus: Overloaded
     isCompliant:   False
@@ -88,11 +88,11 @@
 ======================================================================
   STEP 7: Verify auto-created case register
 ======================================================================
-    GET /case/cases/by-weighing/52d5b704-a90e-4414-b538-5ac2e799779b -> 200
-    caseId:          35dd2ee7-3794-4dbe-af36-4a82d84a3d73
+    GET /case/cases/by-weighing/f4e6e817-7ba0-4806-9185-3603dd1492a8 -> 200
+    caseId:          213adc68-78cc-46c0-b39c-04816ef11f54
     caseNo:          NRB-MOBILE-01-2026-00001
     caseStatus:      Open
-    actId:           6f1e0ee5-e9ca-43e2-b451-150b428db2a7
+    actId:           8448c56e-bfe3-4f87-b64d-9656a54baa14
     violationDetails:GVW Overload: 550 kg. Control Status: Overloaded
     dispositionType: None
 
@@ -102,8 +102,8 @@
 ======================================================================
   STEP 8: Verify auto-created yard entry
 ======================================================================
-    GET /yard-entries/by-weighing/52d5b704-a90e-4414-b538-5ac2e799779b -> 200
-    yardEntryId: 0f55def7-8809-4c5b-b718-9095d465e47e
+    GET /yard-entries/by-weighing/f4e6e817-7ba0-4806-9185-3603dd1492a8 -> 200
+    yardEntryId: 3ce44108-3dc4-46ec-bf91-ad7c93236916
     status:      pending
     reason:      gvw_overload
 
@@ -113,8 +113,8 @@
 ======================================================================
   STEP 9: Create prosecution
 ======================================================================
-    POST /cases/35dd2ee7-3794-4dbe-af36-4a82d84a3d73/prosecution -> 201
-    prosecutionId:  69283dd3-c799-48d5-8735-d9055664955e
+    POST /cases/213adc68-78cc-46c0-b39c-04816ef11f54/prosecution -> 201
+    prosecutionId:  781f4547-9f6b-4b51-bcd3-d9e33706d21e
     totalFeeUsd:    2115.3
     totalFeeKes:    274989.0
     bestChargeBasis:gvw
@@ -129,12 +129,12 @@
 ======================================================================
   STEP 10: Generate invoice
 ======================================================================
-    POST /prosecutions/69283dd3-c799-48d5-8735-d9055664955e/invoices -> 201
-    invoiceId:   fc2e0947-239d-4bbd-9e75-f18d1a39e46b
+    POST /prosecutions/781f4547-9f6b-4b51-bcd3-d9e33706d21e/invoices -> 201
+    invoiceId:   196670e7-78ab-4f8b-9d73-19fe5a8422da
     invoiceNo:   INV-2026-000001
     amountDue:   274989.0 KES
     status:      pending
-    dueDate:     2026-03-14T12:28:36.9015178Z
+    dueDate:     2026-03-16T12:40:44.346623Z
 
   [PASS] Generate invoice
     -> Invoice INV-2026-000001: 274989.0 KES
@@ -142,18 +142,23 @@
 ======================================================================
   STEP 11: Push invoice to Pesaflow (eCitizen)
 ======================================================================
-    POST /invoices/fc2e0947-239d-4bbd-9e75-f18d1a39e46b/pesaflow -> 400
-    Response: {"success":false,"pesaflowInvoiceNumber":null,"paymentLink":null,"gatewayFee":null,"amountNet":null,"totalAmount":null,"currency":null,"message":"Pesaflow API error: UnprocessableEntity - {\"error\":\"Service ID maybe invalid\"}"}
-    WARNING: Pesaflow API call failed: 400
+    POST /invoices/196670e7-78ab-4f8b-9d73-19fe5a8422da/pesaflow -> 200
+    pesaflowInvoiceNo: ZJLAMM
+    paymentLink: https://test.pesaflow.com/checkout?request_id=zzcyZGdPiCzUIlxJsoFc
+    gatewayFee: 50.0
+    amountNet: 274989.0
+    totalAmount: 275039.0
+    success: True
+    message: Invoice created on Pesaflow via iframe endpoint
 
   [PASS] Push invoice to Pesaflow (eCitizen)
-    -> WARNING -- Pesaflow API error 400: {"success":false,"pesaflowInvoiceNumber":null,"paymentLink":null,"gatewayFee":null,"amountNet":null,
+    -> Pushed to Pesaflow: ZJLAMM, payment link: https://test.pesaflow.com/checkout?request_id=zzcyZGdPiCzUIlxJsoFc
 
 ======================================================================
   STEP 12: Record payment (triggers memo auto-creation)
 ======================================================================
-    POST /invoices/fc2e0947-239d-4bbd-9e75-f18d1a39e46b/payments -> 201
-    receiptId:    8552ce38-6db5-4198-bd41-c670ee19d444
+    POST /invoices/196670e7-78ab-4f8b-9d73-19fe5a8422da/payments -> 201
+    receiptId:    ce5a9a86-73db-4603-8cf4-07a82b06cb38
     receiptNo:    RCP-2026-000001
     amountPaid:   274989.0 KES
     paymentMethod:cash
@@ -164,7 +169,7 @@
 ======================================================================
   STEP 13: Verify invoice paid
 ======================================================================
-    GET /invoices/fc2e0947-239d-4bbd-9e75-f18d1a39e46b -> 200
+    GET /invoices/196670e7-78ab-4f8b-9d73-19fe5a8422da -> 200
     status: paid
 
   [PASS] Verify invoice paid
@@ -173,7 +178,7 @@
 ======================================================================
   STEP 14: Verify auto-created load correction memo
 ======================================================================
-    GET /case/cases/35dd2ee7-3794-4dbe-af36-4a82d84a3d73 -> 200
+    GET /case/cases/213adc68-78cc-46c0-b39c-04816ef11f54 -> 200
 
   [PASS] Verify auto-created load correction memo
     -> Load correction memo auto-created after payment (verified by paid invoice + case existence)
@@ -182,17 +187,17 @@
   STEP 15: Initiate reweigh (with relief truck)
 ======================================================================
     POST /weighing-transactions/reweigh -> 201
-    reweighId:     8f585510-897d-4690-a413-e0f7c4d38b4a
-    ticketNumber:  RWG-E2E-122839
+    reweighId:     2d767646-2ace-41ac-998b-98766cc27f71
+    ticketNumber:  RWG-E2E-124045
     reweighCycle:  1
 
   [PASS] Initiate reweigh (with relief truck)
-    -> Reweigh initiated: 8f585510-897d-4690-a413-e0f7c4d38b4a
+    -> Reweigh initiated: 2d767646-2ace-41ac-998b-98766cc27f71
 
 ======================================================================
   STEP 16: Capture compliant weights (auto-close cascade)
 ======================================================================
-    POST /weighing-transactions/8f585510-897d-4690-a413-e0f7c4d38b4a/capture-weights -> 200
+    POST /weighing-transactions/2d767646-2ace-41ac-998b-98766cc27f71/capture-weights -> 200
     controlStatus: Compliant
     isCompliant:   True
     gvwMeasuredKg: 24500
@@ -204,11 +209,11 @@
 ======================================================================
   STEP 17: Verify case auto-closed (with payment narration)
 ======================================================================
-    GET /case/cases/35dd2ee7-3794-4dbe-af36-4a82d84a3d73 -> 200
+    GET /case/cases/213adc68-78cc-46c0-b39c-04816ef11f54 -> 200
     caseStatus:      Closed
     dispositionType: Compliance Achieved
-    closedAt:        2026-02-12T12:28:39.942286Z
-    closingReason:   Vehicle reweighed and found compliant. Reweigh ticket: RWG-E2E-122839. Prosecution charged under gvw basis. Invoice: INV...
+    closedAt:        2026-02-14T12:40:46.30429Z
+    closingReason:   Vehicle reweighed and found compliant. Reweigh ticket: RWG-E2E-124045. Prosecution charged under gvw basis. Invoice: INV...
     -> Case closed: True
     -> Payment details in narration: True
     -> Fine amount in narration: True
@@ -221,7 +226,7 @@
 ======================================================================
     GET yard entry -> 200
     status:     released
-    releasedAt: 2026-02-12T12:28:40.021605Z
+    releasedAt: 2026-02-14T12:40:46.340677Z
 
   [PASS] Verify yard auto-released
     -> Yard status: released
@@ -236,42 +241,42 @@
 ======================================================================
   STEP 20: Download weight ticket PDF
 ======================================================================
-    GET /weighing-transactions/52d5b704-a90e-4414-b538-5ac2e799779b/ticket/pdf -> 200
+    GET /weighing-transactions/f4e6e817-7ba0-4806-9185-3603dd1492a8/ticket/pdf -> 200
     content-type: application/pdf
-    content-length: 210565 bytes
+    content-length: 210672 bytes
 
   [PASS] Download weight ticket PDF
-    -> Weight ticket PDF downloaded (210565 bytes)
+    -> Weight ticket PDF downloaded (210672 bytes)
 
 ======================================================================
   STEP 21: Download charge sheet PDF
 ======================================================================
-    GET /prosecutions/69283dd3-c799-48d5-8735-d9055664955e/charge-sheet -> 200
+    GET /prosecutions/781f4547-9f6b-4b51-bcd3-d9e33706d21e/charge-sheet -> 200
     content-type: application/pdf
-    content-length: 150270 bytes
+    content-length: 149939 bytes
 
   [PASS] Download charge sheet PDF
-    -> Charge sheet PDF downloaded (150270 bytes)
+    -> Charge sheet PDF downloaded (149939 bytes)
 
 ======================================================================
   STEP 22: Download invoice PDF
 ======================================================================
-    GET /invoices/fc2e0947-239d-4bbd-9e75-f18d1a39e46b/pdf -> 200
+    GET /invoices/196670e7-78ab-4f8b-9d73-19fe5a8422da/pdf -> 200
     content-type: application/pdf
-    content-length: 206886 bytes
+    content-length: 206429 bytes
 
   [PASS] Download invoice PDF
-    -> Invoice PDF downloaded (206886 bytes)
+    -> Invoice PDF downloaded (206429 bytes)
 
 ======================================================================
   STEP 23: Download receipt PDF
 ======================================================================
-    GET /receipts/8552ce38-6db5-4198-bd41-c670ee19d444/pdf -> 200
+    GET /receipts/ce5a9a86-73db-4603-8cf4-07a82b06cb38/pdf -> 200
     content-type: application/pdf
-    content-length: 181847 bytes
+    content-length: 182205 bytes
 
   [PASS] Download receipt PDF
-    -> Receipt PDF downloaded (181847 bytes)
+    -> Receipt PDF downloaded (182205 bytes)
 
 
 ======================================================================
@@ -309,15 +314,15 @@
   ALL 23 STEPS PASSED
 
   Collected IDs:
-    weighingId: 52d5b704-a90e-4414-b538-5ac2e799779b
-    caseId: 35dd2ee7-3794-4dbe-af36-4a82d84a3d73
-    yardEntryId: 0f55def7-8809-4c5b-b718-9095d465e47e
-    prosecutionId: 69283dd3-c799-48d5-8735-d9055664955e
-    invoiceId: fc2e0947-239d-4bbd-9e75-f18d1a39e46b
-    receiptId: 8552ce38-6db5-4198-bd41-c670ee19d444
-    reweighId: 8f585510-897d-4690-a413-e0f7c4d38b4a
-    driverId: 2032f4b9-2b14-4e27-870e-abd84e08c631
-    transporterId: 5b19a5c8-9316-4979-ad8a-92ab24f674f9
+    weighingId: f4e6e817-7ba0-4806-9185-3603dd1492a8
+    caseId: 213adc68-78cc-46c0-b39c-04816ef11f54
+    yardEntryId: 3ce44108-3dc4-46ec-bf91-ad7c93236916
+    prosecutionId: 781f4547-9f6b-4b51-bcd3-d9e33706d21e
+    invoiceId: 196670e7-78ab-4f8b-9d73-19fe5a8422da
+    receiptId: ce5a9a86-73db-4603-8cf4-07a82b06cb38
+    reweighId: 2d767646-2ace-41ac-998b-98766cc27f71
+    driverId: 92592a1b-06dd-4c9b-848c-d67422d7bf00
+    transporterId: 78a5df07-5aa1-40c9-a694-6172fc914e78
 ======================================================================
 
 STDERR:
@@ -334,7 +339,7 @@ STDERR:
 ======================================================================
   TRULOAD COMPLIANCE E2E TEST -- SCENARIO 2
   Target: http://localhost:4000
-  Started: 2026-02-12T12:28:44.895083Z
+  Started: 2026-02-14T12:40:48.756287Z
 ======================================================================
 
   Workflow: Within-Tolerance Overload -> Warning -> Auto Special Release -> Case Closed
@@ -344,8 +349,8 @@ STDERR:
   STEP 1: Login
 ======================================================================
     POST /auth/login -> 200
-    userId:    019c51d2-55a6-7dae-ac70-cb8b3cbf8175
-    stationId: db485034-1eee-48dd-a5d0-bb65a48516ee
+    userId:    019c5c26-b2a4-72e4-a038-c5cec07ce373
+    stationId: 80a1d9fc-ac00-40cf-8773-c82c85e70ef1
 
   [PASS] Login
     -> Logged in as gadmin@masterspace.co.ke
@@ -353,7 +358,7 @@ STDERR:
 ======================================================================
   STEP 2: Setup metadata (driver, transporter, cargo, locations)
 ======================================================================
-    Driver found: John E2E (2032f4b9-2b14-4e27-870e-abd84e08c631)
+    Driver found: John E2E (92592a1b-06dd-4c9b-848c-d67422d7bf00)
     Transporter found: E2E Test Transporters Ltd
     Cargo type found: Agricultural Produce
     Origin: Busia Border
@@ -368,24 +373,24 @@ STDERR:
     POST /scale-tests -> 201
 
   [PASS] Create scale test
-    -> Scale test created: ce4b4fdb-98bf-4ec2-b6f0-92d6f4c34a3d
+    -> Scale test created: 7ba29758-b01e-4ee8-8b4e-14548aa576bd
 
 ======================================================================
   STEP 4: Autoweigh within-tolerance vehicle
 ======================================================================
     POST /weighing-transactions/autoweigh -> 201
-    weighingId:    138a4d7f-0092-4851-825b-b2b10bdbbf89
-    vehicleId:     f4b9823c-48d9-426a-abde-47c5cf7fd57f
+    weighingId:    0872f743-aa2a-4808-87f1-aa15d57983f6
+    vehicleId:     00f8623f-c715-4998-bdbc-521d157ada78
     captureStatus: auto
     gvwMeasuredKg: 26100
 
   [PASS] Autoweigh within-tolerance vehicle
-    -> Autoweigh created: 138a4d7f-0092-4851-825b-b2b10bdbbf89
+    -> Autoweigh created: 0872f743-aa2a-4808-87f1-aa15d57983f6
 
 ======================================================================
   STEP 5: Update weighing metadata (driver, transporter)
 ======================================================================
-    PUT /weighing-transactions/138a4d7f-0092-4851-825b-b2b10bdbbf89 -> 200
+    PUT /weighing-transactions/0872f743-aa2a-4808-87f1-aa15d57983f6 -> 200
 
   [PASS] Update weighing metadata (driver, transporter)
     -> Linked: driver, transporter
@@ -393,7 +398,7 @@ STDERR:
 ======================================================================
   STEP 6: Capture weights (triggers compliance + auto special release)
 ======================================================================
-    POST /weighing-transactions/138a4d7f-0092-4851-825b-b2b10bdbbf89/capture-weights -> 200
+    POST /weighing-transactions/0872f743-aa2a-4808-87f1-aa15d57983f6/capture-weights -> 200
     captureStatus:    captured
     controlStatus:    Warning
     isCompliant:      False
@@ -408,7 +413,7 @@ STDERR:
 ======================================================================
   STEP 7: Verify ControlStatus=Warning, IsSentToYard=false
 ======================================================================
-    GET /weighing-transactions/138a4d7f-0092-4851-825b-b2b10bdbbf89 -> 200
+    GET /weighing-transactions/0872f743-aa2a-4808-87f1-aa15d57983f6 -> 200
     controlStatus: Warning
     isSentToYard:  False
     isCompliant:   False
@@ -420,11 +425,11 @@ STDERR:
 ======================================================================
   STEP 8: Verify auto-created case register
 ======================================================================
-    GET /case/cases/by-weighing/138a4d7f-0092-4851-825b-b2b10bdbbf89 -> 200
-    caseId:          3d4a29ac-c3ca-4ba5-b30f-eb6ccef5e27e
+    GET /case/cases/by-weighing/0872f743-aa2a-4808-87f1-aa15d57983f6 -> 200
+    caseId:          6a1964d1-b1db-45c5-a806-247fef45c3c6
     caseNo:          NRB-MOBILE-01-2026-00002
     caseStatus:      Closed
-    actId:           6f1e0ee5-e9ca-43e2-b451-150b428db2a7
+    actId:           8448c56e-bfe3-4f87-b64d-9656a54baa14
     violationDetails:GVW Overload: 100 kg. Control Status: Warning
     dispositionType: None
 
@@ -434,24 +439,24 @@ STDERR:
 ======================================================================
   STEP 9: Verify auto-created special release (TOLERANCE, auto-approved)
 ======================================================================
-    GET /case/special-releases/by-case/3d4a29ac-c3ca-4ba5-b30f-eb6ccef5e27e -> 200
-    specialReleaseId: 487b8efa-a20a-44e8-a769-7161148cd2f2
+    GET /case/special-releases/by-case/6a1964d1-b1db-45c5-a806-247fef45c3c6 -> 200
+    specialReleaseId: 1b2be332-7cfb-4441-b0b5-42873fda68f8
     releaseType:      Tolerance Release
     isApproved:       True
     reason:           GVW overload of 100kg is within operational tolerance (200kg). Auto-released wit
-    approvedAt:       2026-02-12T12:29:22.032738Z
+    approvedAt:       2026-02-14T12:41:44.606946Z
     approvedBy:       None
 
   [PASS] Verify auto-created special release (TOLERANCE, auto-approved)
-    -> Special release: type=Tolerance Release, isApproved=True, approvedAt=2026-02-12T12:29:22.032738Z
+    -> Special release: type=Tolerance Release, isApproved=True, approvedAt=2026-02-14T12:41:44.606946Z
 
 ======================================================================
   STEP 10: Verify case auto-closed with SPECIAL_RELEASE disposition
 ======================================================================
-    GET /case/cases/3d4a29ac-c3ca-4ba5-b30f-eb6ccef5e27e -> 200
+    GET /case/cases/6a1964d1-b1db-45c5-a806-247fef45c3c6 -> 200
     caseStatus:      Closed
     dispositionType: Special Release
-    closedAt:        2026-02-12T12:29:22.145061Z
+    closedAt:        2026-02-14T12:41:44.741338Z
     closingReason:   Auto-closed: GVW overload within tolerance (100kg <= 200kg). Special release certificate SR-TOL-2026-000001 issued.
     -> Case closed: True
     -> Disposition is SPECIAL_RELEASE: True
@@ -462,22 +467,22 @@ STDERR:
 ======================================================================
   STEP 11: Download special release certificate PDF
 ======================================================================
-    GET /case/special-releases/487b8efa-a20a-44e8-a769-7161148cd2f2/certificate/pdf -> 200
+    GET /case/special-releases/1b2be332-7cfb-4441-b0b5-42873fda68f8/certificate/pdf -> 200
     content-type: application/pdf
-    content-length: 200537 bytes
+    content-length: 198731 bytes
 
   [PASS] Download special release certificate PDF
-    -> Special release certificate PDF downloaded (200537 bytes)
+    -> Special release certificate PDF downloaded (198731 bytes)
 
 ======================================================================
   STEP 12: Download weight ticket PDF
 ======================================================================
-    GET /weighing-transactions/138a4d7f-0092-4851-825b-b2b10bdbbf89/ticket/pdf -> 200
+    GET /weighing-transactions/0872f743-aa2a-4808-87f1-aa15d57983f6/ticket/pdf -> 200
     content-type: application/pdf
-    content-length: 221061 bytes
+    content-length: 221621 bytes
 
   [PASS] Download weight ticket PDF
-    -> Weight ticket PDF downloaded (221061 bytes)
+    -> Weight ticket PDF downloaded (221621 bytes)
 
 
 ======================================================================
@@ -504,13 +509,13 @@ STDERR:
   ALL 12 STEPS PASSED
 
   Collected IDs:
-    weighingId: 138a4d7f-0092-4851-825b-b2b10bdbbf89
-    vehicleId: f4b9823c-48d9-426a-abde-47c5cf7fd57f
-    caseId: 3d4a29ac-c3ca-4ba5-b30f-eb6ccef5e27e
-    specialReleaseId: 487b8efa-a20a-44e8-a769-7161148cd2f2
-    scaleTestId: ce4b4fdb-98bf-4ec2-b6f0-92d6f4c34a3d
-    driverId: 2032f4b9-2b14-4e27-870e-abd84e08c631
-    transporterId: 5b19a5c8-9316-4979-ad8a-92ab24f674f9
+    weighingId: 0872f743-aa2a-4808-87f1-aa15d57983f6
+    vehicleId: 00f8623f-c715-4998-bdbc-521d157ada78
+    caseId: 6a1964d1-b1db-45c5-a806-247fef45c3c6
+    specialReleaseId: 1b2be332-7cfb-4441-b0b5-42873fda68f8
+    scaleTestId: 7ba29758-b01e-4ee8-8b4e-14548aa576bd
+    driverId: 92592a1b-06dd-4c9b-848c-d67422d7bf00
+    transporterId: 78a5df07-5aa1-40c9-a694-6172fc914e78
 ======================================================================
 
 STDERR:
@@ -525,7 +530,7 @@ STDERR:
 ======================================================================
   TRULOAD COMPLIANCE E2E TEST -- SCENARIO 3
   Target: http://localhost:4000
-  Started: 2026-02-12T12:29:24.561308Z
+  Started: 2026-02-14T12:41:55.443339Z
 ======================================================================
 
   Workflow: Manual KeNHA Tag -> Compliant Weight + TagHold
@@ -536,8 +541,8 @@ STDERR:
   STEP 1: Login
 ======================================================================
     POST /auth/login -> 200
-    userId:    019c51d2-55a6-7dae-ac70-cb8b3cbf8175
-    stationId: db485034-1eee-48dd-a5d0-bb65a48516ee
+    userId:    019c5c26-b2a4-72e4-a038-c5cec07ce373
+    stationId: 80a1d9fc-ac00-40cf-8773-c82c85e70ef1
 
   [PASS] Login
     -> Logged in as gadmin@masterspace.co.ke
@@ -545,7 +550,7 @@ STDERR:
 ======================================================================
   STEP 2: Setup metadata (driver, transporter, cargo, locations)
 ======================================================================
-    Driver found: John E2E (2032f4b9-2b14-4e27-870e-abd84e08c631)
+    Driver found: John E2E (92592a1b-06dd-4c9b-848c-d67422d7bf00)
     Transporter found: E2E Test Transporters Ltd
     Cargo type found: Agricultural Produce
     Origin: Busia Border
@@ -559,21 +564,21 @@ STDERR:
 ======================================================================
     GET /vehicle-tags/categories -> 200
     Available categories: 10
-      - COURT_ORDER: Court Order Hold (id=d45322a8-0950-47f9-b65b-6dede624cca8)
-      - CUSTOMS_HOLD: Customs Hold (id=324e7c6f-c24b-47b0-95d9-ac9e1c2d11d3)
-      - HABITUAL_OFFENDER: Habitual Offender (id=2a418ebc-914f-4f08-807e-fab277475dba)
-      - INSPECTION_DUE: Inspection Due (id=21eb87d1-25fc-4af3-9e58-667364b84d45)
-      - INSURANCE_EXPIRED: Insurance Expired (id=09c00ce5-2240-44c3-9a58-f97c51801c4b)
+      - COURT_ORDER: Court Order Hold (id=0c1494c5-064f-443c-b241-c86574f823c1)
+      - CUSTOMS_HOLD: Customs Hold (id=bf9d7db0-43e2-40ad-82a2-17e41433526b)
+      - HABITUAL_OFFENDER: Habitual Offender (id=5341b874-ee7b-4e3e-98d1-29ef6232611a)
+      - INSPECTION_DUE: Inspection Due (id=bef3b73d-7656-4f75-8a68-ef1612bc9dea)
+      - INSURANCE_EXPIRED: Insurance Expired (id=d79086ee-5db9-4139-8593-3b6b69ff9b54)
     Selected: COURT_ORDER / Court Order Hold
 
   [PASS] Fetch tag categories
-    -> Tag category: COURT_ORDER (d45322a8-0950-47f9-b65b-6dede624cca8)
+    -> Tag category: COURT_ORDER (0c1494c5-064f-443c-b241-c86574f823c1)
 
 ======================================================================
   STEP 4: Create manual KeNHA vehicle tag
 ======================================================================
     POST /vehicle-tags -> 201
-    tagId:           638a0236-17f4-4df5-afe3-5f3bbaa355ce
+    tagId:           d0ee347a-50ec-4853-a891-64ce18b8cc57
     regNo:           KDG 303T
     tagType:         manual
     tagCategoryName: Court Order Hold
@@ -582,7 +587,7 @@ STDERR:
     stationCode:     WBS-001
 
   [PASS] Create manual KeNHA vehicle tag
-    -> Tag 638a0236-17f4-4df5-afe3-5f3bbaa355ce created, status=open
+    -> Tag d0ee347a-50ec-4853-a891-64ce18b8cc57 created, status=open
 
 ======================================================================
   STEP 5: Create scale test
@@ -590,24 +595,24 @@ STDERR:
     POST /scale-tests -> 201
 
   [PASS] Create scale test
-    -> Scale test created: 29733684-fa5e-4897-a44a-a36b2947ee48
+    -> Scale test created: 49f79c66-42b0-4e4f-9e59-bff208b7b8bd
 
 ======================================================================
   STEP 6: Autoweigh compliant vehicle
 ======================================================================
     POST /weighing-transactions/autoweigh -> 201
-    weighingId:    a2dc1fb2-c40d-4bfe-b369-ef9d924d8724
-    vehicleId:     a0eda24b-dbe3-424c-aa41-1b3b7266b96c
+    weighingId:    acf3c88c-b147-484a-a354-170c7b66785d
+    vehicleId:     f27aeeb6-dc45-4547-b25f-bbd725c89a1f
     captureStatus: auto
     gvwMeasuredKg: 23000
 
   [PASS] Autoweigh compliant vehicle
-    -> Autoweigh created: a2dc1fb2-c40d-4bfe-b369-ef9d924d8724
+    -> Autoweigh created: acf3c88c-b147-484a-a354-170c7b66785d
 
 ======================================================================
   STEP 7: Update weighing metadata (driver, transporter)
 ======================================================================
-    PUT /weighing-transactions/a2dc1fb2-c40d-4bfe-b369-ef9d924d8724 -> 200
+    PUT /weighing-transactions/acf3c88c-b147-484a-a354-170c7b66785d -> 200
 
   [PASS] Update weighing metadata (driver, transporter)
     -> Linked: driver, transporter
@@ -615,7 +620,7 @@ STDERR:
 ======================================================================
   STEP 8: Capture weights (triggers compliance + TAG CHECK -> TagHold)
 ======================================================================
-    POST /weighing-transactions/a2dc1fb2-c40d-4bfe-b369-ef9d924d8724/capture-weights -> 200
+    POST /weighing-transactions/acf3c88c-b147-484a-a354-170c7b66785d/capture-weights -> 200
     captureStatus:    captured
     controlStatus:    TagHold
     isCompliant:      True
@@ -631,8 +636,8 @@ STDERR:
 ======================================================================
   STEP 9: Verify auto-created case register (TAG violation type)
 ======================================================================
-    GET /case/cases/by-weighing/a2dc1fb2-c40d-4bfe-b369-ef9d924d8724 -> 200
-    caseId:           cb5da40e-b08f-42cc-bb9c-f6a0288cf767
+    GET /case/cases/by-weighing/acf3c88c-b147-484a-a354-170c7b66785d -> 200
+    caseId:           e8956837-4a6f-43fb-b784-a4307982d7df
     caseNo:           NRB-MOBILE-01-2026-00003
     caseStatus:       Open
     violationType:    Vehicle Tag Violation
@@ -645,11 +650,11 @@ STDERR:
 ======================================================================
   STEP 10: Verify auto-created yard entry (reason=tag_hold)
 ======================================================================
-    GET /yard-entries/by-weighing/a2dc1fb2-c40d-4bfe-b369-ef9d924d8724 -> 200
-    yardEntryId: c076ec3b-b971-419f-bffa-1f84bd9f876c
+    GET /yard-entries/by-weighing/acf3c88c-b147-484a-a354-170c7b66785d -> 200
+    yardEntryId: 8136b8db-f239-44eb-90b2-4b43d055126a
     status:      pending
     reason:      tag_hold
-    enteredAt:   2026-02-12T12:29:25.322738Z
+    enteredAt:   2026-02-14T12:42:03.592925Z
 
   [PASS] Verify auto-created yard entry (reason=tag_hold)
     -> Yard entry: status=pending, reason=tag_hold
@@ -657,29 +662,29 @@ STDERR:
 ======================================================================
   STEP 11: Close manual tag (KeNHA levy paid)
 ======================================================================
-    PUT /vehicle-tags/638a0236-17f4-4df5-afe3-5f3bbaa355ce/close -> 200
+    PUT /vehicle-tags/d0ee347a-50ec-4853-a891-64ce18b8cc57/close -> 200
     status:       closed
     closedReason: KeNHA tag resolved - levy paid
-    closedAt:     2026-02-12T12:29:26.191462Z
+    closedAt:     2026-02-14T12:42:07.730139Z
     closedByName: Global Administrator
 
   [PASS] Close manual tag (KeNHA levy paid)
-    -> Tag closed: status=closed, at=2026-02-12T12:29:26.191462Z
+    -> Tag closed: status=closed, at=2026-02-14T12:42:07.730139Z
 
 ======================================================================
   STEP 12: Fetch release types (ADMIN_DISCRETION)
 ======================================================================
     GET /case/taxonomy/release-types -> 200
-      - ADMIN_DISCRETION: Administrative Discretion (id=c85af717-5f01-4e84-8dd7-5dcc3c5b3c93)
+      - ADMIN_DISCRETION: Administrative Discretion (id=1cc25153-f4bf-4ed0-b5fc-40276cc9c400)
 
   [PASS] Fetch release types (ADMIN_DISCRETION)
-    -> ADMIN_DISCRETION: c85af717-5f01-4e84-8dd7-5dcc3c5b3c93
+    -> ADMIN_DISCRETION: 1cc25153-f4bf-4ed0-b5fc-40276cc9c400
 
 ======================================================================
   STEP 13: Create special release
 ======================================================================
     POST /case/special-releases -> 201
-    specialReleaseId: 7c8ac308-59e8-445f-ade9-0c7d9e7b46cf
+    specialReleaseId: 9103860d-7635-4afa-a573-78f92c4773d0
     certificateNo:    SR-2026-00001
     releaseType:      
     reason:           Vehicle tag resolved by KeNHA. Releasing from yard hold.
@@ -692,23 +697,23 @@ STDERR:
 ======================================================================
   STEP 14: Approve special release
 ======================================================================
-    POST /case/special-releases/7c8ac308-59e8-445f-ade9-0c7d9e7b46cf/approve -> 200
+    POST /case/special-releases/9103860d-7635-4afa-a573-78f92c4773d0/approve -> 200
     isApproved:    True
-    approvedAt:    2026-02-12T12:30:24.0861243Z
+    approvedAt:    2026-02-14T12:42:38.8026343Z
     approvedByName:None
 
   [PASS] Approve special release
-    -> Special release approved at 2026-02-12T12:30:24.0861243Z
+    -> Special release approved at 2026-02-14T12:42:38.8026343Z
 
 ======================================================================
   STEP 15: Release vehicle from yard
 ======================================================================
-    PUT /yard-entries/c076ec3b-b971-419f-bffa-1f84bd9f876c/release -> 200
+    PUT /yard-entries/8136b8db-f239-44eb-90b2-4b43d055126a/release -> 200
     status:     released
-    releasedAt: 2026-02-12T12:30:24.657561Z
+    releasedAt: 2026-02-14T12:42:38.8703294Z
 
   [PASS] Release vehicle from yard
-    -> Yard status: released, releasedAt=2026-02-12T12:30:24.657561Z
+    -> Yard status: released, releasedAt=2026-02-14T12:42:38.8703294Z
 
 ======================================================================
   STEP 16: Verify final state (tag closed, SR approved, yard released)
@@ -725,22 +730,22 @@ STDERR:
 ======================================================================
   STEP 17: Download weight ticket PDF
 ======================================================================
-    GET /weighing-transactions/a2dc1fb2-c40d-4bfe-b369-ef9d924d8724/ticket/pdf -> 200
+    GET /weighing-transactions/acf3c88c-b147-484a-a354-170c7b66785d/ticket/pdf -> 200
     content-type: application/pdf
-    content-length: 202767 bytes
+    content-length: 202523 bytes
 
   [PASS] Download weight ticket PDF
-    -> Weight ticket PDF downloaded (202767 bytes)
+    -> Weight ticket PDF downloaded (202523 bytes)
 
 ======================================================================
   STEP 18: Download special release certificate PDF
 ======================================================================
-    GET /case/special-releases/7c8ac308-59e8-445f-ade9-0c7d9e7b46cf/certificate/pdf -> 200
+    GET /case/special-releases/9103860d-7635-4afa-a573-78f92c4773d0/certificate/pdf -> 200
     content-type: application/pdf
-    content-length: 197096 bytes
+    content-length: 196852 bytes
 
   [PASS] Download special release certificate PDF
-    -> Special release certificate PDF downloaded (197096 bytes)
+    -> Special release certificate PDF downloaded (196852 bytes)
 
 
 ======================================================================
@@ -773,16 +778,16 @@ STDERR:
   ALL 18 STEPS PASSED
 
   Collected IDs:
-    weighingId: a2dc1fb2-c40d-4bfe-b369-ef9d924d8724
-    vehicleId: a0eda24b-dbe3-424c-aa41-1b3b7266b96c
-    tagId: 638a0236-17f4-4df5-afe3-5f3bbaa355ce
-    caseId: cb5da40e-b08f-42cc-bb9c-f6a0288cf767
-    yardEntryId: c076ec3b-b971-419f-bffa-1f84bd9f876c
-    specialReleaseId: 7c8ac308-59e8-445f-ade9-0c7d9e7b46cf
-    adminDiscretionReleaseTypeId: c85af717-5f01-4e84-8dd7-5dcc3c5b3c93
-    scaleTestId: 29733684-fa5e-4897-a44a-a36b2947ee48
-    driverId: 2032f4b9-2b14-4e27-870e-abd84e08c631
-    transporterId: 5b19a5c8-9316-4979-ad8a-92ab24f674f9
+    weighingId: acf3c88c-b147-484a-a354-170c7b66785d
+    vehicleId: f27aeeb6-dc45-4547-b25f-bbd725c89a1f
+    tagId: d0ee347a-50ec-4853-a891-64ce18b8cc57
+    caseId: e8956837-4a6f-43fb-b784-a4307982d7df
+    yardEntryId: 8136b8db-f239-44eb-90b2-4b43d055126a
+    specialReleaseId: 9103860d-7635-4afa-a573-78f92c4773d0
+    adminDiscretionReleaseTypeId: 1cc25153-f4bf-4ed0-b5fc-40276cc9c400
+    scaleTestId: 49f79c66-42b0-4e4f-9e59-bff208b7b8bd
+    driverId: 92592a1b-06dd-4c9b-848c-d67422d7bf00
+    transporterId: 78a5df07-5aa1-40c9-a694-6172fc914e78
 ======================================================================
 
 STDERR:
@@ -797,7 +802,7 @@ STDERR:
 ======================================================================
   TRULOAD COMPLIANCE E2E TEST -- SCENARIO 4
   Target: http://localhost:4000
-  Started: 2026-02-12T12:30:32.414477Z
+  Started: 2026-02-14T12:42:40.020153Z
 ======================================================================
 
   Workflow: Compliant Vehicle -> Weight Ticket Only (No Case, No Yard, No Prosecution)
@@ -807,8 +812,8 @@ STDERR:
   STEP 1: Login
 ======================================================================
     POST /auth/login -> 200
-    userId:    019c51d2-55a6-7dae-ac70-cb8b3cbf8175
-    stationId: db485034-1eee-48dd-a5d0-bb65a48516ee
+    userId:    019c5c26-b2a4-72e4-a038-c5cec07ce373
+    stationId: 80a1d9fc-ac00-40cf-8773-c82c85e70ef1
 
   [PASS] Login
     -> Logged in as gadmin@masterspace.co.ke
@@ -816,7 +821,7 @@ STDERR:
 ======================================================================
   STEP 2: Setup metadata (driver, transporter, cargo, locations)
 ======================================================================
-    Driver found: John E2E (2032f4b9-2b14-4e27-870e-abd84e08c631)
+    Driver found: John E2E (92592a1b-06dd-4c9b-848c-d67422d7bf00)
     Transporter found: E2E Test Transporters Ltd
     Cargo type found: Agricultural Produce
     Origin: Busia Border
@@ -831,24 +836,24 @@ STDERR:
     POST /scale-tests -> 201
 
   [PASS] Create scale test
-    -> Scale test created: 8ec1eadc-c669-4742-a171-617b9cb0db98
+    -> Scale test created: 74b2d72b-4335-4d7b-b9d6-0a4168cdad58
 
 ======================================================================
   STEP 4: Autoweigh compliant vehicle
 ======================================================================
     POST /weighing-transactions/autoweigh -> 201
-    weighingId:    f8fb5563-b9a5-4ff5-a2b6-093180575f80
-    vehicleId:     babc1b4b-d7e9-4580-a5af-e26fe8479128
+    weighingId:    0ea6c068-d346-4f1a-afcd-69702f4d05b9
+    vehicleId:     8b8234a4-f47a-465a-a775-74a5a6e5fb83
     captureStatus: auto
     gvwMeasuredKg: 21500
 
   [PASS] Autoweigh compliant vehicle
-    -> Autoweigh created: f8fb5563-b9a5-4ff5-a2b6-093180575f80
+    -> Autoweigh created: 0ea6c068-d346-4f1a-afcd-69702f4d05b9
 
 ======================================================================
   STEP 5: Update weighing metadata (driver, transporter)
 ======================================================================
-    PUT /weighing-transactions/f8fb5563-b9a5-4ff5-a2b6-093180575f80 -> 200
+    PUT /weighing-transactions/0ea6c068-d346-4f1a-afcd-69702f4d05b9 -> 200
 
   [PASS] Update weighing metadata (driver, transporter)
     -> Linked: driver, transporter
@@ -856,7 +861,7 @@ STDERR:
 ======================================================================
   STEP 6: Capture weights (triggers compliance check)
 ======================================================================
-    POST /weighing-transactions/f8fb5563-b9a5-4ff5-a2b6-093180575f80/capture-weights -> 200
+    POST /weighing-transactions/0ea6c068-d346-4f1a-afcd-69702f4d05b9/capture-weights -> 200
     captureStatus:    captured
     controlStatus:    Compliant
     isCompliant:      True
@@ -871,7 +876,7 @@ STDERR:
 ======================================================================
   STEP 7: Verify Compliant status (ControlStatus, IsCompliant, IsSentToYard)
 ======================================================================
-    GET /weighing-transactions/f8fb5563-b9a5-4ff5-a2b6-093180575f80 -> 200
+    GET /weighing-transactions/0ea6c068-d346-4f1a-afcd-69702f4d05b9 -> 200
     controlStatus: Compliant
     isCompliant:   True
     isSentToYard:  False
@@ -882,7 +887,7 @@ STDERR:
 ======================================================================
   STEP 8: Verify NO case register created (expect 404)
 ======================================================================
-    GET /case/cases/by-weighing/f8fb5563-b9a5-4ff5-a2b6-093180575f80 -> 404
+    GET /case/cases/by-weighing/0ea6c068-d346-4f1a-afcd-69702f4d05b9 -> 404
 
   [PASS] Verify NO case register created (expect 404)
     -> No case created (404) -- correct for compliant vehicle
@@ -890,7 +895,7 @@ STDERR:
 ======================================================================
   STEP 9: Verify NO yard entry created (expect 404)
 ======================================================================
-    GET /yard-entries/by-weighing/f8fb5563-b9a5-4ff5-a2b6-093180575f80 -> 404
+    GET /yard-entries/by-weighing/0ea6c068-d346-4f1a-afcd-69702f4d05b9 -> 404
 
   [PASS] Verify NO yard entry created (expect 404)
     -> No yard entry created (404) -- correct for compliant vehicle
@@ -898,12 +903,12 @@ STDERR:
 ======================================================================
   STEP 10: Download weight ticket PDF
 ======================================================================
-    GET /weighing-transactions/f8fb5563-b9a5-4ff5-a2b6-093180575f80/ticket/pdf -> 200
+    GET /weighing-transactions/0ea6c068-d346-4f1a-afcd-69702f4d05b9/ticket/pdf -> 200
     content-type: application/pdf
-    content-length: 203767 bytes
+    content-length: 203714 bytes
 
   [PASS] Download weight ticket PDF
-    -> Weight ticket PDF downloaded (203767 bytes)
+    -> Weight ticket PDF downloaded (203714 bytes)
 
 
 ======================================================================
@@ -928,11 +933,11 @@ STDERR:
   ALL 10 STEPS PASSED
 
   Collected IDs:
-    weighingId: f8fb5563-b9a5-4ff5-a2b6-093180575f80
-    vehicleId: babc1b4b-d7e9-4580-a5af-e26fe8479128
-    scaleTestId: 8ec1eadc-c669-4742-a171-617b9cb0db98
-    driverId: 2032f4b9-2b14-4e27-870e-abd84e08c631
-    transporterId: 5b19a5c8-9316-4979-ad8a-92ab24f674f9
+    weighingId: 0ea6c068-d346-4f1a-afcd-69702f4d05b9
+    vehicleId: 8b8234a4-f47a-465a-a775-74a5a6e5fb83
+    scaleTestId: 74b2d72b-4335-4d7b-b9d6-0a4168cdad58
+    driverId: 92592a1b-06dd-4c9b-848c-d67422d7bf00
+    transporterId: 78a5df07-5aa1-40c9-a694-6172fc914e78
 ======================================================================
 
 STDERR:
@@ -947,7 +952,7 @@ STDERR:
 ======================================================================
   TRULOAD COMPLIANCE E2E TEST -- SCENARIO 5
   Target: http://localhost:4000
-  Started: 2026-02-12T12:30:39.189768Z
+  Started: 2026-02-14T12:42:42.789078Z
 ======================================================================
 
   Workflow: Overload -> Case+Yard -> Prosecution+Invoice
@@ -958,8 +963,8 @@ STDERR:
   STEP 1: Login
 ======================================================================
     POST /auth/login -> 200
-    userId:    019c51d2-55a6-7dae-ac70-cb8b3cbf8175
-    stationId: db485034-1eee-48dd-a5d0-bb65a48516ee
+    userId:    019c5c26-b2a4-72e4-a038-c5cec07ce373
+    stationId: 80a1d9fc-ac00-40cf-8773-c82c85e70ef1
 
   [PASS] Login
     -> Logged in as gadmin@masterspace.co.ke
@@ -967,7 +972,7 @@ STDERR:
 ======================================================================
   STEP 2: Setup metadata (driver, transporter, cargo, locations)
 ======================================================================
-    Driver found: John E2E (2032f4b9-2b14-4e27-870e-abd84e08c631)
+    Driver found: John E2E (92592a1b-06dd-4c9b-848c-d67422d7bf00)
     Transporter found: E2E Test Transporters Ltd
     Cargo type found: Agricultural Produce
     Origin: Busia Border
@@ -982,24 +987,24 @@ STDERR:
     POST /scale-tests -> 201
 
   [PASS] Create scale test
-    -> Scale test created: 13a89fc1-acb3-4009-910b-ef90abea44b4
+    -> Scale test created: 54bb4f53-bf19-4358-bd43-e40b4c43b82c
 
 ======================================================================
   STEP 4: Autoweigh overloaded vehicle (GVW 29000, limit 26000)
 ======================================================================
     POST /weighing-transactions/autoweigh -> 201
-    weighingId:    eadbc914-485c-43e6-bdda-bb7fa9251c52
-    vehicleId:     bfa53313-68b1-423e-850c-3df1729fecee
+    weighingId:    f419a8c8-0e1f-4741-8a55-3f0f27f051c4
+    vehicleId:     0da5aa65-7b04-4257-bcac-be7f248b4818
     captureStatus: auto
     gvwMeasuredKg: 29000
 
   [PASS] Autoweigh overloaded vehicle (GVW 29000, limit 26000)
-    -> Autoweigh created: eadbc914-485c-43e6-bdda-bb7fa9251c52
+    -> Autoweigh created: f419a8c8-0e1f-4741-8a55-3f0f27f051c4
 
 ======================================================================
   STEP 5: Update weighing metadata (driver, transporter)
 ======================================================================
-    PUT /weighing-transactions/eadbc914-485c-43e6-bdda-bb7fa9251c52 -> 200
+    PUT /weighing-transactions/f419a8c8-0e1f-4741-8a55-3f0f27f051c4 -> 200
 
   [PASS] Update weighing metadata (driver, transporter)
     -> Linked: driver, transporter
@@ -1007,7 +1012,7 @@ STDERR:
 ======================================================================
   STEP 6: Capture weights (triggers compliance + case/yard auto-triggers)
 ======================================================================
-    POST /weighing-transactions/eadbc914-485c-43e6-bdda-bb7fa9251c52/capture-weights -> 200
+    POST /weighing-transactions/f419a8c8-0e1f-4741-8a55-3f0f27f051c4/capture-weights -> 200
     captureStatus: captured
     controlStatus: Overloaded
     isCompliant:   False
@@ -1023,7 +1028,7 @@ STDERR:
 ======================================================================
   STEP 7: Verify ControlStatus=Overloaded and IsSentToYard=true
 ======================================================================
-    GET /weighing-transactions/eadbc914-485c-43e6-bdda-bb7fa9251c52 -> 200
+    GET /weighing-transactions/f419a8c8-0e1f-4741-8a55-3f0f27f051c4 -> 200
     controlStatus: Overloaded
     isSentToYard:  True
     isCompliant:   False
@@ -1035,11 +1040,11 @@ STDERR:
 ======================================================================
   STEP 8: Verify auto-created case register
 ======================================================================
-    GET /case/cases/by-weighing/eadbc914-485c-43e6-bdda-bb7fa9251c52 -> 200
-    caseId:          f36f0528-b85e-4e37-ad44-35c9e16b44b6
+    GET /case/cases/by-weighing/f419a8c8-0e1f-4741-8a55-3f0f27f051c4 -> 200
+    caseId:          9c595fb4-6c59-4000-bf8e-ecdc5511fc37
     caseNo:          NRB-MOBILE-01-2026-00004
     caseStatus:      Open
-    actId:           6f1e0ee5-e9ca-43e2-b451-150b428db2a7
+    actId:           8448c56e-bfe3-4f87-b64d-9656a54baa14
     violationDetails:GVW Overload: 3,000 kg. Control Status: Overloaded
     dispositionType: None
 
@@ -1049,8 +1054,8 @@ STDERR:
 ======================================================================
   STEP 9: Verify auto-created yard entry (reason=gvw_overload)
 ======================================================================
-    GET /yard-entries/by-weighing/eadbc914-485c-43e6-bdda-bb7fa9251c52 -> 200
-    yardEntryId: cae910bf-6884-41c6-9113-b6b661642987
+    GET /yard-entries/by-weighing/f419a8c8-0e1f-4741-8a55-3f0f27f051c4 -> 200
+    yardEntryId: 3099679f-4d11-45aa-ad50-9f9760de1088
     status:      pending
     reason:      gvw_overload
 
@@ -1060,8 +1065,8 @@ STDERR:
 ======================================================================
   STEP 10: Create prosecution
 ======================================================================
-    POST /cases/f36f0528-b85e-4e37-ad44-35c9e16b44b6/prosecution -> 201
-    prosecutionId:  1eb4a4f6-3bf5-435a-9557-3c864ed655a6
+    POST /cases/9c595fb4-6c59-4000-bf8e-ecdc5511fc37/prosecution -> 201
+    prosecutionId:  19ddab66-65de-4daa-9558-adba1a57a6da
     totalFeeUsd:    23076.0
     totalFeeKes:    2999880.0
     bestChargeBasis:gvw
@@ -1076,7 +1081,7 @@ STDERR:
 ======================================================================
   STEP 11: Verify prosecution offenseCount and demeritPoints
 ======================================================================
-    GET /prosecutions/1eb4a4f6-3bf5-435a-9557-3c864ed655a6 -> 200
+    GET /prosecutions/19ddab66-65de-4daa-9558-adba1a57a6da -> 200
     offenseCount:  0
     demeritPoints: 5
     status:        pending
@@ -1088,12 +1093,12 @@ STDERR:
 ======================================================================
   STEP 12: Generate invoice
 ======================================================================
-    POST /prosecutions/1eb4a4f6-3bf5-435a-9557-3c864ed655a6/invoices -> 201
-    invoiceId:   20cb7f61-2a70-483c-a582-e52a7fba00e9
+    POST /prosecutions/19ddab66-65de-4daa-9558-adba1a57a6da/invoices -> 201
+    invoiceId:   4f39ba9a-ef86-4776-9fa1-947862bb88db
     invoiceNo:   INV-2026-000002
     amountDue:   2999880.0 KES
     status:      pending
-    dueDate:     2026-03-14T12:31:22.7262517Z
+    dueDate:     2026-03-16T12:43:40.8778134Z
 
   [PASS] Generate invoice
     -> Invoice INV-2026-000002: 2999880.0 KES
@@ -1103,10 +1108,10 @@ STDERR:
 ======================================================================
     GET /case/disposition-types -> 404
     GET /case/taxonomy/disposition-types -> 200
-    Found COURT_ESCALATION: a63cee5a-b0b3-4e3e-a6b3-e8e2cf950ce1
-    PUT /case/cases/f36f0528-b85e-4e37-ad44-35c9e16b44b6 -> 200
+    Found COURT_ESCALATION: ad6af5c7-ab50-4d55-8a15-7db84e2f44a7
+    PUT /case/cases/9c595fb4-6c59-4000-bf8e-ecdc5511fc37 -> 200
     dispositionType:   Court Escalation
-    dispositionTypeId: a63cee5a-b0b3-4e3e-a6b3-e8e2cf950ce1
+    dispositionTypeId: ad6af5c7-ab50-4d55-8a15-7db84e2f44a7
     caseStatus:        Open
 
   [PASS] Escalate case to court (disposition=COURT_ESCALATION)
@@ -1115,10 +1120,10 @@ STDERR:
 ======================================================================
   STEP 14: Verify case has court escalation disposition
 ======================================================================
-    GET /case/cases/f36f0528-b85e-4e37-ad44-35c9e16b44b6 -> 200
+    GET /case/cases/9c595fb4-6c59-4000-bf8e-ecdc5511fc37 -> 200
     caseStatus:        Open
     dispositionType:   Court Escalation
-    dispositionTypeId: a63cee5a-b0b3-4e3e-a6b3-e8e2cf950ce1
+    dispositionTypeId: ad6af5c7-ab50-4d55-8a15-7db84e2f44a7
     closedAt:          None
 
   [PASS] Verify case has court escalation disposition
@@ -1138,10 +1143,10 @@ STDERR:
 ======================================================================
   STEP 16: Download prohibition order PDF
 ======================================================================
-    Found prohibitionOrderId: bdea65f6-2803-424c-944b-e7e23f82c58d
-    GET /prohibition-orders/bdea65f6-2803-424c-944b-e7e23f82c58d/pdf -> 404
-    GET /weighing-transactions/eadbc914-485c-43e6-bdda-bb7fa9251c52/prohibition-order/pdf -> 404
-    GET /weighing-transactions/eadbc914-485c-43e6-bdda-bb7fa9251c52/prohibition/pdf -> 404
+    Found prohibitionOrderId: 5600a411-3bfa-4b29-8660-2147347ede44
+    GET /prohibition-orders/5600a411-3bfa-4b29-8660-2147347ede44/pdf -> 404
+    GET /weighing-transactions/f419a8c8-0e1f-4741-8a55-3f0f27f051c4/prohibition-order/pdf -> 404
+    GET /weighing-transactions/f419a8c8-0e1f-4741-8a55-3f0f27f051c4/prohibition/pdf -> 404
     NOTE: No prohibition order PDF endpoint found.
     The prohibition order is created internally but PDF download
     may require a dedicated controller endpoint to be added.
@@ -1152,22 +1157,22 @@ STDERR:
 ======================================================================
   STEP 17: Download weight ticket PDF
 ======================================================================
-    GET /weighing-transactions/eadbc914-485c-43e6-bdda-bb7fa9251c52/ticket/pdf -> 200
+    GET /weighing-transactions/f419a8c8-0e1f-4741-8a55-3f0f27f051c4/ticket/pdf -> 200
     content-type: application/pdf
-    content-length: 208788 bytes
+    content-length: 209404 bytes
 
   [PASS] Download weight ticket PDF
-    -> Weight ticket PDF downloaded (208788 bytes)
+    -> Weight ticket PDF downloaded (209404 bytes)
 
 ======================================================================
   STEP 18: Download charge sheet PDF
 ======================================================================
-    GET /prosecutions/1eb4a4f6-3bf5-435a-9557-3c864ed655a6/charge-sheet -> 200
+    GET /prosecutions/19ddab66-65de-4daa-9558-adba1a57a6da/charge-sheet -> 200
     content-type: application/pdf
-    content-length: 150709 bytes
+    content-length: 150386 bytes
 
   [PASS] Download charge sheet PDF
-    -> Charge sheet PDF downloaded (150709 bytes)
+    -> Charge sheet PDF downloaded (150386 bytes)
 
 
 ======================================================================
@@ -1200,15 +1205,15 @@ STDERR:
   ALL 18 STEPS PASSED
 
   Collected IDs:
-    weighingId: eadbc914-485c-43e6-bdda-bb7fa9251c52
-    caseId: f36f0528-b85e-4e37-ad44-35c9e16b44b6
-    yardEntryId: cae910bf-6884-41c6-9113-b6b661642987
-    prosecutionId: 1eb4a4f6-3bf5-435a-9557-3c864ed655a6
-    invoiceId: 20cb7f61-2a70-483c-a582-e52a7fba00e9
-    courtEscalationDispositionId: a63cee5a-b0b3-4e3e-a6b3-e8e2cf950ce1
-    prohibitionOrderId: bdea65f6-2803-424c-944b-e7e23f82c58d
-    driverId: 2032f4b9-2b14-4e27-870e-abd84e08c631
-    transporterId: 5b19a5c8-9316-4979-ad8a-92ab24f674f9
+    weighingId: f419a8c8-0e1f-4741-8a55-3f0f27f051c4
+    caseId: 9c595fb4-6c59-4000-bf8e-ecdc5511fc37
+    yardEntryId: 3099679f-4d11-45aa-ad50-9f9760de1088
+    prosecutionId: 19ddab66-65de-4daa-9558-adba1a57a6da
+    invoiceId: 4f39ba9a-ef86-4776-9fa1-947862bb88db
+    courtEscalationDispositionId: ad6af5c7-ab50-4d55-8a15-7db84e2f44a7
+    prohibitionOrderId: 5600a411-3bfa-4b29-8660-2147347ede44
+    driverId: 92592a1b-06dd-4c9b-848c-d67422d7bf00
+    transporterId: 78a5df07-5aa1-40c9-a694-6172fc914e78
 ======================================================================
 
 STDERR:
@@ -1224,7 +1229,7 @@ STDERR:
   TRULOAD COMPLIANCE E2E TEST -- SCENARIO 6
   Full Court Case Lifecycle
   Target: http://localhost:4000
-  Started: 2026-02-12T12:31:23.720364Z
+  Started: 2026-02-14T12:44:39.138366Z
 ======================================================================
 
   Workflow: Metadata -> Autoweigh -> Overload -> Case+Yard
@@ -1236,8 +1241,8 @@ STDERR:
   STEP 1: Login
 ======================================================================
     POST /auth/login -> 200
-    userId:    019c51d2-55a6-7dae-ac70-cb8b3cbf8175
-    stationId: db485034-1eee-48dd-a5d0-bb65a48516ee
+    userId:    019c5c26-b2a4-72e4-a038-c5cec07ce373
+    stationId: 80a1d9fc-ac00-40cf-8773-c82c85e70ef1
 
   [PASS] Login
     -> Logged in as gadmin@masterspace.co.ke
@@ -1245,7 +1250,7 @@ STDERR:
 ======================================================================
   STEP 2: Setup metadata (driver, transporter, cargo, locs)
 ======================================================================
-    Driver found: John E2E (2032f4b9-2b14-4e27-870e-abd84e08c631)
+    Driver found: John E2E (92592a1b-06dd-4c9b-848c-d67422d7bf00)
     Transporter found: E2E Test Transporters Ltd
     Cargo type found: Agricultural Produce
     Origin: Busia Border
@@ -1260,24 +1265,24 @@ STDERR:
     POST /scale-tests -> 201
 
   [PASS] Create scale test
-    -> Scale test created: 51e46e4a-dfe3-45d5-a579-862d72476ad6
+    -> Scale test created: 7dbfec89-f081-4875-b94e-ef7d6c3d9104
 
 ======================================================================
   STEP 4: Autoweigh overloaded vehicle (KDG 606L, GVW=27500)
 ======================================================================
     POST /weighing-transactions/autoweigh -> 201
-    weighingId:    e9279d3e-9649-4309-8ccd-b7f45fef2320
-    vehicleId:     76256831-41ac-449c-adcf-d8ec401a572c
+    weighingId:    66bf3695-9663-4d0c-bf41-85ccff46511f
+    vehicleId:     24f23585-5e3b-46cf-9cd8-aadbf99e9bac
     captureStatus: auto
     gvwMeasuredKg: 27500
 
   [PASS] Autoweigh overloaded vehicle (KDG 606L, GVW=27500)
-    -> Autoweigh created: e9279d3e-9649-4309-8ccd-b7f45fef2320
+    -> Autoweigh created: 66bf3695-9663-4d0c-bf41-85ccff46511f
 
 ======================================================================
   STEP 5: Update weighing metadata (driver, transporter)
 ======================================================================
-    PUT /weighing-transactions/e9279d3e-9649-4309-8ccd-b7f45fef2320 -> 200
+    PUT /weighing-transactions/66bf3695-9663-4d0c-bf41-85ccff46511f -> 200
 
   [PASS] Update weighing metadata (driver, transporter)
     -> Linked: driver, transporter
@@ -1285,7 +1290,7 @@ STDERR:
 ======================================================================
   STEP 6: Capture weights (triggers compliance + auto-case)
 ======================================================================
-    POST /weighing-transactions/e9279d3e-9649-4309-8ccd-b7f45fef2320/capture-weights -> 200
+    POST /weighing-transactions/66bf3695-9663-4d0c-bf41-85ccff46511f/capture-weights -> 200
     captureStatus: captured
     controlStatus: Overloaded
     isCompliant:   False
@@ -1298,8 +1303,8 @@ STDERR:
 ======================================================================
   STEP 7: Verify case auto-created
 ======================================================================
-    GET /case/cases/by-weighing/e9279d3e-9649-4309-8ccd-b7f45fef2320 -> 200
-    caseId:     39ce5f7a-606f-47e8-a35d-44cb5e7a47e6
+    GET /case/cases/by-weighing/66bf3695-9663-4d0c-bf41-85ccff46511f -> 200
+    caseId:     6b9f7295-e960-43b6-93b6-134af58552a5
     caseNo:     NRB-MOBILE-01-2026-00005
     caseStatus: Open
 
@@ -1309,19 +1314,19 @@ STDERR:
 ======================================================================
   STEP 8: Verify yard entry auto-created
 ======================================================================
-    GET /yard-entries/by-weighing/e9279d3e-9649-4309-8ccd-b7f45fef2320 -> 200
-    yardEntryId: 1d8b2bb3-259a-47cd-832f-bf757955cfb2
+    GET /yard-entries/by-weighing/66bf3695-9663-4d0c-bf41-85ccff46511f -> 200
+    yardEntryId: 10acfc6a-bda7-4ac3-8c9c-0c562bad3037
     status:      pending
 
   [PASS] Verify yard entry auto-created
-    -> Yard entry exists: 1d8b2bb3-259a-47cd-832f-bf757955cfb2
+    -> Yard entry exists: 10acfc6a-bda7-4ac3-8c9c-0c562bad3037
 
 ======================================================================
   STEP 9: Escalate to court
 ======================================================================
     GET /case/taxonomy/disposition-types -> 200
-    Disposition type: COURT_ESCALATION -> a63cee5a-b0b3-4e3e-a6b3-e8e2cf950ce1
-    PUT /case/cases/39ce5f7a-606f-47e8-a35d-44cb5e7a47e6 -> 200
+    Disposition type: COURT_ESCALATION -> ad6af5c7-ab50-4d55-8a15-7db84e2f44a7
+    PUT /case/cases/6b9f7295-e960-43b6-93b6-134af58552a5 -> 200
     dispositionType: Court Escalation
 
   [PASS] Escalate to court
@@ -1331,18 +1336,18 @@ STDERR:
   STEP 10: Create court record
 ======================================================================
     POST /courts -> 201
-    courtId: 84391d83-d428-4b04-813b-aedcbaa76169
-    code:    E2E-MCT-2CFD1AE7
-    name:    E2E Magistrates Court 2CFD1AE7
+    courtId: 692fe179-ce58-41a7-b1bc-f6f1c24b4b64
+    code:    E2E-MCT-4B800398
+    name:    E2E Magistrates Court 4B800398
 
   [PASS] Create court record
-    -> Court created: E2E Magistrates Court 2CFD1AE7 (84391d83-d428-4b04-813b-aedcbaa76169)
+    -> Court created: E2E Magistrates Court 4B800398 (692fe179-ce58-41a7-b1bc-f6f1c24b4b64)
 
 ======================================================================
   STEP 11: Assign IO (initial assignment)
 ======================================================================
-    POST /cases/39ce5f7a-606f-47e8-a35d-44cb5e7a47e6/assignments -> 201
-    assignmentId: c953b0fb-1cd9-4f72-8454-043ce310054e
+    POST /cases/6b9f7295-e960-43b6-93b6-134af58552a5/assignments -> 201
+    assignmentId: e22ac3b4-eb17-4d29-b863-86ab68630aaa
     isCurrent:    True
 
   [PASS] Assign IO (initial assignment)
@@ -1351,10 +1356,10 @@ STDERR:
 ======================================================================
   STEP 12: Add case parties (IO + defendant driver)
 ======================================================================
-    POST /cases/39ce5f7a-606f-47e8-a35d-44cb5e7a47e6/parties (IO) -> 201
-    IO party id: f3b8cf41-e985-4ff6-9dd8-e186e76c4fed
-    POST /cases/39ce5f7a-606f-47e8-a35d-44cb5e7a47e6/parties (driver) -> 201
-    Driver party id: cd550432-54bd-4360-8f6f-e18cf9318e1c
+    POST /cases/6b9f7295-e960-43b6-93b6-134af58552a5/parties (IO) -> 201
+    IO party id: 7615ede6-8e2b-4aa3-9d1d-1826135a723e
+    POST /cases/6b9f7295-e960-43b6-93b6-134af58552a5/parties (driver) -> 201
+    Driver party id: 8e36e6b3-c5b1-4da4-97d3-cb25bb5b09c2
     Total parties on case: 2
 
   [PASS] Add case parties (IO + defendant driver)
@@ -1364,50 +1369,50 @@ STDERR:
   STEP 13: Upload Subfile B (document evidence)
 ======================================================================
     GET /case/taxonomy/subfile-types -> 200
-    Subfile type B: EVIDENCE -> 9b8773e0-2fc5-4117-a7c0-e053dfde4d10
+    Subfile type B: EVIDENCE -> e89fe7c6-e89f-4a50-8cd3-0a5e268a4828
     POST /case/subfiles (type B) -> 201
-    subfileId: b911e89d-55d3-4cf0-859f-20f123ca0d17
+    subfileId: 5ac53ee4-7acb-4962-8a4b-a7262c4ea1d0
 
   [PASS] Upload Subfile B (document evidence)
-    -> Subfile B (Evidence) created: b911e89d-55d3-4cf0-859f-20f123ca0d17
+    -> Subfile B (Evidence) created: 5ac53ee4-7acb-4962-8a4b-a7262c4ea1d0
 
 ======================================================================
   STEP 14: Upload Subfile D (witness statement)
 ======================================================================
     GET /case/taxonomy/subfile-types -> 200
-    Subfile type D: DRIVER_DOCS -> 85670da9-7cd1-4d91-9330-74a91bfd3976
+    Subfile type D: DRIVER_DOCS -> e3704a31-3912-4142-8bb5-e850422135d8
     POST /case/subfiles (type D) -> 201
-    subfileId: 72955f6e-1c71-4e0a-81d9-08145be8ab4d
+    subfileId: 6767da94-0755-4cb5-82f3-5d2e38456677
 
   [PASS] Upload Subfile D (witness statement)
-    -> Subfile D (Witness Statement) created: 72955f6e-1c71-4e0a-81d9-08145be8ab4d
+    -> Subfile D (Witness Statement) created: 6767da94-0755-4cb5-82f3-5d2e38456677
 
 ======================================================================
   STEP 15: Upload Subfile F (investigation diary)
 ======================================================================
     GET /case/taxonomy/subfile-types -> 200
-    Subfile type F: LEGAL_NOTICES -> c2587005-81b2-47ad-bd89-1587a23ef86d
+    Subfile type F: LEGAL_NOTICES -> 42022259-a1cd-43f6-ab6f-9adbd55bb60e
     POST /case/subfiles (type F) -> 201
-    subfileId: 9938585c-9c05-4388-9722-02ea3a085396
+    subfileId: 5777ba1b-3e91-494d-b622-74352d95798f
 
   [PASS] Upload Subfile F (investigation diary)
-    -> Subfile F (Investigation Diary) created: 9938585c-9c05-4388-9722-02ea3a085396
+    -> Subfile F (Investigation Diary) created: 5777ba1b-3e91-494d-b622-74352d95798f
 
 ======================================================================
   STEP 16: Upload Subfile G (charge sheet)
 ======================================================================
     GET /case/taxonomy/subfile-types -> 200
-    Subfile type G: COURT_FILINGS -> fbcdabc7-87cb-45fe-88b6-3bc84b7f3452
+    Subfile type G: COURT_FILINGS -> 3acd3452-6837-4a57-96a0-a36d2f3d6fb7
     POST /case/subfiles (type G) -> 201
-    subfileId: 160dfcf6-837c-428d-a9dd-723c7417ba9e
+    subfileId: 8812ea79-007a-4acd-98d8-1c2bf7e90587
 
   [PASS] Upload Subfile G (charge sheet)
-    -> Subfile G (Charge Sheet) created: 160dfcf6-837c-428d-a9dd-723c7417ba9e
+    -> Subfile G (Charge Sheet) created: 8812ea79-007a-4acd-98d8-1c2bf7e90587
 
 ======================================================================
   STEP 17: Check subfile completion
 ======================================================================
-    GET /case/subfiles/by-case/39ce5f7a-606f-47e8-a35d-44cb5e7a47e6/completion -> 200
+    GET /case/subfiles/by-case/6b9f7295-e960-43b6-93b6-134af58552a5/completion -> 200
     completedTypes: 4
     totalTypes:     8
 
@@ -1418,19 +1423,19 @@ STDERR:
   STEP 18: Schedule first hearing (mention)
 ======================================================================
     GET /case/taxonomy/hearing-types -> 200
-    Hearing type: MENTION -> 3a1fe5ab-7ba4-45fd-8f94-3183e41aaf1c
-    POST /cases/39ce5f7a-606f-47e8-a35d-44cb5e7a47e6/hearings -> 201
-    hearingId: 7fecbbf2-6540-4814-88e8-ebac0d18b109
-    date:      2026-02-13T10:00:00Z
+    Hearing type: MENTION -> 3703a9a1-b679-4968-ba30-e618e0637399
+    POST /cases/6b9f7295-e960-43b6-93b6-134af58552a5/hearings -> 201
+    hearingId: da4cfd9c-d187-4e5b-9e35-c91b66227854
+    date:      2026-02-15T10:00:00Z
     type:      Mention Hearing
 
   [PASS] Schedule first hearing (mention)
-    -> First hearing (mention) scheduled: 7fecbbf2-6540-4814-88e8-ebac0d18b109
+    -> First hearing (mention) scheduled: da4cfd9c-d187-4e5b-9e35-c91b66227854
 
 ======================================================================
   STEP 19: Adjourn first hearing
 ======================================================================
-    POST /hearings/7fecbbf2-6540-4814-88e8-ebac0d18b109/adjourn -> 200
+    POST /hearings/da4cfd9c-d187-4e5b-9e35-c91b66227854/adjourn -> 200
     hearingStatusName: Adjourned
 
   [PASS] Adjourn first hearing
@@ -1439,11 +1444,11 @@ STDERR:
 ======================================================================
   STEP 20: Verify next hearing auto-created
 ======================================================================
-    GET /cases/39ce5f7a-606f-47e8-a35d-44cb5e7a47e6/hearings -> 200
+    GET /cases/6b9f7295-e960-43b6-93b6-134af58552a5/hearings -> 200
     Total hearings: 2
-    Hearing 1: id=8175d4d6-cd7f-4f62-adca-71eb392d27d3, type=Mention Hearing, status=Scheduled
-    Hearing 2: id=7fecbbf2-6540-4814-88e8-ebac0d18b109, type=Mention Hearing, status=Adjourned
-    Second hearing saved: 8175d4d6-cd7f-4f62-adca-71eb392d27d3
+    Hearing 1: id=e2c5e417-ff3f-44ab-9152-19c1bd508a1a, type=Mention Hearing, status=Scheduled
+    Hearing 2: id=da4cfd9c-d187-4e5b-9e35-c91b66227854, type=Mention Hearing, status=Adjourned
+    Second hearing saved: e2c5e417-ff3f-44ab-9152-19c1bd508a1a
 
   [PASS] Verify next hearing auto-created
     -> Found 2 hearings (expected >= 2)
@@ -1452,7 +1457,7 @@ STDERR:
   STEP 21: Issue arrest warrant
 ======================================================================
     POST /case/warrants -> 201
-    warrantId: 2864ec4e-5d37-4b1d-b139-fb9ca8a183c2
+    warrantId: 38307c0a-8d4c-4503-bc3b-76979f20317a
     warrantNo: WAR-2026-00001
     status:    Issued
 
@@ -1462,7 +1467,7 @@ STDERR:
 ======================================================================
   STEP 22: Execute warrant
 ======================================================================
-    POST /case/warrants/2864ec4e-5d37-4b1d-b139-fb9ca8a183c2/execute -> 200
+    POST /case/warrants/38307c0a-8d4c-4503-bc3b-76979f20317a/execute -> 200
     warrantStatusName: Executed
 
   [PASS] Execute warrant
@@ -1472,10 +1477,10 @@ STDERR:
   STEP 23: Complete second hearing (plea with conviction)
 ======================================================================
     GET /case/taxonomy/hearing-types -> 200
-    Plea type: PLEA -> 1f11b10c-3395-427f-bab5-c723858e1563
+    Plea type: PLEA -> 12f5ab51-43d9-4292-8420-8f3e92fd924f
     GET /case/taxonomy/hearing-outcomes -> 200
-    Convicted outcome: CONVICTED -> 4b7c9a7a-696a-474d-9767-eece7bf7633d
-    POST /hearings/8175d4d6-cd7f-4f62-adca-71eb392d27d3/complete -> 200
+    Convicted outcome: CONVICTED -> fd033452-4e1e-4629-a7a6-642c55db6970
+    POST /hearings/e2c5e417-ff3f-44ab-9152-19c1bd508a1a/complete -> 200
     outcome:  Convicted
     status:   Completed
 
@@ -1486,8 +1491,8 @@ STDERR:
   STEP 24: Create closure checklist
 ======================================================================
     GET /case/taxonomy/closure-types -> 200
-    Closure type: CONVICTION -> a3e5ed0c-4e16-4322-a02d-862e7e3e0c0d
-    PUT /cases/39ce5f7a-606f-47e8-a35d-44cb5e7a47e6/closure-checklist -> 200
+    Closure type: CONVICTION -> 7426e2bb-7346-4bc4-961c-28eac0fd4ec5
+    PUT /cases/6b9f7295-e960-43b6-93b6-134af58552a5/closure-checklist -> 200
     allSubfilesVerified: True
 
   [PASS] Create closure checklist
@@ -1496,7 +1501,7 @@ STDERR:
 ======================================================================
   STEP 25: Request closure review
 ======================================================================
-    POST /cases/39ce5f7a-606f-47e8-a35d-44cb5e7a47e6/closure-checklist/request-review -> 200
+    POST /cases/6b9f7295-e960-43b6-93b6-134af58552a5/closure-checklist/request-review -> 200
     reviewStatusName: Pending Review
 
   [PASS] Request closure review
@@ -1505,7 +1510,7 @@ STDERR:
 ======================================================================
   STEP 26: Approve closure review
 ======================================================================
-    POST /cases/39ce5f7a-606f-47e8-a35d-44cb5e7a47e6/closure-checklist/approve-review -> 200
+    POST /cases/6b9f7295-e960-43b6-93b6-134af58552a5/closure-checklist/approve-review -> 200
     reviewStatusName: Approved
 
   [PASS] Approve closure review
@@ -1514,7 +1519,7 @@ STDERR:
 ======================================================================
   STEP 27: Close the case
 ======================================================================
-    POST /case/cases/39ce5f7a-606f-47e8-a35d-44cb5e7a47e6/close -> 200
+    POST /case/cases/6b9f7295-e960-43b6-93b6-134af58552a5/close -> 200
     caseStatus: Closed
 
   [PASS] Close the case
@@ -1523,7 +1528,7 @@ STDERR:
 ======================================================================
   STEP 28: Verify final state
 ======================================================================
-    GET /case/cases/39ce5f7a-606f-47e8-a35d-44cb5e7a47e6 -> 200
+    GET /case/cases/6b9f7295-e960-43b6-93b6-134af58552a5 -> 200
     Case status: Closed -> PASS
     Parties: 2 -> PASS
     Subfiles: 4 -> PASS
@@ -1576,27 +1581,27 @@ STDERR:
   ALL 28 STEPS PASSED
 
   Collected IDs:
-    weighingId: e9279d3e-9649-4309-8ccd-b7f45fef2320
-    vehicleId: 76256831-41ac-449c-adcf-d8ec401a572c
-    caseId: 39ce5f7a-606f-47e8-a35d-44cb5e7a47e6
+    weighingId: 66bf3695-9663-4d0c-bf41-85ccff46511f
+    vehicleId: 24f23585-5e3b-46cf-9cd8-aadbf99e9bac
+    caseId: 6b9f7295-e960-43b6-93b6-134af58552a5
     caseNo: NRB-MOBILE-01-2026-00005
-    yardEntryId: 1d8b2bb3-259a-47cd-832f-bf757955cfb2
-    courtId: 84391d83-d428-4b04-813b-aedcbaa76169
-    assignmentId: c953b0fb-1cd9-4f72-8454-043ce310054e
-    hearingId1: 7fecbbf2-6540-4814-88e8-ebac0d18b109
-    hearingId2: 8175d4d6-cd7f-4f62-adca-71eb392d27d3
-    warrantId: 2864ec4e-5d37-4b1d-b139-fb9ca8a183c2
-    subfileBId: b911e89d-55d3-4cf0-859f-20f123ca0d17
-    subfileDId: 72955f6e-1c71-4e0a-81d9-08145be8ab4d
-    subfileFId: 9938585c-9c05-4388-9722-02ea3a085396
-    subfileGId: 160dfcf6-837c-428d-a9dd-723c7417ba9e
-    closureTypeId: a3e5ed0c-4e16-4322-a02d-862e7e3e0c0d
-    courtDispositionTypeId: a63cee5a-b0b3-4e3e-a6b3-e8e2cf950ce1
-    convictedOutcomeId: 4b7c9a7a-696a-474d-9767-eece7bf7633d
-    scaleTestId: 51e46e4a-dfe3-45d5-a579-862d72476ad6
-    driverId: 2032f4b9-2b14-4e27-870e-abd84e08c631
-    transporterId: 5b19a5c8-9316-4979-ad8a-92ab24f674f9
-    userId: 019c51d2-55a6-7dae-ac70-cb8b3cbf8175
+    yardEntryId: 10acfc6a-bda7-4ac3-8c9c-0c562bad3037
+    courtId: 692fe179-ce58-41a7-b1bc-f6f1c24b4b64
+    assignmentId: e22ac3b4-eb17-4d29-b863-86ab68630aaa
+    hearingId1: da4cfd9c-d187-4e5b-9e35-c91b66227854
+    hearingId2: e2c5e417-ff3f-44ab-9152-19c1bd508a1a
+    warrantId: 38307c0a-8d4c-4503-bc3b-76979f20317a
+    subfileBId: 5ac53ee4-7acb-4962-8a4b-a7262c4ea1d0
+    subfileDId: 6767da94-0755-4cb5-82f3-5d2e38456677
+    subfileFId: 5777ba1b-3e91-494d-b622-74352d95798f
+    subfileGId: 8812ea79-007a-4acd-98d8-1c2bf7e90587
+    closureTypeId: 7426e2bb-7346-4bc4-961c-28eac0fd4ec5
+    courtDispositionTypeId: ad6af5c7-ab50-4d55-8a15-7db84e2f44a7
+    convictedOutcomeId: fd033452-4e1e-4629-a7a6-642c55db6970
+    scaleTestId: 7dbfec89-f081-4875-b94e-ef7d6c3d9104
+    driverId: 92592a1b-06dd-4c9b-848c-d67422d7bf00
+    transporterId: 78a5df07-5aa1-40c9-a694-6172fc914e78
+    userId: 019c5c26-b2a4-72e4-a038-c5cec07ce373
 ======================================================================
 
 STDERR:

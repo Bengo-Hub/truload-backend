@@ -16,6 +16,7 @@ using TruLoad.Backend.Services.Interfaces.Yard;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Data.Repositories.Infrastructure;
 using TruLoad.Backend.Repositories.Infrastructure;
+using TruLoad.Backend.Services.Interfaces.System;
 using System.Threading;
 using System.Collections.Generic;
 using System.Linq;
@@ -40,6 +41,7 @@ public class WeighingServiceTests
     private readonly Mock<IYardService> _mockYardService;
     private readonly Mock<IVehicleTagService> _mockVehicleTagService;
     private readonly TruLoadDbContext _dbContext;
+    private readonly Mock<ISettingsService> _mockSettingsService;
     private readonly Mock<ILogger<WeighingService>> _mockLogger;
     private readonly WeighingService _service;
 
@@ -64,6 +66,7 @@ public class WeighingServiceTests
             .UseInMemoryDatabase(databaseName: $"WeighingTest_{Guid.NewGuid()}")
             .Options;
         _dbContext = new TruLoadDbContext(dbOptions);
+        _mockSettingsService = new Mock<ISettingsService>();
         _mockLogger = new Mock<ILogger<WeighingService>>();
 
         // Setup default behavior for aggregation service
@@ -92,6 +95,7 @@ public class WeighingServiceTests
             _mockYardService.Object,
             _mockVehicleTagService.Object,
             _dbContext,
+            _mockSettingsService.Object,
             _mockLogger.Object
         );
     }

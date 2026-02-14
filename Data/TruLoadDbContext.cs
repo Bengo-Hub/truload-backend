@@ -241,6 +241,10 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     public DbSet<Invoice> Invoices { get; set; } = null!;
     public DbSet<PaymentCallback> PaymentCallbacks { get; set; } = null!;
     public DbSet<Receipt> Receipts { get; set; } = null!;
+    public DbSet<ExchangeRate> ExchangeRates { get; set; } = null!;
+
+    // ===== Exchange Rate API Settings =====
+    public DbSet<ExchangeRateApiSettings> ExchangeRateApiSettings { get; set; } = null!;
 
     // ===== Offline Support Module =====
     public DbSet<DeviceSyncEvent> DeviceSyncEvents { get; set; } = null!;

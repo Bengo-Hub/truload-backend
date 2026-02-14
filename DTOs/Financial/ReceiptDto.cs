@@ -69,6 +69,7 @@ public class VoidReceiptRequest
 public class ReceiptSearchCriteria : PagedRequest
 {
     public Guid? InvoiceId { get; set; }
+    public Guid? StationId { get; set; }
     public string? PaymentMethod { get; set; }
     public DateTime? PaymentDateFrom { get; set; }
     public DateTime? PaymentDateTo { get; set; }
