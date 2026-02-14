@@ -4,6 +4,7 @@ using System.Security.Claims;
 using TruLoad.Backend.DTOs.CaseManagement;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Services.Interfaces.CaseManagement;
+using TruLoad.Backend.Authorization.Attributes;
 
 namespace TruLoad.Backend.Controllers.CaseManagement;
 

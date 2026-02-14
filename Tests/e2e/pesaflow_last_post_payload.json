@@ -1,0 +1,25 @@
+{
+  "url": "https://test.pesaflow.com/PaymentAPI/iframev2.1.php",
+  "method": "POST",
+  "headers": {},
+  "payload": {
+    "apiClientID": "588",
+    "serviceID": "235330",
+    "billDesc": "Test Overload Fine",
+    "currency": "KES",
+    "billRefNumber": "TEST-20260213113848",
+    "clientMSISDN": "254700000000",
+    "clientName": "Test User",
+    "clientIDNumber": "TEST-ID-001",
+    "clientEmail": "test@truload-e2e.co.ke",
+    "amountExpected": "100.00",
+    "callBackURLOnSuccess": "http://localhost:4000/api/v1/payments/callback/success",
+    "callBackURLOnFailure": "http://localhost:4000/api/v1/payments/callback/failure",
+    "callBackURLOnTimeout": "http://localhost:4000/api/v1/payments/callback/timeout",
+    "notificationURL": "http://localhost:4000/api/v1/payments/webhook/ecitizen-pesaflow",
+    "secureHash": "ZmU5ZmYyYTcyNDQ4MTE5YTI0MzM3MGJkODUxOTdjOTQwYWMyM2QwNGEyYWE4MTcxMjJkNTIyZDhkNDMxZjdiYg==",
+    "format": "json",
+    "sendSTK": "false"
+  },
+  "timestamp": "2026-02-13T11:38:48.644911+00:00"
+}

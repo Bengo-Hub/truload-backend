@@ -8,6 +8,7 @@ namespace TruLoad.Backend.Services.Interfaces.Financial;
 /// </summary>
 public interface IECitizenService
 {
+    Task<bool> IsAvailableAsync(CancellationToken ct = default);
     Task<string> GetAccessTokenAsync(CancellationToken ct = default);
     Task<PesaflowInvoiceResponse> CreatePesaflowInvoiceAsync(CreatePesaflowInvoiceRequest request, CancellationToken ct = default);
     Task<PesaflowPaymentStatusResponse?> QueryPaymentStatusAsync(string invoiceRefNo, CancellationToken ct = default);

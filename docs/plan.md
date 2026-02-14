@@ -122,19 +122,26 @@ window.open(url, '_blank');
 
 ## Development Status
 
-**Last Updated:** February 12, 2026
+**Last Updated:** February 13, 2026
 
-### Current Phase: Sprint 17 Complete ✅ - E2E Scenarios Hardened + Frontend Adaptation
+### Current Phase: Sprint 20 Complete ✅ - System Audit, Reports Module & Integration Tests
 
-**Build Status:** ✅ **HEALTHY** (54 warnings, 0 errors)
+**Build Status:** ✅ **HEALTHY** (0 errors)
 **Application Status:** ✅ **RUNNING** (localhost:4000)
 **Database:** ✅ **UP-TO-DATE** (All migrations applied)
-**Test Status:** ✅ **ALL PASSED** (80+ unit tests, 0 failed)
+**Test Status:** ✅ **166/166 PASSING** (integration tests, 0 failed)
 **E2E Status:** ✅ **109/109 PASSING** (6 compliance scenarios, sequential fresh-DB run)
 **API Endpoints:** 100+ endpoints operational
-**PDF Documents:** 9 document types implemented
+**PDF Documents:** 9 document types + 26 report types implemented
 
 ---
+
+### Sprint 20 Completion (System Audit, Reports & E2E Tests - February 13, 2026):
+- ✅ **Reports Module** - Modular report generation system: IReportService, ReportService, BaseReportGenerator, 6 module generators (Weighing/Prosecution/Case/Financial/Yard/Security), ReportController with catalog + generation endpoints, 26 report types, QuestPDF PDF generation, CsvHelper CSV generation
+- ✅ **Integration Tests** - 166 tests passing (100%): UserCrudTests, RolePermissionTests, PasswordPolicyTests, TwoFactorTests, SecuritySettingsTests, ShiftCrudTests, PermissionSeedingTests (updated to 121 perms/14 categories)
+- ✅ **Test Infrastructure** - TestDbContextFactory (InMemory DB), TestUserHelper (user+role seeding), ServiceFactory (mock cache/logger)
+- ✅ **Permission Seeder Updated** - 121 permissions across 14 categories (was 83/8), comment corrected
+- ✅ **DI Registration** - All report services registered in Program.cs
 
 ### Sprint 17 Completion (E2E Test Hardening - February 12, 2026):
 - ✅ All 6 compliance E2E scenarios passing 109/109 steps sequentially on fresh database
@@ -1326,8 +1333,9 @@ For detailed sprint tasks and deliverables, refer to the [sprints](./sprints/) f
 | Sprint 14 | Production Readiness | 77% | ⚠️ Partial | Backend + Frontend CI/CD complete, monitoring pending |
 | Sprint 15 | Background Jobs & Payments | 75% | 🚧 In Progress | IPN webhook, callbacks, sync job done; tests pending |
 | Sprint 17 | E2E Test Hardening | 100% | ✅ Complete | 109/109 steps, 6 scenarios, endpoint + timeout fixes |
+| Sprint 20 | System Audit, Reports & Tests | 100% | ✅ Complete | 26 report types, 166 tests, 57+ bugs fixed |
 
-**Totals: 11/16 Complete (69%), 3/16 Partial (19%), 1/16 In Progress (6%), 1/16 Pending (6%)**
+**Totals: 12/17 Complete (71%), 3/17 Partial (18%), 1/17 In Progress (6%), 1/17 Pending (6%)**
 
 ---
 

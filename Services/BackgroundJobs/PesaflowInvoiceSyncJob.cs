@@ -32,6 +32,13 @@ public class PesaflowInvoiceSyncJob
         var context = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
         var eCitizenService = scope.ServiceProvider.GetRequiredService<IECitizenService>();
 
+        // Pre-flight: skip sync if Pesaflow integration is inactive or unhealthy
+        if (!await eCitizenService.IsAvailableAsync(ct))
+        {
+            _logger.LogInformation("[PesaflowInvoiceSyncJob] Pesaflow integration unavailable (inactive or token endpoint unreachable), skipping sync");
+            return;
+        }
+
         _logger.LogInformation("[PesaflowInvoiceSyncJob] Starting invoice sync job");
 
         var pendingInvoices = await context.Invoices

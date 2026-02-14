@@ -103,6 +103,8 @@ public class UpsertIntegrationConfigRequest
     public string? AppBaseUrl { get; set; }
     public string? Environment { get; set; }
     public string? Description { get; set; }
+    // Allow administrators to enable/disable integration from the UI (defaults to true)
+    public bool IsActive { get; set; } = true;
 }
 
 /// <summary>

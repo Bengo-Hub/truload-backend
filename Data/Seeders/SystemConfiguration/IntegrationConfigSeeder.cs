@@ -62,7 +62,9 @@ public class IntegrationConfigSeeder
         {
             ["ApiKey"] = eCitizenSection["ApiKey"] ?? "",
             ["ApiSecret"] = eCitizenSection["ApiSecret"] ?? "",
-            ["ApiClientId"] = eCitizenSection["ApiClientId"] ?? ""
+            ["ApiClientId"] = eCitizenSection["ApiClientId"] ?? "",
+            // ServiceId must be present for Pesaflow iframe requests (avoids sending apiClientId as serviceID)
+            ["ServiceId"] = eCitizenSection["ServiceId"] ?? ""
         };
 
         var credentialsJson = JsonSerializer.Serialize(credentials);

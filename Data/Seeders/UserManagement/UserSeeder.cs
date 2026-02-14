@@ -51,12 +51,12 @@ public class UserSeeder
         var mobileStation = await _context.Stations
             .FirstOrDefaultAsync(s => s.Code == "NRB-MOBILE-01");
 
-        // Check if SYSTEM_ADMIN role exists
-        var systemAdminRole = await _roleManager.FindByNameAsync("System Admin");
+        // Check if SUPERUSER role exists
+        var superuserRole = await _roleManager.FindByNameAsync("Superuser");
 
-        if (systemAdminRole == null)
+        if (superuserRole == null)
         {
-            throw new InvalidOperationException("SYSTEM_ADMIN role not found. Ensure RoleSeeder runs before UserSeeder.");
+            throw new InvalidOperationException("SUPERUSER role not found. Ensure RoleSeeder runs before UserSeeder.");
         }
 
         // Seed superuser: gadmin@masterspace.co.ke
@@ -87,14 +87,14 @@ public class UserSeeder
                 throw new Exception($"Failed to create superuser: {string.Join(", ", result.Errors.Select(e => e.Description))}");
             }
 
-            // Assign SYSTEM_ADMIN role to superuser
-            var roleResult = await _userManager.AddToRoleAsync(superUser, "System Admin");
+            // Assign SUPERUSER role to superuser
+            var roleResult = await _userManager.AddToRoleAsync(superUser, "Superuser");
             if (!roleResult.Succeeded)
             {
                 throw new Exception($"Failed to assign role to superuser: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
             }
 
-            Console.WriteLine($"✓ Seeded superuser: {superUserEmail} linked to KURA organization and {mobileStation?.Name ?? "no station"} with SYSTEM_ADMIN role");
+            Console.WriteLine($"✓ Seeded superuser: {superUserEmail} linked to KURA organization and {mobileStation?.Name ?? "no station"} with SUPERUSER role");
             Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY - change in production!)");
         }
         else

@@ -4,7 +4,6 @@ using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Repositories;
 using TruLoad.Backend.Data;
 using TruLoad.Data.Seeders;
-using TruLoad.Backend.Data;
 using Xunit;
 using FluentAssertions;
 
@@ -40,24 +39,30 @@ public class PermissionSeedingTests : IAsyncLifetime
     #region Permission Seeding Tests
 
     [Fact]
-    public async Task SeedPermissions_Creates79PermissionsIn8Categories()
+    public async Task SeedPermissions_Creates121PermissionsIn14Categories()
     {
         // Arrange & Act - Use the actual PermissionSeeder to create default permissions
         await PermissionSeeder.SeedAsync(_context!);
-        
+
         var allPermissions = await _context!.Permissions.ToListAsync();
         var byCategory = await _context.Permissions.GroupBy(p => p.Category).Select(g => new { Category = g.Key, Count = g.Count() }).ToListAsync();
 
-        // Assert - verify exactly 83 permissions were seeded (12 Weighing, 15 Case, 8 Prosecution, 10 User, 12 Station, 8 Configuration, 8 Analytics, 10 System)
-        allPermissions.Should().HaveCount(83, "PermissionSeeder should create exactly 83 default permissions");
-        byCategory.Should().HaveCount(8, "Permissions should be distributed across 8 categories");
+        // Assert - verify exactly 121 permissions across 14 categories
+        allPermissions.Should().HaveCount(121, "PermissionSeeder should create exactly 121 default permissions");
+        byCategory.Should().HaveCount(14, "Permissions should be distributed across 14 categories");
         byCategory.Should().Contain(c => c.Category == "Weighing" && c.Count == 12);
+        byCategory.Should().Contain(c => c.Category == "Yard" && c.Count == 8);
+        byCategory.Should().Contain(c => c.Category == "Tag" && c.Count == 8);
         byCategory.Should().Contain(c => c.Category == "Case" && c.Count == 15);
         byCategory.Should().Contain(c => c.Category == "Prosecution" && c.Count == 8);
         byCategory.Should().Contain(c => c.Category == "User" && c.Count == 10);
         byCategory.Should().Contain(c => c.Category == "Station" && c.Count == 12);
-        byCategory.Should().Contain(c => c.Category == "Configuration" && c.Count == 8);
+        byCategory.Should().Contain(c => c.Category == "Configuration" && c.Count == 10);
         byCategory.Should().Contain(c => c.Category == "Analytics" && c.Count == 8);
+        byCategory.Should().Contain(c => c.Category == "Financial" && c.Count == 10);
+        byCategory.Should().Contain(c => c.Category == "Vehicle" && c.Count == 3);
+        byCategory.Should().Contain(c => c.Category == "Transporter" && c.Count == 4);
+        byCategory.Should().Contain(c => c.Category == "Driver" && c.Count == 3);
         byCategory.Should().Contain(c => c.Category == "System" && c.Count == 10);
     }
 

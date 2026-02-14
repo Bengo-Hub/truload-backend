@@ -313,3 +313,79 @@
   [PASS] save_local_invoice: PASS
   [TEST] payment_status: TESTED
 ======================================================================
+======================================================================
+  PESAFLOW API DIRECT TEST
+  Base URL:      https://test.pesaflow.com
+  API Client ID: 588
+  API Key:       hkW0lc/+xu9GA5Di
+  API Secret:    tgia2h6QEc...
+  Retries:       1
+  Token cache:   D:\Projects\BengoBox\TruLoad\truload-backend\Tests\e2e\.pesaflow_token_cache.json
+  Timestamp:     2026-02-13T11:38:48.380150+00:00
+======================================================================
+
+======================================================================
+  STEP 1: Get Pesaflow OAuth Token
+======================================================================
+  URL:          https://test.pesaflow.com/api/oauth/generate/token
+  Method:       POST (JSON body)
+  ApiKey:       hkW0lc/+xu9GA5Di
+  ApiSecret:    tgia2h6QEc...
+  Payload:      {"key": "hkW0lc/+xu9GA5Di", "secret": "tgia2h6QEcwqPmJ1Uxv3V9I7cqf6Ub7X"}
+
+  HTTP Status:  200
+  Response:     {"token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6IjU4ODIwMjYwMjEzMTEwMjE3NzA5ODI3MjgifQ.MHlsyOFetLdY1gpXNKludSR6Us6nF3KwIphD-JYrTmA","expiry":3599}
+
+  [PASS] Token obtained successfully
+         Token:      eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6IjU4O...
+         Expires in: 3599s
+  [CACHE] Token cached to .pesaflow_token_cache.json (valid for 3539s)
+
+======================================================================
+  STEP 2: Create Invoice via Pesaflow iframe endpoint
+======================================================================
+  URL:        https://test.pesaflow.com/PaymentAPI/iframev2.1.php
+  Invoice Ref: TEST-20260213113848
+  Amount:      100.00 KES
+  Hash data:  '588100.00235330TEST-ID-001KESTEST-20260213113848Test Overload FineTest Usertgia2...'
+  Hash:       ZmU5ZmYyYTcyNDQ4MTE5YTI0MzM3MGJkODUxOTdjOTQwYWMyM2QwNGEyYWE4MTcxMjJkNTIyZDhkNDMxZjdiYg==
+
+  HTTP Status: 200
+  Response:    {"invoice_number":"RXJABA","invoice_link":"https://test.pesaflow.com/checkout?request_id=1suOXoptUiosUyRkr3OS","commission":"5.00","amount_net":"100.00","amount_expected":"105.00"}
+
+  [PASS] Invoice created on Pesaflow
+         Pesaflow Invoice No: RXJABA
+         Payment Link:        https://test.pesaflow.com/checkout?request_id=1suOXoptUiosUyRkr3OS
+         Amount Net:          100.00
+         Commission:          5.00
+         Total Expected:      105.00
+
+======================================================================
+  STEP 3: Save Local Invoice
+======================================================================
+  [LOCAL] Invoice saved: D:\Projects\BengoBox\TruLoad\truload-backend\Tests\e2e\pesaflow_local_invoice_TEST-20260213113848.json
+          Pesaflow Invoice: RXJABA
+          Payment Link: https://test.pesaflow.com/checkout?request_id=1suOXoptUiosUyRkr3OS
+
+======================================================================
+  STEP 3: Query Payment Status
+======================================================================
+  Invoice Ref:     TEST-20260213113848
+  Pesaflow Inv No: RXJABA
+  Hash data:  '588RXJABA'
+  Hash:       NzVmN2IwNmI0ZmQ4OGE4MjA2OGQ3ZmMxYzFkNjRjNjc2NDljNzA1ZWNjNGFkN2NmYjFkYTg0MjIxMDVkYjc0Mg==
+  URL:        https://test.pesaflow.com/api/invoice/payment/status?api_client_id=588&ref_no=RXJABA&secure_hash=NzVmN2IwNmI0ZmQ4OGE4MjA2OGQ3ZmMxYzFkNjRjNjc2NDljNzA1ZWNjNGFkN2NmYjFkYTg0MjIxMDVkYjc0Mg%3D%3D
+
+  HTTP Status: 200
+  Response:    {"status":"pending","ref_no":"RXJABA","payment_date":null,"name":"Test User","currency":"KES","client_invoice_ref":"TEST-20260213113848","amount_paid":"0.00","amount_expected":"105.00"}
+
+  [PASS] Payment status retrieved
+
+======================================================================
+  SUMMARY
+======================================================================
+  [PASS] oauth: PASS
+  [PASS] create_invoice: PASS
+  [PASS] save_local_invoice: PASS
+  [TEST] payment_status: TESTED
+======================================================================

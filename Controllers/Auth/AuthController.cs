@@ -148,6 +148,10 @@ public class AuthController : ControllerBase
 
         _logger.LogInformation("User {Email} logged in successfully", request.Email);
 
+        // Create an Identity cookie for browser clients (so Swagger UI and Hangfire can
+        // use cookie authentication). We still return JWT for API clients.
+        await _signInManager.SignInAsync(user, isPersistent: false);
+
         // Check if user has SUPERUSER role (bypasses all permission checks on frontend)
         var isSuperUser = roles.Contains("SUPERUSER", StringComparer.OrdinalIgnoreCase);
 

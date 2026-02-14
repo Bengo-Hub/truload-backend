@@ -5,7 +5,7 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Data.Seeders;
 
 /// <summary>
-/// Seeds 119 default permissions across 14 categories into the database.
+/// Seeds 121 default permissions across 14 categories into the database.
 /// Run once during application initialization.
 /// </summary>
 public static class PermissionSeeder

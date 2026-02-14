@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
@@ -55,6 +56,9 @@ using TruLoad.Backend.Services.Interfaces.Analytics;
 using TruLoad.Backend.Services.Implementations.Analytics;
 using TruLoad.Backend.Services.Interfaces.Integration;
 using TruLoad.Backend.Services.Implementations.Integration;
+using TruLoad.Backend.Services.Interfaces.Reporting;
+using TruLoad.Backend.Services.Implementations.Reporting;
+using TruLoad.Backend.Services.Implementations.Reporting.Modules;
 using TruLoad.Backend.DTOs.Analytics;
 using TruLoad.Backend.Configuration;
 
@@ -82,7 +86,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "TruLoad API",
         Version = "v1",
-        Description = "Intelligent Weighing and Enforcement Solution API"
+        Description = "Intelligent Weighing and Enforcement Solution API\n\n[Hangfire Dashboard](/hangfire)"
     });
 
     // Avoid schema ID collisions when DTOs share names across namespaces
@@ -127,6 +131,7 @@ builder.Services.AddSwaggerGen(options =>
         Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey
     });
 
+    // Separate security requirements = OR logic (Bearer OR ApiKey)
     options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
     {
         {
@@ -139,7 +144,10 @@ builder.Services.AddSwaggerGen(options =>
                 }
             },
             new string[] {}
-        },
+        }
+    });
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
         {
             new Microsoft.OpenApi.Models.OpenApiSecurityScheme
             {
@@ -183,6 +191,14 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
 })
 .AddEntityFrameworkStores<TruLoadDbContext>()
 .AddDefaultTokenProviders();
+
+// Cookie auth for Hangfire dashboard (browser-based login)
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/hangfire/login";
+    options.Cookie.Name = "TruLoad.Auth";
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+});
 
 // Redis (StackExchange.Redis)
 var redisConnection = builder.Configuration.GetSection("Redis")["ConnectionString"]
@@ -383,10 +399,20 @@ builder.Services.Configure<SupersetOptions>(builder.Configuration.GetSection(Sup
 builder.Services.Configure<OllamaOptions>(builder.Configuration.GetSection(OllamaOptions.SectionName));
 builder.Services.AddHttpClient<ISupersetService, SupersetService>();
 
+// Reporting services (modular per-module report generation)
+builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IModuleReportGenerator, WeighingReportGenerator>();
+builder.Services.AddScoped<IModuleReportGenerator, ProsecutionReportGenerator>();
+builder.Services.AddScoped<IModuleReportGenerator, CaseReportGenerator>();
+builder.Services.AddScoped<IModuleReportGenerator, FinancialReportGenerator>();
+builder.Services.AddScoped<IModuleReportGenerator, YardReportGenerator>();
+builder.Services.AddScoped<IModuleReportGenerator, SecurityReportGenerator>();
+
 // ===== Hangfire Background Jobs =====
 builder.Services.AddHangfire(config =>
     config.UsePostgreSqlStorage(c =>
-        c.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection"))));
+        c.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")))
+    .WithJobExpirationTimeout(TimeSpan.FromHours(48)));
 
 builder.Services.AddHangfireServer(options =>
 {
@@ -397,6 +423,9 @@ builder.Services.AddHangfireServer(options =>
 
 // Register background job services
 builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.PesaflowInvoiceSyncJob>();
+
+// Hangfire job retention: auto-delete succeeded/failed jobs after 48 hours
+GlobalJobFilters.Filters.Add(new AutomaticRetryAttribute { Attempts = 3 });
 
 // ===== App Configuration =====
 var app = builder.Build();
@@ -428,7 +457,7 @@ try
         }
 
         // Check if initial seeding has already been completed
-        var seedingVersion = 5; // Increment this when you need to re-seed (v5: Added MIDDLEWARE_SERVICE role + middleware@truconnect.local user)
+        var seedingVersion = 7; // Increment this when you need to re-seed (v5: Added MIDDLEWARE_SERVICE role + middleware@truconnect.local user)
         var seedingName = "InitialSeed";
 
         var existingSeed = await dbContext.DatabaseSeedingHistory
@@ -553,6 +582,25 @@ app.UseAuthentication();
 app.UseTenantContext();
 
 app.UseAuthorization();
+
+// Hangfire cookie auth middleware - intercepts /hangfire requests and authenticates
+// via Identity cookie (since default scheme is JWT Bearer, cookies aren't checked automatically)
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/hangfire") &&
+        !context.Request.Path.StartsWithSegments("/hangfire/login"))
+    {
+        var authResult = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        if (!authResult.Succeeded)
+        {
+            var returnUrl = context.Request.Path + context.Request.QueryString;
+            context.Response.Redirect($"/hangfire/login?returnUrl={Uri.EscapeDataString(returnUrl)}");
+            return; // Short-circuit before Hangfire can set 401
+        }
+        context.User = authResult.Principal!;
+    }
+    await next();
+});
 
 app.MapControllers();
 

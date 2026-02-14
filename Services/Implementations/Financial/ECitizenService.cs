@@ -46,6 +46,28 @@ public class ECitizenService : IECitizenService
         _logger = logger;
     }
 
+    public async Task<bool> IsAvailableAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var config = await _integrationConfigService.GetByProviderAsync(ProviderName, ct);
+            if (config == null || !config.IsActive)
+            {
+                _logger.LogInformation("Pesaflow integration is inactive or not configured");
+                return false;
+            }
+
+            // Health check: try to acquire an OAuth token (uses the token endpoint)
+            var token = await GetAccessTokenAsync(ct);
+            return !string.IsNullOrEmpty(token);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Pesaflow integration health check failed: {Message}", ex.Message);
+            return false;
+        }
+    }
+
     public async Task<string> GetAccessTokenAsync(CancellationToken ct = default)
     {
         var db = _redis.GetDatabase();
@@ -115,26 +137,18 @@ public class ECitizenService : IECitizenService
 
         var apiKey = credentials.GetValueOrDefault("ApiKey")!;
         var apiSecret = credentials.GetValueOrDefault("ApiSecret")!;
-        var apiClientId = credentials.GetValueOrDefault("ApiClientId") ?? ServiceId;
-
-        // Prefer explicit ServiceId from integration config when present
-        string? serviceIdFromConfig = null;
-        try
-        {
-            var prop = config.GetType().GetProperty("ServiceId");
-            if (prop != null)
-                serviceIdFromConfig = prop.GetValue(config)?.ToString();
-        }
-        catch { /* ignore reflection errors */ }
-
-        var serviceId = !string.IsNullOrEmpty(serviceIdFromConfig)
-            ? serviceIdFromConfig!
-            : (credentials.GetValueOrDefault("ServiceId") ?? apiClientId ?? ServiceId);
+        var apiClientId = credentials.GetValueOrDefault("ApiClientId")
+            ?? throw new InvalidOperationException("ApiClientId not found in eCitizen credentials");
+        var serviceId = credentials.GetValueOrDefault("ServiceId") ?? ServiceId;
 
         // Pesaflow expects amount with two decimal places
         var amount = invoice.AmountDue.ToString("F2");
         var clientIdNumber = request.ClientIdNumber ?? "";
         var billDesc = "Overload Fine";
+
+        // Log resolved identifiers (non-secret) to aid debugging when Pesaflow rejects service IDs
+        _logger.LogDebug("Pesaflow identifiers resolved: apiClientId={ApiClientId}, serviceId={ServiceId}, invoiceNo={InvoiceNo}",
+            apiClientId, serviceId, invoice.InvoiceNo);
 
         // Compose secure hash: apiClientID + amount + serviceID + clientIDNumber + currency + billRefNumber + billDesc + clientName + secret
         var dataString = $"{apiClientId}{amount}{serviceId}{clientIdNumber}{invoice.Currency}{invoice.InvoiceNo}{billDesc}{request.ClientName}{apiSecret}";

@@ -69,6 +69,7 @@ public class IntegrationConfigService : IIntegrationConfigService
             existing.AppBaseUrl = request.AppBaseUrl;
             existing.Environment = request.Environment;
             existing.Description = request.Description;
+            existing.IsActive = request.IsActive; // allow toggling integration activation from UI
             existing.CredentialsRotatedAt = DateTime.UtcNow;
             existing.UpdatedAt = DateTime.UtcNow;
 
@@ -88,6 +89,7 @@ public class IntegrationConfigService : IIntegrationConfigService
                 AppBaseUrl = request.AppBaseUrl,
                 Environment = request.Environment,
                 Description = request.Description,
+                IsActive = request.IsActive,
                 CredentialsRotatedAt = DateTime.UtcNow
             };
 
