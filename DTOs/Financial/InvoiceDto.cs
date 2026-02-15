@@ -59,12 +59,56 @@ public class UpdateInvoiceStatusRequest
 /// </summary>
 public class InvoiceSearchCriteria : PagedRequest
 {
+    public string? InvoiceNo { get; set; }
+    public string? CaseNo { get; set; }
+    public string? VehicleRegNumber { get; set; }
     public Guid? CaseRegisterId { get; set; }
     public Guid? ProsecutionCaseId { get; set; }
     public Guid? StationId { get; set; }
     public string? Status { get; set; }
+    public DateTime? DateFrom { get; set; }
+    public DateTime? DateTo { get; set; }
     public DateTime? GeneratedFrom { get; set; }
     public DateTime? GeneratedTo { get; set; }
     public DateTime? DueFrom { get; set; }
     public DateTime? DueTo { get; set; }
+    public decimal? MinAmount { get; set; }
+    public decimal? MaxAmount { get; set; }
+
+    /// <summary>Effective start date (prefers DateFrom over GeneratedFrom)</summary>
+    public DateTime? EffectiveFromDate => DateFrom ?? GeneratedFrom;
+    /// <summary>Effective end date (prefers DateTo over GeneratedTo)</summary>
+    public DateTime? EffectiveToDate => DateTo ?? GeneratedTo;
+}
+
+/// <summary>
+/// Invoice statistics response DTO matching frontend InvoiceStatistics type
+/// </summary>
+public class InvoiceStatisticsDto
+{
+    public int TotalInvoices { get; set; }
+    public int PendingInvoices { get; set; }
+    public int PaidInvoices { get; set; }
+    public int OverdueInvoices { get; set; }
+    public decimal TotalAmountDue { get; set; }
+    public decimal TotalAmountPaid { get; set; }
+    public decimal TotalBalance { get; set; }
+
+    // Per-currency breakdown (prevents mixing KES + USD)
+    public decimal TotalAmountDueKes { get; set; }
+    public decimal TotalAmountDueUsd { get; set; }
+    public decimal TotalAmountPaidKes { get; set; }
+    public decimal TotalAmountPaidUsd { get; set; }
+    public decimal TotalBalanceKes { get; set; }
+    public decimal TotalBalanceUsd { get; set; }
+}
+
+/// <summary>
+/// Invoice aging bucket for dashboard chart
+/// </summary>
+public class InvoiceAgingBucketDto
+{
+    public string Name { get; set; } = string.Empty;
+    public int Value { get; set; }
+    public decimal Amount { get; set; }
 }

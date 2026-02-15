@@ -330,8 +330,8 @@ class ComplianceE2EScenario3:
         body = {
             "stationId": self.data["stationId"],
             "vehicleRegNumber": VEHICLE_REG,
-            "weighingMode": "static",
-            "source": "Middleware",
+            "weighingMode": "mobile",
+            "source": "MobileApp",
             "axles": COMPLIANT_AXLES,
         }
         r = self._post("weighing-transactions/autoweigh", body)

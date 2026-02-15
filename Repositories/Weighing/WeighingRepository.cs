@@ -34,6 +34,10 @@ public class WeighingRepository : IWeighingRepository
             .Include(t => t.Driver)
             .Include(t => t.Transporter)
             .Include(t => t.Station)
+            .Include(t => t.WeighedByUser)
+            .Include(t => t.Origin)
+            .Include(t => t.Destination)
+            .Include(t => t.Cargo)
             .FirstOrDefaultAsync(t => t.Id == id);
     }
 
@@ -136,6 +140,7 @@ public class WeighingRepository : IWeighingRepository
             .Include(t => t.Driver)
             .Include(t => t.Transporter)
             .Include(t => t.Station)
+            .Include(t => t.WeighedByUser)
             .Include(t => t.Origin)
             .Include(t => t.Destination)
             .Include(t => t.Cargo)

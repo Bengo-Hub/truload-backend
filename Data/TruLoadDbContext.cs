@@ -252,6 +252,10 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     // ===== System Settings =====
     public DbSet<ApplicationSettings> ApplicationSettings { get; set; } = null!;
 
+    // ===== Document Conventions & Sequences (Sprint 22) =====
+    public DbSet<DocumentConvention> DocumentConventions { get; set; } = null!;
+    public DbSet<DocumentSequence> DocumentSequences { get; set; } = null!;
+
     // ===== Integration Configuration (Sprint 15: eCitizen) =====
     public DbSet<IntegrationConfig> IntegrationConfigs { get; set; } = null!;
 

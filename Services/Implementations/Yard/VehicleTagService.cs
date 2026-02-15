@@ -244,33 +244,73 @@ public class VehicleTagService : IVehicleTagService
         return categories;
     }
 
-    public async Task<VehicleTagStatisticsDto> GetStatisticsAsync(CancellationToken ct = default)
+    public async Task<VehicleTagStatisticsDto> GetStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, CancellationToken ct = default)
     {
-        var today = DateTime.UtcNow.Date;
-
         var query = _context.VehicleTags.Where(t => t.DeletedAt == null);
+        var hasDateFilter = dateFrom.HasValue || dateTo.HasValue;
 
-        var stats = new VehicleTagStatisticsDto
+        if (hasDateFilter)
         {
-            TotalOpen = await query.CountAsync(t => t.Status == "open", ct),
-            ClosedToday = await query.CountAsync(t => t.Status == "closed" && t.ClosedAt.HasValue && t.ClosedAt.Value.Date == today, ct),
-            CreatedToday = await query.CountAsync(t => t.OpenedAt.Date == today, ct),
-            ByCategory = new Dictionary<string, int>()
-        };
+            // Date-filtered mode: scope all stats to the date range
+            if (dateFrom.HasValue)
+            {
+                var from = DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc);
+                query = query.Where(t => t.OpenedAt >= from);
+            }
+            if (dateTo.HasValue)
+            {
+                var to = DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc);
+                query = query.Where(t => t.OpenedAt <= to);
+            }
 
-        // Get counts by category
-        var categoryStats = await query
-            .Where(t => t.Status == "open")
-            .GroupBy(t => t.TagCategory!.Name)
-            .Select(g => new { Category = g.Key ?? "Unknown", Count = g.Count() })
-            .ToListAsync(ct);
+            var stats = new VehicleTagStatisticsDto
+            {
+                Total = await query.CountAsync(ct),
+                TotalOpen = await query.CountAsync(t => t.Status == "open", ct),
+                ClosedToday = await query.CountAsync(t => t.Status == "closed", ct),
+                CreatedToday = await query.CountAsync(ct),
+                ByCategory = new Dictionary<string, int>()
+            };
 
-        foreach (var cat in categoryStats)
-        {
-            stats.ByCategory[cat.Category] = cat.Count;
+            var categoryStats = await query
+                .GroupBy(t => t.TagCategory!.Name)
+                .Select(g => new { Category = g.Key ?? "Unknown", Count = g.Count() })
+                .ToListAsync(ct);
+
+            foreach (var cat in categoryStats)
+                stats.ByCategory[cat.Category] = cat.Count;
+
+            return stats;
         }
+        else
+        {
+            // Default mode: today's metrics (backwards-compatible)
+            var today = DateTime.UtcNow.Date;
 
-        return stats;
+            var totalOpen = await query.CountAsync(t => t.Status == "open", ct);
+            var createdToday = await query.CountAsync(t => t.OpenedAt.Date == today, ct);
+            var closedToday = await query.CountAsync(t => t.Status == "closed" && t.ClosedAt.HasValue && t.ClosedAt.Value.Date == today, ct);
+
+            var stats = new VehicleTagStatisticsDto
+            {
+                Total = totalOpen + createdToday,
+                TotalOpen = totalOpen,
+                ClosedToday = closedToday,
+                CreatedToday = createdToday,
+                ByCategory = new Dictionary<string, int>()
+            };
+
+            var categoryStats = await query
+                .Where(t => t.Status == "open")
+                .GroupBy(t => t.TagCategory!.Name)
+                .Select(g => new { Category = g.Key ?? "Unknown", Count = g.Count() })
+                .ToListAsync(ct);
+
+            foreach (var cat in categoryStats)
+                stats.ByCategory[cat.Category] = cat.Count;
+
+            return stats;
+        }
     }
 
     private static VehicleTagDto MapToDto(VehicleTag tag)

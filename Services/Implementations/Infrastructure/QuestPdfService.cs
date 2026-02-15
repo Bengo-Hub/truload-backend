@@ -24,9 +24,19 @@ public class QuestPdfService : IPdfService
 
     public async Task<byte[]> GenerateWeightTicketAsync(WeighingTransaction transaction)
     {
+        // Resolve organization name from station
+        string? organizationName = null;
+        if (transaction.StationId != Guid.Empty)
+        {
+            organizationName = await _context.Stations
+                .Where(s => s.Id == transaction.StationId)
+                .Select(s => s.Organization.Name)
+                .FirstOrDefaultAsync();
+        }
+
         return await Task.Run(() =>
         {
-            var document = new WeightTicketDocument(transaction);
+            var document = new WeightTicketDocument(transaction, organizationName);
             return document.Generate();
         });
     }

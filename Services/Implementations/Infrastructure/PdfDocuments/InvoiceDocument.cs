@@ -51,10 +51,10 @@ public class InvoiceDocument : BaseDocument
             // Logo row with organization branding
             col.Item().Row(row =>
             {
-                row.ConstantItem(60).AlignMiddle().Column(logoCol =>
+                row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (primaryLogo != null)
-                        logoCol.Item().Height(50).Image(primaryLogo, ImageScaling.FitArea);
+                        logoCol.Item().Height(LogoHeight).Image(primaryLogo, ImageScaling.FitArea);
                 });
 
                 row.RelativeItem().PaddingHorizontal(5).Column(org =>
@@ -66,10 +66,10 @@ public class InvoiceDocument : BaseDocument
                     org.Item().AlignCenter().Text("Tel: +254 20 XXXXXXX | Email: info@kura.go.ke").FontSize(8);
                 });
 
-                row.ConstantItem(60).AlignMiddle().Column(logoCol =>
+                row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (secondaryLogo != null)
-                        logoCol.Item().Height(50).Image(secondaryLogo, ImageScaling.FitArea);
+                        logoCol.Item().Height(LogoHeight).Image(secondaryLogo, ImageScaling.FitArea);
                 });
             });
 

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Prosecution;
+using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Models.Prosecution;
 using TruLoad.Backend.Services.Interfaces.Prosecution;
 using TruLoad.Backend.Services.Interfaces.Weighing;
@@ -57,7 +58,7 @@ public class ProsecutionService : IProsecutionService
         return prosecutionCase == null ? null : MapToDto(prosecutionCase);
     }
 
-    public async Task<IEnumerable<ProsecutionCaseDto>> SearchAsync(ProsecutionSearchCriteria criteria, CancellationToken ct = default)
+    public async Task<PagedResponse<ProsecutionCaseDto>> SearchAsync(ProsecutionSearchCriteria criteria, CancellationToken ct = default)
     {
         var query = _context.ProsecutionCases
             .Include(p => p.CaseRegister)
@@ -66,6 +67,9 @@ public class ProsecutionService : IProsecutionService
             .Include(p => p.Act)
             .Where(p => p.DeletedAt == null)
             .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(criteria.CaseNo))
+            query = query.Where(p => p.CaseRegister != null && p.CaseRegister.CaseNo.Contains(criteria.CaseNo));
 
         if (criteria.CaseRegisterId.HasValue)
             query = query.Where(p => p.CaseRegisterId == criteria.CaseRegisterId.Value);
@@ -82,11 +86,11 @@ public class ProsecutionService : IProsecutionService
         if (!string.IsNullOrWhiteSpace(criteria.Status))
             query = query.Where(p => p.Status == criteria.Status);
 
-        if (criteria.CreatedFrom.HasValue)
-            query = query.Where(p => p.CreatedAt >= criteria.CreatedFrom.Value);
+        if (criteria.EffectiveFromDate.HasValue)
+            query = query.Where(p => p.CreatedAt >= criteria.EffectiveFromDate.Value);
 
-        if (criteria.CreatedTo.HasValue)
-            query = query.Where(p => p.CreatedAt <= criteria.CreatedTo.Value);
+        if (criteria.EffectiveToDate.HasValue)
+            query = query.Where(p => p.CreatedAt <= criteria.EffectiveToDate.Value);
 
         if (criteria.MinTotalFee.HasValue)
             query = query.Where(p => p.TotalFeeUsd >= criteria.MinTotalFee.Value);
@@ -94,13 +98,19 @@ public class ProsecutionService : IProsecutionService
         if (criteria.MaxTotalFee.HasValue)
             query = query.Where(p => p.TotalFeeUsd <= criteria.MaxTotalFee.Value);
 
+        var totalCount = await query.CountAsync(ct);
+
         var prosecutionCases = await query
             .OrderByDescending(p => p.CreatedAt)
             .Skip(criteria.Skip)
             .Take(criteria.PageSize)
             .ToListAsync(ct);
 
-        return prosecutionCases.Select(MapToDto);
+        return PagedResponse<ProsecutionCaseDto>.Create(
+            prosecutionCases.Select(MapToDto).ToList(),
+            totalCount,
+            criteria.PageNumber,
+            criteria.PageSize);
     }
 
     public async Task<ChargeCalculationResult> CalculateChargesAsync(Guid weighingId, string legalFramework, CancellationToken ct = default)
@@ -275,36 +285,42 @@ public class ProsecutionService : IProsecutionService
         return true;
     }
 
-    public async Task<Dictionary<string, object>> GetStatisticsAsync(CancellationToken ct = default)
+    public async Task<ProsecutionStatisticsDto> GetStatisticsAsync(CancellationToken ct = default)
     {
-        var stats = new Dictionary<string, object>();
+        var cases = _context.ProsecutionCases.Where(p => p.DeletedAt == null);
 
-        var total = await _context.ProsecutionCases
-            .CountAsync(p => p.DeletedAt == null, ct);
-        stats["total"] = total;
+        var total = await cases.CountAsync(ct);
+        var pending = await cases.CountAsync(p => p.Status == "pending", ct);
+        var invoiced = await cases.CountAsync(p => p.Status == "invoiced", ct);
+        var paid = await cases.CountAsync(p => p.Status == "paid", ct);
 
-        var pending = await _context.ProsecutionCases
-            .CountAsync(p => p.Status == "pending" && p.DeletedAt == null, ct);
-        stats["pending"] = pending;
+        // Count prosecutions whose linked CaseRegister has court hearings, OR status is "court"
+        var caseRegisterIdsWithHearings = _context.CourtHearings
+            .Where(ch => ch.DeletedAt == null)
+            .Select(ch => ch.CaseRegisterId)
+            .Distinct();
+        var court = await cases.CountAsync(p =>
+            p.Status == "court" || caseRegisterIdsWithHearings.Contains(p.CaseRegisterId), ct);
 
-        var invoiced = await _context.ProsecutionCases
-            .CountAsync(p => p.Status == "invoiced" && p.DeletedAt == null, ct);
-        stats["invoiced"] = invoiced;
+        // Fee totals (all prosecutions) and collected (paid only)
+        var totalFeesKes = await cases.SumAsync(p => p.TotalFeeKes, ct);
+        var totalFeesUsd = await cases.SumAsync(p => p.TotalFeeUsd, ct);
+        var paidCases = cases.Where(p => p.Status == "paid");
+        var collectedFeesKes = await paidCases.SumAsync(p => p.TotalFeeKes, ct);
+        var collectedFeesUsd = await paidCases.SumAsync(p => p.TotalFeeUsd, ct);
 
-        var paid = await _context.ProsecutionCases
-            .CountAsync(p => p.Status == "paid" && p.DeletedAt == null, ct);
-        stats["paid"] = paid;
-
-        var court = await _context.ProsecutionCases
-            .CountAsync(p => p.Status == "court" && p.DeletedAt == null, ct);
-        stats["court"] = court;
-
-        var totalFeesUsd = await _context.ProsecutionCases
-            .Where(p => p.DeletedAt == null)
-            .SumAsync(p => p.TotalFeeUsd, ct);
-        stats["totalFeesUsd"] = totalFeesUsd;
-
-        return stats;
+        return new ProsecutionStatisticsDto
+        {
+            TotalCases = total,
+            PendingCases = pending,
+            InvoicedCases = invoiced,
+            PaidCases = paid,
+            CourtCases = court,
+            TotalFeesKes = totalFeesKes,
+            TotalFeesUsd = totalFeesUsd,
+            CollectedFeesKes = collectedFeesKes,
+            CollectedFeesUsd = collectedFeesUsd
+        };
     }
 
     public async Task<string> GenerateCertificateNumberAsync(CancellationToken ct = default)

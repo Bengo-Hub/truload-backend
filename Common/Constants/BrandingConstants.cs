@@ -111,6 +111,17 @@ public static class BrandingConstants
     }
 
     /// <summary>
+    /// Status indicator image file names relative to wwwroot/images/.
+    /// Used in PDF documents to show compliance status visually.
+    /// </summary>
+    public static class StatusImages
+    {
+        public const string GreenButton = "greenbutton.png";
+        public const string RedButton = "redbutton.jpg";
+        public const string TaggedIcon = "tagged.png";
+    }
+
+    /// <summary>
     /// File storage folder names.
     /// </summary>
     public static class StorageFolders

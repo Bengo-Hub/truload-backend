@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace TruLoad.Backend.DTOs.User;
 
 public class UserDto
@@ -43,4 +45,15 @@ public class AssignRolesRequest
 {
     public List<Guid> RoleIds { get; set; } = new();
     public List<string> RoleNames { get; set; } = new();
+}
+
+public class AdminResetPasswordRequest
+{
+    [Required]
+    [MinLength(8)]
+    public string NewPassword { get; set; } = string.Empty;
+
+    [Required]
+    [Compare(nameof(NewPassword))]
+    public string ConfirmNewPassword { get; set; } = string.Empty;
 }

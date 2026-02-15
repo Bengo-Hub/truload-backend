@@ -147,6 +147,17 @@ public class InvoiceController : ControllerBase
     }
 
     /// <summary>
+    /// Get invoice aging breakdown for dashboard chart
+    /// </summary>
+    [HttpGet("api/v1/invoices/aging")]
+    [HasPermission("invoice.read")]
+    public async Task<IActionResult> GetAging(CancellationToken ct)
+    {
+        var aging = await _invoiceService.GetAgingAsync(ct);
+        return Ok(aging);
+    }
+
+    /// <summary>
     /// Download invoice PDF
     /// </summary>
     [HttpGet("api/v1/invoices/{id}/pdf")]

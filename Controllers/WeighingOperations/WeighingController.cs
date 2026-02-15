@@ -906,6 +906,9 @@ public class WeighingController : ControllerBase
     /// </summary>
     private WeighingTransactionDto MapToDto(WeighingTransaction transaction)
     {
+        var axles = transaction.WeighingAxles?.ToList() ?? new List<WeighingAxle>();
+        var isMultiDeck = transaction.WeighingType == "multideck" || transaction.WeighingType == "static";
+
         return new WeighingTransactionDto
         {
             Id = transaction.Id,
@@ -940,14 +943,25 @@ public class WeighingController : ControllerBase
             VehicleModel = transaction.Vehicle?.Model,
             VehicleType = transaction.Vehicle?.VehicleType,
             AxleConfiguration = transaction.Vehicle?.AxleConfiguration?.AxleCode,
+            IsMultiDeck = isMultiDeck,
 
             // People
             DriverName = transaction.Driver?.FullNames,
             TransporterName = transaction.Transporter?.Name,
+            WeighedByUserName = transaction.WeighedByUser?.FullName,
 
             // Station
             StationName = transaction.Station?.Name,
             StationCode = transaction.Station?.Code,
+
+            // Timing
+            TimeTakenSeconds = (int)(transaction.WeighedAt - transaction.CreatedAt).TotalSeconds,
+
+            // Deck weights from axle groupings (A/B/C/D) — only for static/multideck
+            DeckAWeightKg = isMultiDeck ? NullIfZero(axles.Where(a => a.AxleGrouping == "A").Sum(a => a.MeasuredWeightKg)) : null,
+            DeckBWeightKg = isMultiDeck ? NullIfZero(axles.Where(a => a.AxleGrouping == "B").Sum(a => a.MeasuredWeightKg)) : null,
+            DeckCWeightKg = isMultiDeck ? NullIfZero(axles.Where(a => a.AxleGrouping == "C").Sum(a => a.MeasuredWeightKg)) : null,
+            DeckDWeightKg = isMultiDeck ? NullIfZero(axles.Where(a => a.AxleGrouping == "D").Sum(a => a.MeasuredWeightKg)) : null,
 
             // Route & Cargo
             SourceLocation = transaction.Origin?.Name,
@@ -955,7 +969,7 @@ public class WeighingController : ControllerBase
             CargoType = transaction.Cargo?.Name,
             CargoDescription = transaction.Cargo?.Category,
 
-            WeighingAxles = transaction.WeighingAxles?.Select(a => new WeighingAxleDto
+            WeighingAxles = axles.Select(a => new WeighingAxleDto
             {
                 Id = a.Id,
                 AxleNumber = a.AxleNumber,
@@ -965,9 +979,11 @@ public class WeighingController : ControllerBase
                 AxleConfigurationId = a.AxleConfigurationId,
                 AxleWeightReferenceId = a.AxleWeightReferenceId,
                 CapturedAt = a.CapturedAt
-            }).ToList() ?? new()
+            }).ToList()
         };
     }
+
+    private static int? NullIfZero(int value) => value == 0 ? null : value;
 
     /// <summary>
     /// Maps WeighingTransaction entity to WeighingResultDto (compliance focused).

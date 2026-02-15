@@ -29,7 +29,7 @@ public class ReceiptDocument : BaseDocument
         {
             container.Page(page =>
             {
-                page.Size(PageSizes.A5);
+                page.Size(PageSizes.A4);
                 page.Margin(1.5f, Unit.Centimetre);
                 page.PageColor(Colors.White);
                 page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial"));
@@ -51,10 +51,10 @@ public class ReceiptDocument : BaseDocument
             // Logo row with organization branding
             col.Item().Row(row =>
             {
-                row.ConstantItem(50).AlignMiddle().Column(logoCol =>
+                row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (primaryLogo != null)
-                        logoCol.Item().Height(40).Image(primaryLogo, ImageScaling.FitArea);
+                        logoCol.Item().Height(LogoHeight).Image(primaryLogo, ImageScaling.FitArea);
                 });
 
                 row.RelativeItem().PaddingHorizontal(5).Column(org =>
@@ -65,10 +65,10 @@ public class ReceiptDocument : BaseDocument
                     org.Item().AlignCenter().Text(_organizationAddress).FontSize(8);
                 });
 
-                row.ConstantItem(50).AlignMiddle().Column(logoCol =>
+                row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (secondaryLogo != null)
-                        logoCol.Item().Height(40).Image(secondaryLogo, ImageScaling.FitArea);
+                        logoCol.Item().Height(LogoHeight).Image(secondaryLogo, ImageScaling.FitArea);
                 });
             });
 

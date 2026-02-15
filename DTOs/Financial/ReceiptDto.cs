@@ -68,10 +68,36 @@ public class VoidReceiptRequest
 /// </summary>
 public class ReceiptSearchCriteria : PagedRequest
 {
+    public string? ReceiptNo { get; set; }
     public Guid? InvoiceId { get; set; }
     public Guid? StationId { get; set; }
     public string? PaymentMethod { get; set; }
     public DateTime? PaymentDateFrom { get; set; }
     public DateTime? PaymentDateTo { get; set; }
     public Guid? ReceivedById { get; set; }
+}
+
+/// <summary>
+/// Receipt statistics response DTO matching frontend ReceiptStatistics type
+/// </summary>
+public class ReceiptStatisticsDto
+{
+    public int Total { get; set; }
+    public int TodayCount { get; set; }
+    public decimal TodayAmount { get; set; }
+    public decimal TotalCollected { get; set; }
+    public List<PaymentMethodBreakdown> ByPaymentMethod { get; set; } = new();
+
+    // Per-currency breakdown (prevents mixing KES + USD)
+    public decimal TodayAmountKes { get; set; }
+    public decimal TodayAmountUsd { get; set; }
+    public decimal TotalCollectedKes { get; set; }
+    public decimal TotalCollectedUsd { get; set; }
+}
+
+public class PaymentMethodBreakdown
+{
+    public string Method { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public decimal Amount { get; set; }
 }

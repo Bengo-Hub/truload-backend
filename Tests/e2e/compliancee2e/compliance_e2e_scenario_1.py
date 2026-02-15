@@ -280,8 +280,8 @@ class ComplianceE2ETest:
         body = {
             "stationId": self.data["stationId"],
             "vehicleRegNumber": VEHICLE_REG,
-            "weighingMode": "static",
-            "source": "Middleware",
+            "weighingMode": "mobile",
+            "source": "MobileApp",
             "axles": OVERLOADED_AXLES,
         }
         r = self._post("weighing-transactions/autoweigh", body)

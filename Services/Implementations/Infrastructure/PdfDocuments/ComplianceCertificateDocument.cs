@@ -55,10 +55,10 @@ public class ComplianceCertificateDocument : BaseDocument
         {
             col.Item().Row(row =>
             {
-                row.ConstantItem(60).AlignMiddle().Column(logoCol =>
+                row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (primaryLogo != null)
-                        logoCol.Item().Height(50).Image(primaryLogo, ImageScaling.FitArea);
+                        logoCol.Item().Height(LogoHeight).Image(primaryLogo, ImageScaling.FitArea);
                 });
 
                 row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(center =>
@@ -71,10 +71,10 @@ public class ComplianceCertificateDocument : BaseDocument
                     center.Item().AlignCenter().Text("EAST AFRICAN COMMUNITY VEHICLE LOAD CONTROL ACT, 2016").FontSize(9);
                 });
 
-                row.ConstantItem(60).AlignMiddle().Column(logoCol =>
+                row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (secondaryLogo != null)
-                        logoCol.Item().Height(50).Image(secondaryLogo, ImageScaling.FitArea);
+                        logoCol.Item().Height(LogoHeight).Image(secondaryLogo, ImageScaling.FitArea);
                 });
             });
 

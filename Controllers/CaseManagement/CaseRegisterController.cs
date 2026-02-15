@@ -232,9 +232,9 @@ public class CaseRegisterController : ControllerBase
             CreatedTo = dateTo,
             PageSize = 10000
         };
-        var cases = await _caseRegisterService.SearchCasesAsync(criteria);
-        
-        var breakdown = cases
+        var result = await _caseRegisterService.SearchCasesAsync(criteria);
+
+        var breakdown = result.Items
             .GroupBy(c => c.CaseStatus ?? "Unknown")
             .Select(g => new { Name = g.Key, Value = g.Count() })
             .ToList();
@@ -259,12 +259,17 @@ public class CaseRegisterController : ControllerBase
             CreatedTo = to,
             PageSize = 10000
         };
-        var cases = await _caseRegisterService.SearchCasesAsync(criteria);
-        
-        var trend = cases
+        var result = await _caseRegisterService.SearchCasesAsync(criteria);
+
+        var trend = result.Items
             .GroupBy(c => c.CreatedAt.Date)
             .OrderBy(g => g.Key)
-            .Select(g => new { Name = g.Key.ToString("MMM dd"), Value = g.Count() })
+            .Select(g => new
+            {
+                name = g.Key.ToString("MMM dd"),
+                opened = g.Count(),
+                closed = g.Count(c => string.Equals(c.CaseStatus, "CLOSED", StringComparison.OrdinalIgnoreCase))
+            })
             .ToList();
         
         return Ok(trend);

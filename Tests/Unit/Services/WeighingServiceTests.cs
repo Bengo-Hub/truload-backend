@@ -42,6 +42,7 @@ public class WeighingServiceTests
     private readonly Mock<IVehicleTagService> _mockVehicleTagService;
     private readonly TruLoadDbContext _dbContext;
     private readonly Mock<ISettingsService> _mockSettingsService;
+    private readonly Mock<IDocumentNumberService> _mockDocumentNumberService;
     private readonly Mock<ILogger<WeighingService>> _mockLogger;
     private readonly WeighingService _service;
 
@@ -67,6 +68,7 @@ public class WeighingServiceTests
             .Options;
         _dbContext = new TruLoadDbContext(dbOptions);
         _mockSettingsService = new Mock<ISettingsService>();
+        _mockDocumentNumberService = new Mock<IDocumentNumberService>();
         _mockLogger = new Mock<ILogger<WeighingService>>();
 
         // Setup default behavior for aggregation service
@@ -96,6 +98,7 @@ public class WeighingServiceTests
             _mockVehicleTagService.Object,
             _dbContext,
             _mockSettingsService.Object,
+            _mockDocumentNumberService.Object,
             _mockLogger.Object
         );
     }

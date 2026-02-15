@@ -1,4 +1,4 @@
-"""Run all 6 e2e compliance scenarios sequentially and save results to TEST_RESULTS.md"""
+"""Run all 7 e2e compliance scenarios sequentially and save results to TEST_RESULTS.md"""
 import subprocess
 import sys
 import datetime
@@ -11,6 +11,7 @@ SCENARIOS = [
     ("compliance_e2e_scenario_4.py", "Scenario 4: Permit-Based Exemption"),
     ("compliance_e2e_scenario_5.py", "Scenario 5: Court Escalation Path"),
     ("compliance_e2e_scenario_6.py", "Scenario 6: Full Court Case Lifecycle"),
+    ("compliance_e2e_scenario_7.py", "Scenario 7: Repeat Offender Multiple Overloads"),
 ]
 
 

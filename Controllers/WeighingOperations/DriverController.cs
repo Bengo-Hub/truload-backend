@@ -112,11 +112,9 @@ public class DriverController : ControllerBase
                 .Take(limit)
                 .Select(d => new
                 {
-                    DriverId = d.Id,
-                    DriverName = $"{d.FullNames} {d.Surname}".Trim(),
-                    LicenseNo = d.DrivingLicenseNo,
-                    DemeritPoints = d.CurrentDemeritPoints,
-                    ViolationCount = d.DemeritRecords?.Count ?? 0
+                    name = $"{d.FullNames} {d.Surname}".Trim(),
+                    points = d.CurrentDemeritPoints,
+                    violations = d.DemeritRecords?.Count ?? 0
                 })
                 .ToList();
 

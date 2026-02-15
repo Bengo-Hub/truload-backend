@@ -461,6 +461,33 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
+    /// Admin reset user password (sets a new password directly)
+    /// </summary>
+    [HttpPost("{id:guid}/reset-password")]
+    [HasPermission("user.update")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AdminResetPassword(Guid id, [FromBody] AdminResetPasswordRequest request)
+    {
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user == null || user.DeletedAt != null)
+        {
+            return NotFound(new { message = "User not found" });
+        }
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { errors = result.Errors });
+        }
+
+        _logger.LogInformation("Admin reset password for user: {UserId}", id);
+        return Ok(new { message = "Password reset successfully" });
+    }
+
+    /// <summary>
     /// Gets users grouped by station.
     /// </summary>
     [HttpGet("by-station")]

@@ -53,10 +53,10 @@ public class LoadCorrectionMemoDocument : BaseDocument
         {
             col.Item().Row(row =>
             {
-                row.ConstantItem(60).AlignMiddle().Column(logoCol =>
+                row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (primaryLogo != null)
-                        logoCol.Item().Height(50).Image(primaryLogo, ImageScaling.FitArea);
+                        logoCol.Item().Height(LogoHeight).Image(primaryLogo, ImageScaling.FitArea);
                 });
 
                 row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(center =>
@@ -67,7 +67,7 @@ public class LoadCorrectionMemoDocument : BaseDocument
                         .FontSize(11);
                 });
 
-                row.ConstantItem(60); // No secondary logo for memo
+                row.ConstantItem(LogoWidth); // No secondary logo for memo
             });
 
             col.Item().PaddingVertical(10).AlignCenter()

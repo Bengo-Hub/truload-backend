@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Financial;
+using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Models.Financial;
 using TruLoad.Backend.Services.Interfaces.Financial;
 
@@ -43,14 +44,25 @@ public class InvoiceService : IInvoiceService
         return invoices.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<InvoiceDto>> SearchAsync(InvoiceSearchCriteria criteria, CancellationToken ct = default)
+    public async Task<PagedResponse<InvoiceDto>> SearchAsync(InvoiceSearchCriteria criteria, CancellationToken ct = default)
     {
         var query = _context.Invoices
             .Include(i => i.CaseRegister)
             .Include(i => i.ProsecutionCase)
+            .Include(i => i.Weighing)
             .Include(i => i.Receipts)
             .Where(i => i.DeletedAt == null)
             .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(criteria.InvoiceNo))
+            query = query.Where(i => i.InvoiceNo.Contains(criteria.InvoiceNo));
+
+        if (!string.IsNullOrWhiteSpace(criteria.CaseNo))
+            query = query.Where(i => i.CaseRegister != null && i.CaseRegister.CaseNo.Contains(criteria.CaseNo));
+
+        if (!string.IsNullOrWhiteSpace(criteria.VehicleRegNumber))
+            query = query.Where(i => i.Weighing != null && i.Weighing.VehicleRegNumber != null
+                && i.Weighing.VehicleRegNumber.Contains(criteria.VehicleRegNumber));
 
         if (criteria.CaseRegisterId.HasValue)
             query = query.Where(i => i.CaseRegisterId == criteria.CaseRegisterId.Value);
@@ -64,11 +76,11 @@ public class InvoiceService : IInvoiceService
         if (!string.IsNullOrWhiteSpace(criteria.Status))
             query = query.Where(i => i.Status == criteria.Status);
 
-        if (criteria.GeneratedFrom.HasValue)
-            query = query.Where(i => i.GeneratedAt >= criteria.GeneratedFrom.Value);
+        if (criteria.EffectiveFromDate.HasValue)
+            query = query.Where(i => i.GeneratedAt >= criteria.EffectiveFromDate.Value);
 
-        if (criteria.GeneratedTo.HasValue)
-            query = query.Where(i => i.GeneratedAt <= criteria.GeneratedTo.Value);
+        if (criteria.EffectiveToDate.HasValue)
+            query = query.Where(i => i.GeneratedAt <= criteria.EffectiveToDate.Value);
 
         if (criteria.DueFrom.HasValue)
             query = query.Where(i => i.DueDate >= criteria.DueFrom.Value);
@@ -76,13 +88,25 @@ public class InvoiceService : IInvoiceService
         if (criteria.DueTo.HasValue)
             query = query.Where(i => i.DueDate <= criteria.DueTo.Value);
 
+        if (criteria.MinAmount.HasValue)
+            query = query.Where(i => i.AmountDue >= criteria.MinAmount.Value);
+
+        if (criteria.MaxAmount.HasValue)
+            query = query.Where(i => i.AmountDue <= criteria.MaxAmount.Value);
+
+        var totalCount = await query.CountAsync(ct);
+
         var invoices = await query
             .OrderByDescending(i => i.GeneratedAt)
             .Skip(criteria.Skip)
             .Take(criteria.PageSize)
             .ToListAsync(ct);
 
-        return invoices.Select(MapToDto);
+        return PagedResponse<InvoiceDto>.Create(
+            invoices.Select(MapToDto).ToList(),
+            totalCount,
+            criteria.PageNumber,
+            criteria.PageSize);
     }
 
     public async Task<InvoiceDto> GenerateInvoiceAsync(Guid prosecutionCaseId, Guid userId, CancellationToken ct = default)
@@ -174,30 +198,91 @@ public class InvoiceService : IInvoiceService
         return (await GetByIdAsync(id, ct))!;
     }
 
-    public async Task<Dictionary<string, object>> GetStatisticsAsync(CancellationToken ct = default)
+    public async Task<InvoiceStatisticsDto> GetStatisticsAsync(CancellationToken ct = default)
     {
-        var stats = new Dictionary<string, object>();
+        var invoices = _context.Invoices.Where(i => i.DeletedAt == null);
 
-        var total = await _context.Invoices.CountAsync(i => i.DeletedAt == null, ct);
-        stats["total"] = total;
+        var total = await invoices.CountAsync(ct);
+        var pending = await invoices.CountAsync(i => i.Status == "pending", ct);
+        var paid = await invoices.CountAsync(i => i.Status == "paid", ct);
+        var overdue = await invoices.CountAsync(i => i.Status == "pending" && i.DueDate < DateTime.UtcNow, ct);
 
-        var pending = await _context.Invoices.CountAsync(i => i.Status == "pending" && i.DeletedAt == null, ct);
-        stats["pending"] = pending;
-
-        var paid = await _context.Invoices.CountAsync(i => i.Status == "paid" && i.DeletedAt == null, ct);
-        stats["paid"] = paid;
-
-        var overdue = await _context.Invoices.CountAsync(i => i.Status == "pending"
-            && i.DueDate < DateTime.UtcNow
-            && i.DeletedAt == null, ct);
-        stats["overdue"] = overdue;
-
-        var totalAmountDue = await _context.Invoices
-            .Where(i => i.Status == "pending" && i.DeletedAt == null)
+        // Aggregate totals (legacy, mixed-currency)
+        var totalAmountDue = await invoices
+            .Where(i => i.Status == "pending")
             .SumAsync(i => i.AmountDue, ct);
-        stats["totalAmountDue"] = totalAmountDue;
 
-        return stats;
+        var totalAmountPaid = await _context.Receipts
+            .Where(r => r.DeletedAt == null)
+            .SumAsync(r => r.AmountPaid, ct);
+
+        // Per-currency breakdown for pending invoices
+        var pendingInvoices = invoices.Where(i => i.Status == "pending");
+        var totalAmountDueKes = await pendingInvoices
+            .Where(i => i.Currency == "KES")
+            .SumAsync(i => i.AmountDue, ct);
+        var totalAmountDueUsd = await pendingInvoices
+            .Where(i => i.Currency == "USD")
+            .SumAsync(i => i.AmountDue, ct);
+
+        // Per-currency breakdown for receipts
+        var receipts = _context.Receipts.Where(r => r.DeletedAt == null);
+        var totalAmountPaidKes = await receipts
+            .Where(r => r.Currency == "KES")
+            .SumAsync(r => r.AmountPaid, ct);
+        var totalAmountPaidUsd = await receipts
+            .Where(r => r.Currency == "USD")
+            .SumAsync(r => r.AmountPaid, ct);
+
+        return new InvoiceStatisticsDto
+        {
+            TotalInvoices = total,
+            PendingInvoices = pending,
+            PaidInvoices = paid,
+            OverdueInvoices = overdue,
+            TotalAmountDue = totalAmountDue,
+            TotalAmountPaid = totalAmountPaid,
+            TotalBalance = totalAmountDue - totalAmountPaid,
+            TotalAmountDueKes = totalAmountDueKes,
+            TotalAmountDueUsd = totalAmountDueUsd,
+            TotalAmountPaidKes = totalAmountPaidKes,
+            TotalAmountPaidUsd = totalAmountPaidUsd,
+            TotalBalanceKes = totalAmountDueKes - totalAmountPaidKes,
+            TotalBalanceUsd = totalAmountDueUsd - totalAmountPaidUsd
+        };
+    }
+
+    public async Task<List<InvoiceAgingBucketDto>> GetAgingAsync(CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        var pendingInvoices = await _context.Invoices
+            .Where(i => i.DeletedAt == null && i.Status == "pending")
+            .Select(i => new { i.GeneratedAt, i.AmountDue })
+            .ToListAsync(ct);
+
+        var buckets = new[]
+        {
+            new { Label = "Current (0-30d)", Min = 0, Max = 30 },
+            new { Label = "31-60 days", Min = 31, Max = 60 },
+            new { Label = "61-90 days", Min = 61, Max = 90 },
+            new { Label = "90+ days", Min = 91, Max = int.MaxValue }
+        };
+
+        return buckets.Select(b =>
+        {
+            var matching = pendingInvoices.Where(i =>
+            {
+                var age = (int)(now - i.GeneratedAt).TotalDays;
+                return age >= b.Min && age <= b.Max;
+            }).ToList();
+
+            return new InvoiceAgingBucketDto
+            {
+                Name = b.Label,
+                Value = matching.Count,
+                Amount = matching.Sum(i => i.AmountDue)
+            };
+        }).ToList();
     }
 
     public async Task<string> GenerateInvoiceNumberAsync(CancellationToken ct = default)

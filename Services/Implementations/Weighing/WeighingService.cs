@@ -41,6 +41,7 @@ public class WeighingService : IWeighingService
     private readonly IVehicleTagService _vehicleTagService;
     private readonly TruLoadDbContext _dbContext;
     private readonly ISettingsService _settingsService;
+    private readonly IDocumentNumberService _documentNumberService;
     private readonly ILogger<WeighingService> _logger;
 
     public WeighingService(
@@ -61,6 +62,7 @@ public class WeighingService : IWeighingService
         IVehicleTagService vehicleTagService,
         TruLoadDbContext dbContext,
         ISettingsService settingsService,
+        IDocumentNumberService documentNumberService,
         ILogger<WeighingService> logger)
     {
         _weighingRepository = weighingRepository;
@@ -80,6 +82,7 @@ public class WeighingService : IWeighingService
         _vehicleTagService = vehicleTagService;
         _dbContext = dbContext;
         _settingsService = settingsService;
+        _documentNumberService = documentNumberService;
         _logger = logger;
     }
 
@@ -1146,8 +1149,14 @@ public class WeighingService : IWeighingService
         // 6. Create or update transaction
         if (transaction == null)
         {
-            // Generate ticket number (format: AUTO-YYYYMMDD-HHMMSS-XXX)
-            var ticketNumber = GenerateAutoweighTicketNumber(request.StationId);
+            // Resolve organization ID from station
+            var station = await _dbContext.Stations.AsNoTracking().FirstOrDefaultAsync(s => s.Id == request.StationId);
+            var orgId = station?.OrganizationId ?? Guid.Empty;
+
+            // Generate ticket number using centralized document numbering service
+            var ticketNumber = await _documentNumberService.GenerateNumberAsync(
+                orgId, request.StationId, Models.System.DocumentTypes.WeightTicket,
+                vehicleRegNumber, request.Bound);
 
             transaction = new WeighingTransaction
             {
@@ -1274,17 +1283,8 @@ public class WeighingService : IWeighingService
         return MapToAutoweighResult(transaction, vehicleFound);
     }
 
-    /// <summary>
-    /// Generates a unique ticket number for autoweigh transactions.
-    /// Format: AUTO-{StationCode}-{YYYYMMDD}-{HHMMSS}-{Random3Digits}
-    /// </summary>
-    private string GenerateAutoweighTicketNumber(Guid stationId)
-    {
-        var timestamp = DateTime.UtcNow;
-        var random = new Random().Next(100, 999);
-        var shortStationId = stationId.ToString("N")[..4].ToUpperInvariant();
-        return $"AUTO-{shortStationId}-{timestamp:yyyyMMdd}-{timestamp:HHmmss}-{random}";
-    }
+    // Legacy GenerateAutoweighTicketNumber removed in Sprint 22.
+    // Ticket number generation now uses IDocumentNumberService for configurable conventions.
 
     /// <summary>
     /// Maps a weighing transaction to AutoweighResultDto.

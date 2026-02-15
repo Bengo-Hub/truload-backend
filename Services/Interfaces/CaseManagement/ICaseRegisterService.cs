@@ -1,4 +1,5 @@
 using TruLoad.Backend.DTOs.CaseManagement;
+using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Models.CaseManagement;
 
 namespace TruLoad.Backend.Services.Interfaces.CaseManagement;
@@ -23,7 +24,7 @@ public interface ICaseRegisterService
     /// <summary>
     /// Search cases with filters
     /// </summary>
-    Task<IEnumerable<CaseRegisterDto>> SearchCasesAsync(CaseSearchCriteria criteria);
+    Task<PagedResponse<CaseRegisterDto>> SearchCasesAsync(CaseSearchCriteria criteria);
 
     /// <summary>
     /// Create a new case register (manual entry)
@@ -63,7 +64,7 @@ public interface ICaseRegisterService
     /// <summary>
     /// Get case statistics
     /// </summary>
-    Task<Dictionary<string, int>> GetCaseStatisticsAsync();
+    Task<CaseStatisticsDto> GetCaseStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null);
 
     /// <summary>
     /// Delete a case (soft delete)

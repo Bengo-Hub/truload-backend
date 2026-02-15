@@ -112,3 +112,14 @@ public class CaseSearchCriteria : PagedRequest
     public bool? EscalatedToCaseManager { get; set; }
     public Guid? CaseManagerId { get; set; }
 }
+
+/// <summary>
+/// Case statistics response DTO matching frontend CaseStatistics type
+/// </summary>
+public class CaseStatisticsDto
+{
+    public int TotalCases { get; set; }
+    public int OpenCases { get; set; }
+    public int EscalatedCases { get; set; }
+    public int ClosedCases { get; set; }
+}

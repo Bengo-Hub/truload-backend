@@ -92,6 +92,11 @@ public static class DatabaseSeeder
             logger.LogInformation("Seeding exchange rate defaults...");
             await ExchangeRateSeeder.SeedAsync(context);
 
+            // Seed document naming conventions (Sprint 22)
+            logger.LogInformation("Seeding document conventions...");
+            var documentConventionSeeder = new DocumentConventionSeeder(context);
+            await documentConventionSeeder.SeedAsync();
+
             logger.LogInformation("=== Database seeding completed successfully ===");
         }
         catch (Exception ex)

@@ -7,7 +7,8 @@ namespace TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments;
 
 /// <summary>
 /// Base class for all PDF document generators.
-/// Provides common document structure, branding, and logo rendering using centralized constants.
+/// Provides common document structure, branding, logo rendering, and status images.
+/// All official documents inherit from this for consistent branding.
 /// </summary>
 public abstract class BaseDocument
 {
@@ -19,10 +20,16 @@ public abstract class BaseDocument
     protected readonly string OfficialRed = BrandingConstants.Colors.OfficialRed;
     protected readonly string OfficialGreen = BrandingConstants.Colors.OfficialGreen;
 
+    // Logo sizes - increased for better visibility
+    protected const float LogoWidth = 80;
+    protected const float LogoHeight = 65;
+    protected const float SmallLogoWidth = 55;
+    protected const float SmallLogoHeight = 45;
+
     public abstract byte[] Generate();
 
     /// <summary>
-    /// Loads a logo image from wwwroot/images/ as byte array.
+    /// Loads an image from wwwroot/images/ as byte array.
     /// Returns null if the file does not exist (graceful degradation).
     /// </summary>
     protected static byte[]? LoadLogo(string fileName)
@@ -34,6 +41,7 @@ public abstract class BaseDocument
     /// <summary>
     /// Composes an official document header with left logo, centered title block, and right logo.
     /// Used by all official documents for consistent branding.
+    /// Supports optional organization name display below "REPUBLIC OF KENYA".
     /// </summary>
     protected void ComposeOfficialHeaderWithLogos(
         IContainer container,
@@ -43,7 +51,8 @@ public abstract class BaseDocument
         string? subtitle = null,
         string? referenceNumber = null,
         string? dateText = null,
-        string? titleColor = null)
+        string? titleColor = null,
+        string? organizationName = null)
     {
         var primaryLogo = LoadLogo(primaryLogoFile);
         var secondaryLogo = secondaryLogoFile != null ? LoadLogo(secondaryLogoFile) : null;
@@ -53,29 +62,37 @@ public abstract class BaseDocument
         {
             col.Item().Row(row =>
             {
-                // Left logo
-                row.ConstantItem(60).AlignMiddle().Column(logoCol =>
+                // Left logo - increased size
+                row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (primaryLogo != null)
-                        logoCol.Item().Height(50).Image(primaryLogo, ImageScaling.FitArea);
+                        logoCol.Item().Height(LogoHeight).Image(primaryLogo, ImageScaling.FitArea);
                 });
 
                 // Center title block
                 row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(center =>
                 {
                     center.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
-                        .FontSize(11).SemiBold();
+                        .FontSize(12).SemiBold();
+
+                    // Organization name (e.g., "KENYA URBAN ROADS AUTHORITY")
+                    if (!string.IsNullOrEmpty(organizationName))
+                    {
+                        center.Item().AlignCenter().Text(organizationName)
+                            .FontSize(10).SemiBold();
+                    }
+
                     center.Item().AlignCenter().Text(documentTitle)
-                        .FontSize(14).Bold().FontColor(headerColor);
+                        .FontSize(15).Bold().FontColor(headerColor);
                     if (!string.IsNullOrEmpty(subtitle))
                         center.Item().AlignCenter().Text(subtitle).FontSize(9);
                 });
 
-                // Right logo
-                row.ConstantItem(60).AlignMiddle().Column(logoCol =>
+                // Right logo - increased size
+                row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (secondaryLogo != null)
-                        logoCol.Item().Height(50).Image(secondaryLogo, ImageScaling.FitArea);
+                        logoCol.Item().Height(LogoHeight).Image(secondaryLogo, ImageScaling.FitArea);
                 });
             });
 
@@ -119,10 +136,10 @@ public abstract class BaseDocument
         {
             col.Item().Row(row =>
             {
-                row.ConstantItem(55).AlignMiddle().Column(logoCol =>
+                row.ConstantItem(SmallLogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (leftLogo != null)
-                        logoCol.Item().Height(45).Image(leftLogo, ImageScaling.FitArea);
+                        logoCol.Item().Height(SmallLogoHeight).Image(leftLogo, ImageScaling.FitArea);
                 });
 
                 row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(center =>
@@ -138,10 +155,10 @@ public abstract class BaseDocument
                         center.Item().AlignCenter().Text(subtitle).FontSize(8);
                 });
 
-                row.ConstantItem(55).AlignMiddle().Column(logoCol =>
+                row.ConstantItem(SmallLogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (rightLogo != null)
-                        logoCol.Item().Height(45).Image(rightLogo, ImageScaling.FitArea);
+                        logoCol.Item().Height(SmallLogoHeight).Image(rightLogo, ImageScaling.FitArea);
                 });
             });
 
@@ -161,13 +178,78 @@ public abstract class BaseDocument
     }
 
     /// <summary>
+    /// Composes a status indicator image based on compliance status.
+    /// Uses greenbutton.png for compliant, redbutton.jpg for overloaded, tagged.png for tagged vehicles.
+    /// Falls back to colored text if image not found.
+    /// </summary>
+    protected void ComposeStatusImage(IContainer container, string status, bool isTagged = false)
+    {
+        string? imageFile;
+        string statusText;
+        string bgColor;
+        string textColor;
+
+        if (isTagged)
+        {
+            imageFile = "tagged.png";
+            statusText = "TAGGED";
+            bgColor = "#FEF3C7";
+            textColor = "#B45309";
+        }
+        else
+        {
+            var normalizedStatus = status?.ToUpperInvariant() ?? "";
+            switch (normalizedStatus)
+            {
+                case "LEGAL" or "COMPLIANT":
+                    imageFile = "greenbutton.png";
+                    statusText = "LEGAL";
+                    bgColor = "#DCFCE7";
+                    textColor = OfficialGreen;
+                    break;
+                case "OVERLOAD" or "OVERLOADED" or "VIOLATION":
+                    imageFile = "redbutton.jpg";
+                    statusText = "OVERLOADED";
+                    bgColor = "#FEE2E2";
+                    textColor = OfficialRed;
+                    break;
+                case "WARNING":
+                    imageFile = "tagged.png";
+                    statusText = "WARNING";
+                    bgColor = "#FEF3C7";
+                    textColor = "#B45309";
+                    break;
+                default:
+                    imageFile = null;
+                    statusText = status ?? "PENDING";
+                    bgColor = "#F3F4F6";
+                    textColor = KuraBlack;
+                    break;
+            }
+        }
+
+        var imageBytes = imageFile != null ? LoadLogo(imageFile) : null;
+
+        container.Column(col =>
+        {
+            if (imageBytes != null)
+            {
+                col.Item().AlignCenter().Width(40).Height(40).Image(imageBytes, ImageScaling.FitArea);
+            }
+            col.Item().PaddingTop(3).AlignCenter()
+                .Background(bgColor).Padding(5)
+                .Text(statusText).FontSize(10).Bold().FontColor(textColor);
+        });
+    }
+
+    /// <summary>
     /// Composes a conditional cell with color based on compliance status.
     /// </summary>
     protected void ComposeConditionalCell(IContainer container, string text, string status)
     {
         var (bgColor, textColor) = status.ToLower() switch
         {
-            "overloaded" or "violation" or "failed" => ("#FEE2E2", OfficialRed),
+            "overloaded" or "violation" or "failed" or "overload" => ("#FEE2E2", OfficialRed),
             "compliant" or "passed" or "success" => ("#DCFCE7", OfficialGreen),
             "warning" or "pending" or "tolerance" => ("#FEF3C7", "#B45309"),
             "legal" => ("#DBEAFE", KuraBlue),

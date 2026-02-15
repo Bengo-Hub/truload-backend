@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.CaseManagement;
+using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Models.CaseManagement;
 using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Repositories.CaseManagement;
@@ -39,8 +40,36 @@ public class CaseRegisterService : ICaseRegisterService
         return caseRegister == null ? null : MapToDto(caseRegister);
     }
 
-    public async Task<IEnumerable<CaseRegisterDto>> SearchCasesAsync(CaseSearchCriteria criteria)
+    public async Task<PagedResponse<CaseRegisterDto>> SearchCasesAsync(CaseSearchCriteria criteria)
     {
+        // Build filtered query for count
+        var countQuery = _context.CaseRegisters
+            .AsNoTracking()
+            .Where(c => c.DeletedAt == null)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(criteria.CaseNo))
+            countQuery = countQuery.Where(c => c.CaseNo.Contains(criteria.CaseNo));
+        if (criteria.StationId.HasValue)
+            countQuery = countQuery.Where(c => c.Weighing != null && c.Weighing.StationId == criteria.StationId.Value);
+        if (criteria.ViolationTypeId.HasValue)
+            countQuery = countQuery.Where(c => c.ViolationTypeId == criteria.ViolationTypeId.Value);
+        if (criteria.CaseStatusId.HasValue)
+            countQuery = countQuery.Where(c => c.CaseStatusId == criteria.CaseStatusId.Value);
+        if (criteria.DispositionTypeId.HasValue)
+            countQuery = countQuery.Where(c => c.DispositionTypeId == criteria.DispositionTypeId.Value);
+        if (criteria.CreatedFrom.HasValue)
+            countQuery = countQuery.Where(c => c.CreatedAt >= criteria.CreatedFrom.Value);
+        if (criteria.CreatedTo.HasValue)
+            countQuery = countQuery.Where(c => c.CreatedAt <= criteria.CreatedTo.Value);
+        if (criteria.EscalatedToCaseManager.HasValue)
+            countQuery = countQuery.Where(c => c.EscalatedToCaseManager == criteria.EscalatedToCaseManager.Value);
+        if (criteria.CaseManagerId.HasValue)
+            countQuery = countQuery.Where(c => c.CaseManagerId == criteria.CaseManagerId.Value);
+
+        var totalCount = await countQuery.CountAsync();
+
+        // Get paginated items from repository
         var cases = await _caseRegisterRepository.SearchAsync(
             caseNo: criteria.CaseNo,
             vehicleRegNumber: criteria.VehicleRegNumber,
@@ -55,7 +84,11 @@ public class CaseRegisterService : ICaseRegisterService
             pageNumber: criteria.PageNumber,
             pageSize: criteria.PageSize);
 
-        return cases.Select(MapToDto);
+        return PagedResponse<CaseRegisterDto>.Create(
+            cases.Select(MapToDto).ToList(),
+            totalCount,
+            criteria.PageNumber,
+            criteria.PageSize);
     }
 
     public async Task<CaseRegisterDto> CreateCaseAsync(CreateCaseRegisterRequest request, Guid userId)
@@ -293,26 +326,41 @@ public class CaseRegisterService : ICaseRegisterService
         return MapToDto(updated);
     }
 
-    public async Task<Dictionary<string, int>> GetCaseStatisticsAsync()
+    public async Task<CaseStatisticsDto> GetCaseStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null)
     {
-        var total = await _caseRegisterRepository.GetTotalCountAsync();
+        var cases = _context.CaseRegisters.AsNoTracking().Where(c => c.DeletedAt == null);
 
-        // Single query with GroupBy to avoid N+1
-        var statusCounts = await _context.CaseRegisters
-            .AsNoTracking()
-            .Where(c => c.DeletedAt == null)
-            .GroupBy(c => c.CaseStatus!.Name)
-            .Select(g => new { StatusName = g.Key, Count = g.Count() })
-            .ToListAsync();
-
-        var stats = new Dictionary<string, int> { { "Total", total } };
-        foreach (var sc in statusCounts)
+        if (dateFrom.HasValue)
         {
-            if (!string.IsNullOrEmpty(sc.StatusName))
-                stats[sc.StatusName] = sc.Count;
+            var from = DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc);
+            cases = cases.Where(c => c.CreatedAt >= from);
+        }
+        if (dateTo.HasValue)
+        {
+            var to = DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc);
+            cases = cases.Where(c => c.CreatedAt <= to);
         }
 
-        return stats;
+        var total = await cases.CountAsync();
+
+        // Get counts by status code for reliable matching
+        var statusCounts = await cases
+            .Include(c => c.CaseStatus)
+            .GroupBy(c => c.CaseStatus!.Code)
+            .Select(g => new { StatusCode = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var open = statusCounts.Where(s => s.StatusCode == "OPEN").Sum(s => s.Count);
+        var closed = statusCounts.Where(s => s.StatusCode == "CLOSED").Sum(s => s.Count);
+        var escalated = await cases.CountAsync(c => c.EscalatedToCaseManager);
+
+        return new CaseStatisticsDto
+        {
+            TotalCases = total,
+            OpenCases = open,
+            EscalatedCases = escalated,
+            ClosedCases = closed
+        };
     }
 
     public async Task<bool> DeleteCaseAsync(Guid id)

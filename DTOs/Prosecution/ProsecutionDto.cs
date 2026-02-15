@@ -128,13 +128,35 @@ public class UpdateProsecutionRequest
 /// </summary>
 public class ProsecutionSearchCriteria : PagedRequest
 {
+    public string? CaseNo { get; set; }
     public Guid? CaseRegisterId { get; set; }
     public Guid? WeighingId { get; set; }
     public Guid? StationId { get; set; }
     public Guid? ActId { get; set; }
     public string? Status { get; set; }
+    public DateTime? DateFrom { get; set; }
+    public DateTime? DateTo { get; set; }
     public DateTime? CreatedFrom { get; set; }
     public DateTime? CreatedTo { get; set; }
     public decimal? MinTotalFee { get; set; }
     public decimal? MaxTotalFee { get; set; }
+
+    public DateTime? EffectiveFromDate => DateFrom ?? CreatedFrom;
+    public DateTime? EffectiveToDate => DateTo ?? CreatedTo;
+}
+
+/// <summary>
+/// Prosecution statistics response DTO matching frontend ProsecutionStatistics type
+/// </summary>
+public class ProsecutionStatisticsDto
+{
+    public int TotalCases { get; set; }
+    public int PendingCases { get; set; }
+    public int InvoicedCases { get; set; }
+    public int PaidCases { get; set; }
+    public int CourtCases { get; set; }
+    public decimal TotalFeesKes { get; set; }
+    public decimal TotalFeesUsd { get; set; }
+    public decimal CollectedFeesKes { get; set; }
+    public decimal CollectedFeesUsd { get; set; }
 }

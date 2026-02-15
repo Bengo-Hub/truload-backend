@@ -149,27 +149,19 @@ public class ReceiptController : ControllerBase
                 PaymentDateTo = to
             };
 
-            var receipts = await _receiptService.SearchAsync(criteria, ct);
+            var result = await _receiptService.SearchAsync(criteria, ct);
 
             // For now, group by payment method as proxy since we don't have station on receipt
             // In production, you would join with invoice → weighing → station
-            var grouped = receipts
+            var grouped = result.Items
                 .GroupBy(r => r.PaymentMethod ?? "Unknown")
-                .Select((g, i) => new RevenueByStationDto
+                .Select(g => new
                 {
-                    StationId = Guid.Empty,
-                    StationName = g.Key,
-                    Revenue = g.Sum(r => r.AmountPaid),
-                    Count = g.Count(),
-                    Percentage = 0
+                    name = g.Key,
+                    revenue = g.Sum(r => r.AmountPaid),
+                    transactions = g.Count()
                 })
                 .ToList();
-
-            var total = grouped.Sum(g => g.Revenue);
-            foreach (var g in grouped)
-            {
-                g.Percentage = total > 0 ? Math.Round(g.Revenue / total * 100, 1) : 0;
-            }
 
             return Ok(grouped);
         }
@@ -200,14 +192,14 @@ public class ReceiptController : ControllerBase
                 PaymentDateTo = to
             };
 
-            var receipts = await _receiptService.SearchAsync(criteria, ct);
+            var result = await _receiptService.SearchAsync(criteria, ct);
 
-            var monthly = receipts
+            var monthly = result.Items
                 .GroupBy(r => new { r.CreatedAt.Year, r.CreatedAt.Month })
                 .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
                 .Select(g => new MonthlyRevenueDto
                 {
-                    Name = new DateTime(g.Key.Year, g.Key.Month, 1).ToString("MMM yyyy"),
+                    Name = new DateTime(g.Key.Year, g.Key.Month, 1, 0, 0, 0, DateTimeKind.Utc).ToString("MMM yyyy"),
                     Revenue = g.Sum(r => r.AmountPaid),
                     TransactionCount = g.Count()
                 })
@@ -242,9 +234,9 @@ public class ReceiptController : ControllerBase
                 PaymentDateTo = to
             };
 
-            var receipts = await _receiptService.SearchAsync(criteria, ct);
+            var result = await _receiptService.SearchAsync(criteria, ct);
 
-            var methods = receipts
+            var methods = result.Items
                 .GroupBy(r => r.PaymentMethod ?? "Unknown")
                 .Select(g => new PaymentMethodDistributionDto
                 {

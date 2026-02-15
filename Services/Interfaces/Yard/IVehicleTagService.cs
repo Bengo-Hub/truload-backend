@@ -40,9 +40,9 @@ public interface IVehicleTagService
     Task<List<TagCategoryDto>> GetCategoriesAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Get tag statistics.
+    /// Get tag statistics, optionally filtered by date range.
     /// </summary>
-    Task<VehicleTagStatisticsDto> GetStatisticsAsync(CancellationToken ct = default);
+    Task<VehicleTagStatisticsDto> GetStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -50,6 +50,7 @@ public interface IVehicleTagService
 /// </summary>
 public class VehicleTagStatisticsDto
 {
+    public int Total { get; set; }
     public int TotalOpen { get; set; }
     public int ClosedToday { get; set; }
     public int CreatedToday { get; set; }

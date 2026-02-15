@@ -73,9 +73,12 @@ public class VehicleTagController : ControllerBase
     [HttpGet("statistics")]
     [Authorize(Policy = "Permission:tag.read")]
     [ProducesResponseType(typeof(VehicleTagStatisticsDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetStatistics(CancellationToken ct)
+    public async Task<IActionResult> GetStatistics(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        CancellationToken ct)
     {
-        var stats = await _vehicleTagService.GetStatisticsAsync(ct);
+        var stats = await _vehicleTagService.GetStatisticsAsync(dateFrom, dateTo, ct);
         return Ok(stats);
     }
 

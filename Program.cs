@@ -346,6 +346,9 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IWeighingService, WeighingService>();
 builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
 
+// Document numbering service (Sprint 22)
+builder.Services.AddScoped<IDocumentNumberService, DocumentNumberService>();
+
 // Sprint 11: Axle Group Aggregation & Fee/Demerit Services
 builder.Services.AddScoped<IAxleTypeFeeRepository, AxleTypeFeeRepository>();
 builder.Services.AddScoped<IDemeritPointsRepository, DemeritPointsRepository>();
@@ -464,7 +467,7 @@ try
         }
 
         // Check if initial seeding has already been completed
-        var seedingVersion = 7; // Increment this when you need to re-seed (v5: Added MIDDLEWARE_SERVICE role + middleware@truconnect.local user)
+        var seedingVersion = 1; // Increment this when you need to re-seed
         var seedingName = "InitialSeed";
 
         var existingSeed = await dbContext.DatabaseSeedingHistory

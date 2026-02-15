@@ -1,4 +1,5 @@
 using TruLoad.Backend.DTOs.Prosecution;
+using TruLoad.Backend.DTOs.Shared;
 
 namespace TruLoad.Backend.Services.Interfaces.Prosecution;
 
@@ -21,7 +22,7 @@ public interface IProsecutionService
     /// <summary>
     /// Search prosecution cases with filters
     /// </summary>
-    Task<IEnumerable<ProsecutionCaseDto>> SearchAsync(ProsecutionSearchCriteria criteria, CancellationToken ct = default);
+    Task<PagedResponse<ProsecutionCaseDto>> SearchAsync(ProsecutionSearchCriteria criteria, CancellationToken ct = default);
 
     /// <summary>
     /// Calculate charges for a weighing transaction
@@ -46,7 +47,7 @@ public interface IProsecutionService
     /// <summary>
     /// Get prosecution statistics
     /// </summary>
-    Task<Dictionary<string, object>> GetStatisticsAsync(CancellationToken ct = default);
+    Task<ProsecutionStatisticsDto> GetStatisticsAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Generate certificate number for prosecution

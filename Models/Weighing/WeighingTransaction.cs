@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Models.Common;
+using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Models.Infrastructure;
 
 namespace TruLoad.Backend.Models.Weighing;
@@ -219,6 +220,7 @@ public class WeighingTransaction : BaseEntity
     public Driver? Driver { get; set; }
     public Transporter? Transporter { get; set; }
     public Station? Station { get; set; }
+    public ApplicationUser? WeighedByUser { get; set; }
     public WeighingTransaction? OriginalWeighing { get; set; }
     public ActDefinition? Act { get; set; }
     public OriginsDestinations? Origin { get; set; }

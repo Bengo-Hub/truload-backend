@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Financial;
+using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Models.Financial;
 using TruLoad.Backend.Models.CaseManagement;
 using TruLoad.Backend.Services.Interfaces.Financial;
@@ -44,13 +45,16 @@ public class ReceiptService : IReceiptService
         return receipts.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<ReceiptDto>> SearchAsync(ReceiptSearchCriteria criteria, CancellationToken ct = default)
+    public async Task<PagedResponse<ReceiptDto>> SearchAsync(ReceiptSearchCriteria criteria, CancellationToken ct = default)
     {
         var query = _context.Receipts
             .Include(r => r.Invoice)
             .Include(r => r.ReceivedBy)
             .Where(r => r.DeletedAt == null)
             .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(criteria.ReceiptNo))
+            query = query.Where(r => r.ReceiptNo.Contains(criteria.ReceiptNo));
 
         if (criteria.InvoiceId.HasValue)
             query = query.Where(r => r.InvoiceId == criteria.InvoiceId.Value);
@@ -70,13 +74,19 @@ public class ReceiptService : IReceiptService
         if (criteria.ReceivedById.HasValue)
             query = query.Where(r => r.ReceivedById == criteria.ReceivedById.Value);
 
+        var totalCount = await query.CountAsync(ct);
+
         var receipts = await query
             .OrderByDescending(r => r.PaymentDate)
             .Skip(criteria.Skip)
             .Take(criteria.PageSize)
             .ToListAsync(ct);
 
-        return receipts.Select(MapToDto);
+        return PagedResponse<ReceiptDto>.Create(
+            receipts.Select(MapToDto).ToList(),
+            totalCount,
+            criteria.PageNumber,
+            criteria.PageSize);
     }
 
     public async Task<ReceiptDto> RecordPaymentAsync(Guid invoiceId, RecordPaymentRequest request, Guid userId, CancellationToken ct = default)
@@ -232,37 +242,46 @@ public class ReceiptService : IReceiptService
         return MapToDto(receipt);
     }
 
-    public async Task<Dictionary<string, object>> GetStatisticsAsync(CancellationToken ct = default)
+    public async Task<ReceiptStatisticsDto> GetStatisticsAsync(CancellationToken ct = default)
     {
-        var stats = new Dictionary<string, object>();
+        var receipts = _context.Receipts.Where(r => r.DeletedAt == null);
 
-        var total = await _context.Receipts.CountAsync(r => r.DeletedAt == null, ct);
-        stats["total"] = total;
+        var total = await receipts.CountAsync(ct);
 
         var today = DateTime.UtcNow.Date;
-        var todayCount = await _context.Receipts
-            .CountAsync(r => r.PaymentDate >= today && r.DeletedAt == null, ct);
-        stats["todayCount"] = todayCount;
+        var todayReceipts = receipts.Where(r => r.PaymentDate >= today);
+        var todayCount = await todayReceipts.CountAsync(ct);
+        var todayAmount = await todayReceipts.SumAsync(r => r.AmountPaid, ct);
+        var totalCollected = await receipts.SumAsync(r => r.AmountPaid, ct);
 
-        var todayAmount = await _context.Receipts
-            .Where(r => r.PaymentDate >= today && r.DeletedAt == null)
-            .SumAsync(r => r.AmountPaid, ct);
-        stats["todayAmount"] = todayAmount;
+        // Per-currency breakdown
+        var todayAmountKes = await todayReceipts.Where(r => r.Currency == "KES").SumAsync(r => r.AmountPaid, ct);
+        var todayAmountUsd = await todayReceipts.Where(r => r.Currency == "USD").SumAsync(r => r.AmountPaid, ct);
+        var totalCollectedKes = await receipts.Where(r => r.Currency == "KES").SumAsync(r => r.AmountPaid, ct);
+        var totalCollectedUsd = await receipts.Where(r => r.Currency == "USD").SumAsync(r => r.AmountPaid, ct);
 
-        var totalCollected = await _context.Receipts
-            .Where(r => r.DeletedAt == null)
-            .SumAsync(r => r.AmountPaid, ct);
-        stats["totalCollected"] = totalCollected;
-
-        // Payment method breakdown
-        var byMethod = await _context.Receipts
-            .Where(r => r.DeletedAt == null)
+        var byMethod = await receipts
             .GroupBy(r => r.PaymentMethod)
-            .Select(g => new { Method = g.Key, Count = g.Count(), Amount = g.Sum(r => r.AmountPaid) })
+            .Select(g => new PaymentMethodBreakdown
+            {
+                Method = g.Key,
+                Count = g.Count(),
+                Amount = g.Sum(r => r.AmountPaid)
+            })
             .ToListAsync(ct);
-        stats["byPaymentMethod"] = byMethod;
 
-        return stats;
+        return new ReceiptStatisticsDto
+        {
+            Total = total,
+            TodayCount = todayCount,
+            TodayAmount = todayAmount,
+            TotalCollected = totalCollected,
+            TodayAmountKes = todayAmountKes,
+            TodayAmountUsd = todayAmountUsd,
+            TotalCollectedKes = totalCollectedKes,
+            TotalCollectedUsd = totalCollectedUsd,
+            ByPaymentMethod = byMethod
+        };
     }
 
     public async Task<string> GenerateReceiptNumberAsync(CancellationToken ct = default)

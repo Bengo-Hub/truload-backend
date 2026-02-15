@@ -215,7 +215,7 @@ public class StationsController : ControllerBase
             var orgId = _tenantContext.OrganizationId;
             var stations = await _stationRepository.GetByOrganizationIdAsync(orgId, ct);
 
-            var result = new List<StationPerformanceDto>();
+            var result = new List<object>();
 
             foreach (var station in stations)
             {
@@ -227,19 +227,15 @@ public class StationsController : ControllerBase
 
                 var total = items.Count;
                 var legalCount = items.Count(t => string.Equals(t.ControlStatus, "LEGAL", StringComparison.OrdinalIgnoreCase));
-                var overloadedCount = items.Count(t => string.Equals(t.ControlStatus, "OVERLOAD", StringComparison.OrdinalIgnoreCase));
                 var complianceRate = total > 0 ? Math.Round((decimal)legalCount / total * 100, 1) : 0;
                 var revenue = items.Sum(t => t.TotalFeeUsd);
 
-                result.Add(new StationPerformanceDto
+                result.Add(new
                 {
-                    StationId = station.Id,
-                    StationName = station.Name,
-                    TotalWeighings = total,
-                    OverloadedCount = overloadedCount,
-                    ComplianceRate = complianceRate,
-                    Revenue = revenue,
-                    AvgProcessingTime = 0 // TODO: Calculate from weighing timestamps
+                    name = station.Name,
+                    weighings = total,
+                    compliance = complianceRate,
+                    revenue
                 });
             }
 
