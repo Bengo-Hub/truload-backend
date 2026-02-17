@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (Sprint 22.1 - Production Bug Fixes - 2026-02-18)
+
+#### Weighing Operations
+- **DbContext concurrency error**: Replaced `Task.WhenAll` in `WeighingController.Create` with sequential calls to prevent "A second operation was started on this context instance" error
+- **Document naming convention not applied**: `InitiateWeighingAsync` now calls `DocumentNumberService.GenerateNumberAsync()` instead of using frontend-provided ticket number (eliminates `MOB` prefix)
+- **CaptureStatus lifecycle**: Set `CaptureStatus = "pending"` on transaction creation; transitions to `"captured"` when weights are submitted via `CaptureWeightsAsync` (handles both frontend-initiated and autoweigh flows)
+- **DocumentSequence concurrency**: Added `[Timestamp] RowVersion` concurrency token to `DocumentSequence` model; added retry loop with `DbUpdateConcurrencyException` handling in `DocumentNumberService`
+
+#### CORS & Error Handling
+- **CORS on error responses**: Moved `app.UseCors()` before `UseExceptionHandler` in middleware pipeline so error responses include CORS headers
+- **Disposition breakdown 500**: Added try-catch to `GetDispositionBreakdown` and `GetCaseTrend` endpoints in `CaseRegisterController`; added `ILogger` field for structured error logging
+- **Driver creation 500**: Wrapped `DriverController.Create` in try-catch with proper error responses; added `Guid.NewGuid()` for empty IDs
+
+#### PDF Documents
+- **Logo sizing**: Increased logo dimensions from 80x65 to 100x80 points for better visibility; both left (KURA) and right (Coat of Arms) logos now render at equal size
+
 ### Added
 - Weighing Operations module with transaction management
 - Vehicle management with registration validation

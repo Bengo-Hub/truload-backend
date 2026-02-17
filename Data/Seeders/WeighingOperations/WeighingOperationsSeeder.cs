@@ -25,23 +25,35 @@ public class WeighingOperationsSeeder
     public async Task SeedAsync()
     {
         var seedDataFile = Path.Combine(_seedDataPath, "axle-seed-data.json");
-        
+
         if (!File.Exists(seedDataFile))
         {
             Console.WriteLine($"⚠ Seed data file not found: {seedDataFile}");
             return;
         }
-        
+
         var jsonContent = await File.ReadAllTextAsync(seedDataFile);
         using var doc = JsonDocument.Parse(jsonContent);
         var root = doc.RootElement;
-        
+
+        // Pre-scan: build set of axle codes that have weight references
+        var codesWithReferences = new HashSet<string>();
+        foreach (var refEl in root.GetProperty("axleWeightReferences").EnumerateArray())
+        {
+            var code = refEl.GetProperty("axleCode").GetString() ?? "";
+            if (!string.IsNullOrEmpty(code))
+                codesWithReferences.Add(code);
+        }
+
         // Load data from JSON in order
         await SeedTyreTypesAsync(root.GetProperty("tyreTypes"));
         await SeedAxleGroupsAsync(root.GetProperty("axleGroups"));
-        await SeedAxleConfigurationsAsync(root.GetProperty("axleConfigurations"));
+        await SeedAxleConfigurationsAsync(root.GetProperty("axleConfigurations"), codesWithReferences);
         await SeedAxleWeightReferencesAsync(root.GetProperty("axleWeightReferences"));
         await SeedAxleFeeSchedulesAsync(root.GetProperty("axleFeeSchedules"));
+
+        // Post-seed cleanup: remove any existing configurations without weight references
+        await CleanupOrphanedConfigurationsAsync();
     }
 
     private async Task SeedTyreTypesAsync(JsonElement tyreTypesElement)
@@ -116,25 +128,34 @@ public class WeighingOperationsSeeder
         Console.WriteLine($"✓ Seeded {seeded} axle groups");
     }
 
-    private async Task SeedAxleConfigurationsAsync(JsonElement configurationsElement)
+    private async Task SeedAxleConfigurationsAsync(JsonElement configurationsElement, HashSet<string> codesWithReferences)
     {
         Console.WriteLine("=== Seeding Axle Configurations (Standard) ===");
-        
+
         int seeded = 0;
+        int skippedOrphans = 0;
         var addedCodes = new HashSet<string>();
         foreach (var configElement in configurationsElement.EnumerateArray())
         {
             var axleCode = configElement.GetProperty("axleCode").GetString() ?? "";
-            
+
             if (addedCodes.Contains(axleCode))
             {
-                Console.WriteLine($"Skipping duplicate axle code: {axleCode}");
+                Console.WriteLine($"  Skipping duplicate axle code: {axleCode}");
                 continue;
             }
-            
+
+            // Skip configurations that have no weight references in the seed data
+            if (!codesWithReferences.Contains(axleCode))
+            {
+                Console.WriteLine($"  ⚠ Skipping {axleCode} — no axle weight references defined");
+                skippedOrphans++;
+                continue;
+            }
+
             var existing = await _context.AxleConfigurations
                 .FirstOrDefaultAsync(ac => ac.AxleCode == axleCode);
-            
+
             if (existing == null)
             {
                 var config = new AxleConfiguration
@@ -151,7 +172,7 @@ public class WeighingOperationsSeeder
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
-                
+
                 await _context.AxleConfigurations.AddAsync(config);
                 addedCodes.Add(axleCode);
                 seeded++;
@@ -159,7 +180,7 @@ public class WeighingOperationsSeeder
         }
 
         await _context.SaveChangesAsync();
-        Console.WriteLine($"✓ Seeded {seeded} axle configurations");
+        Console.WriteLine($"✓ Seeded {seeded} axle configurations ({skippedOrphans} skipped — no weight references)");
     }
 
     private async Task SeedAxleWeightReferencesAsync(JsonElement referencesElement)
@@ -268,6 +289,34 @@ public class WeighingOperationsSeeder
 
         await _context.SaveChangesAsync();
         Console.WriteLine($"✓ Seeded {seeded} axle fee schedules");
+    }
+
+    /// <summary>
+    /// Removes any axle configurations that have no weight references in the database.
+    /// These are unusable for compliance calculations and should not exist.
+    /// </summary>
+    private async Task CleanupOrphanedConfigurationsAsync()
+    {
+        Console.WriteLine("=== Cleaning up orphaned axle configurations ===");
+
+        var orphans = await _context.AxleConfigurations
+            .Where(ac => !_context.AxleWeightReferences.Any(awr => awr.AxleConfigurationId == ac.Id))
+            .ToListAsync();
+
+        if (orphans.Count > 0)
+        {
+            foreach (var orphan in orphans)
+            {
+                Console.WriteLine($"  Removing orphaned config: {orphan.AxleCode} ({orphan.AxleName})");
+            }
+            _context.AxleConfigurations.RemoveRange(orphans);
+            await _context.SaveChangesAsync();
+            Console.WriteLine($"✓ Removed {orphans.Count} orphaned axle configurations");
+        }
+        else
+        {
+            Console.WriteLine("✓ No orphaned axle configurations found");
+        }
     }
 
 }

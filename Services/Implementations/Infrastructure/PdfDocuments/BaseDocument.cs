@@ -20,11 +20,11 @@ public abstract class BaseDocument
     protected readonly string OfficialRed = BrandingConstants.Colors.OfficialRed;
     protected readonly string OfficialGreen = BrandingConstants.Colors.OfficialGreen;
 
-    // Logo sizes - increased for better visibility
-    protected const float LogoWidth = 80;
-    protected const float LogoHeight = 65;
-    protected const float SmallLogoWidth = 55;
-    protected const float SmallLogoHeight = 45;
+    // Logo sizes - large enough for official documents
+    protected const float LogoWidth = 100;
+    protected const float LogoHeight = 80;
+    protected const float SmallLogoWidth = 65;
+    protected const float SmallLogoHeight = 55;
 
     public abstract byte[] Generate();
 

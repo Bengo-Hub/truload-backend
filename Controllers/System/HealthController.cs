@@ -20,7 +20,7 @@ public class HealthController : ControllerBase
         return Ok(new
         {
             status = "healthy",
-            service = "TruLoad Backend",
+            service = "Backend API",
             timestamp = DateTime.UtcNow,
             version = "v1.0.0"
         });
