@@ -105,6 +105,20 @@ public class SupersetService : ISupersetService
             }
         }
 
+        // Filter by service tag if configured
+        if (!string.IsNullOrWhiteSpace(_supersetOptions.ServiceTag))
+        {
+            var tag = _supersetOptions.ServiceTag;
+            dashboards = dashboards
+                .Where(d =>
+                    d.Title.Contains(tag, StringComparison.OrdinalIgnoreCase) ||
+                    (d.Slug != null && d.Slug.Contains(tag, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            _logger.LogDebug("Filtered dashboards by service tag '{Tag}': {Count} of {Total}",
+                tag, dashboards.Count, resultArray.GetArrayLength());
+        }
+
         return dashboards;
     }
 

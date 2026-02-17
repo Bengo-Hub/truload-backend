@@ -89,6 +89,13 @@ public class SupersetOptions
     public string Username { get; set; } = "admin";
     public string Password { get; set; } = "admin123";
     public int GuestTokenExpiryMinutes { get; set; } = 300;
+
+    /// <summary>
+    /// Optional tag to filter dashboards by service (e.g., "truload").
+    /// Only dashboards whose title or slug contains this tag will be returned.
+    /// If empty, all dashboards are returned.
+    /// </summary>
+    public string ServiceTag { get; set; } = "";
 }
 
 /// <summary>
