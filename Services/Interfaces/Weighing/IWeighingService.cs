@@ -8,9 +8,9 @@ public interface IWeighingService
 {
     /// <summary>
     /// Initiates a weighing transaction with scale test validation.
+    /// Generates ticket number via DocumentNumberService using configured conventions.
     /// Per FRD: Scale test must be completed once daily per station/bound before weighing operations.
     /// </summary>
-    /// <param name="ticketNumber">Unique ticket identifier</param>
     /// <param name="stationId">Station where weighing occurs</param>
     /// <param name="userId">User performing the weighing</param>
     /// <param name="vehicleId">Resolved vehicle ID</param>
@@ -23,7 +23,6 @@ public interface IWeighingService
     /// <returns>The created weighing transaction</returns>
     /// <exception cref="InvalidOperationException">Thrown if no valid scale test exists for today</exception>
     Task<WeighingTransaction> InitiateWeighingAsync(
-        string ticketNumber,
         Guid stationId,
         Guid userId,
         Guid vehicleId,

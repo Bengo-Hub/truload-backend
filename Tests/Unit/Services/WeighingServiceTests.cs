@@ -107,29 +107,46 @@ public class WeighingServiceTests
     public async Task InitiateWeighingAsync_ShouldCreateTransaction_WithPendingStatus()
     {
         // Arrange
-        var ticketNumber = "TICKET-001";
+        var orgId = Guid.NewGuid();
         var stationId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var vehicleId = Guid.NewGuid();
         var vehicleRegNo = "KAA001A";
+        var generatedTicketNumber = "NRBM01-A-20260218-0001-KAA001A";
+
+        // Seed a station so the orgId lookup query works
+        _dbContext.Stations.Add(new TruLoad.Backend.Models.Infrastructure.Station
+        {
+            Id = stationId,
+            Code = "NRBM01",
+            Name = "Test Station",
+            OrganizationId = orgId,
+        });
+        await _dbContext.SaveChangesAsync();
 
         _mockScaleTestRepository.Setup(r => r.HasPassedDailyCalibrationalAsync(stationId, null))
             .ReturnsAsync(true);
+
+        _mockDocumentNumberService.Setup(r => r.GenerateNumberAsync(
+                orgId, stationId, It.IsAny<string>(), vehicleRegNo, null))
+            .ReturnsAsync(generatedTicketNumber);
 
         _mockWeighingRepository.Setup(r => r.CreateTransactionAsync(It.IsAny<WeighingTransaction>()))
             .ReturnsAsync((WeighingTransaction t) => t);
 
         // Act
-        var result = await _service.InitiateWeighingAsync(ticketNumber, stationId, userId, vehicleId, vehicleRegNo);
+        var result = await _service.InitiateWeighingAsync(stationId, userId, vehicleId, vehicleRegNo);
 
         // Assert
         result.Should().NotBeNull();
-        result.TicketNumber.Should().Be(ticketNumber);
+        result.TicketNumber.Should().Be(generatedTicketNumber);
         result.StationId.Should().Be(stationId);
         result.WeighedByUserId.Should().Be(userId);
         result.VehicleId.Should().Be(vehicleId);
         result.VehicleRegNumber.Should().Be(vehicleRegNo);
         result.ControlStatus.Should().Be("Pending");
+        result.CaptureStatus.Should().Be("pending");
+        result.CaptureSource.Should().Be("frontend");
         result.WeighedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
     }
 

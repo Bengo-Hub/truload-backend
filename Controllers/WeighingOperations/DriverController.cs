@@ -65,23 +65,35 @@ public class DriverController : ControllerBase
         if (string.IsNullOrWhiteSpace(driver.Surname))
             return BadRequest("Surname (last name) is required.");
 
-        // Only check for duplicates when the field has a value (skip empty strings)
-        if (!string.IsNullOrWhiteSpace(driver.IdNumber))
+        try
         {
-            var existing = await _driverRepository.GetByIdNumberAsync(driver.IdNumber);
-            if (existing != null)
-                return Conflict($"Driver with ID {driver.IdNumber} already exists.");
-        }
+            // Only check for duplicates when the field has a value (skip empty strings)
+            if (!string.IsNullOrWhiteSpace(driver.IdNumber))
+            {
+                var existing = await _driverRepository.GetByIdNumberAsync(driver.IdNumber);
+                if (existing != null)
+                    return Conflict($"Driver with ID {driver.IdNumber} already exists.");
+            }
 
-        if (!string.IsNullOrWhiteSpace(driver.DrivingLicenseNo))
+            if (!string.IsNullOrWhiteSpace(driver.DrivingLicenseNo))
+            {
+                var existing = await _driverRepository.GetByLicenseAsync(driver.DrivingLicenseNo);
+                if (existing != null)
+                    return Conflict($"Driver with License {driver.DrivingLicenseNo} already exists.");
+            }
+
+            // Ensure new Id is generated
+            if (driver.Id == Guid.Empty)
+                driver.Id = Guid.NewGuid();
+
+            var created = await _driverRepository.CreateAsync(driver);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+        catch (Exception ex)
         {
-            var existing = await _driverRepository.GetByLicenseAsync(driver.DrivingLicenseNo);
-            if (existing != null)
-                return Conflict($"Driver with License {driver.DrivingLicenseNo} already exists.");
+            _logger.LogError(ex, "Error creating driver {FullNames} {Surname}", driver.FullNames, driver.Surname);
+            return StatusCode(500, "An error occurred while creating the driver.");
         }
-
-        var created = await _driverRepository.CreateAsync(driver);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     [HttpPut("{id}")]

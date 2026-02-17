@@ -48,6 +48,13 @@ public class DocumentSequence : BaseEntity
     /// </summary>
     public DateTime LastResetDate { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Concurrency token for optimistic concurrency control.
+    /// Prevents duplicate sequence numbers under concurrent access.
+    /// </summary>
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = null!;
+
     // Navigation
     [ForeignKey("OrganizationId")]
     public virtual Organization? Organization { get; set; }

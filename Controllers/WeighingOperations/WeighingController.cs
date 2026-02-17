@@ -191,9 +191,9 @@ public class WeighingController : ControllerBase
                 return BadRequest("Either VehicleId or VehicleRegNo must be provided.");
             }
 
-            // Run weighing initiation, KeNHA tag check, and local tag check concurrently
-            var weighingTask = _weighingService.InitiateWeighingAsync(
-                request.TicketNumber,
+            // Run sequentially to avoid DbContext concurrency issues
+            // (all services share the same scoped DbContext)
+            var transaction = await _weighingService.InitiateWeighingAsync(
                 request.StationId,
                 userGuid,
                 vehicleId,
@@ -204,15 +204,13 @@ public class WeighingController : ControllerBase
                 request.TransporterId,
                 request.WeighingType ?? "static");
 
-            var kenhaTagTask = CheckKeNHATagAsync(vehicleRegNo);
-            var localTagsTask = _vehicleTagService.CheckVehicleTagsAsync(vehicleRegNo);
+            // Tag checks are informational — run after transaction is safely created
+            var kenhaTag = await CheckKeNHATagAsync(vehicleRegNo);
+            var localTags = await _vehicleTagService.CheckVehicleTagsAsync(vehicleRegNo);
 
-            await Task.WhenAll(weighingTask, kenhaTagTask, localTagsTask);
-
-            var transaction = weighingTask.Result;
             var dto = MapToDto(transaction);
-            dto.KeNHATagAlert = kenhaTagTask.Result;
-            dto.OpenTags = localTagsTask.Result;
+            dto.KeNHATagAlert = kenhaTag;
+            dto.OpenTags = localTags;
 
             return CreatedAtAction(nameof(GetById), new { id = transaction.Id }, dto);
         }

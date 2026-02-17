@@ -558,6 +558,9 @@ app.MapGet("/swagger/index.html", () => Results.Redirect("/v1/docs", false));
 
 app.UseSerilogRequestLogging();
 
+// CORS must be before exception handler so error responses include CORS headers
+app.UseCors();
+
 // Global exception handler
 app.UseExceptionHandler(errorApp =>
 {
@@ -590,8 +593,6 @@ app.UseExceptionHandler(errorApp =>
 
 // Audit middleware
 app.UseAuditMiddleware();
-
-app.UseCors();
 
 // Rate Limiting - after CORS, before authentication
 app.UseTruLoadRateLimiting();

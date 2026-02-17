@@ -15,13 +15,16 @@ public class CaseRegisterController : ControllerBase
 {
     private readonly ICaseRegisterService _caseRegisterService;
     private readonly ITenantContext _tenantContext;
+    private readonly ILogger<CaseRegisterController> _logger;
 
     public CaseRegisterController(
         ICaseRegisterService caseRegisterService,
-        ITenantContext tenantContext)
+        ITenantContext tenantContext,
+        ILogger<CaseRegisterController> logger)
     {
         _caseRegisterService = caseRegisterService;
         _tenantContext = tenantContext;
+        _logger = logger;
     }
 
     /// <summary>
@@ -226,20 +229,28 @@ public class CaseRegisterController : ControllerBase
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo)
     {
-        var criteria = new CaseSearchCriteria
+        try
         {
-            CreatedFrom = dateFrom,
-            CreatedTo = dateTo,
-            PageSize = 10000
-        };
-        var result = await _caseRegisterService.SearchCasesAsync(criteria);
+            var criteria = new CaseSearchCriteria
+            {
+                CreatedFrom = dateFrom,
+                CreatedTo = dateTo,
+                PageSize = 10000
+            };
+            var result = await _caseRegisterService.SearchCasesAsync(criteria);
 
-        var breakdown = result.Items
-            .GroupBy(c => c.CaseStatus ?? "Unknown")
-            .Select(g => new { Name = g.Key, Value = g.Count() })
-            .ToList();
-        
-        return Ok(breakdown);
+            var breakdown = result.Items
+                .GroupBy(c => c.CaseStatus ?? "Unknown")
+                .Select(g => new { Name = g.Key, Value = g.Count() })
+                .ToList();
+
+            return Ok(breakdown);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting disposition breakdown");
+            return StatusCode(500, "An error occurred while retrieving disposition breakdown.");
+        }
     }
 
     /// <summary>
@@ -250,29 +261,37 @@ public class CaseRegisterController : ControllerBase
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo)
     {
-        var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-        var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
-
-        var criteria = new CaseSearchCriteria
+        try
         {
-            CreatedFrom = from,
-            CreatedTo = to,
-            PageSize = 10000
-        };
-        var result = await _caseRegisterService.SearchCasesAsync(criteria);
+            var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
+            var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
-        var trend = result.Items
-            .GroupBy(c => c.CreatedAt.Date)
-            .OrderBy(g => g.Key)
-            .Select(g => new
+            var criteria = new CaseSearchCriteria
             {
-                name = g.Key.ToString("MMM dd"),
-                opened = g.Count(),
-                closed = g.Count(c => string.Equals(c.CaseStatus, "CLOSED", StringComparison.OrdinalIgnoreCase))
-            })
-            .ToList();
-        
-        return Ok(trend);
+                CreatedFrom = from,
+                CreatedTo = to,
+                PageSize = 10000
+            };
+            var result = await _caseRegisterService.SearchCasesAsync(criteria);
+
+            var trend = result.Items
+                .GroupBy(c => c.CreatedAt.Date)
+                .OrderBy(g => g.Key)
+                .Select(g => new
+                {
+                    name = g.Key.ToString("MMM dd"),
+                    opened = g.Count(),
+                    closed = g.Count(c => string.Equals(c.CaseStatus, "CLOSED", StringComparison.OrdinalIgnoreCase))
+                })
+                .ToList();
+
+            return Ok(trend);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting case trend");
+            return StatusCode(500, "An error occurred while retrieving case trend.");
+        }
     }
 
     /// <summary>

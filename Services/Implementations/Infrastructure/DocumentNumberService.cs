@@ -28,8 +28,11 @@ public class DocumentNumberService : IDocumentNumberService
         string? vehicleReg = null,
         string? bound = null)
     {
+        const int maxRetries = 3;
+
         // Get convention for this document type
         var convention = await _context.DocumentConventions
+            .AsNoTracking()
             .FirstOrDefaultAsync(c =>
                 c.OrganizationId == organizationId &&
                 c.DocumentType == documentType &&
@@ -54,7 +57,6 @@ public class DocumentNumberService : IDocumentNumberService
 
                 if (convention.IncludeBound && !string.IsNullOrEmpty(bound))
                 {
-                    // Use station-configured bound codes if available, otherwise use raw bound value
                     boundCode = bound.ToUpperInvariant() switch
                     {
                         "A" => !string.IsNullOrEmpty(station.BoundACode) ? station.BoundACode : "A",
@@ -65,22 +67,46 @@ public class DocumentNumberService : IDocumentNumberService
             }
         }
 
-        // Get or create sequence with optimistic concurrency
-        var sequence = await GetOrCreateSequenceAsync(organizationId, stationId, documentType, convention.ResetFrequency);
+        // Retry loop for concurrency conflicts on sequence increment
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                var sequence = await GetOrCreateSequenceAsync(organizationId, stationId, documentType, convention.ResetFrequency);
 
-        // Increment sequence
-        sequence.CurrentSequence++;
-        sequence.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
+                sequence.CurrentSequence++;
+                sequence.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
 
-        // Build document number
-        var number = BuildDocumentNumber(convention, sequence.CurrentSequence, stationCode, boundCode, vehicleReg);
+                var number = BuildDocumentNumber(convention, sequence.CurrentSequence, stationCode, boundCode, vehicleReg);
 
-        _logger.LogInformation(
-            "Generated document number: {DocumentNumber} for type {DocumentType}, org {OrgId}, station {StationId}",
-            number, documentType, organizationId, stationId);
+                _logger.LogInformation(
+                    "Generated document number: {DocumentNumber} for type {DocumentType}, org {OrgId}, station {StationId}",
+                    number, documentType, organizationId, stationId);
 
-        return number;
+                return number;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(ex,
+                    "Concurrency conflict on attempt {Attempt}/{MaxRetries} for {DocumentType}",
+                    attempt, maxRetries, documentType);
+
+                if (attempt == maxRetries)
+                    throw;
+
+                // Detach conflicting entities so they're re-fetched on next attempt
+                foreach (var entry in _context.ChangeTracker.Entries()
+                    .Where(e => e.State == EntityState.Modified || e.State == EntityState.Deleted))
+                {
+                    entry.State = EntityState.Detached;
+                }
+
+                await Task.Delay(50 * attempt);
+            }
+        }
+
+        throw new InvalidOperationException("Failed to generate document number after retries");
     }
 
     public async Task<string> PreviewNextNumberAsync(

@@ -88,11 +88,11 @@ public class WeighingService : IWeighingService
 
     /// <summary>
     /// Initiates a weighing transaction with scale test validation.
+    /// Generates ticket number via DocumentNumberService using configured conventions.
     /// Per FRD: Scale test must be completed once daily per station/bound before weighing operations.
     /// All required FK fields (vehicleId) must be provided to avoid FK constraint violations on save.
     /// </summary>
     public async Task<WeighingTransaction> InitiateWeighingAsync(
-        string ticketNumber,
         Guid stationId,
         Guid userId,
         Guid vehicleId,
@@ -123,6 +123,16 @@ public class WeighingService : IWeighingService
             validScaleTestId = todaysTest?.Id;
         }
 
+        // Generate ticket number via DocumentNumberService
+        var orgId = await _dbContext.Stations
+            .Where(s => s.Id == stationId)
+            .Select(s => s.OrganizationId)
+            .FirstOrDefaultAsync();
+
+        var ticketNumber = await _documentNumberService.GenerateNumberAsync(
+            orgId, stationId, Models.System.DocumentTypes.WeightTicket,
+            vehicleRegNo, bound);
+
         var transaction = new WeighingTransaction
         {
             TicketNumber = ticketNumber,
@@ -136,6 +146,8 @@ public class WeighingService : IWeighingService
             Bound = bound,
             ScaleTestId = validScaleTestId,
             ControlStatus = "Pending",
+            CaptureStatus = "pending",
+            CaptureSource = "frontend",
             WeighedAt = DateTime.UtcNow
         };
 
@@ -248,15 +260,19 @@ public class WeighingService : IWeighingService
         transaction.WeighingAxles = axles;
         transaction.GvwMeasuredKg = axles.Sum(a => a.MeasuredWeightKg);
 
-        // If this transaction was auto-weighed by middleware, update to "captured" now that
-        // the frontend is submitting final weights
-        if (transaction.CaptureStatus == "auto")
+        // Update CaptureStatus to "captured" when weights are submitted
+        // Handles both "pending" (frontend-initiated) and "auto" (middleware autoweigh) flows
+        if (transaction.CaptureStatus == "auto" || transaction.CaptureStatus == "pending")
         {
+            var previousStatus = transaction.CaptureStatus;
             transaction.CaptureStatus = "captured";
-            transaction.CaptureSource = "frontend";
+            if (previousStatus == "auto")
+            {
+                transaction.CaptureSource = "frontend";
+            }
             _logger.LogInformation(
-                "Updated CaptureStatus from 'auto' to 'captured' for transaction {TransactionId}",
-                transactionId);
+                "Updated CaptureStatus from '{PreviousStatus}' to 'captured' for transaction {TransactionId}",
+                previousStatus, transactionId);
         }
 
         // Save axles first so compliance calculation can find them

@@ -104,8 +104,8 @@ public class UserManagementSeeder
     private async Task SeedDepartmentsAsync()
     {
         // Get organization for department seeding
-        var kenha = await _context.Organizations.FirstOrDefaultAsync(o => o.Code == "KENHA");
-        if (kenha == null) return;
+        var kura = await _context.Organizations.FirstOrDefaultAsync(o => o.Code == "KURA");
+        if (kura == null) return;
 
         var departments = new[]
         {
@@ -115,7 +115,7 @@ public class UserManagementSeeder
                 Code = "WEIGHBRIDGE",
                 Name = "Weighbridge Operations",
                 Description = "Manages weighbridge stations and weighing operations",
-                OrganizationId = kenha.Id,
+                OrganizationId = kura.Id,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -126,7 +126,7 @@ public class UserManagementSeeder
                 Code = "ENFORCEMENT",
                 Name = "Enforcement & Compliance",
                 Description = "Handles violations, prosecutions, and compliance enforcement",
-                OrganizationId = kenha.Id,
+                OrganizationId = kura.Id,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -150,10 +150,9 @@ public class UserManagementSeeder
 
     private async Task SeedStationsAsync()
     {
-        var kenha = await _context.Organizations.FirstOrDefaultAsync(o => o.Code == "KENHA");
         var kura = await _context.Organizations.FirstOrDefaultAsync(o => o.Code == "KURA");
 
-        if (kenha == null && kura == null) return;
+        if (kura == null) return;
 
         var stations = new List<Station>();
 
@@ -175,59 +174,6 @@ public class UserManagementSeeder
                     BoundACode = "A",
                     BoundBCode = "B",
                     OrganizationId = kura.Id,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                },
-                new Station
-                {
-                    Id = Guid.NewGuid(),
-                    Code = "NRB-MULTIDECK-01",
-                    Name = "Nairobi Multideck Weighbridge",
-                    StationType = "Fixed",
-                    Location = "Nairobi, Industrial Area",
-                    Latitude = -1.3028m,
-                    Longitude = 36.8641m,
-                    SupportsBidirectional = true,
-                    BoundACode = "A",
-                    BoundBCode = "B",
-                    OrganizationId = kura.Id,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                }
-            });
-        }
-
-        // KENHA Stations
-        if (kenha != null)
-        {
-            stations.AddRange(new[]
-            {
-                new Station
-                {
-                    Id = Guid.NewGuid(),
-                    Code = "MSA-FIXED-01",
-                    Name = "Mombasa Road Weighbridge",
-                    StationType = "Fixed",
-                    Location = "Athi River, Mombasa Road",
-                    Latitude = -1.4528m,
-                    Longitude = 36.9833m,
-                    OrganizationId = kenha.Id,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                },
-                new Station
-                {
-                    Id = Guid.NewGuid(),
-                    Code = "GILGIL-WB-01",
-                    Name = "Gilgil Weighbridge",
-                    StationType = "Fixed",
-                    Location = "Gilgil, Nakuru County",
-                    Latitude = -0.4943m,
-                    Longitude = 36.3219m,
-                    OrganizationId = kenha.Id,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -288,17 +234,6 @@ public class UserManagementSeeder
                 Name = "Morning Shift",
                 Code = "MORNING",
                 Description = "Morning shift: 6:00 AM - 2:00 PM",
-                TotalHoursPerWeek = 40m,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            },
-            new WorkShift
-            {
-                Id = Guid.NewGuid(),
-                Name = "Afternoon Shift",
-                Code = "AFTERNOON",
-                Description = "Afternoon shift: 2:00 PM - 10:00 PM",
                 TotalHoursPerWeek = 40m,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
