@@ -10,7 +10,10 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["truload-backend.csproj", "."]
-RUN dotnet restore "./truload-backend.csproj"
+# Use BuildKit cache mounts to persist NuGet package cache between Docker builds
+# (speeds up `dotnet restore` locally and on builders that support BuildKit / buildx)
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet restore "./truload-backend.csproj"
 COPY . .
 WORKDIR "/src/."
 RUN dotnet build "./truload-backend.csproj" -c $BUILD_CONFIGURATION -o /app/build

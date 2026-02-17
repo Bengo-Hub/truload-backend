@@ -411,6 +411,11 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                     .HasForeignKey(e => e.StationId)
                     .OnDelete(DeleteBehavior.Restrict);
 
+                entity.HasOne(e => e.WeighedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.WeighedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
                 entity.HasOne(e => e.OriginalWeighing)
                     .WithMany()
                     .HasForeignKey(e => e.OriginalWeighingId)

@@ -1,0 +1,4 @@
+{
+  "csharp.defaultLaunchProfile": "IIS Express",
+  "dotnet.defaultSolution": "${workspaceFolder}/truload-backend.sln"
+}
