@@ -85,7 +85,7 @@ public class AxleWeightReferenceController : ControllerBase
     /// Validates position constraints and relationships
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Admin,Station Manager")]
+    [Authorize(Policy = "Permission:config.manage_axle")]
     [ProducesResponseType(typeof(AxleWeightReferenceResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -148,7 +148,7 @@ public class AxleWeightReferenceController : ControllerBase
     /// Update an existing weight reference
     /// </summary>
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Admin,Station Manager")]
+    [Authorize(Policy = "Permission:config.manage_axle")]
     [ProducesResponseType(typeof(AxleWeightReferenceResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -212,7 +212,7 @@ public class AxleWeightReferenceController : ControllerBase
     /// Delete a weight reference
     /// </summary>
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin,Station Manager")]
+    [Authorize(Policy = "Permission:config.manage_axle")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(

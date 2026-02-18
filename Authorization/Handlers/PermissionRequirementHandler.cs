@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using TruLoad.Backend.Authorization.Requirements;
 using TruLoad.Backend.Services.Interfaces.Authorization;
@@ -8,6 +9,7 @@ namespace TruLoad.Backend.Authorization.Handlers;
 /// Authorization handler for PermissionRequirement.
 /// Verifies user permissions using PermissionVerificationService.
 /// Handles both single and multiple permission checks with AND/OR logic.
+/// Superuser role bypasses all permission checks.
 /// </summary>
 public class PermissionRequirementHandler : AuthorizationHandler<PermissionRequirement>
 {
@@ -18,7 +20,7 @@ public class PermissionRequirementHandler : AuthorizationHandler<PermissionRequi
         IPermissionVerificationService permissionVerificationService,
         ILogger<PermissionRequirementHandler> logger)
     {
-        _permissionVerificationService = permissionVerificationService 
+        _permissionVerificationService = permissionVerificationService
             ?? throw new ArgumentNullException(nameof(permissionVerificationService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -51,18 +53,29 @@ public class PermissionRequirementHandler : AuthorizationHandler<PermissionRequi
             return;
         }
 
+        // Superuser bypass: users with the "Superuser" role skip all permission checks
+        var isSuperuser = context.User.IsInRole("Superuser");
+        if (isSuperuser)
+        {
+            context.Succeed(requirement);
+            _logger.LogInformation("Superuser {UserId} bypassed permission check for: {Codes}",
+                _permissionVerificationService.GetUserIdFromClaims(httpContext) ?? "unknown",
+                string.Join(", ", requirement.PermissionCodes));
+            return;
+        }
+
         try
         {
             bool hasPermission = requirement.RequirementType switch
             {
-                PermissionRequirementType.All => 
+                PermissionRequirementType.All =>
                     await _permissionVerificationService.UserHasAllPermissionsAsync(
                         httpContext, requirement.PermissionCodes),
-                
-                PermissionRequirementType.Any => 
+
+                PermissionRequirementType.Any =>
                     await _permissionVerificationService.UserHasAnyPermissionAsync(
                         httpContext, requirement.PermissionCodes),
-                
+
                 _ => throw new InvalidOperationException($"Unknown requirement type: {requirement.RequirementType}")
             };
 

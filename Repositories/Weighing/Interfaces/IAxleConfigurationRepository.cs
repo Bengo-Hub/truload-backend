@@ -16,6 +16,7 @@ public interface IAxleConfigurationRepository
         string? legalFramework = null,
         int? axleCount = null,
         bool includeInactive = false,
+        bool? hasWeightReferences = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

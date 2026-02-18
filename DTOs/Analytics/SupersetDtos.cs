@@ -71,6 +71,35 @@ public record NaturalLanguageQueryResponse(
 );
 
 /// <summary>
+/// Request for an async natural language query via SignalR.
+/// </summary>
+public record AsyncNaturalLanguageQueryRequest
+{
+    /// <summary>
+    /// The natural language question.
+    /// </summary>
+    [Required]
+    [MaxLength(1000)]
+    public string Question { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Optional context about available tables/columns.
+    /// </summary>
+    public string? SchemaContext { get; init; }
+
+    /// <summary>
+    /// SignalR connection ID to push results to.
+    /// </summary>
+    [Required]
+    public string ConnectionId { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Response returned immediately when an async query is submitted.
+/// </summary>
+public record AsyncQueryAcceptedResponse(string JobId);
+
+/// <summary>
 /// Superset API authentication response.
 /// </summary>
 public record SupersetAuthResponse(

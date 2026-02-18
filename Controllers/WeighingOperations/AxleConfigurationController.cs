@@ -50,6 +50,7 @@ public class AxleConfigurationController : ControllerBase
         [FromQuery] string? legalFramework = null,
         [FromQuery] int? axleCount = null,
         [FromQuery] bool includeInactive = false,
+        [FromQuery] bool? hasWeightReferences = null,
         CancellationToken cancellationToken = default)
     {
         var configs = await _repository.GetAllAsync(
@@ -57,6 +58,7 @@ public class AxleConfigurationController : ControllerBase
             legalFramework,
             axleCount,
             includeInactive,
+            hasWeightReferences,
             cancellationToken);
 
         // Filter out invalid configurations (empty axleCode or axleNumber = 0)
@@ -121,7 +123,7 @@ public class AxleConfigurationController : ControllerBase
     /// GVW is auto-calculated from the sum of weight reference legal weights.
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Admin,Station Manager")]
+    [Authorize(Policy = "Permission:config.manage_axle")]
     [ProducesResponseType(typeof(AxleConfigurationResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -205,7 +207,7 @@ public class AxleConfigurationController : ControllerBase
     /// When weight references are provided, they replace existing ones and GVW is recalculated.
     /// </summary>
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Admin,Station Manager")]
+    [Authorize(Policy = "Permission:config.manage_axle")]
     [ProducesResponseType(typeof(AxleConfigurationResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -288,7 +290,7 @@ public class AxleConfigurationController : ControllerBase
     /// Standard configurations cannot be deleted
     /// </summary>
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin,Station Manager")]
+    [Authorize(Policy = "Permission:config.manage_axle")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

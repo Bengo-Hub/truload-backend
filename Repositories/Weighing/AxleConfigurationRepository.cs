@@ -23,6 +23,7 @@ public class AxleConfigurationRepository : IAxleConfigurationRepository
         string? legalFramework = null,
         int? axleCount = null,
         bool includeInactive = false,
+        bool? hasWeightReferences = null,
         CancellationToken cancellationToken = default)
     {
         var query = _context.AxleConfigurations
@@ -47,6 +48,11 @@ public class AxleConfigurationRepository : IAxleConfigurationRepository
         if (!includeInactive)
         {
             query = query.Where(ac => ac.IsActive);
+        }
+
+        if (hasWeightReferences == true)
+        {
+            query = query.Where(ac => ac.AxleWeightReferences.Any());
         }
 
         var result = await query
