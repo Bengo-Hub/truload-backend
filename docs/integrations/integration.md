@@ -370,25 +370,23 @@ var similarEntities = await dbContext.Vehicles
 
 TruConnect is a Node.js/Electron middleware running on client machines that connects to scale indicators (ZM, Cardinal, Haenni, PAW, etc.) and provides weight data to TruLoad via real-time WebSocket or HTTP polling.
 
-### Connection Modes
+### Connection Modes (Updated Sprint 22.1)
 
-**IMPORTANT:** Only ONE mode should be active at a time. The mode is configured in TruLoad settings.
+The frontend always connects directly to the local TruConnect middleware. There is no backend WebSocket relay.
 
 **1. Real-time WebSocket (DEFAULT)**
-- TruConnect runs WebSocket server on port 8080
-- TruLoad frontend connects as WebSocket client
+- TruConnect runs WebSocket server on port 3030
+- TruLoad frontend connects as WebSocket client (ws://localhost:3030)
 - Two-way communication enabled
 - Weights pushed in real-time (<50ms latency)
 - Recommended for production use
+- Connection is always local — no backend relay
 
 **2. API Polling (FALLBACK)**
-- Enabled explicitly in TruLoad configuration
+- Enabled when WebSocket is unavailable
 - TruConnect exposes HTTP API on port 3031
-- TruLoad backend can proxy weights via `/api/weights/proxy`
 - Polling interval: 500ms (configurable)
-- Use when WebSocket not available
-
-**Mode Synchronization:** When API polling is enabled in TruLoad, TruConnect MUST also enable its API server endpoint.
+- Use when WebSocket blocked by firewall or browser restrictions
 
 ### Two-Way Communication Protocol
 
