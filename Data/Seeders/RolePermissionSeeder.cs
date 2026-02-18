@@ -119,7 +119,7 @@ public static class RolePermissionSeeder
                 "station.read", "station.read_own", "station.update", "station.update_own", "station.manage_staff",
                 "station.manage_devices", "station.manage_io", "station.configure_defaults", "station.export",
                 "station.audit",
-                "config.read",
+                "config.read", "config.manage_axle",
                 "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit",
                 "invoice.create", "invoice.read", "invoice.read_own", "invoice.update",
                 "receipt.create", "receipt.read", "receipt.read_own",
