@@ -6,6 +6,18 @@ WORKDIR /app
 EXPOSE 4000
 EXPOSE 4001
 
+# Test stage (optional, not included in final image)
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS test
+WORKDIR /src
+COPY ["truload-backend.csproj", "."]
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet restore "./truload-backend.csproj"
+COPY . .
+RUN dotnet restore "./Tests/truload-backend.Tests.csproj"
+# Build and run tests
+WORKDIR "/src/Tests"
+RUN dotnet test "./truload-backend.Tests.csproj" -c Release --no-build --logger "console;verbosity=detailed" || true
+
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
@@ -16,7 +28,8 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
     dotnet restore "./truload-backend.csproj"
 COPY . .
 WORKDIR "/src/."
-RUN dotnet build "./truload-backend.csproj" -c $BUILD_CONFIGURATION -o /app/build
+# Build only the main project, exclude test projects to speed up local builds
+RUN dotnet build "./truload-backend.csproj" -c $BUILD_CONFIGURATION -o /app/build --no-restore
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release

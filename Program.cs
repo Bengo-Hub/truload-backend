@@ -466,10 +466,9 @@ try
         var dbContext = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-        // Ensure pgvector extension is enabled (idempotent)
-        Log.Information("Checking pgvector extension...");
-        dbContext.EnsurePgVectorExtension();
-        Log.Information("✓ pgvector extension verified");
+        // pgvector extension is now initialized automatically by initdb script
+        // No need to check/create it here - skip for faster startup
+        Log.Information("Checking pending migrations...");
 
         var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
 
