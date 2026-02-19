@@ -5,6 +5,9 @@ using TruLoad.Backend.DTOs.Auth;
 using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Services.Interfaces;
 using TruLoad.Backend.Services.Interfaces.Auth;
+using TruLoad.Backend.Services.Interfaces.Shared;
+using TruLoad.Backend.Services.Interfaces.System;
+using TruLoad.Backend.Repositories.UserManagement.Interfaces;
 
 namespace TruLoad.Backend.Controllers;
 
@@ -20,6 +23,10 @@ public class AuthController : ControllerBase
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IJwtService _jwtService;
     private readonly IPermissionService _permissionService;
+    private readonly INotificationService _notificationService;
+    private readonly ISettingsService _settingsService;
+    private readonly IUserShiftRepository _userShiftRepository;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
@@ -28,6 +35,10 @@ public class AuthController : ControllerBase
         SignInManager<ApplicationUser> signInManager,
         IJwtService jwtService,
         IPermissionService permissionService,
+        INotificationService notificationService,
+        ISettingsService settingsService,
+        IUserShiftRepository userShiftRepository,
+        IConfiguration configuration,
         ILogger<AuthController> logger)
     {
         _userManager = userManager;
@@ -35,6 +46,10 @@ public class AuthController : ControllerBase
         _signInManager = signInManager;
         _jwtService = jwtService;
         _permissionService = permissionService;
+        _notificationService = notificationService;
+        _settingsService = settingsService;
+        _userShiftRepository = userShiftRepository;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -122,12 +137,32 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Invalid email or password" });
         }
 
+        // Get user roles (needed for shift check and permissions)
+        var roles = await _userManager.GetRolesAsync(user);
+
+        // Shift enforcement check
+        var shiftSettings = await _settingsService.GetShiftSettingsAsync();
+        if (shiftSettings.EnforceShiftOnLogin && !shiftSettings.BypassShiftCheck)
+        {
+            // Check if user's role is excluded from shift enforcement
+            var excludedRoles = (shiftSettings.ExcludedRoles ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var isExcluded = roles.Any(r => excludedRoles.Contains(r, StringComparer.OrdinalIgnoreCase));
+
+            if (!isExcluded)
+            {
+                var hasActiveShift = await _userShiftRepository.HasActiveShiftAsync(user.Id);
+                if (!hasActiveShift)
+                {
+                    _logger.LogWarning("Login denied for {Email}: no active shift assigned", request.Email);
+                    return Unauthorized(new { message = "You are not assigned to an active shift. Please contact your supervisor." });
+                }
+            }
+        }
+
         // Update last login
         user.LastLoginAt = DateTime.UtcNow;
         await _userManager.UpdateAsync(user);
-
-        // Get user roles and permissions
-        var roles = await _userManager.GetRolesAsync(user);
         
         // Get permissions for all user roles
         var allPermissions = new List<string>();
@@ -266,7 +301,29 @@ public class AuthController : ControllerBase
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
-        // TODO: Send email with reset token via notifications-service
+        // Build reset URL for frontend
+        var frontendUrl = _configuration["FrontendUrl"] ?? "https://truload.masterspace.co.ke";
+        var resetUrl = $"{frontendUrl}/reset-password?email={Uri.EscapeDataString(user.Email!)}&token={Uri.EscapeDataString(token)}";
+
+        // Send password reset email via notifications-service
+        var emailSent = await _notificationService.SendEmailAsync(
+            "password_reset",
+            user.Email!,
+            user.FullName ?? user.Email!,
+            new Dictionary<string, object>
+            {
+                ["reset_url"] = resetUrl,
+                ["reset_token"] = token,
+                ["user_name"] = user.FullName ?? user.Email!,
+                ["expiry_hours"] = 24
+            },
+            "Password Reset Request - TruLoad");
+
+        if (!emailSent)
+        {
+            _logger.LogWarning("Failed to send password reset email for {Email}", request.Email);
+        }
+
         _logger.LogInformation("Password reset requested for {Email}", request.Email);
 
         return Ok(new { message = "If the email exists, a password reset link has been sent" });

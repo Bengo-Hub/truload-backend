@@ -15,12 +15,18 @@ namespace TruLoad.Controllers;
 public class RolesController : ControllerBase
 {
     private readonly RoleManager<ApplicationRole> _roleManager;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<RolesController> _logger;
     private readonly IPermissionService _permissionService;
 
-    public RolesController(RoleManager<ApplicationRole> roleManager, ILogger<RolesController> logger, IPermissionService permissionService)
+    public RolesController(
+        RoleManager<ApplicationRole> roleManager,
+        UserManager<ApplicationUser> userManager,
+        ILogger<RolesController> logger,
+        IPermissionService permissionService)
     {
         _roleManager = roleManager;
+        _userManager = userManager;
         _logger = logger;
         _permissionService = permissionService;
     }
@@ -277,13 +283,20 @@ public class RolesController : ControllerBase
             return NotFound(new { message = "Role not found" });
         }
 
-        // Get users in this role - this would need to be implemented in a service
-        // For now, return empty list as this requires additional implementation
+        // Get users assigned to this role
+        var usersInRole = await _userManager.GetUsersInRoleAsync(role.Name!);
+        var userSummaries = usersInRole.Select(u => new UserSummaryDto
+        {
+            Id = u.Id,
+            Email = u.Email!,
+            FullName = u.FullName
+        }).ToList();
+
         return Ok(new RoleUsersDto
         {
             RoleId = id,
             RoleName = role.Name!,
-            Users = new List<UserSummaryDto>() // TODO: Implement user retrieval for role
+            Users = userSummaries
         });
     }
 

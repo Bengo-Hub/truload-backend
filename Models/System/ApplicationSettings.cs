@@ -146,6 +146,13 @@ public static class SettingKeys
     public const string IntegrationNtsaTimeoutSeconds = "integration.ntsa_timeout_seconds";
     public const string IntegrationOllamaTimeoutSeconds = "integration.ollama_timeout_seconds";
 
+    // Notifications
+    public const string NotificationEmailEnabled = "notification.email_enabled";
+    public const string NotificationSmsEnabled = "notification.sms_enabled";
+    public const string NotificationPushEnabled = "notification.push_enabled";
+    public const string NotificationServiceUrl = "notification.service_url";
+    public const string NotificationDefaultChannel = "notification.default_channel";
+
     // Categories
     public const string CategorySecurity = "Security";
     public const string CategoryShifts = "Shifts";

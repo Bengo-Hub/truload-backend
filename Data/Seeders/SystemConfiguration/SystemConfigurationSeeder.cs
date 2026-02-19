@@ -745,6 +745,83 @@ public class SystemConfigurationSeeder
                 SortOrder = 4,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
+            },
+
+            // Notification Settings
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.NotificationEmailEnabled,
+                SettingValue = "true",
+                SettingType = "Boolean",
+                Category = SettingKeys.CategoryNotifications,
+                DisplayName = "Enable Email Notifications",
+                Description = "Enable sending email notifications via the centralized notifications service",
+                DefaultValue = "true",
+                IsEditable = true,
+                SortOrder = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.NotificationSmsEnabled,
+                SettingValue = "false",
+                SettingType = "Boolean",
+                Category = SettingKeys.CategoryNotifications,
+                DisplayName = "Enable SMS Notifications",
+                Description = "Enable sending SMS notifications for critical alerts and OTP delivery",
+                DefaultValue = "false",
+                IsEditable = true,
+                SortOrder = 2,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.NotificationPushEnabled,
+                SettingValue = "true",
+                SettingType = "Boolean",
+                Category = SettingKeys.CategoryNotifications,
+                DisplayName = "Enable Push Notifications",
+                Description = "Enable browser push notifications for real-time alerts to PWA users",
+                DefaultValue = "true",
+                IsEditable = true,
+                SortOrder = 3,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.NotificationServiceUrl,
+                SettingValue = "http://notifications-service.notifications.svc.cluster.local:4000",
+                SettingType = "String",
+                Category = SettingKeys.CategoryNotifications,
+                DisplayName = "Notification Service URL",
+                Description = "Base URL of the centralized Go notifications-service",
+                DefaultValue = "http://notifications-service.notifications.svc.cluster.local:4000",
+                IsEditable = true,
+                SortOrder = 4,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.NotificationDefaultChannel,
+                SettingValue = "email",
+                SettingType = "String",
+                Category = SettingKeys.CategoryNotifications,
+                DisplayName = "Default Notification Channel",
+                Description = "Default channel for notifications when not explicitly specified (email, sms, push)",
+                DefaultValue = "email",
+                IsEditable = true,
+                SortOrder = 5,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             }
         };
 

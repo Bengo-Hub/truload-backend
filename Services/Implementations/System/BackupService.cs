@@ -357,11 +357,16 @@ public class BackupService : IBackupService
 
     private static DateTime? CalculateNextRun(string cronExpression)
     {
-        // Simple implementation - for production use NCrontab or Quartz
-        // This is a basic daily backup assumption
-        var now = DateTime.UtcNow;
-        var todayMidnight = now.Date.AddDays(1);
-        return todayMidnight;
+        try
+        {
+            var expression = Cronos.CronExpression.Parse(cronExpression);
+            return expression.GetNextOccurrence(DateTime.UtcNow, TimeZoneInfo.Utc);
+        }
+        catch (Exception)
+        {
+            // Fallback: if cron parsing fails, assume next midnight
+            return DateTime.UtcNow.Date.AddDays(1);
+        }
     }
 
     private static (string Host, string Port, string Database, string Username, string Password) ParseConnectionString(string? connectionString)

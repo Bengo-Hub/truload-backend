@@ -674,6 +674,16 @@ Hangfire.RecurringJob.AddOrUpdate<ExchangeRateSyncJob>(
         QueueName = "default"
     });
 
+Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.BackupScheduleJob>(
+    "automated-database-backup",
+    job => job.ExecuteAsync(),
+    "0 2 * * *", // Daily at 2 AM UTC (configurable via settings)
+    new Hangfire.RecurringJobOptions
+    {
+        TimeZone = TimeZoneInfo.Utc,
+        QueueName = "default"
+    });
+
 // Health endpoint
 app.MapHealthChecks("/health");
 
