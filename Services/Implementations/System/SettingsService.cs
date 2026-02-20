@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Primitives;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Settings;
 using TruLoad.Backend.Models.System;
@@ -18,6 +19,7 @@ public class SettingsService : ISettingsService
     private readonly ILogger<SettingsService> _logger;
     private const string CacheKeyPrefix = "Settings_";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+    private CancellationTokenSource _cacheResetToken = new();
 
     public SettingsService(
         TruLoadDbContext context,
@@ -45,7 +47,7 @@ public class SettingsService : ISettingsService
             .Select(s => MapToDto(s))
             .ToListAsync(ct);
 
-        _cache.Set(cacheKey, settings, CacheDuration);
+        _cache.Set(cacheKey, settings, GetCacheOptions());
         return settings;
     }
 
@@ -64,7 +66,7 @@ public class SettingsService : ISettingsService
             .Select(s => MapToDto(s))
             .ToListAsync(ct);
 
-        _cache.Set(cacheKey, settings, CacheDuration);
+        _cache.Set(cacheKey, settings, GetCacheOptions());
         return settings;
     }
 
@@ -84,7 +86,7 @@ public class SettingsService : ISettingsService
 
         if (setting != null)
         {
-            _cache.Set(cacheKey, setting, CacheDuration);
+            _cache.Set(cacheKey, setting, GetCacheOptions());
         }
 
         return setting;
@@ -302,9 +304,17 @@ public class SettingsService : ISettingsService
 
     public void InvalidateCache()
     {
-        // Remove all cached settings
-        // In a distributed environment, use IDistributedCache instead
         _logger.LogDebug("Invalidating settings cache");
+        _cacheResetToken.Cancel();
+        _cacheResetToken.Dispose();
+        _cacheResetToken = new CancellationTokenSource();
+    }
+
+    private MemoryCacheEntryOptions GetCacheOptions()
+    {
+        return new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(CacheDuration)
+            .AddExpirationToken(new CancellationChangeToken(_cacheResetToken.Token));
     }
 
     private static ApplicationSettingDto MapToDto(ApplicationSettings setting)

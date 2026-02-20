@@ -266,22 +266,15 @@ public class TwoFactorService : ITwoFactorService
     }
 
     /// <summary>
-    /// Generates a simple QR code data URL using SVG.
-    /// For production, consider using a proper QR code library like QRCoder.
-    /// This implementation creates a placeholder that instructs users to use the manual key.
+    /// Generates a real QR code as a PNG data URL using QRCoder.
     /// </summary>
     private static string GenerateQrCodeDataUrl(string authenticatorUri)
     {
-        // For a proper implementation, use QRCoder or similar library
-        // This generates a simple SVG placeholder with the URI encoded
-        var svg = $@"<svg xmlns=""http://www.w3.org/2000/svg"" viewBox=""0 0 200 200"">
-            <rect width=""200"" height=""200"" fill=""white""/>
-            <text x=""100"" y=""90"" text-anchor=""middle"" font-family=""Arial"" font-size=""12"">Scan QR Code</text>
-            <text x=""100"" y=""110"" text-anchor=""middle"" font-family=""Arial"" font-size=""10"">or enter key manually</text>
-            <rect x=""40"" y=""40"" width=""120"" height=""120"" fill=""none"" stroke=""black"" stroke-width=""2""/>
-        </svg>";
-
-        var base64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(svg));
-        return $"data:image/svg+xml;base64,{base64}";
+        using var qrGenerator = new QRCoder.QRCodeGenerator();
+        using var qrCodeData = qrGenerator.CreateQrCode(authenticatorUri, QRCoder.QRCodeGenerator.ECCLevel.Q);
+        using var qrCode = new QRCoder.PngByteQRCode(qrCodeData);
+        var pngBytes = qrCode.GetGraphic(5);
+        var base64 = Convert.ToBase64String(pngBytes);
+        return $"data:image/png;base64,{base64}";
     }
 }

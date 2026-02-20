@@ -174,12 +174,12 @@ builder.Services.AddDbContext<TruLoadDbContext>(options =>
 // ASP.NET Core Identity
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
 {
-    // Password settings
-    options.Password.RequireDigit = true;
-    options.Password.RequiredLength = 8;
-    options.Password.RequireNonAlphanumeric = true;
-    options.Password.RequireUppercase = true;
-    options.Password.RequireLowercase = true;
+    // Disable built-in password validators — DynamicPasswordValidator reads policy from DB
+    options.Password.RequireDigit = false;
+    options.Password.RequiredLength = 1;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireLowercase = false;
 
     // Lockout settings
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
@@ -192,6 +192,9 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
 })
 .AddEntityFrameworkStores<TruLoadDbContext>()
 .AddDefaultTokenProviders();
+
+// Dynamic password policy from DB settings (replaces static Identity password options)
+builder.Services.AddScoped<IPasswordValidator<ApplicationUser>, DynamicPasswordValidator>();
 
 // Cookie auth for Hangfire dashboard (browser-based login)
 builder.Services.ConfigureApplicationCookie(options =>
@@ -484,7 +487,7 @@ try
         }
 
         // Check if initial seeding has already been completed
-        var seedingVersion = 8; // Increment this when you need to re-seed
+        var seedingVersion = 12; // Increment this when you need to re-seed
         var seedingName = "InitialSeed";
 
         var existingSeed = await dbContext.DatabaseSeedingHistory

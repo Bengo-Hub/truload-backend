@@ -4,6 +4,7 @@ using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Financial;
 using TruLoad.Backend.Models.Financial;
 using TruLoad.Backend.Models.System;
+using TruLoad.Backend.Infrastructure.Security;
 using TruLoad.Backend.Services.Interfaces.Financial;
 
 namespace TruLoad.Backend.Services.Implementations.Financial;
@@ -17,6 +18,7 @@ public class CurrencyService : ICurrencyService
     private readonly TruLoadDbContext _context;
     private readonly IMemoryCache _cache;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IEncryptionService _encryptionService;
     private readonly ILogger<CurrencyService> _logger;
 
     private const string CacheKeyPrefix = "ExchangeRate_";
@@ -26,11 +28,13 @@ public class CurrencyService : ICurrencyService
         TruLoadDbContext context,
         IMemoryCache cache,
         IHttpClientFactory httpClientFactory,
+        IEncryptionService encryptionService,
         ILogger<CurrencyService> logger)
     {
         _context = context;
         _cache = cache;
         _httpClientFactory = httpClientFactory;
+        _encryptionService = encryptionService;
         _logger = logger;
     }
 
@@ -179,7 +183,7 @@ public class CurrencyService : ICurrencyService
         if (request.Provider != null) settings.Provider = request.Provider;
         if (request.ProviderName != null) settings.ProviderName = request.ProviderName;
         if (request.ApiEndpoint != null) settings.ApiEndpoint = request.ApiEndpoint;
-        if (request.AccessKey != null) settings.EncryptedAccessKey = request.AccessKey; // TODO: encrypt
+        if (request.AccessKey != null) settings.EncryptedAccessKey = _encryptionService.Encrypt(request.AccessKey);
         if (request.SourceCurrency != null) settings.SourceCurrency = request.SourceCurrency;
         if (request.TargetCurrenciesJson != null) settings.TargetCurrenciesJson = request.TargetCurrenciesJson;
         if (request.FetchTime.HasValue) settings.FetchTime = request.FetchTime.Value;
@@ -230,7 +234,8 @@ public class CurrencyService : ICurrencyService
         try
         {
             var client = _httpClientFactory.CreateClient();
-            var url = $"{settings.ApiEndpoint}?access_key={settings.EncryptedAccessKey}&source={settings.SourceCurrency}&currencies=KES";
+            var accessKey = _encryptionService.Decrypt(settings.EncryptedAccessKey);
+            var url = $"{settings.ApiEndpoint}?access_key={accessKey}&source={settings.SourceCurrency}&currencies=KES";
 
             var response = await client.GetAsync(url, ct);
             response.EnsureSuccessStatusCode();

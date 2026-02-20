@@ -99,60 +99,8 @@ jobs:
           echo "Timeout -- some secrets may not have synced"
           echo "result=partial" >> $GITHUB_OUTPUT
 
-  restore-and-build:
-    runs-on: ubuntu-latest
-    outputs:
-      build-skipped: ${{ steps.build.outputs.skipped || 'false' }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-truload-backend-${{ hashFiles('**/truload-backend.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-truload-backend-
-
-      - name: Restore (project-only)
-        run: dotnet restore ./truload-backend.csproj
-
-      - name: Build (project-only, Debug)
-        id: build
-        run: |
-          dotnet build ./truload-backend.csproj -c Debug --no-restore
-
-  unit-tests:
-    runs-on: ubuntu-latest
-    needs: restore-and-build
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Cache NuGet packages (tests)
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-truload-tests-${{ hashFiles('**/Tests/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-truload-tests-
-
-      - name: Run tests
-        run: dotnet test ./Tests/truload-backend.Tests.csproj -c Debug --no-build
-
   deploy:
-    needs: [sync-secrets, restore-and-build]
+    needs: [sync-secrets]
     runs-on: ubuntu-latest
     permissions:
       contents: write

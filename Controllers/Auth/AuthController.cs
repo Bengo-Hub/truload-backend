@@ -137,14 +137,36 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Invalid email or password" });
         }
 
-        // Get user roles (needed for shift check and permissions)
+        // Check if 2FA is enabled for this user
+        var is2FAEnabled = await _userManager.GetTwoFactorEnabledAsync(user);
+        if (is2FAEnabled)
+        {
+            // Return a short-lived challenge token; client must verify TOTP before getting full JWT
+            var challengeToken = _jwtService.GenerateTwoFactorChallengeToken(user.Id);
+            _logger.LogInformation("2FA challenge issued for user {Email}", request.Email);
+            return Ok(new TwoFactorChallengeResponse
+            {
+                Requires2FA = true,
+                TwoFactorToken = challengeToken
+            });
+        }
+
+        // Complete login (shared logic for normal login and post-2FA verification)
+        return await CompleteLoginAsync(user);
+    }
+
+    /// <summary>
+    /// Shared login completion logic: shift check, token generation, response.
+    /// Used by both Login() and the 2FA verify endpoint.
+    /// </summary>
+    private async Task<IActionResult> CompleteLoginAsync(ApplicationUser user)
+    {
         var roles = await _userManager.GetRolesAsync(user);
 
         // Shift enforcement check
         var shiftSettings = await _settingsService.GetShiftSettingsAsync();
         if (shiftSettings.EnforceShiftOnLogin && !shiftSettings.BypassShiftCheck)
         {
-            // Check if user's role is excluded from shift enforcement
             var excludedRoles = (shiftSettings.ExcludedRoles ?? "")
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             var isExcluded = roles.Any(r => excludedRoles.Contains(r, StringComparer.OrdinalIgnoreCase));
@@ -154,7 +176,7 @@ public class AuthController : ControllerBase
                 var hasActiveShift = await _userShiftRepository.HasActiveShiftAsync(user.Id);
                 if (!hasActiveShift)
                 {
-                    _logger.LogWarning("Login denied for {Email}: no active shift assigned", request.Email);
+                    _logger.LogWarning("Login denied for {Email}: no active shift assigned", user.Email);
                     return Unauthorized(new { message = "You are not assigned to an active shift. Please contact your supervisor." });
                 }
             }
@@ -163,7 +185,7 @@ public class AuthController : ControllerBase
         // Update last login
         user.LastLoginAt = DateTime.UtcNow;
         await _userManager.UpdateAsync(user);
-        
+
         // Get permissions for all user roles
         var allPermissions = new List<string>();
         foreach (var roleName in roles)
@@ -176,33 +198,33 @@ public class AuthController : ControllerBase
             }
         }
         var uniquePermissions = allPermissions.Distinct().ToList();
-        
-        // Generate JWT tokens
+
+        // Generate JWT access token
         var accessToken = _jwtService.GenerateAccessToken(user, roles, uniquePermissions);
-        var refreshToken = _jwtService.GenerateRefreshToken();
 
-        _logger.LogInformation("User {Email} logged in successfully", request.Email);
+        // Store refresh token server-side (hashed)
+        var refreshToken = await _jwtService.StoreRefreshTokenAsync(user.Id);
 
-        // Create an Identity cookie for browser clients (so Swagger UI and Hangfire can
-        // use cookie authentication). We still return JWT for API clients.
+        _logger.LogInformation("User {Email} logged in successfully", user.Email);
+
+        // Create an Identity cookie for browser clients
         await _signInManager.SignInAsync(user, isPersistent: false);
 
-        // Check if user has SUPERUSER role (bypasses all permission checks on frontend)
         var isSuperUser = roles.Contains("SUPERUSER", StringComparer.OrdinalIgnoreCase);
 
         return Ok(new
         {
             accessToken,
             refreshToken,
-            expiresIn = 3600, // 1 hour
+            expiresIn = 3600,
             user = new
             {
                 id = user.Id,
                 email = user.Email,
                 fullName = user.FullName,
                 roles = roles,
-                permissions = uniquePermissions, // Permission codes for frontend RBAC
-                isSuperUser, // Flag for frontend RBAC bypass
+                permissions = uniquePermissions,
+                isSuperUser,
                 organizationId = user.OrganizationId,
                 stationId = user.StationId,
                 departmentId = user.DepartmentId
@@ -211,7 +233,61 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Complete login by verifying 2FA code after receiving a challenge token.
+    /// </summary>
+    [HttpPost("login/2fa-verify")]
+    [AllowAnonymous]
+    public async Task<IActionResult> LoginVerify2FA([FromBody] LoginVerify2FARequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        // Validate the 2FA challenge token
+        var userId = _jwtService.ValidateTwoFactorChallengeToken(request.TwoFactorToken);
+        if (!userId.HasValue)
+        {
+            return Unauthorized(new { message = "Invalid or expired 2FA challenge token. Please login again." });
+        }
+
+        var user = await _userManager.FindByIdAsync(userId.Value.ToString());
+        if (user == null)
+        {
+            return Unauthorized(new { message = "User not found" });
+        }
+
+        // Verify the TOTP code
+        var sanitizedCode = request.Code.Replace(" ", "").Replace("-", "");
+        bool isValid;
+
+        if (request.UseRecoveryCode)
+        {
+            var redeemResult = await _userManager.RedeemTwoFactorRecoveryCodeAsync(user, sanitizedCode);
+            isValid = redeemResult.Succeeded;
+            if (isValid) _logger.LogInformation("Recovery code used for 2FA login by user {UserId}", userId);
+        }
+        else
+        {
+            isValid = await _userManager.VerifyTwoFactorTokenAsync(
+                user,
+                _userManager.Options.Tokens.AuthenticatorTokenProvider,
+                sanitizedCode);
+        }
+
+        if (!isValid)
+        {
+            _logger.LogWarning("Invalid 2FA code during login for user {UserId}", userId);
+            return Unauthorized(new { message = "Invalid verification code" });
+        }
+
+        _logger.LogInformation("2FA verification successful for user {Email}", user.Email);
+        return await CompleteLoginAsync(user);
+    }
+
+    /// <summary>
     /// Refresh access token using refresh token.
+    /// Validates the refresh token against the database and performs token rotation.
     /// </summary>
     [HttpPost("refresh")]
     [AllowAnonymous]
@@ -222,28 +298,21 @@ public class AuthController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var isValid = _jwtService.ValidateRefreshToken(request.RefreshToken);
-        if (!isValid)
+        // Validate and rotate refresh token (DB-backed)
+        var (isValid, newRefreshToken, userId) = await _jwtService.ValidateAndRotateRefreshTokenAsync(request.RefreshToken);
+        if (!isValid || newRefreshToken == null)
         {
-            return Unauthorized(new { message = "Invalid refresh token" });
+            return Unauthorized(new { message = "Invalid or expired refresh token" });
         }
 
-        var userId = _jwtService.GetUserIdFromToken(request.AccessToken);
-        if (userId == Guid.Empty)
-        {
-            return Unauthorized(new { message = "Invalid access token" });
-        }
-
-        var user = await _userManager.FindByIdAsync(userId.ToString()!);
+        var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user == null)
         {
             return Unauthorized(new { message = "User not found" });
         }
 
-        // Generate new tokens
+        // Generate new access token
         var roles = await _userManager.GetRolesAsync(user);
-        
-        // Get permissions for all user roles
         var allPermissions = new List<string>();
         foreach (var roleName in roles)
         {
@@ -255,9 +324,7 @@ public class AuthController : ControllerBase
             }
         }
         var uniquePermissions = allPermissions.Distinct().ToList();
-        
         var newAccessToken = _jwtService.GenerateAccessToken(user, roles, uniquePermissions);
-        var newRefreshToken = _jwtService.GenerateRefreshToken();
 
         return Ok(new
         {
@@ -268,14 +335,18 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Logout (client-side token removal).
+    /// Logout and revoke all refresh tokens for the current user.
     /// </summary>
     [HttpPost("logout")]
     [Authorize]
-    public IActionResult Logout()
+    public async Task<IActionResult> Logout()
     {
-        // In JWT-based auth, logout is primarily client-side
-        // Server-side could add token to blacklist if needed
+        var userIdStr = User.FindFirst(global::System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrEmpty(userIdStr) && Guid.TryParse(userIdStr, out var userId))
+        {
+            await _jwtService.RevokeAllUserTokensAsync(userId);
+        }
+
         _logger.LogInformation("User logged out");
         return Ok(new { message = "Logged out successfully" });
     }

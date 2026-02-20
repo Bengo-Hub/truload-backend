@@ -85,3 +85,33 @@ public record TwoFactorStatusResponse(
     int RecoveryCodesRemaining,
     bool IsMachineRemembered
 );
+
+/// <summary>
+/// Response when login requires 2FA verification.
+/// </summary>
+public record TwoFactorChallengeResponse
+{
+    /// <summary>Indicates the client must complete 2FA.</summary>
+    public bool Requires2FA { get; init; } = true;
+
+    /// <summary>Short-lived JWT (5 min) for completing 2FA verification.</summary>
+    public string TwoFactorToken { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Request to verify 2FA during login flow (unauthenticated).
+/// </summary>
+public record LoginVerify2FARequest
+{
+    /// <summary>The 2FA challenge token from login response.</summary>
+    [Required]
+    public string TwoFactorToken { get; init; } = string.Empty;
+
+    /// <summary>6-digit TOTP code or recovery code.</summary>
+    [Required]
+    [StringLength(32, MinimumLength = 6)]
+    public string Code { get; init; } = string.Empty;
+
+    /// <summary>Whether using a recovery code instead of TOTP.</summary>
+    public bool UseRecoveryCode { get; init; }
+}

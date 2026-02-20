@@ -83,7 +83,55 @@ public class TenantContextMiddleware
             "Tenant context resolved: OrgId={OrgId}, OrgCode={OrgCode}, StationId={StationId}, Explicit={IsExplicit}",
             tenantContext.OrganizationId, tenantContext.OrganizationCode, tenantContext.StationId, tenantContext.IsExplicitTenant);
 
+        // Enforce cross-station access: authenticated users can only access their own station
+        // unless they have a privileged role (Superuser, System Admin)
+        if (!await IsStationAccessAllowed(context, tenantContext))
+        {
+            _logger.LogWarning(
+                "Cross-station access denied: User station claim does not match requested StationId={StationId}",
+                tenantContext.StationId);
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new { error = "Access denied: you do not have permission to access this station's data" });
+            return;
+        }
+
         await _next(context);
+    }
+
+    /// <summary>
+    /// Checks if the authenticated user is allowed to access the resolved station.
+    /// Returns true if: unauthenticated, no station in context, user has no station claim,
+    /// stations match, or user has Superuser/System Admin role.
+    /// </summary>
+    private Task<bool> IsStationAccessAllowed(HttpContext context, TenantContext tenantContext)
+    {
+        // No enforcement needed if user isn't authenticated or no station was resolved
+        if (!context.User.Identity?.IsAuthenticated ?? true)
+            return Task.FromResult(true);
+
+        if (!tenantContext.StationId.HasValue)
+            return Task.FromResult(true);
+
+        // Only enforce when station was explicitly requested via header (not from JWT fallback)
+        if (!tenantContext.IsExplicitTenant)
+            return Task.FromResult(true);
+
+        // Get user's station from JWT claim
+        var userStationClaim = context.User.FindFirst("station_id");
+        if (userStationClaim == null || !Guid.TryParse(userStationClaim.Value, out var userStationId))
+            return Task.FromResult(true); // No station claim → don't enforce
+
+        // Station matches → allowed
+        if (userStationId == tenantContext.StationId.Value)
+            return Task.FromResult(true);
+
+        // Privileged roles can access any station
+        var roles = context.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+        if (roles.Contains("Superuser") || roles.Contains("System Admin"))
+            return Task.FromResult(true);
+
+        return Task.FromResult(false);
     }
 
     private bool ShouldSkipTenantResolution(HttpContext context)
