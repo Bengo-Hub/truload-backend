@@ -230,6 +230,10 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     // ===== Integration Configuration (Sprint 15: eCitizen) =====
     public DbSet<IntegrationConfig> IntegrationConfigs { get; set; } = null!;
 
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
         if (!IsInMemoryProvider && !_noVector)
         {
             // Register PostgreSQL extensions for production/development

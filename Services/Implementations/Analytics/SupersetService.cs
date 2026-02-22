@@ -258,13 +258,13 @@ DATABASE SCHEMA:
 QUESTION: {question}
 
 FEW-SHOT EXAMPLES:
-Q: "How many weighing transactions were recorded today?"
+Q: ""How many weighing transactions were recorded today?""
 SQL: SELECT COUNT(*) as today_count FROM weighing_transactions WHERE created_at >= CURRENT_DATE AND deleted_at IS NULL;
 
-Q: "Show me the top 5 transporters with the highest total overload this year"
+Q: ""Show me the top 5 transporters with the highest total overload this year""
 SQL: SELECT t.name, SUM(wt.overload_kg) as total_overload FROM weighing_transactions wt JOIN transporters t ON wt.transporter_id = t.id WHERE wt.created_at >= DATE_TRUNC('year', CURRENT_DATE) AND wt.is_compliant = false AND wt.deleted_at IS NULL GROUP BY t.name ORDER BY total_overload DESC LIMIT 5;
 
-Q: "What is the average compliance rate across all stations?"
+Q: ""What is the average compliance rate across all stations?""
 SQL: SELECT s.name, (COUNT(CASE WHEN wt.is_compliant = true THEN 1 END) * 100.0 / COUNT(*)) as compliance_rate FROM weighing_transactions wt JOIN stations s ON wt.station_id = s.id WHERE wt.deleted_at IS NULL GROUP BY s.name;
 
 RULES:
