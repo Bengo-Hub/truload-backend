@@ -1896,3 +1896,48 @@ Queue for offline submissions and synchronization tracking.
 - Client-generated UUIDs prevent duplicate submissions
 - Backend validates `client_local_id` uniqueness
 - Duplicate detection via correlation_id in `device_sync_events`
+---
+
+## Notifications Module (Integrated Phase 2)
+
+#### push_subscriptions
+PWA Push notification subscriptions per user.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Subscription ID |
+| user_id | UUID | FK → users(id), NOT NULL, INDEX | Owner of device |
+| endpoint | TEXT | NOT NULL, UNIQUE | Push service endpoint |
+| p256dh | TEXT | NOT NULL | Encryption public key |
+| auth | TEXT | NOT NULL | Auth secret |
+| device_type | VARCHAR(50) | | mobile, desktop, etc. |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Registration time |
+| last_used_at | TIMESTAMPTZ | | Last push sent |
+
+**Indexes:**
+- `idx_push_subs_user` ON push_subscriptions(user_id)
+- `idx_push_subs_endpoint` ON push_subscriptions(endpoint)
+
+#### user_notifications
+In-app notification inbox.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Notification ID |
+| user_id | UUID | FK → users(id), NOT NULL, INDEX | Target user |
+| organization_id | UUID | FK → organizations(id), NOT NULL, INDEX | Tenant context |
+| title | VARCHAR(255) | NOT NULL | Alert title |
+| message | TEXT | NOT NULL | Alert content |
+| type | VARCHAR(20) | CHECK | success, info, warning, error |
+| is_read | BOOLEAN | DEFAULT FALSE | Read status |
+| link_url | TEXT | | Optional deep-link |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | Generation time |
+
+**Indexes:**
+- `idx_user_notif_unread` ON user_notifications(user_id) WHERE is_read = FALSE
+- `idx_user_notif_org` ON user_notifications(organization_id)
+
+**Relationships:**
+- `users` ↔ `push_subscriptions` (one-to-many)
+- `users` ↔ `user_notifications` (one-to-many)
+- `organizations` ↔ `user_notifications` (one-to-many)
