@@ -37,7 +37,7 @@ public class SupersetService : ISupersetService
         _httpClient.BaseAddress = new Uri(_supersetOptions.BaseUrl);
     }
 
-    public async Task<SupersetGuestTokenResponse> GetGuestTokenAsync(SupersetGuestTokenRequest request, CancellationToken ct = default)
+    public async Task<SupersetGuestTokenResponse> GetGuestTokenAsync(SupersetGuestTokenRequest request, string? username = null, string? firstName = null, string? lastName = null, CancellationToken ct = default)
     {
         var accessToken = await GetAccessTokenAsync(ct);
 
@@ -45,9 +45,9 @@ public class SupersetService : ISupersetService
         {
             user = new
             {
-                username = "guest",
-                first_name = "Guest",
-                last_name = "User"
+                username = username ?? "guest",
+                first_name = firstName ?? "Guest",
+                last_name = lastName ?? "User"
             },
             resources = request.DashboardIds.Select(id => new
             {
@@ -164,6 +164,18 @@ public class SupersetService : ISupersetService
                 );
             }
 
+            // Validate the SQL before execution
+            if (!ValidateSql(sql))
+            {
+                return new NaturalLanguageQueryResponse(
+                    request.Question,
+                    sql,
+                    null,
+                    "The generated SQL failed security validation. It must be a read-only SELECT statement.",
+                    false
+                );
+            }
+
             // Execute the SQL via Superset's SQL Lab API
             var results = await ExecuteSqlQueryAsync(sql, ct);
 
@@ -245,7 +257,17 @@ DATABASE SCHEMA:
 
 QUESTION: {question}
 
-STRICT RULES:
+FEW-SHOT EXAMPLES:
+Q: "How many weighing transactions were recorded today?"
+SQL: SELECT COUNT(*) as today_count FROM weighing_transactions WHERE created_at >= CURRENT_DATE AND deleted_at IS NULL;
+
+Q: "Show me the top 5 transporters with the highest total overload this year"
+SQL: SELECT t.name, SUM(wt.overload_kg) as total_overload FROM weighing_transactions wt JOIN transporters t ON wt.transporter_id = t.id WHERE wt.created_at >= DATE_TRUNC('year', CURRENT_DATE) AND wt.is_compliant = false AND wt.deleted_at IS NULL GROUP BY t.name ORDER BY total_overload DESC LIMIT 5;
+
+Q: "What is the average compliance rate across all stations?"
+SQL: SELECT s.name, (COUNT(CASE WHEN wt.is_compliant = true THEN 1 END) * 100.0 / COUNT(*)) as compliance_rate FROM weighing_transactions wt JOIN stations s ON wt.station_id = s.id WHERE wt.deleted_at IS NULL GROUP BY s.name;
+
+RULES:
 1. Output ONLY the SQL query. No explanations, no markdown, no comments.
 2. Use PostgreSQL syntax (date_trunc, INTERVAL, CURRENT_DATE, COALESCE, etc.).
 3. NEVER use DELETE, UPDATE, INSERT, DROP, ALTER, TRUNCATE, or CREATE statements.
@@ -253,9 +275,9 @@ STRICT RULES:
 5. Always add LIMIT 1000 at the end.
 6. Use table aliases (e.g., wt for weighing_transactions).
 7. For date filters, use: created_at >= CURRENT_DATE - INTERVAL '30 days'
-8. For counts, use: SELECT COUNT(*) as total FROM ...
-9. For aggregations, use meaningful column aliases.
-10. Prefer the simplest possible query that answers the question.
+8. Use is_compliant = true/false for compliance checks.
+9. For counts, use: SELECT COUNT(*) as total FROM ...
+10. For aggregations, use meaningful column aliases.
 
 SQL:";
 
@@ -305,13 +327,40 @@ SQL:";
         return generatedText.Trim();
     }
 
+    private static bool ValidateSql(string sql)
+    {
+        if (string.IsNullOrWhiteSpace(sql)) return false;
+
+        var upperSql = sql.ToUpperInvariant().Trim();
+
+        // Must start with SELECT (ignoring whitespace and optional WITH)
+        if (!upperSql.StartsWith("SELECT") && !upperSql.StartsWith("WITH"))
+        {
+            return false;
+        }
+
+        // Blacklist destructive commands
+        string[] blacklist = { "DELETE", "UPDATE", "INSERT", "DROP", "ALTER", "TRUNCATE", "CREATE", "GRANT", "REVOKE", "EXEC", "EXECUTE" };
+        
+        // Simple word-boundary check to avoid false positives (e.g., "updated_at" column)
+        foreach (var word in blacklist)
+        {
+            if (System.Text.RegularExpressions.Regex.IsMatch(upperSql, $@"\b{word}\b"))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private async Task<List<Dictionary<string, object>>?> ExecuteSqlQueryAsync(string sql, CancellationToken ct)
     {
         var accessToken = await GetAccessTokenAsync(ct);
 
         var queryRequest = new
         {
-            database_id = 1, // Default database ID
+            database_id = _supersetOptions.DatabaseId, // Use configured database ID
             sql = sql,
             runAsync = false,
             select_as_cta = false,
@@ -370,11 +419,15 @@ TABLES AND COLUMNS:
 
 weighing_transactions (
   id UUID PK, ticket_number VARCHAR, vehicle_reg_number VARCHAR,
-  gross_weight_kg INT, tare_weight_kg INT, net_weight_kg INT,
-  permissible_gvw_kg INT, overload_kg INT, is_overloaded BOOLEAN,
-  weighing_status VARCHAR, reweigh_cycle_no INT,
+  gvw_measured_kg INT, gvw_permissible_kg INT, overload_kg INT,
+  is_compliant BOOLEAN, control_status VARCHAR, total_fee_usd DECIMAL,
+  weighed_at TIMESTAMPTZ, capture_source VARCHAR,
   station_id UUID FK, vehicle_id UUID FK, driver_id UUID FK, transporter_id UUID FK,
-  created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ, deleted_at TIMESTAMPTZ NULL
+  created_at TIMESTAMPTZ, deleted_at TIMESTAMPTZ NULL
+)
+
+transporters (
+  id UUID PK, name VARCHAR, code VARCHAR, contact_person VARCHAR, email VARCHAR
 )
 
 case_registers (

@@ -10,7 +10,7 @@ public interface ISupersetService
     /// <summary>
     /// Get a guest token for embedding Superset dashboards.
     /// </summary>
-    Task<SupersetGuestTokenResponse> GetGuestTokenAsync(SupersetGuestTokenRequest request, CancellationToken ct = default);
+    Task<SupersetGuestTokenResponse> GetGuestTokenAsync(SupersetGuestTokenRequest request, string? username = null, string? firstName = null, string? lastName = null, CancellationToken ct = default);
 
     /// <summary>
     /// List available dashboards from Superset.

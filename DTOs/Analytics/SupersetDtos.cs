@@ -118,6 +118,7 @@ public class SupersetOptions
     public string Username { get; set; } = "admin";
     public string Password { get; set; } = "admin123";
     public int GuestTokenExpiryMinutes { get; set; } = 300;
+    public int DatabaseId { get; set; } = 1;
 
     /// <summary>
     /// Optional tag to filter dashboards by service (e.g., "truload").

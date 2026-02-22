@@ -51,7 +51,22 @@ public class SupersetController : ControllerBase
 
         try
         {
-            var result = await _supersetService.GetGuestTokenAsync(request, ct);
+            var email = User.FindFirst(global::System.Security.Claims.ClaimTypes.Email)?.Value 
+                        ?? User.FindFirst("email")?.Value;
+            var fullName = User.FindFirst("fullName")?.Value 
+                           ?? User.FindFirst(global::System.Security.Claims.ClaimTypes.Name)?.Value;
+            
+            string? firstName = null;
+            string? lastName = null;
+
+            if (!string.IsNullOrEmpty(fullName))
+            {
+                var parts = fullName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+                firstName = parts.Length > 0 ? parts[0] : null;
+                lastName = parts.Length > 1 ? parts[1] : null;
+            }
+
+            var result = await _supersetService.GetGuestTokenAsync(request, email, firstName, lastName, ct);
             return Ok(result);
         }
         catch (Exception ex)
