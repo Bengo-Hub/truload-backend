@@ -7,17 +7,13 @@ namespace TruLoad.Backend.Models.Yard;
 /// Tracks vehicles sent to holding yard for redistribution, offloading, or permit verification.
 /// Part of the prohibition order workflow.
 /// </summary>
-public class YardEntry : BaseEntity
+public class YardEntry : TenantAwareEntity
 {
     /// <summary>
     /// Foreign key to the related weighing transaction
     /// </summary>
     public Guid WeighingId { get; set; }
 
-    /// <summary>
-    /// Foreign key to the station with the yard
-    /// </summary>
-    public Guid StationId { get; set; }
 
     /// <summary>
     /// Reason for yard entry: redistribution, gvw_overload, permit_check, offload
@@ -41,5 +37,4 @@ public class YardEntry : BaseEntity
 
     // Navigation properties
     public WeighingTransaction? Weighing { get; set; }
-    public Station? Station { get; set; }
 }

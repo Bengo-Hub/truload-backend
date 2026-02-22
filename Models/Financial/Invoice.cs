@@ -9,7 +9,7 @@ namespace TruLoad.Backend.Models.Financial;
 /// Generated invoices for violations or services.
 /// Tracks payment obligations for case registers, prosecutions, and weighing transactions.
 /// </summary>
-public class Invoice : BaseEntity
+public class Invoice : TenantAwareEntity
 {
     /// <summary>
     /// Unique invoice number

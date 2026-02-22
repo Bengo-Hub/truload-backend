@@ -12,7 +12,7 @@ namespace TruLoad.Backend.Models.Weighing;
 /// Records the entire lifecycle of a vehicle weighing event.
 /// </summary>
 [Table("weighing_transactions")]
-public class WeighingTransaction : BaseEntity
+public class WeighingTransaction : TenantAwareEntity
 {
 
     /// <summary>
@@ -44,10 +44,6 @@ public class WeighingTransaction : BaseEntity
     /// </summary>
     public Guid? TransporterId { get; set; }
 
-    /// <summary>
-    /// Foreign Key to the Station where weighing occurred.
-    /// </summary>
-    public Guid StationId { get; set; }
 
     /// <summary>
     /// Foreign Key to the User (Officer) who performed the weighing.
@@ -219,7 +215,6 @@ public class WeighingTransaction : BaseEntity
     public Vehicle? Vehicle { get; set; }
     public Driver? Driver { get; set; }
     public Transporter? Transporter { get; set; }
-    public Station? Station { get; set; }
     public ApplicationUser? WeighedByUser { get; set; }
     public WeighingTransaction? OriginalWeighing { get; set; }
     public ActDefinition? Act { get; set; }

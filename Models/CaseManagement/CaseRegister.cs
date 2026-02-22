@@ -10,7 +10,7 @@ namespace TruLoad.Backend.Models.CaseManagement;
 /// Central register for all violation cases (Subfile A).
 /// Auto-created from weighing or manually created by officer.
 /// </summary>
-public class CaseRegister : BaseEntity
+public class CaseRegister : TenantAwareEntity
 {
 
     /// <summary>

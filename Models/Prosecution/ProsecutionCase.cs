@@ -13,7 +13,7 @@ namespace TruLoad.Backend.Models.Prosecution;
 /// Detailed prosecution workflow tracking with automated charge computation.
 /// Calculates fees based on GVW vs Axle overload and applies best charge basis.
 /// </summary>
-public class ProsecutionCase : BaseEntity
+public class ProsecutionCase : TenantAwareEntity
 {
     /// <summary>
     /// Foreign key to related case register (one-to-one)

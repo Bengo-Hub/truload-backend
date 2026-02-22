@@ -139,6 +139,7 @@ public class TenantContextMiddleware
         var path = context.Request.Path.Value ?? string.Empty;
         return path.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
                path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase) ||
+               path.StartsWith("/v1/docs", StringComparison.OrdinalIgnoreCase) ||
                context.Request.Method == HttpMethods.Options;
     }
 
@@ -190,7 +191,34 @@ public class TenantContextMiddleware
             }
         }
 
-        // Layer 3: Fallback to default organization (KURA)
+        // Layer 3: Try Hostname/Domain-based resolution (mss.masterspace.co.ke, etc.)
+        if (!orgId.HasValue)
+        {
+            var host = context.Request.Host.Host.ToLower();
+            string? slug = null;
+
+            if (host.Contains("mss.")) slug = "mss";
+            else if (host.Contains("urbanloft.")) slug = "urban-loft";
+            else if (host.Contains("kura.")) slug = "kura";
+            else if (host.Contains("ultichange.")) slug = "ultichange";
+            else if (host.Contains("codevertexitsolutions.com") || host.Contains("codevertex.")) slug = "codevertex";
+
+            if (slug != null)
+            {
+                var org = await dbContext.Organizations
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(o => o.Code == slug.ToUpper() && o.IsActive);
+
+                if (org != null)
+                {
+                    orgId = org.Id;
+                    tenantContext.OrganizationCode = org.Code;
+                    _logger.LogDebug("Resolved OrgId from Domain ({Host}): {OrgId}", host, orgId);
+                }
+            }
+        }
+
+        // Layer 4: Fallback to default organization (KURA)
         if (!orgId.HasValue)
         {
             var defaultOrg = await dbContext.Organizations

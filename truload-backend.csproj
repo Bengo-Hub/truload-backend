@@ -8,6 +8,7 @@
     <UserSecretsId>cb3f0081-c700-4ba6-9f14-74b47fcf7d76</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
+    <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
     <!-- Suppress EF Core HasCheckConstraint obsolete warning - method still works, just moved to new location -->
     <NoWarn>$(NoWarn);CS0618</NoWarn>
   </PropertyGroup>

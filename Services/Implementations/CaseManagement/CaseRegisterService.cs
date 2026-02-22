@@ -6,19 +6,23 @@ using TruLoad.Backend.Models.CaseManagement;
 using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Repositories.CaseManagement;
 using TruLoad.Backend.Services.Interfaces.CaseManagement;
+using TruLoad.Backend.Services.Interfaces.Shared;
 
 namespace TruLoad.Backend.Services.Implementations.CaseManagement;
 
 public class CaseRegisterService : ICaseRegisterService
 {
     private readonly ICaseRegisterRepository _caseRegisterRepository;
+    private readonly INotificationService _notificationService;
     private readonly TruLoadDbContext _context;
 
     public CaseRegisterService(
         ICaseRegisterRepository caseRegisterRepository,
+        INotificationService notificationService,
         TruLoadDbContext context)
     {
         _caseRegisterRepository = caseRegisterRepository;
+        _notificationService = notificationService;
         _context = context;
     }
 
@@ -134,6 +138,15 @@ public class CaseRegisterService : ICaseRegisterService
         };
 
         var created = await _caseRegisterRepository.CreateAsync(caseRegister);
+
+        // NOTIFY: Case Created
+        await _notificationService.SendInternalNotificationAsync(
+            userId,
+            "New Case Created",
+            $"Case {caseNo} has been created for vehicle {request.VehicleId}.",
+            "info",
+            $"/cases/{created.Id}");
+
         return MapToDto(created);
     }
 
@@ -282,6 +295,15 @@ public class CaseRegisterService : ICaseRegisterService
         caseRegister.UpdatedAt = DateTime.UtcNow;
 
         var updated = await _caseRegisterRepository.UpdateAsync(caseRegister);
+
+        // NOTIFY: Case Closed
+        await _notificationService.SendInternalNotificationAsync(
+            caseRegister.CreatedById, 
+            "Case Closed",
+            $"Case {caseRegister.CaseNo} has been closed by {userId}.",
+            "success",
+            $"/cases/{id}");
+
         return MapToDto(updated);
     }
 
@@ -310,6 +332,15 @@ public class CaseRegisterService : ICaseRegisterService
         caseRegister.CaseStatusId = escalatedStatus.Id;
 
         var updated = await _caseRegisterRepository.UpdateAsync(caseRegister);
+
+        // NOTIFY: Case Escalated
+        await _notificationService.SendInternalNotificationAsync(
+            caseManagerId,
+            "Case Escalated to You",
+            $"Case {caseRegister.CaseNo} has been escalated to you by {userId}.",
+            "warning",
+            $"/cases/{id}");
+
         return MapToDto(updated);
     }
 
@@ -323,6 +354,15 @@ public class CaseRegisterService : ICaseRegisterService
         caseRegister.InvestigatingOfficerAssignedAt = DateTime.UtcNow;
 
         var updated = await _caseRegisterRepository.UpdateAsync(caseRegister);
+
+        // NOTIFY: Officer Assigned
+        await _notificationService.SendInternalNotificationAsync(
+            officerId,
+            "Case Assigned to You",
+            $"You have been assigned as the investigating officer for Case {caseRegister.CaseNo} by officer ID {assignedById}.",
+            "info",
+            $"/cases/{id}");
+
         return MapToDto(updated);
     }
 

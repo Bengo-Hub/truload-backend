@@ -6,7 +6,7 @@ namespace TruLoad.Backend.Models.CaseManagement;
 /// <summary>
 /// Special release records for compliant/redistribution cases (fast-path dispositions).
 /// </summary>
-public class SpecialRelease : BaseEntity
+public class SpecialRelease : TenantAwareEntity
 {
 
     /// <summary>

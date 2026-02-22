@@ -54,6 +54,18 @@ public class NotificationEnqueueResponse
 }
 
 /// <summary>
+/// DTO for notification template metadata.
+/// </summary>
+public class NotificationTemplateDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string Channel { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public List<string> Variables { get; set; } = new();
+    public string? DefaultSubject { get; set; }
+}
+
+/// <summary>
 /// Error response from Go notifications-service.
 /// </summary>
 public class NotificationErrorResponse

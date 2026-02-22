@@ -454,6 +454,7 @@ builder.Services.AddHangfireServer(options =>
 
 // Register background job services
 builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.PesaflowInvoiceSyncJob>();
+builder.Services.AddScoped<TruLoad.Backend.Services.Implementations.Shared.NotificationBackgroundJob>();
 
 // Hangfire job retention: auto-delete succeeded/failed jobs after 48 hours
 GlobalJobFilters.Filters.Add(new AutomaticRetryAttribute { Attempts = 3 });
@@ -611,8 +612,7 @@ app.UseExceptionHandler(errorApp =>
     });
 });
 
-// Audit middleware
-app.UseAuditMiddleware();
+
 
 // Rate Limiting - after CORS, before authentication
 app.UseTruLoadRateLimiting();
@@ -624,6 +624,9 @@ app.UseAuthentication();
 app.UseTenantContext();
 
 app.UseAuthorization();
+
+// Audit middleware - must be after Authentication to pick up user claims
+app.UseAuditMiddleware();
 
 // Hangfire cookie auth middleware - intercepts /hangfire requests and authenticates
 // via Identity cookie (since default scheme is JWT Bearer, cookies aren't checked automatically)

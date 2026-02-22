@@ -5,7 +5,7 @@ namespace TruLoad.Backend.Models;
 /// <summary>
 /// Station entity - Weighbridge/Mobile unit/Yard locations
 /// </summary>
-public class Station : BaseEntity
+public class Station : TenantAwareEntity
 {
     /// <summary>
     /// Unique station identifier code (e.g., "NRB-MOBILE-01")
@@ -17,7 +17,6 @@ public class Station : BaseEntity
     /// </summary>
     public string Name { get; set; } = string.Empty;
 
-    public Guid OrganizationId { get; set; }
 
     /// <summary>
     /// Station type: weigh_bridge, mobile_unit, yard
@@ -51,7 +50,6 @@ public class Station : BaseEntity
     public string? BoundBCode { get; set; }
 
     // Navigation properties
-    public Organization Organization { get; set; } = null!;
     public Roads? Road { get; set; }
     public Counties? County { get; set; }
 }

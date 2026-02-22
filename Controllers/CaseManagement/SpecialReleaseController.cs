@@ -144,9 +144,5 @@ public class SpecialReleaseController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
-        catch (NotImplementedException)
-        {
-            return StatusCode(501, "Certificate PDF generation not yet implemented");
-        }
     }
 }

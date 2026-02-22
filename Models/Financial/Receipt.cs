@@ -7,7 +7,7 @@ namespace TruLoad.Backend.Models.Financial;
 /// Payment receipts with idempotency support.
 /// Records all payments made against invoices, prevents duplicate processing.
 /// </summary>
-public class Receipt : BaseEntity
+public class Receipt : TenantAwareEntity
 {
     /// <summary>
     /// Unique receipt number

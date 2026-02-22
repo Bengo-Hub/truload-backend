@@ -23,6 +23,7 @@ using TruLoad.Backend.Data.Configurations.Yard;
 using TruLoad.Backend.Data.Configurations.Prosecution;
 using TruLoad.Backend.Data.Configurations.Financial;
 using TruLoad.Backend.Data.Configurations.Offline;
+using TruLoad.Backend.Models.Notifications;
 
 namespace TruLoad.Backend.Data;
 
@@ -68,11 +69,17 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     /// The extension is created by init-scripts/01-init-extensions.sql automatically.
     /// </summary>
     private static bool _isDesignTime = false;
+    private static bool _noVector = Environment.GetEnvironmentVariable("DATABASE_NO_VECTOR") == "true";
+    
     public static void SetDesignTimeMode(bool isDesignTime) => _isDesignTime = isDesignTime;
+    public static void SetNoVectorMode(bool noVector) => _noVector = noVector;
 
-    public TruLoadDbContext(DbContextOptions<TruLoadDbContext> options)
+    private readonly ITenantContext _tenantContext;
+
+    public TruLoadDbContext(DbContextOptions<TruLoadDbContext> options, ITenantContext tenantContext)
         : base(options)
     {
+        _tenantContext = tenantContext;
         // Detect InMemory provider at construction time by checking options extensions
         IsInMemoryProvider = options.Extensions.Any(e =>
             e.GetType().FullName?.Contains("InMemory", StringComparison.OrdinalIgnoreCase) == true);
@@ -211,8 +218,10 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     // ===== System Settings =====
     public DbSet<ApplicationSettings> ApplicationSettings { get; set; } = null!;
 
-    // ===== Auth: Refresh Tokens =====
+    // ===== Auth: Refresh Tokens & Push Subscriptions =====
     public DbSet<TruLoad.Backend.Models.Identity.RefreshToken> RefreshTokens { get; set; } = null!;
+    public DbSet<PushSubscription> PushSubscriptions { get; set; } = null!;
+    public DbSet<UserNotification> UserNotifications { get; set; } = null!;
 
     // ===== Document Conventions & Sequences (Sprint 22) =====
     public DbSet<DocumentConvention> DocumentConventions { get; set; } = null!;
@@ -221,11 +230,7 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     // ===== Integration Configuration (Sprint 15: eCitizen) =====
     public DbSet<IntegrationConfig> IntegrationConfigs { get; set; } = null!;
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        base.OnModelCreating(modelBuilder);
-
-        if (!IsInMemoryProvider)
+        if (!IsInMemoryProvider && !_noVector)
         {
             // Register PostgreSQL extensions for production/development
             // pgvector for vector similarity search (created by init-scripts)
@@ -234,14 +239,77 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
             // OPTIMIZATION: Skip expensive vector index configuration during design-time (dotnet ef commands)
             // Vector indices are now created and managed via migrations instead of runtime configuration
             // This reduces 'dotnet ef database update' time by ~40%
-            // TODO: Generate migration for vector indices: dotnet ef migrations add ConfigureVectorIndices
             if (!_isDesignTime)
             {
-                // Explicitly map vector properties (they have [NotMapped] by default for InMemory compatibility)
-                // These properties must be explicitly configured for PostgreSQL with HNSW indexes
-                // NOTE: This configuration is expensive and should be moved to a dedicated migration
-                // For now, it's conditional to skip during 'dotnet ef' design-time operations
+                // Explicitly map vector properties
                 ConfigureVectorIndices(modelBuilder);
+            }
+        }
+        else if (_noVector)
+        {
+            // If pgvector is disabled, we MUST ignore the vector properties to avoid EF Core mapping errors
+            // when running against a standard PostgreSQL database without the 'vector' type available.
+            modelBuilder.Entity<Models.CaseManagement.CaseRegister>().Ignore(e => e.ViolationDetailsEmbedding);
+            modelBuilder.Entity<Models.CaseManagement.CaseSubfile>().Ignore(e => e.ContentEmbedding);
+            modelBuilder.Entity<Models.CaseManagement.CourtHearing>().Ignore(e => e.MinuteNotesEmbedding);
+            modelBuilder.Entity<Models.Weighing.Vehicle>().Ignore(e => e.DescriptionEmbedding);
+            modelBuilder.Entity<Models.Weighing.WeighingTransaction>().Ignore(e => e.ViolationReasonEmbedding);
+            modelBuilder.Entity<Models.Prosecution.ProsecutionCase>().Ignore(e => e.CaseNotesEmbedding);
+            modelBuilder.Entity<Models.Yard.VehicleTag>().Ignore(e => e.ReasonEmbedding);
+        }
+
+        // ===== Global Multi-tenancy Isolation =====
+        // Automatically apply OrganizationId filter to all TenantAware entities
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(TenantAwareEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                var method = typeof(TruLoadDbContext)
+                    .GetMethod(nameof(ApplyTenantFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                    ?.MakeGenericMethod(entityType.ClrType);
+
+                method?.Invoke(this, new object[] { modelBuilder });
+            }
+        }
+    }
+
+    private void ApplyTenantFilter<T>(ModelBuilder modelBuilder) where T : TenantAwareEntity
+    {
+        modelBuilder.Entity<T>().HasQueryFilter(e => e.OrganizationId == _tenantContext.OrganizationId);
+    }
+
+    public override int SaveChanges()
+    {
+        ApplyTenantMetadata();
+        return base.SaveChanges();
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        ApplyTenantMetadata();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void ApplyTenantMetadata()
+    {
+        var entries = ChangeTracker.Entries<TenantAwareEntity>()
+            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);
+
+        foreach (var entry in entries)
+        {
+            if (entry.State == EntityState.Added)
+            {
+                // Auto-populate OrganizationId if not set
+                if (entry.Entity.OrganizationId == Guid.Empty)
+                {
+                    entry.Entity.OrganizationId = _tenantContext.OrganizationId;
+                }
+
+                // Auto-populate StationId if not set and available in context
+                if (!entry.Entity.StationId.HasValue && _tenantContext.StationId.HasValue)
+                {
+                    entry.Entity.StationId = _tenantContext.StationId;
+                }
             }
         }
     }

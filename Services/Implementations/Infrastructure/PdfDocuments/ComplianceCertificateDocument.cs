@@ -37,7 +37,7 @@ public class ComplianceCertificateDocument : BaseDocument
                 page.Size(PageSizes.A4);
                 page.Margin(1.5f, Unit.Centimetre);
                 page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(11).FontFamily("Arial"));
+                page.DefaultTextStyle(x => x.FontSize(11).FontFamily("Inter"));
 
                 page.Header().Element(ComposeHeader);
                 page.Content().PaddingVertical(15).Element(ComposeContent);

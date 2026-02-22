@@ -30,10 +30,11 @@ public class AuditMiddleware
             return;
         }
 
-        // Skip health check, Swagger, and public auth endpoints
+        // Automatically skip health check, Swagger, and any endpoint with AllowAnonymous attribute
+        var endpointMetadata = context.GetEndpoint();
         if (context.Request.Path.StartsWithSegments("/health") ||
             context.Request.Path.StartsWithSegments("/swagger") ||
-            context.Request.Path.StartsWithSegments("/api/v1/auth"))
+            (endpointMetadata?.Metadata.GetMetadata<IAllowAnonymous>() != null))
         {
             await _next(context);
             return;
@@ -156,8 +157,8 @@ public class AuditMiddleware
 
     private Guid ExtractUserId(HttpContext context)
     {
-        var userIdClaim = context.User.FindFirst("sub") ??
-                          context.User.FindFirst(ClaimTypes.NameIdentifier) ??
+        var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier) ??
+                          context.User.FindFirst("sub") ??
                           context.User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
 
         if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))

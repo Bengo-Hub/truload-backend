@@ -32,7 +32,7 @@ public class ReceiptDocument : BaseDocument
                 page.Size(PageSizes.A4);
                 page.Margin(1.5f, Unit.Centimetre);
                 page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial"));
+                page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Inter"));
 
                 page.Header().Element(ComposeHeader);
                 page.Content().PaddingVertical(8).Element(ComposeContent);

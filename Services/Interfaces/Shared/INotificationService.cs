@@ -90,4 +90,45 @@ public interface INotificationService
         Dictionary<string, object> templateData,
         string? subject = null,
         CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Register or update a user's push notification subscription.
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <param name="subscription">Push subscription details (endpoint, keys)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if successful</returns>
+    Task<bool> UpdatePushSubscriptionAsync(
+        Guid userId,
+        PushSubscriptionDto subscription,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get available notification templates from the centralized service.
+    /// </summary>
+    /// <param name="channel">Optional channel filter (email, sms, push)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of template metadata</returns>
+    Task<List<NotificationTemplateDto>> GetTemplatesAsync(
+        string? channel = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends an in-app notification to be stored in the user's inbox.
+    /// </summary>
+    Task<Guid> SendInternalNotificationAsync(Guid userId, string title, string message, string type = "info", string? linkUrl = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets a user's notifications for their inbox.
+    /// </summary>
+    Task<List<UserNotification>> GetUserNotificationsAsync(Guid userId, bool? isRead = null, int limit = 50, CancellationToken ct = default);
+
+    /// <summary>
+    /// Marks a notification as read.
+    /// </summary>
+    Task<bool> MarkAsReadAsync(Guid notificationId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a notification from the user's inbox.
+    /// </summary>
+    Task<bool> DeleteNotificationAsync(Guid notificationId, Guid userId, CancellationToken ct = default);
 }

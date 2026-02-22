@@ -4,6 +4,9 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 using TruLoad.Backend.Configuration;
 using TruLoad.Backend.DTOs.Shared;
+using TruLoad.Backend.Data;
+using TruLoad.Backend.Models.Identity;
+using TruLoad.Backend.Models.Notifications;
 using TruLoad.Backend.Services.Interfaces.Shared;
 
 namespace TruLoad.Backend.Services.Implementations.Shared;
@@ -16,15 +19,21 @@ public class NotificationService : INotificationService
 {
     private readonly HttpClient _httpClient;
     private readonly NotificationServiceOptions _options;
+    private readonly Services.Interfaces.System.IIntegrationConfigService _configService;
+    private readonly TruLoadDbContext _dbContext;
     private readonly ILogger<NotificationService> _logger;
 
     public NotificationService(
         HttpClient httpClient,
         IOptions<NotificationServiceOptions> options,
+        Services.Interfaces.System.IIntegrationConfigService configService,
+        TruLoadDbContext dbContext,
         ILogger<NotificationService> logger)
     {
         _httpClient = httpClient;
         _options = options.Value;
+        _configService = configService;
+        _dbContext = dbContext;
         _logger = logger;
 
         // Configure HttpClient base address and timeout
@@ -88,16 +97,34 @@ public class NotificationService : INotificationService
     {
         try
         {
+            // Check for dynamic SMS provider overrides (twilio, africastalking)
+            var metadata = new Dictionary<string, object>();
+            
+            var twilioConfig = await _configService.GetByProviderAsync("sms_twilio", cancellationToken);
+            if (twilioConfig != null && twilioConfig.IsActive)
+            {
+                metadata["provider_override"] = "twilio";
+            }
+            else
+            {
+                var atConfig = await _configService.GetByProviderAsync("sms_africastalking", cancellationToken);
+                if (atConfig != null && atConfig.IsActive)
+                {
+                    metadata["provider_override"] = "africastalking";
+                }
+            }
+
             var request = new NotificationMessageRequest
             {
                 Channel = "sms",
                 Tenant = _options.TenantId,
-                Template = "plain_sms", // Generic SMS template
+                Template = "shared/plain_sms", // Generic SMS template
                 Data = new Dictionary<string, object>
                 {
                     ["message"] = message
                 },
-                To = new List<string> { phoneNumber }
+                To = new List<string> { phoneNumber },
+                Metadata = metadata.Count > 0 ? metadata : null
             };
 
             return await SendNotificationAsync(request, cancellationToken);
@@ -169,7 +196,6 @@ public class NotificationService : INotificationService
 
         if (channels.Contains("email"))
         {
-            // Need to get user email from userId - this should be enhanced in real implementation
             tasks.Add(SendChannelAsync("email", async ct =>
             {
                 var email = templateData.GetValueOrDefault("email")?.ToString();
@@ -251,6 +277,153 @@ public class NotificationService : INotificationService
             successCount, recipients.Count, templateName);
 
         return successCount;
+    }
+
+    public async Task<bool> UpdatePushSubscriptionAsync(
+        Guid userId,
+        PushSubscriptionDto subscription,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var existing = await _dbContext.PushSubscriptions
+                .FirstOrDefaultAsync(s => s.UserId == userId && s.Endpoint == subscription.Endpoint, cancellationToken);
+
+            if (existing != null)
+            {
+                existing.P256dh = subscription.Keys.P256dh;
+                existing.Auth = subscription.Keys.Auth;
+                existing.DeviceName = subscription.DeviceName;
+                existing.LastUsedAt = DateTime.UtcNow;
+                existing.UpdatedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                var newSub = new PushSubscription
+                {
+                    UserId = userId,
+                    Endpoint = subscription.Endpoint,
+                    P256dh = subscription.Keys.P256dh,
+                    Auth = subscription.Keys.Auth,
+                    DeviceName = subscription.DeviceName,
+                    LastUsedAt = DateTime.UtcNow
+                };
+                _dbContext.PushSubscriptions.Add(newSub);
+            }
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update push subscription for user {UserId}", userId);
+            return false;
+        }
+    }
+
+    public async Task<List<NotificationTemplateDto>> GetTemplatesAsync(
+        string? channel = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var endpoint = $"/api/v1/{_options.TenantId}/notifications/templates";
+            if (!string.IsNullOrEmpty(channel))
+            {
+                endpoint += $"?channel={channel}";
+            }
+
+            var response = await _httpClient.GetAsync(endpoint, cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                return JsonSerializer.Deserialize<List<NotificationTemplateDto>>(content, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                }) ?? new List<NotificationTemplateDto>();
+            }
+
+            _logger.LogWarning("Failed to fetch templates from notification service: {StatusCode}", response.StatusCode);
+            return new List<NotificationTemplateDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching notification templates");
+            return new List<NotificationTemplateDto>();
+        }
+    }
+
+    public async Task<Guid> SendInternalNotificationAsync(Guid userId, string title, string message, string type = "info", string? linkUrl = null, CancellationToken ct = default)
+    {
+        try
+        {
+            var notification = new UserNotification
+            {
+                UserId = userId,
+                Title = title,
+                Message = message,
+                Type = type,
+                LinkUrl = linkUrl,
+                Timestamp = DateTime.UtcNow,
+                IsRead = false
+            };
+
+            _dbContext.UserNotifications.Add(notification);
+            await _dbContext.SaveChangesAsync(ct);
+
+            // Trigger actual push if user has subscriptions
+            var hasSubscriptions = await _dbContext.PushSubscriptions.AnyAsync(s => s.UserId == userId, ct);
+            if (hasSubscriptions)
+            {
+                await SendPushNotificationAsync(userId, title, message, linkUrl != null ? new Dictionary<string, string> { ["url"] = linkUrl } : null, ct);
+            }
+
+            return notification.Id;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send internal notification to user {UserId}", userId);
+            return Guid.Empty;
+        }
+    }
+
+    public async Task<List<UserNotification>> GetUserNotificationsAsync(Guid userId, bool? isRead = null, int limit = 50, CancellationToken ct = default)
+    {
+        var query = _dbContext.UserNotifications
+            .Where(n => n.UserId == userId)
+            .OrderByDescending(n => n.Timestamp)
+            .AsQueryable();
+
+        if (isRead.HasValue)
+        {
+            query = query.Where(n => n.IsRead == isRead.Value);
+        }
+
+        return await query.Take(limit).ToListAsync(ct);
+    }
+
+    public async Task<bool> MarkAsReadAsync(Guid notificationId, Guid userId, CancellationToken ct = default)
+    {
+        var notification = await _dbContext.UserNotifications
+            .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId, ct);
+
+        if (notification == null) return false;
+
+        notification.IsRead = true;
+        await _dbContext.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> DeleteNotificationAsync(Guid notificationId, Guid userId, CancellationToken ct = default)
+    {
+        var notification = await _dbContext.UserNotifications
+            .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId, ct);
+
+        if (notification == null) return false;
+
+        _dbContext.UserNotifications.Remove(notification);
+        await _dbContext.SaveChangesAsync(ct);
+        return true;
     }
 
     /// <summary>

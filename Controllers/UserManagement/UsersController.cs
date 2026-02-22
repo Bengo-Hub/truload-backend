@@ -57,62 +57,86 @@ public class UsersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserRequest request)
     {
-        // Validate required fields
+        // 1. Validate required fields
         if (string.IsNullOrWhiteSpace(request.Email))
-        {
             return BadRequest(new { message = "Email is required" });
-        }
 
         if (string.IsNullOrWhiteSpace(request.Password))
-        {
             return BadRequest(new { message = "Password is required" });
+
+        // 2. Validate roles exist before doing anything else
+        if (request.RoleNames != null && request.RoleNames.Any())
+        {
+            foreach (var roleName in request.RoleNames)
+            {
+                if (!await _roleManager.RoleExistsAsync(roleName))
+                {
+                    return BadRequest(new { message = $"Role '{roleName}' does not exist" });
+                }
+            }
         }
 
-        // Check if email already exists
+        // 3. Check if email already exists
         var existingUser = await _userManager.FindByEmailAsync(request.Email);
         if (existingUser != null)
         {
             return BadRequest(new { message = "User with this email already exists" });
         }
 
-        // Create new user
-        var user = new ApplicationUser
+        // 4. Create user within a transaction to ensure role assignment success
+        using var strategy = _userManager.Users.Context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
         {
-            Id = Guid.NewGuid(),
-            UserName = request.Email,
-            Email = request.Email,
-            FullName = request.FullName ?? string.Empty,
-            PhoneNumber = request.PhoneNumber,
-            OrganizationId = request.OrganizationId,
-            StationId = request.StationId,
-            DepartmentId = request.DepartmentId,
-            EmailConfirmed = true, // Auto-confirm for admin-created users
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        var result = await _userManager.CreateAsync(user, request.Password);
-        if (!result.Succeeded)
-        {
-            return BadRequest(new { errors = result.Errors });
-        }
-
-        // Assign roles if provided
-        if (request.RoleNames != null && request.RoleNames.Any())
-        {
-            var roleResult = await _userManager.AddToRolesAsync(user, request.RoleNames);
-            if (!roleResult.Succeeded)
+            using var transaction = await _userManager.Users.Context.Database.BeginTransactionAsync();
+            try
             {
-                // Clean up: delete the user if role assignment fails
-                await _userManager.DeleteAsync(user);
-                return BadRequest(new { errors = roleResult.Errors });
+                var user = new ApplicationUser
+                {
+                    Id = Guid.NewGuid(),
+                    UserName = request.Email,
+                    Email = request.Email,
+                    FullName = request.FullName ?? string.Empty,
+                    PhoneNumber = request.PhoneNumber,
+                    OrganizationId = request.OrganizationId,
+                    StationId = request.StationId,
+                    DepartmentId = request.DepartmentId,
+                    EmailConfirmed = true, // Auto-confirm for admin-created users
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                var result = await _userManager.CreateAsync(user, request.Password);
+                if (!result.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    return BadRequest(new { errors = result.Errors });
+                }
+
+                // 5. Assign roles
+                if (request.RoleNames != null && request.RoleNames.Any())
+                {
+                    var roleResult = await _userManager.AddToRolesAsync(user, request.RoleNames);
+                    if (!roleResult.Succeeded)
+                    {
+                        await transaction.RollbackAsync();
+                        return BadRequest(new { errors = roleResult.Errors });
+                    }
+                }
+
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("User created: {UserId}, Email: {Email}", user.Id, user.Email);
+
+                var roles = await _userManager.GetRolesAsync(user);
+                return CreatedAtAction(nameof(GetById), new { id = user.Id }, await MapToDto(user, roles));
             }
-        }
-
-        _logger.LogInformation("User created: {UserId}, Email: {Email}", user.Id, user.Email);
-
-        var roles = await _userManager.GetRolesAsync(user);
-        return CreatedAtAction(nameof(GetById), new { id = user.Id }, await MapToDto(user, roles));
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error creating user {Email}", request.Email);
+                return StatusCode(500, new { message = "An error occurred during user creation." });
+            }
+        });
     }
 
     /// <summary>
@@ -363,25 +387,75 @@ public class UsersController : ControllerBase
             return NotFound(new { message = "User not found" });
         }
 
-        // Remove existing roles
-        var currentRoles = await _userManager.GetRolesAsync(user);
-        if (currentRoles.Any())
+        // Resolve all role names (from names and IDs)
+        var roleNamesToAssign = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (request.RoleNames != null)
         {
-            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+            foreach (var name in request.RoleNames) roleNamesToAssign.Add(name);
         }
 
-        // Add new roles
-        if (request.RoleNames != null && request.RoleNames.Any())
+        if (request.RoleIds != null)
         {
-            var result = await _userManager.AddToRolesAsync(user, request.RoleNames);
-            if (!result.Succeeded)
+            foreach (var roleId in request.RoleIds)
             {
-                return BadRequest(new { errors = result.Errors });
+                var role = await _roleManager.FindByIdAsync(roleId.ToString());
+                if (role?.Name != null) roleNamesToAssign.Add(role.Name);
             }
         }
 
-        _logger.LogInformation("Roles assigned to user: {UserId}", id);
-        return Ok(new { message = "Roles assigned successfully" });
+        if (!roleNamesToAssign.Any())
+        {
+            return BadRequest(new { message = "No valid roles provided" });
+        }
+
+        // Validate all roles exist
+        foreach (var roleName in roleNamesToAssign)
+        {
+            if (!await _roleManager.RoleExistsAsync(roleName))
+            {
+                return BadRequest(new { message = $"Role '{roleName}' does not exist" });
+            }
+        }
+
+        using var strategy = _userManager.Users.Context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            using var transaction = await _userManager.Users.Context.Database.BeginTransactionAsync();
+            try
+            {
+                // Remove existing roles
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                if (currentRoles.Any())
+                {
+                    var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+                    if (!removeResult.Succeeded)
+                    {
+                        await transaction.RollbackAsync();
+                        return BadRequest(new { errors = removeResult.Errors });
+                    }
+                }
+
+                // Add new roles
+                var addResult = await _userManager.AddToRolesAsync(user, roleNamesToAssign);
+                if (!addResult.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    return BadRequest(new { errors = addResult.Errors });
+                }
+
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Roles assigned to user: {UserId}", id);
+                return Ok(new { message = "Roles assigned successfully" });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error assigning roles to user {UserId}", id);
+                return StatusCode(500, new { message = "An error occurred while assigning roles." });
+            }
+        });
     }
 
     /// <summary>

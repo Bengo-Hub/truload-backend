@@ -32,7 +32,7 @@ public class InvoiceDocument : BaseDocument
                 page.Size(PageSizes.A4);
                 page.Margin(2, Unit.Centimetre);
                 page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
+                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Inter"));
 
                 page.Header().Element(ComposeHeader);
                 page.Content().PaddingVertical(10).Element(ComposeContent);

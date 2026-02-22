@@ -378,7 +378,7 @@ public class AuthController : ControllerBase
 
         // Send password reset email via notifications-service
         var emailSent = await _notificationService.SendEmailAsync(
-            "password_reset",
+            "auth/password_reset",
             user.Email!,
             user.FullName ?? user.Email!,
             new Dictionary<string, object>

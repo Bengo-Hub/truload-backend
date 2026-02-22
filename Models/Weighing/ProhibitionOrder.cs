@@ -6,7 +6,7 @@ using TruLoad.Backend.Models.Common;
 namespace TruLoad.Backend.Models.Weighing;
 
 [Table("prohibition_orders")]
-public class ProhibitionOrder : BaseEntity
+public class ProhibitionOrder : TenantAwareEntity
 {
 
     [Required]

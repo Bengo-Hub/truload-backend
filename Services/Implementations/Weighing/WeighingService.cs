@@ -42,6 +42,7 @@ public class WeighingService : IWeighingService
     private readonly TruLoadDbContext _dbContext;
     private readonly ISettingsService _settingsService;
     private readonly IDocumentNumberService _documentNumberService;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<WeighingService> _logger;
 
     public WeighingService(
@@ -63,6 +64,7 @@ public class WeighingService : IWeighingService
         TruLoadDbContext dbContext,
         ISettingsService settingsService,
         IDocumentNumberService documentNumberService,
+        INotificationService notificationService,
         ILogger<WeighingService> logger)
     {
         _weighingRepository = weighingRepository;
@@ -83,6 +85,7 @@ public class WeighingService : IWeighingService
         _dbContext = dbContext;
         _settingsService = settingsService;
         _documentNumberService = documentNumberService;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -496,6 +499,14 @@ public class WeighingService : IWeighingService
                     transaction.ViolationReason = string.IsNullOrEmpty(transaction.ViolationReason)
                         ? $"Manual KeNHA tag hold: {tagReasons}"
                         : $"{transaction.ViolationReason}; Manual KeNHA tag hold: {tagReasons}";
+
+                    // NOTIFY: Tag Hold
+                    await _notificationService.SendInternalNotificationAsync(
+                        transaction.WeighedByUserId,
+                        "Vehicle Tag Hold Detected",
+                        $"Vehicle {transaction.VehicleRegNumber} has open manual tags: {tagReasons}. Sent to yard.",
+                        "warning",
+                        $"/weighing/transactions/{transaction.Id}");
                 }
             }
             catch (Exception ex)
@@ -625,6 +636,13 @@ public class WeighingService : IWeighingService
                         }
                     }
 
+                    // NOTIFY: Overload detected
+                    await _notificationService.SendInternalNotificationAsync(
+                        transaction.WeighedByUserId,
+                        "Overload Detected",
+                        $"Vehicle {transaction.VehicleRegNumber} is overloaded by {transaction.OverloadKg:N0}kg. Case {caseDto.CaseNo} created.",
+                        "error",
+                        $"/weighing/transactions/{transaction.Id}");
                 }
             }
             catch (Exception ex)
