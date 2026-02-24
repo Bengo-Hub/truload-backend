@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using TruLoad.Backend.Authorization.Attributes;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Prosecution;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Services.Interfaces.Prosecution;
@@ -20,15 +22,18 @@ public class ProsecutionController : ControllerBase
     private readonly IProsecutionService _prosecutionService;
     private readonly IPdfService _pdfService;
     private readonly ITenantContext _tenantContext;
+    private readonly TruLoadDbContext _context;
 
     public ProsecutionController(
         IProsecutionService prosecutionService,
         IPdfService pdfService,
-        ITenantContext tenantContext)
+        ITenantContext tenantContext,
+        TruLoadDbContext context)
     {
         _prosecutionService = prosecutionService;
         _pdfService = pdfService;
         _tenantContext = tenantContext;
+        _context = context;
     }
 
     /// <summary>
@@ -158,6 +163,65 @@ public class ProsecutionController : ControllerBase
     {
         var stats = await _prosecutionService.GetStatisticsAsync(ct);
         return Ok(stats);
+    }
+
+    /// <summary>
+    /// Get daily prosecution case creation trend
+    /// </summary>
+    [HttpGet("api/v1/prosecutions/trend")]
+    [HasPermission("prosecution.read")]
+    public async Task<IActionResult> GetTrend(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        CancellationToken ct)
+    {
+        var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
+        var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+
+        var trendData = await _context.ProsecutionCases
+            .AsNoTracking()
+            .Where(p => p.CreatedAt >= from && p.CreatedAt <= to && p.DeletedAt == null)
+            .GroupBy(p => p.CreatedAt.Date)
+            .OrderBy(g => g.Key)
+            .Select(g => new { Date = g.Key, Total = g.Count() })
+            .ToListAsync(ct);
+
+        var trend = trendData.Select(d => new { name = d.Date.ToString("MMM dd"), total = d.Total }).ToList();
+        return Ok(trend);
+    }
+
+    /// <summary>
+    /// Get prosecution cases grouped by status
+    /// </summary>
+    [HttpGet("api/v1/prosecutions/by-status")]
+    [HasPermission("prosecution.read")]
+    public async Task<IActionResult> GetByStatus(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        CancellationToken ct)
+    {
+        var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
+        var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+
+        var grouped = await _context.ProsecutionCases
+            .AsNoTracking()
+            .Where(p => p.CreatedAt >= from && p.CreatedAt <= to && p.DeletedAt == null)
+            .GroupBy(p => p.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        var total = grouped.Sum(g => g.Count);
+        var result = grouped
+            .OrderByDescending(g => g.Count)
+            .Select(g => new
+            {
+                name = g.Status,
+                count = g.Count,
+                percentage = total > 0 ? Math.Round((decimal)g.Count / total * 100, 1) : 0
+            })
+            .ToList();
+
+        return Ok(result);
     }
 
     /// <summary>

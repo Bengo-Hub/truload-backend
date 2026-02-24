@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Logging;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.Common;
 using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models.System;
@@ -24,6 +26,8 @@ using TruLoad.Backend.Data.Configurations.Prosecution;
 using TruLoad.Backend.Data.Configurations.Financial;
 using TruLoad.Backend.Data.Configurations.Offline;
 using TruLoad.Backend.Models.Notifications;
+using TruLoad.Backend.Models.Views;
+
 
 namespace TruLoad.Backend.Data;
 
@@ -64,26 +68,19 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     /// </summary>
     public bool IsInMemoryProvider { get; }
 
-    /// <summary>
-    /// Flag to skip expensive pgvector extension check during design-time (dotnet ef commands).
-    /// The extension is created by init-scripts/01-init-extensions.sql automatically.
-    /// </summary>
-    private static bool _isDesignTime = false;
-    private static bool _noVector = Environment.GetEnvironmentVariable("DATABASE_NO_VECTOR") == "true";
-    
-    public static void SetDesignTimeMode(bool isDesignTime) => _isDesignTime = isDesignTime;
-    public static void SetNoVectorMode(bool noVector) => _noVector = noVector;
-
     private readonly ITenantContext _tenantContext;
 
     public TruLoadDbContext(DbContextOptions<TruLoadDbContext> options, ITenantContext tenantContext)
         : base(options)
     {
         _tenantContext = tenantContext;
-        // Detect InMemory provider at construction time by checking options extensions
         IsInMemoryProvider = options.Extensions.Any(e =>
             e.GetType().FullName?.Contains("InMemory", StringComparison.OrdinalIgnoreCase) == true);
     }
+
+    /// <summary>Design-time constructor used by TruLoadDbContextFactory (dotnet ef commands).</summary>
+    public TruLoadDbContext(DbContextOptions<TruLoadDbContext> options)
+        : this(options, new TenantContext()) { }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -230,40 +227,81 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     // ===== Integration Configuration (Sprint 15: eCitizen) =====
     public DbSet<IntegrationConfig> IntegrationConfigs { get; set; } = null!;
 
+    // ===== Read-Only Database Views (Keyless Entities) =====
+    public DbSet<ActiveVehicleTag> ActiveVehicleTags { get; set; } = null!;
+    public DbSet<YardStatusSummary> YardStatusSummaries { get; set; } = null!;
+    public DbSet<ActiveCase> ActiveCases { get; set; } = null!;
+    public DbSet<PendingCourtHearing> PendingCourtHearings { get; set; } = null!;
+    public DbSet<ActiveArrestWarrant> ActiveArrestWarrants { get; set; } = null!;
+    public DbSet<RecentCompliantWeighing> RecentCompliantWeighings { get; set; } = null!;
+    public DbSet<PendingSpecialRelease> PendingSpecialReleases { get; set; } = null!;
+    public DbSet<ActivePermit> ActivePermits { get; set; } = null!;
+
+    // ===== Materialized Views for Dashboards =====
+    public DbSet<MvDailyWeighingStats> MvDailyWeighingStats { get; set; } = null!;
+    public DbSet<MvChargeSummary> MvChargeSummaries { get; set; } = null!;
+    public DbSet<MvAxleGroupViolation> MvAxleGroupViolations { get; set; } = null!;
+    public DbSet<MvDriverDemeritRanking> MvDriverDemeritRankings { get; set; } = null!;
+    public DbSet<MvVehicleViolationHistory> MvVehicleViolationHistories { get; set; } = null!;
+    public DbSet<MvStationPerformanceScorecard> MvStationPerformanceScorecards { get; set; } = null!;
+
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        if (!IsInMemoryProvider && !_noVector)
-        {
-            // Register PostgreSQL extensions for production/development
-            // pgvector for vector similarity search (created by init-scripts)
+        // Register pgvector extension when available
+        if (!IsInMemoryProvider)
             modelBuilder.HasPostgresExtension("vector");
 
-            // OPTIMIZATION: Skip expensive vector index configuration during design-time (dotnet ef commands)
-            // Vector indices are now created and managed via migrations instead of runtime configuration
-            // This reduces 'dotnet ef database update' time by ~40%
-            if (!_isDesignTime)
-            {
-                // Explicitly map vector properties
-                ConfigureVectorIndices(modelBuilder);
-            }
-        }
-        else if (_noVector)
+        // ===== Apply Module-Specific Configurations (always applied) =====
+        modelBuilder.ApplyUserManagementConfigurations();
+        modelBuilder.ApplySystemConfigurationConfigurations();
+        modelBuilder.ApplyAxleConfigurationConfigurations();
+        modelBuilder.ApplyTrafficConfigurations();
+        modelBuilder.ApplyCaseManagementConfigurations();
+        modelBuilder.ApplyWeighingConfigurations();
+        modelBuilder.ApplyInfrastructureConfigurations();
+        modelBuilder.ApplyGeographicConfigurations();
+        modelBuilder.ApplyYardConfigurations();
+        modelBuilder.ApplyProsecutionConfigurations();
+        modelBuilder.ApplyFinancialConfigurations();
+        modelBuilder.ApplyOfflineConfigurations();
+
+        // ===== Database Views & Keyless Entities Configuration =====
+        modelBuilder.Entity<ActiveVehicleTag>(e => { e.HasNoKey(); e.ToView("active_vehicle_tags"); });
+        modelBuilder.Entity<YardStatusSummary>(e => { e.HasNoKey(); e.ToView("yard_status_summary"); });
+        modelBuilder.Entity<ActiveCase>(e => { e.HasNoKey(); e.ToView("active_cases"); });
+        modelBuilder.Entity<PendingCourtHearing>(e => { e.HasNoKey(); e.ToView("pending_court_hearings"); });
+        modelBuilder.Entity<ActiveArrestWarrant>(e => { e.HasNoKey(); e.ToView("active_arrest_warrants"); });
+        modelBuilder.Entity<RecentCompliantWeighing>(e => { e.HasNoKey(); e.ToView("recent_compliant_weighings"); });
+        modelBuilder.Entity<PendingSpecialRelease>(e => { e.HasNoKey(); e.ToView("pending_special_releases"); });
+        modelBuilder.Entity<ActivePermit>(e => { e.HasNoKey(); e.ToView("active_permits"); });
+
+        modelBuilder.Entity<MvDailyWeighingStats>(e => { e.HasNoKey(); e.ToView("mv_daily_weighing_stats"); });
+        modelBuilder.Entity<MvChargeSummary>(e => { e.HasNoKey(); e.ToView("mv_charge_summaries"); });
+        modelBuilder.Entity<MvAxleGroupViolation>(e => { e.HasNoKey(); e.ToView("mv_axle_group_violations"); });
+        modelBuilder.Entity<MvDriverDemeritRanking>(e => { e.HasNoKey(); e.ToView("mv_driver_demerit_rankings"); });
+        modelBuilder.Entity<MvVehicleViolationHistory>(e => { e.HasNoKey(); e.ToView("mv_vehicle_violation_history"); });
+        modelBuilder.Entity<MvStationPerformanceScorecard>(e => { e.HasNoKey(); e.ToView("mv_station_performance_scorecard"); });
+
+        // Post-configuration adjustments for InMemory provider
+        if (IsInMemoryProvider)
         {
-            // If pgvector is disabled, we MUST ignore the vector properties to avoid EF Core mapping errors
-            // when running against a standard PostgreSQL database without the 'vector' type available.
+            modelBuilder.Entity<Models.Offline.DeviceSyncEvent>().Ignore(e => e.Payload);
+
+            // pgvector Vector properties are not supported by the InMemory provider.
+            // Ignore them explicitly so integration tests can run without Npgsql/pgvector.
             modelBuilder.Entity<Models.CaseManagement.CaseRegister>().Ignore(e => e.ViolationDetailsEmbedding);
             modelBuilder.Entity<Models.CaseManagement.CaseSubfile>().Ignore(e => e.ContentEmbedding);
             modelBuilder.Entity<Models.CaseManagement.CourtHearing>().Ignore(e => e.MinuteNotesEmbedding);
-            modelBuilder.Entity<Models.Weighing.Vehicle>().Ignore(e => e.DescriptionEmbedding);
-            modelBuilder.Entity<Models.Weighing.WeighingTransaction>().Ignore(e => e.ViolationReasonEmbedding);
             modelBuilder.Entity<Models.Prosecution.ProsecutionCase>().Ignore(e => e.CaseNotesEmbedding);
             modelBuilder.Entity<Models.Yard.VehicleTag>().Ignore(e => e.ReasonEmbedding);
+            modelBuilder.Entity<Models.Weighing.WeighingTransaction>().Ignore(e => e.ViolationReasonEmbedding);
+            modelBuilder.Entity<Models.Weighing.Vehicle>().Ignore(e => e.DescriptionEmbedding);
         }
 
         // ===== Global Multi-tenancy Isolation =====
-        // Automatically apply OrganizationId filter to all TenantAware entities
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             if (typeof(TenantAwareEntity).IsAssignableFrom(entityType.ClrType))
@@ -318,98 +356,4 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
         }
     }
 
-    /// <summary>
-    /// Configure vector indices for embedding columns.
-    /// This is expensive during design-time and should ideally be moved to EF Core migrations.
-    /// Currently called conditionally to skip during 'dotnet ef' commands.
-    /// </summary>
-    private static void ConfigureVectorIndices(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<Models.CaseManagement.CaseRegister>(entity =>
-        {
-            entity.Property(e => e.ViolationDetailsEmbedding).HasColumnType("vector(384)");
-            entity.HasIndex(e => e.ViolationDetailsEmbedding).HasMethod("hnsw").HasOperators("vector_cosine_ops");
-        });
-
-        modelBuilder.Entity<Models.CaseManagement.CaseSubfile>(entity =>
-        {
-            entity.Property(e => e.ContentEmbedding).HasColumnType("vector(384)");
-            entity.HasIndex(e => e.ContentEmbedding).HasMethod("hnsw").HasOperators("vector_cosine_ops");
-        });
-
-        modelBuilder.Entity<Models.CaseManagement.CourtHearing>(entity =>
-        {
-            entity.Property(e => e.MinuteNotesEmbedding).HasColumnType("vector(384)");
-            entity.HasIndex(e => e.MinuteNotesEmbedding).HasMethod("hnsw").HasOperators("vector_cosine_ops");
-        });
-
-        modelBuilder.Entity<Models.Weighing.Vehicle>(entity =>
-        {
-            entity.Property(e => e.DescriptionEmbedding).HasColumnType("vector(384)");
-            entity.HasIndex(e => e.DescriptionEmbedding).HasMethod("hnsw").HasOperators("vector_cosine_ops");
-        });
-
-        modelBuilder.Entity<Models.Weighing.WeighingTransaction>(entity =>
-        {
-            entity.Property(e => e.ViolationReasonEmbedding).HasColumnType("vector(384)");
-            entity.HasIndex(e => e.ViolationReasonEmbedding).HasMethod("hnsw").HasOperators("vector_cosine_ops");
-        });
-
-        modelBuilder.Entity<Models.Prosecution.ProsecutionCase>(entity =>
-        {
-            entity.Property(e => e.CaseNotesEmbedding).HasColumnType("vector(384)");
-            entity.HasIndex(e => e.CaseNotesEmbedding).HasMethod("hnsw").HasOperators("vector_cosine_ops");
-        });
-
-        modelBuilder.Entity<Models.Yard.VehicleTag>(entity =>
-        {
-            entity.Property(e => e.ReasonEmbedding).HasColumnType("vector(384)");
-            entity.HasIndex(e => e.ReasonEmbedding).HasMethod("hnsw").HasOperators("vector_cosine_ops");
-        });
-
-        // ===== Apply Module-Specific Configurations =====
-        // User Management Module Configurations
-        modelBuilder.ApplyUserManagementConfigurations();
-
-        // System Configuration Module Configurations
-        modelBuilder.ApplySystemConfigurationConfigurations();
-
-        // Axle Configuration Module Configurations
-        modelBuilder.ApplyAxleConfigurationConfigurations();
-
-        // Traffic Module Configurations
-        modelBuilder.ApplyTrafficConfigurations();
-
-        // Case Management Module Configurations (Sprint 10 + Sprint 11 Extended)
-        modelBuilder.ApplyCaseManagementConfigurations();
-
-        // Weighing Module Configurations
-        modelBuilder.ApplyWeighingConfigurations();
-
-        // Infrastructure Module Configurations (ScaleTests, Reference Data)
-        modelBuilder.ApplyInfrastructureConfigurations();
-
-        // Geographic Module Configurations (Sprint 11)
-        modelBuilder.ApplyGeographicConfigurations();
-
-        // Yard Module Configurations (Sprint 11)
-        modelBuilder.ApplyYardConfigurations();
-
-        // Prosecution Module Configurations (Sprint 11)
-        modelBuilder.ApplyProsecutionConfigurations();
-
-        // Financial Module Configurations (Sprint 11)
-        modelBuilder.ApplyFinancialConfigurations();
-
-        // Offline Support Module Configurations (Sprint 11)
-        modelBuilder.ApplyOfflineConfigurations();
-
-        // Post-configuration adjustments for InMemory provider
-        // Must be done AFTER Apply*Configurations() since those add the properties
-        if (IsInMemoryProvider)
-        {
-            // Ignore properties with types not supported by InMemory provider
-            modelBuilder.Entity<Models.Offline.DeviceSyncEvent>().Ignore(e => e.Payload);
-        }
-    }
 }

@@ -417,6 +417,51 @@ namespace TruLoad.Backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "exchange_rate_api_settings",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Provider = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    ProviderName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    ApiEndpoint = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    EncryptedAccessKey = table.Column<string>(type: "text", nullable: true),
+                    SourceCurrency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
+                    TargetCurrenciesJson = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    FetchTime = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
+                    LastFetchAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    LastFetchStatus = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
+                    LastFetchError = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_exchange_rate_api_settings", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "exchange_rates",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    FromCurrency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
+                    ToCurrency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
+                    Rate = table.Column<decimal>(type: "numeric(18,6)", nullable: false),
+                    EffectiveDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    Source = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_exchange_rates", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "hearing_outcomes",
                 columns: table => new
                 {
@@ -481,7 +526,11 @@ namespace TruLoad.Backend.Migrations
                     encrypted_credentials = table.Column<string>(type: "text", nullable: false),
                     endpoints_json = table.Column<string>(type: "text", nullable: false, defaultValue: "{}"),
                     webhook_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    callback_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    callback_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true, comment: "Success callback URL"),
+                    callback_failure_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true, comment: "Failure callback URL for payment failures"),
+                    callback_timeout_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true, comment: "Timeout callback URL for payment timeouts"),
+                    payment_polling_endpoint = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true, comment: "Endpoint for polling payment status as fallback"),
+                    payment_confirmation_endpoint = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true, comment: "Endpoint for manual payment confirmation/reconciliation"),
                     app_base_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     environment = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true, defaultValue: "test"),
                     description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
@@ -949,6 +998,39 @@ namespace TruLoad.Backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "document_conventions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    DocumentType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    DisplayName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Prefix = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
+                    IncludeStationCode = table.Column<bool>(type: "boolean", nullable: false),
+                    IncludeBound = table.Column<bool>(type: "boolean", nullable: false),
+                    IncludeDate = table.Column<bool>(type: "boolean", nullable: false),
+                    DateFormat = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    IncludeVehicleReg = table.Column<bool>(type: "boolean", nullable: false),
+                    SequencePadding = table.Column<int>(type: "integer", nullable: false),
+                    Separator = table.Column<string>(type: "character varying(5)", maxLength: 5, nullable: false),
+                    ResetFrequency = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_document_conventions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_document_conventions_organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "role_permissions",
                 columns: table => new
                 {
@@ -971,87 +1053,6 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "permissions",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "case_registers",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    case_no = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    weighing_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    yard_entry_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    prohibition_order_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    vehicle_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    driver_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    violation_type_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    road_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    county_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    district_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    subcounty_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    violation_details = table.Column<string>(type: "text", nullable: true),
-                    ViolationDetailsEmbedding = table.Column<Vector>(type: "vector(384)", nullable: true),
-                    act_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    driver_ntac_no = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    transporter_ntac_no = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    ob_no = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    court_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    disposition_type_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    case_status_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    escalated_to_case_manager = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    case_manager_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    prosecutor_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    complainant_officer_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    investigating_officer_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    investigating_officer_assigned_by_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    investigating_officer_assigned_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_by_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    closed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    closed_by_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    closing_reason = table.Column<string>(type: "text", nullable: true),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_case_registers", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_case_registers_act_definitions_act_id",
-                        column: x => x.act_id,
-                        principalTable: "act_definitions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_case_registers_case_managers_case_manager_id",
-                        column: x => x.case_manager_id,
-                        principalTable: "case_managers",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_case_registers_case_statuses_case_status_id",
-                        column: x => x.case_status_id,
-                        principalTable: "case_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_case_registers_courts_court_id",
-                        column: x => x.court_id,
-                        principalTable: "courts",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "FK_case_registers_disposition_types_disposition_type_id",
-                        column: x => x.disposition_type_id,
-                        principalTable: "disposition_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_case_registers_violation_types_violation_type_id",
-                        column: x => x.violation_type_id,
-                        principalTable: "violation_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -1156,251 +1157,6 @@ namespace TruLoad.Backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "arrest_warrants",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    warrant_no = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    issued_by = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
-                    accused_name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    accused_id_no = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    offence_description = table.Column<string>(type: "text", nullable: true),
-                    warrant_status_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    issued_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    executed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    dropped_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    execution_details = table.Column<string>(type: "text", nullable: true),
-                    dropped_reason = table.Column<string>(type: "text", nullable: true),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_arrest_warrants", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_arrest_warrants_case_registers_case_register_id",
-                        column: x => x.case_register_id,
-                        principalTable: "case_registers",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_arrest_warrants_warrant_statuses_warrant_status_id",
-                        column: x => x.warrant_status_id,
-                        principalTable: "warrant_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "case_closure_checklists",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    closure_type_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    legal_section_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    subfile_a_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    subfile_b_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    subfile_c_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    subfile_d_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    subfile_e_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    subfile_f_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    subfile_g_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    subfile_h_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    subfile_i_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    subfile_j_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    all_subfiles_verified = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    review_status_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    review_requested_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    review_requested_by_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    review_notes = table.Column<string>(type: "text", nullable: true),
-                    approved_by_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    approved_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    verified_by_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    verified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_case_closure_checklists", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_case_closure_checklists_case_registers_case_register_id",
-                        column: x => x.case_register_id,
-                        principalTable: "case_registers",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_case_closure_checklists_case_review_statuses_review_status_~",
-                        column: x => x.review_status_id,
-                        principalTable: "case_review_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_case_closure_checklists_closure_types_closure_type_id",
-                        column: x => x.closure_type_id,
-                        principalTable: "closure_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_case_closure_checklists_legal_sections_legal_section_id",
-                        column: x => x.legal_section_id,
-                        principalTable: "legal_sections",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "case_subfiles",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    subfile_type_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    subfile_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    document_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    content = table.Column<string>(type: "text", nullable: true),
-                    ContentEmbedding = table.Column<Vector>(type: "vector(384)", nullable: true),
-                    file_path = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    file_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    mime_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    file_size_bytes = table.Column<long>(type: "bigint", nullable: true),
-                    checksum = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
-                    uploaded_by_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    uploaded_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    metadata = table.Column<string>(type: "jsonb", nullable: true),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_case_subfiles", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_case_subfiles_case_registers_case_register_id",
-                        column: x => x.case_register_id,
-                        principalTable: "case_registers",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_case_subfiles_subfile_types_subfile_type_id",
-                        column: x => x.subfile_type_id,
-                        principalTable: "subfile_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "court_hearings",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    court_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    hearing_date = table.Column<DateTime>(type: "date", nullable: false),
-                    hearing_time = table.Column<TimeSpan>(type: "time", nullable: true),
-                    hearing_type_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    hearing_status_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    hearing_outcome_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    minute_notes = table.Column<string>(type: "text", nullable: true),
-                    MinuteNotesEmbedding = table.Column<Vector>(type: "vector(384)", nullable: true),
-                    next_hearing_date = table.Column<DateTime>(type: "date", nullable: true),
-                    adjournment_reason = table.Column<string>(type: "text", nullable: true),
-                    presiding_officer = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_court_hearings", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_court_hearings_case_registers_case_register_id",
-                        column: x => x.case_register_id,
-                        principalTable: "case_registers",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_court_hearings_courts_court_id",
-                        column: x => x.court_id,
-                        principalTable: "courts",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "FK_court_hearings_hearing_outcomes_hearing_outcome_id",
-                        column: x => x.hearing_outcome_id,
-                        principalTable: "hearing_outcomes",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_court_hearings_hearing_statuses_hearing_status_id",
-                        column: x => x.hearing_status_id,
-                        principalTable: "hearing_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_court_hearings_hearing_types_hearing_type_id",
-                        column: x => x.hearing_type_id,
-                        principalTable: "hearing_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "special_releases",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    certificate_no = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    release_type_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    overload_kg = table.Column<int>(type: "integer", nullable: true),
-                    redistribution_allowed = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    reweigh_required = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    reweigh_weighing_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    compliance_achieved = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    reason = table.Column<string>(type: "text", nullable: false),
-                    authorized_by_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    issued_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    IsApproved = table.Column<bool>(type: "boolean", nullable: false),
-                    ApprovedById = table.Column<Guid>(type: "uuid", nullable: true),
-                    ApprovedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    IsRejected = table.Column<bool>(type: "boolean", nullable: false),
-                    RejectedById = table.Column<Guid>(type: "uuid", nullable: true),
-                    RejectedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    RejectionReason = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    LoadCorrectionMemoId = table.Column<Guid>(type: "uuid", nullable: true),
-                    ComplianceCertificateId = table.Column<Guid>(type: "uuid", nullable: true),
-                    CreatedById = table.Column<Guid>(type: "uuid", nullable: false),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_special_releases", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_special_releases_case_registers_case_register_id",
-                        column: x => x.case_register_id,
-                        principalTable: "case_registers",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_special_releases_release_types_release_type_id",
-                        column: x => x.release_type_id,
-                        principalTable: "release_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "rotation_shifts",
                 columns: table => new
                 {
@@ -1432,7 +1188,6 @@ namespace TruLoad.Backend.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
                     station_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     location = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     road_id = table.Column<Guid>(type: "uuid", nullable: true),
@@ -1445,7 +1200,10 @@ namespace TruLoad.Backend.Migrations
                     is_active = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    StationId = table.Column<Guid>(type: "uuid", nullable: true),
+                    StationId1 = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1468,6 +1226,11 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "roads",
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_stations_stations_StationId1",
+                        column: x => x.StationId1,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1522,6 +1285,39 @@ namespace TruLoad.Backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "document_sequences",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    StationId = table.Column<Guid>(type: "uuid", nullable: true),
+                    DocumentType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    CurrentSequence = table.Column<int>(type: "integer", nullable: false),
+                    ResetFrequency = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    LastResetDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_document_sequences", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_document_sequences_organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_document_sequences_stations_StationId",
+                        column: x => x.StationId,
+                        principalTable: "stations",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "hardware_health_logs",
                 columns: table => new
                 {
@@ -1552,6 +1348,42 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "stations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserNotifications",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Message = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    Type = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    IsRead = table.Column<bool>(type: "boolean", nullable: false),
+                    Timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    LinkUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    MetadataJson = table.Column<string>(type: "text", nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserNotifications", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserNotifications_organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_UserNotifications_stations_StationId",
+                        column: x => x.StationId,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1741,117 +1573,6 @@ namespace TruLoad.Backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "case_assignment_logs",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    previous_officer_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    new_officer_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    assigned_by_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    assignment_type = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "initial"),
-                    reason = table.Column<string>(type: "text", nullable: false),
-                    assigned_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    is_current = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    officer_rank = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_case_assignment_logs", x => x.id);
-                    table.CheckConstraint("chk_case_assignment_type", "assignment_type IN ('initial', 're_assignment', 'transfer', 'handover')");
-                    table.ForeignKey(
-                        name: "FK_case_assignment_logs_asp_net_users_assigned_by_id",
-                        column: x => x.assigned_by_id,
-                        principalTable: "asp_net_users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_case_assignment_logs_asp_net_users_new_officer_id",
-                        column: x => x.new_officer_id,
-                        principalTable: "asp_net_users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_case_assignment_logs_asp_net_users_previous_officer_id",
-                        column: x => x.previous_officer_id,
-                        principalTable: "asp_net_users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_case_assignment_logs_case_registers_case_register_id",
-                        column: x => x.case_register_id,
-                        principalTable: "case_registers",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "case_parties",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    party_role = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, defaultValue: "defendant_driver"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    driver_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    vehicle_owner_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    transporter_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    external_name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
-                    external_id_number = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    external_phone = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    notes = table.Column<string>(type: "text", nullable: true),
-                    is_currently_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    added_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    removed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_case_parties", x => x.id);
-                    table.CheckConstraint("chk_case_party_role", "party_role IN ('investigating_officer', 'ocs', 'arresting_officer', 'prosecutor', 'defendant_driver', 'defendant_owner', 'defendant_transporter', 'witness', 'complainant')");
-                    table.ForeignKey(
-                        name: "FK_case_parties_asp_net_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "asp_net_users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_case_parties_case_registers_case_register_id",
-                        column: x => x.case_register_id,
-                        principalTable: "case_registers",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_case_parties_drivers_driver_id",
-                        column: x => x.driver_id,
-                        principalSchema: "weighing",
-                        principalTable: "drivers",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_case_parties_transporters_transporter_id",
-                        column: x => x.transporter_id,
-                        principalSchema: "weighing",
-                        principalTable: "transporters",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_case_parties_vehicle_owners_vehicle_owner_id",
-                        column: x => x.vehicle_owner_id,
-                        principalSchema: "weighing",
-                        principalTable: "vehicle_owners",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "documents",
                 columns: table => new
                 {
@@ -1880,6 +1601,69 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "asp_net_users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "push_subscriptions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Endpoint = table.Column<string>(type: "text", nullable: false),
+                    P256dh = table.Column<string>(type: "text", nullable: false),
+                    Auth = table.Column<string>(type: "text", nullable: false),
+                    DeviceName = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    LastUsedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_push_subscriptions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_push_subscriptions_asp_net_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "asp_net_users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_push_subscriptions_organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_push_subscriptions_stations_StationId",
+                        column: x => x.StationId,
+                        principalTable: "stations",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "RefreshTokens",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    TokenHash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    RevokedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ReplacedByTokenId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RefreshTokens", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_RefreshTokens_asp_net_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "asp_net_users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -1954,62 +1738,6 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "work_shifts",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "vehicle_tags",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    reg_no = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    tag_type = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "automatic"),
-                    tag_category_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    reason = table.Column<string>(type: "text", nullable: false),
-                    ReasonEmbedding = table.Column<Vector>(type: "vector(384)", nullable: true),
-                    station_code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "open"),
-                    tag_photo_path = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    effective_time_period = table.Column<TimeSpan>(type: "interval", nullable: true),
-                    created_by_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    closed_by_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    closed_reason = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    opened_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    closed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    exported = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    CaseRegisterId = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_vehicle_tags", x => x.id);
-                    table.CheckConstraint("chk_vehicle_tag_status", "status IN ('open', 'closed')");
-                    table.CheckConstraint("chk_vehicle_tag_type", "tag_type IN ('automatic', 'manual')");
-                    table.ForeignKey(
-                        name: "FK_vehicle_tags_asp_net_users_closed_by_id",
-                        column: x => x.closed_by_id,
-                        principalTable: "asp_net_users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_vehicle_tags_asp_net_users_created_by_id",
-                        column: x => x.created_by_id,
-                        principalTable: "asp_net_users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_vehicle_tags_case_registers_CaseRegisterId",
-                        column: x => x.CaseRegisterId,
-                        principalTable: "case_registers",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "FK_vehicle_tags_tag_categories_tag_category_id",
-                        column: x => x.tag_category_id,
-                        principalTable: "tag_categories",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -2186,7 +1914,6 @@ namespace TruLoad.Backend.Migrations
                     vehicle_reg_number = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     driver_id = table.Column<Guid>(type: "uuid", nullable: true),
                     transporter_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    station_id = table.Column<Guid>(type: "uuid", nullable: false),
                     weighed_by_user_id = table.Column<Guid>(type: "uuid", nullable: false),
                     WeighingType = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     ActId = table.Column<Guid>(type: "uuid", nullable: true),
@@ -2221,7 +1948,9 @@ namespace TruLoad.Backend.Migrations
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -2231,6 +1960,12 @@ namespace TruLoad.Backend.Migrations
                         column: x => x.ActId,
                         principalTable: "act_definitions",
                         principalColumn: "id");
+                    table.ForeignKey(
+                        name: "FK_weighing_transactions_asp_net_users_weighed_by_user_id",
+                        column: x => x.weighed_by_user_id,
+                        principalTable: "asp_net_users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_weighing_transactions_cargo_types_CargoId",
                         column: x => x.CargoId,
@@ -2243,6 +1978,12 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "drivers",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_weighing_transactions_organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_weighing_transactions_origins_destinations_DestinationId",
                         column: x => x.DestinationId,
@@ -2288,57 +2029,104 @@ namespace TruLoad.Backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "load_correction_memos",
+                name: "case_registers",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    memo_no = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    weighing_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    overload_kg = table.Column<int>(type: "integer", nullable: false),
-                    redistribution_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    reweigh_scheduled_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    reweigh_weighing_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    compliance_achieved = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    ReliefTruckRegNumber = table.Column<string>(type: "text", nullable: true),
-                    ReliefTruckEmptyWeightKg = table.Column<int>(type: "integer", nullable: true),
-                    issued_by_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    issued_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    case_no = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    weighing_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    yard_entry_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    prohibition_order_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    vehicle_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    driver_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    violation_type_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    road_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    county_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    district_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    subcounty_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    violation_details = table.Column<string>(type: "text", nullable: true),
+                    ViolationDetailsEmbedding = table.Column<Vector>(type: "vector(384)", nullable: true),
+                    act_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    driver_ntac_no = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    transporter_ntac_no = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    ob_no = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    court_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    disposition_type_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    case_status_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    escalated_to_case_manager = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    case_manager_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    prosecutor_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    complainant_officer_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    investigating_officer_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    investigating_officer_assigned_by_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    investigating_officer_assigned_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_by_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    closed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    closed_by_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    closing_reason = table.Column<string>(type: "text", nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_load_correction_memos", x => x.id);
-                    table.CheckConstraint("chk_load_correction_redistribution_type", "redistribution_type IN ('offload', 'redistribute')");
+                    table.PrimaryKey("PK_case_registers", x => x.id);
                     table.ForeignKey(
-                        name: "FK_load_correction_memos_asp_net_users_issued_by_id",
-                        column: x => x.issued_by_id,
-                        principalTable: "asp_net_users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_load_correction_memos_case_registers_case_register_id",
-                        column: x => x.case_register_id,
-                        principalTable: "case_registers",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_load_correction_memos_weighing_transactions_reweigh_weighin~",
-                        column: x => x.reweigh_weighing_id,
-                        principalSchema: "weighing",
-                        principalTable: "weighing_transactions",
+                        name: "FK_case_registers_act_definitions_act_id",
+                        column: x => x.act_id,
+                        principalTable: "act_definitions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_load_correction_memos_weighing_transactions_weighing_id",
+                        name: "FK_case_registers_case_managers_case_manager_id",
+                        column: x => x.case_manager_id,
+                        principalTable: "case_managers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_case_registers_case_statuses_case_status_id",
+                        column: x => x.case_status_id,
+                        principalTable: "case_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_case_registers_courts_court_id",
+                        column: x => x.court_id,
+                        principalTable: "courts",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "FK_case_registers_disposition_types_disposition_type_id",
+                        column: x => x.disposition_type_id,
+                        principalTable: "disposition_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_case_registers_organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_case_registers_stations_StationId",
+                        column: x => x.StationId,
+                        principalTable: "stations",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_case_registers_violation_types_violation_type_id",
+                        column: x => x.violation_type_id,
+                        principalTable: "violation_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_case_registers_weighing_transactions_weighing_id",
                         column: x => x.weighing_id,
                         principalSchema: "weighing",
                         principalTable: "weighing_transactions",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -2357,7 +2145,9 @@ namespace TruLoad.Backend.Migrations
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2369,69 +2159,18 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_prohibition_orders_weighing_transactions_weighing_id",
-                        column: x => x.weighing_id,
-                        principalSchema: "weighing",
-                        principalTable: "weighing_transactions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "prosecution_cases",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    weighing_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    prosecution_officer_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    act_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    gvw_overload_kg = table.Column<int>(type: "integer", nullable: false),
-                    gvw_fee_usd = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    gvw_fee_kes = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    max_axle_overload_kg = table.Column<int>(type: "integer", nullable: false),
-                    max_axle_fee_usd = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    max_axle_fee_kes = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    best_charge_basis = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false, defaultValue: "gvw"),
-                    penalty_multiplier = table.Column<decimal>(type: "numeric(5,2)", nullable: false, defaultValue: 1.0m),
-                    total_fee_usd = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    total_fee_kes = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    forex_rate = table.Column<decimal>(type: "numeric(10,4)", nullable: false),
-                    certificate_no = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    case_notes = table.Column<string>(type: "text", nullable: true),
-                    CaseNotesEmbedding = table.Column<Vector>(type: "vector(384)", nullable: true),
-                    status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "pending"),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_prosecution_cases", x => x.id);
-                    table.CheckConstraint("chk_prosecution_case_basis", "best_charge_basis IN ('gvw', 'axle')");
-                    table.CheckConstraint("chk_prosecution_case_status", "status IN ('pending', 'invoiced', 'paid', 'court')");
-                    table.CheckConstraint("chk_prosecution_penalty_multiplier", "penalty_multiplier >= 1.0 AND penalty_multiplier <= 10.0");
-                    table.ForeignKey(
-                        name: "FK_prosecution_cases_act_definitions_act_id",
-                        column: x => x.act_id,
-                        principalTable: "act_definitions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_prosecution_cases_asp_net_users_prosecution_officer_id",
-                        column: x => x.prosecution_officer_id,
-                        principalTable: "asp_net_users",
+                        name: "FK_prohibition_orders_organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "organizations",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_prosecution_cases_case_registers_case_register_id",
-                        column: x => x.case_register_id,
-                        principalTable: "case_registers",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
+                        name: "FK_prohibition_orders_stations_StationId",
+                        column: x => x.StationId,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_prosecution_cases_weighing_transactions_weighing_id",
+                        name: "FK_prohibition_orders_weighing_transactions_weighing_id",
                         column: x => x.weighing_id,
                         principalSchema: "weighing",
                         principalTable: "weighing_transactions",
@@ -2508,7 +2247,6 @@ namespace TruLoad.Backend.Migrations
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     weighing_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    station_id = table.Column<Guid>(type: "uuid", nullable: false),
                     reason = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "pending"),
                     entered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
@@ -2516,13 +2254,21 @@ namespace TruLoad.Backend.Migrations
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_yard_entries", x => x.id);
-                    table.CheckConstraint("chk_yard_entry_reason", "reason IN ('redistribution', 'gvw_overload', 'permit_check', 'offload')");
+                    table.CheckConstraint("chk_yard_entry_reason", "reason IN ('redistribution', 'gvw_overload', 'permit_check', 'offload', 'tag_hold')");
                     table.CheckConstraint("chk_yard_entry_status", "status IN ('pending', 'processing', 'released', 'escalated')");
+                    table.ForeignKey(
+                        name: "FK_yard_entries_organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_yard_entries_stations_station_id",
                         column: x => x.station_id,
@@ -2534,6 +2280,562 @@ namespace TruLoad.Backend.Migrations
                         column: x => x.weighing_id,
                         principalSchema: "weighing",
                         principalTable: "weighing_transactions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "arrest_warrants",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    warrant_no = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    issued_by = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    accused_name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    accused_id_no = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    offence_description = table.Column<string>(type: "text", nullable: true),
+                    warrant_status_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    issued_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    executed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    dropped_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    execution_details = table.Column<string>(type: "text", nullable: true),
+                    dropped_reason = table.Column<string>(type: "text", nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_arrest_warrants", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_arrest_warrants_case_registers_case_register_id",
+                        column: x => x.case_register_id,
+                        principalTable: "case_registers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_arrest_warrants_warrant_statuses_warrant_status_id",
+                        column: x => x.warrant_status_id,
+                        principalTable: "warrant_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "case_assignment_logs",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    previous_officer_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    new_officer_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    assigned_by_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    assignment_type = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "initial"),
+                    reason = table.Column<string>(type: "text", nullable: false),
+                    assigned_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    is_current = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    officer_rank = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_case_assignment_logs", x => x.id);
+                    table.CheckConstraint("chk_case_assignment_type", "assignment_type IN ('initial', 're_assignment', 'transfer', 'handover')");
+                    table.ForeignKey(
+                        name: "FK_case_assignment_logs_asp_net_users_assigned_by_id",
+                        column: x => x.assigned_by_id,
+                        principalTable: "asp_net_users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_case_assignment_logs_asp_net_users_new_officer_id",
+                        column: x => x.new_officer_id,
+                        principalTable: "asp_net_users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_case_assignment_logs_asp_net_users_previous_officer_id",
+                        column: x => x.previous_officer_id,
+                        principalTable: "asp_net_users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_case_assignment_logs_case_registers_case_register_id",
+                        column: x => x.case_register_id,
+                        principalTable: "case_registers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "case_closure_checklists",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    closure_type_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    legal_section_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    subfile_a_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    subfile_b_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    subfile_c_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    subfile_d_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    subfile_e_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    subfile_f_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    subfile_g_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    subfile_h_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    subfile_i_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    subfile_j_complete = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    all_subfiles_verified = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    review_status_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    review_requested_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    review_requested_by_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    review_notes = table.Column<string>(type: "text", nullable: true),
+                    approved_by_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    approved_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    verified_by_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    verified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_case_closure_checklists", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_case_closure_checklists_case_registers_case_register_id",
+                        column: x => x.case_register_id,
+                        principalTable: "case_registers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_case_closure_checklists_case_review_statuses_review_status_~",
+                        column: x => x.review_status_id,
+                        principalTable: "case_review_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_case_closure_checklists_closure_types_closure_type_id",
+                        column: x => x.closure_type_id,
+                        principalTable: "closure_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_case_closure_checklists_legal_sections_legal_section_id",
+                        column: x => x.legal_section_id,
+                        principalTable: "legal_sections",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "case_parties",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    party_role = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, defaultValue: "defendant_driver"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    driver_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    vehicle_owner_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    transporter_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    external_name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    external_id_number = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    external_phone = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    notes = table.Column<string>(type: "text", nullable: true),
+                    is_currently_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    added_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    removed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_case_parties", x => x.id);
+                    table.CheckConstraint("chk_case_party_role", "party_role IN ('investigating_officer', 'ocs', 'arresting_officer', 'prosecutor', 'defendant_driver', 'defendant_owner', 'defendant_transporter', 'witness', 'complainant')");
+                    table.ForeignKey(
+                        name: "FK_case_parties_asp_net_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "asp_net_users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_case_parties_case_registers_case_register_id",
+                        column: x => x.case_register_id,
+                        principalTable: "case_registers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_case_parties_drivers_driver_id",
+                        column: x => x.driver_id,
+                        principalSchema: "weighing",
+                        principalTable: "drivers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_case_parties_transporters_transporter_id",
+                        column: x => x.transporter_id,
+                        principalSchema: "weighing",
+                        principalTable: "transporters",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_case_parties_vehicle_owners_vehicle_owner_id",
+                        column: x => x.vehicle_owner_id,
+                        principalSchema: "weighing",
+                        principalTable: "vehicle_owners",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "case_subfiles",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    subfile_type_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    subfile_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    document_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    content = table.Column<string>(type: "text", nullable: true),
+                    ContentEmbedding = table.Column<Vector>(type: "vector(384)", nullable: true),
+                    file_path = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    file_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    mime_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    file_size_bytes = table.Column<long>(type: "bigint", nullable: true),
+                    checksum = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    uploaded_by_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    uploaded_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    metadata = table.Column<string>(type: "jsonb", nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_case_subfiles", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_case_subfiles_case_registers_case_register_id",
+                        column: x => x.case_register_id,
+                        principalTable: "case_registers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_case_subfiles_subfile_types_subfile_type_id",
+                        column: x => x.subfile_type_id,
+                        principalTable: "subfile_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "court_hearings",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    court_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    hearing_date = table.Column<DateTime>(type: "date", nullable: false),
+                    hearing_time = table.Column<TimeSpan>(type: "time", nullable: true),
+                    hearing_type_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    hearing_status_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    hearing_outcome_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    minute_notes = table.Column<string>(type: "text", nullable: true),
+                    MinuteNotesEmbedding = table.Column<Vector>(type: "vector(384)", nullable: true),
+                    next_hearing_date = table.Column<DateTime>(type: "date", nullable: true),
+                    adjournment_reason = table.Column<string>(type: "text", nullable: true),
+                    presiding_officer = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_court_hearings", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_court_hearings_case_registers_case_register_id",
+                        column: x => x.case_register_id,
+                        principalTable: "case_registers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_court_hearings_courts_court_id",
+                        column: x => x.court_id,
+                        principalTable: "courts",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "FK_court_hearings_hearing_outcomes_hearing_outcome_id",
+                        column: x => x.hearing_outcome_id,
+                        principalTable: "hearing_outcomes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_court_hearings_hearing_statuses_hearing_status_id",
+                        column: x => x.hearing_status_id,
+                        principalTable: "hearing_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_court_hearings_hearing_types_hearing_type_id",
+                        column: x => x.hearing_type_id,
+                        principalTable: "hearing_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "load_correction_memos",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    memo_no = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    weighing_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    overload_kg = table.Column<int>(type: "integer", nullable: false),
+                    redistribution_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    reweigh_scheduled_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    reweigh_weighing_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    compliance_achieved = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    ReliefTruckRegNumber = table.Column<string>(type: "text", nullable: true),
+                    ReliefTruckEmptyWeightKg = table.Column<int>(type: "integer", nullable: true),
+                    issued_by_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    issued_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_load_correction_memos", x => x.id);
+                    table.CheckConstraint("chk_load_correction_redistribution_type", "redistribution_type IN ('offload', 'redistribute')");
+                    table.ForeignKey(
+                        name: "FK_load_correction_memos_asp_net_users_issued_by_id",
+                        column: x => x.issued_by_id,
+                        principalTable: "asp_net_users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_load_correction_memos_case_registers_case_register_id",
+                        column: x => x.case_register_id,
+                        principalTable: "case_registers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_load_correction_memos_weighing_transactions_reweigh_weighin~",
+                        column: x => x.reweigh_weighing_id,
+                        principalSchema: "weighing",
+                        principalTable: "weighing_transactions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_load_correction_memos_weighing_transactions_weighing_id",
+                        column: x => x.weighing_id,
+                        principalSchema: "weighing",
+                        principalTable: "weighing_transactions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "prosecution_cases",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    weighing_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    prosecution_officer_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    act_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    gvw_overload_kg = table.Column<int>(type: "integer", nullable: false),
+                    gvw_fee_usd = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    gvw_fee_kes = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    max_axle_overload_kg = table.Column<int>(type: "integer", nullable: false),
+                    max_axle_fee_usd = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    max_axle_fee_kes = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    best_charge_basis = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false, defaultValue: "gvw"),
+                    penalty_multiplier = table.Column<decimal>(type: "numeric(5,2)", nullable: false, defaultValue: 1.0m),
+                    offense_count = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    demerit_points = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    total_fee_usd = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    total_fee_kes = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    forex_rate = table.Column<decimal>(type: "numeric(10,4)", nullable: false),
+                    certificate_no = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    case_notes = table.Column<string>(type: "text", nullable: true),
+                    CaseNotesEmbedding = table.Column<Vector>(type: "vector(384)", nullable: true),
+                    status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "pending"),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_prosecution_cases", x => x.id);
+                    table.CheckConstraint("chk_prosecution_case_basis", "best_charge_basis IN ('gvw', 'axle')");
+                    table.CheckConstraint("chk_prosecution_case_status", "status IN ('pending', 'invoiced', 'paid', 'court')");
+                    table.CheckConstraint("chk_prosecution_penalty_multiplier", "penalty_multiplier >= 1.0 AND penalty_multiplier <= 10.0");
+                    table.ForeignKey(
+                        name: "FK_prosecution_cases_act_definitions_act_id",
+                        column: x => x.act_id,
+                        principalTable: "act_definitions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_prosecution_cases_asp_net_users_prosecution_officer_id",
+                        column: x => x.prosecution_officer_id,
+                        principalTable: "asp_net_users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_prosecution_cases_case_registers_case_register_id",
+                        column: x => x.case_register_id,
+                        principalTable: "case_registers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_prosecution_cases_organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_prosecution_cases_stations_StationId",
+                        column: x => x.StationId,
+                        principalTable: "stations",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_prosecution_cases_weighing_transactions_weighing_id",
+                        column: x => x.weighing_id,
+                        principalSchema: "weighing",
+                        principalTable: "weighing_transactions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "special_releases",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    case_register_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    certificate_no = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    release_type_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    overload_kg = table.Column<int>(type: "integer", nullable: true),
+                    redistribution_allowed = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    reweigh_required = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    reweigh_weighing_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    compliance_achieved = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    reason = table.Column<string>(type: "text", nullable: false),
+                    authorized_by_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    issued_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    IsApproved = table.Column<bool>(type: "boolean", nullable: false),
+                    ApprovedById = table.Column<Guid>(type: "uuid", nullable: true),
+                    ApprovedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    IsRejected = table.Column<bool>(type: "boolean", nullable: false),
+                    RejectedById = table.Column<Guid>(type: "uuid", nullable: true),
+                    RejectedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    RejectionReason = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    LoadCorrectionMemoId = table.Column<Guid>(type: "uuid", nullable: true),
+                    ComplianceCertificateId = table.Column<Guid>(type: "uuid", nullable: true),
+                    CreatedById = table.Column<Guid>(type: "uuid", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_special_releases", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_special_releases_case_registers_case_register_id",
+                        column: x => x.case_register_id,
+                        principalTable: "case_registers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_special_releases_organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_special_releases_release_types_release_type_id",
+                        column: x => x.release_type_id,
+                        principalTable: "release_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_special_releases_stations_StationId",
+                        column: x => x.StationId,
+                        principalTable: "stations",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "vehicle_tags",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    reg_no = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    tag_type = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "automatic"),
+                    tag_category_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    reason = table.Column<string>(type: "text", nullable: false),
+                    ReasonEmbedding = table.Column<Vector>(type: "vector(384)", nullable: true),
+                    station_code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "open"),
+                    tag_photo_path = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    effective_time_period = table.Column<TimeSpan>(type: "interval", nullable: true),
+                    created_by_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    closed_by_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    closed_reason = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    opened_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    closed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    exported = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    CaseRegisterId = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_vehicle_tags", x => x.id);
+                    table.CheckConstraint("chk_vehicle_tag_status", "status IN ('open', 'closed')");
+                    table.CheckConstraint("chk_vehicle_tag_type", "tag_type IN ('automatic', 'manual')");
+                    table.ForeignKey(
+                        name: "FK_vehicle_tags_asp_net_users_closed_by_id",
+                        column: x => x.closed_by_id,
+                        principalTable: "asp_net_users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_vehicle_tags_asp_net_users_created_by_id",
+                        column: x => x.created_by_id,
+                        principalTable: "asp_net_users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_vehicle_tags_case_registers_CaseRegisterId",
+                        column: x => x.CaseRegisterId,
+                        principalTable: "case_registers",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "FK_vehicle_tags_tag_categories_tag_category_id",
+                        column: x => x.tag_category_id,
+                        principalTable: "tag_categories",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -2599,12 +2901,18 @@ namespace TruLoad.Backend.Migrations
                     generated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     due_date = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     pesaflow_invoice_number = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    pesaflow_payment_link = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true, comment: "Customer payment URL from Pesaflow iframe response"),
+                    pesaflow_gateway_fee = table.Column<decimal>(type: "numeric(18,2)", nullable: true, comment: "Commission charged by Pesaflow gateway"),
+                    pesaflow_amount_net = table.Column<decimal>(type: "numeric(18,2)", nullable: true, comment: "Original invoice amount before gateway fees"),
+                    pesaflow_total_amount = table.Column<decimal>(type: "numeric(18,2)", nullable: true, comment: "Total amount including gateway fees (amount_expected from Pesaflow)"),
                     pesaflow_payment_reference = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    pesaflow_checkout_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    pesaflow_sync_status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true, comment: "Sync status: null (not applicable), pending, synced, failed"),
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2619,11 +2927,22 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
+                        name: "FK_invoices_organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
                         name: "FK_invoices_prosecution_cases_prosecution_case_id",
                         column: x => x.prosecution_case_id,
                         principalTable: "prosecution_cases",
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_invoices_stations_StationId",
+                        column: x => x.StationId,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_invoices_weighing_transactions_weighing_id",
                         column: x => x.weighing_id,
@@ -2631,6 +2950,34 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "weighing_transactions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "payment_callbacks",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    invoice_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    callback_type = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    pesaflow_invoice_number = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    payment_reference = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
+                    currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: true),
+                    payment_date = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    raw_payload = table.Column<string>(type: "text", nullable: true),
+                    signature_verified = table.Column<bool>(type: "boolean", nullable: true),
+                    processed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    metadata = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_payment_callbacks", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_payment_callbacks_invoices_invoice_id",
+                        column: x => x.invoice_id,
+                        principalTable: "invoices",
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -2651,7 +2998,9 @@ namespace TruLoad.Backend.Migrations
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2671,6 +3020,17 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "invoices",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_receipts_organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_receipts_stations_StationId",
+                        column: x => x.StationId,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateIndex(
@@ -3102,6 +3462,16 @@ namespace TruLoad.Backend.Migrations
                 column: "disposition_type_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_case_registers_OrganizationId",
+                table: "case_registers",
+                column: "OrganizationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_case_registers_StationId",
+                table: "case_registers",
+                column: "StationId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_case_registers_ViolationDetailsEmbedding",
                 table: "case_registers",
                 column: "ViolationDetailsEmbedding")
@@ -3278,6 +3648,21 @@ namespace TruLoad.Backend.Migrations
                 column: "CountyId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_document_conventions_OrganizationId",
+                table: "document_conventions",
+                column: "OrganizationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_document_sequences_OrganizationId",
+                table: "document_sequences",
+                column: "OrganizationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_document_sequences_StationId",
+                table: "document_sequences",
+                column: "StationId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_documents_document_type",
                 table: "documents",
                 column: "document_type");
@@ -3401,6 +3786,16 @@ namespace TruLoad.Backend.Migrations
                 column: "weighing_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_invoices_OrganizationId",
+                table: "invoices",
+                column: "OrganizationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_invoices_StationId",
+                table: "invoices",
+                column: "StationId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_legal_sections_framework_section_no",
                 table: "legal_sections",
                 columns: new[] { "legal_framework", "section_no" },
@@ -3469,6 +3864,11 @@ namespace TruLoad.Backend.Migrations
                 name: "IX_origins_destinations_name",
                 table: "origins_destinations",
                 column: "name");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_payment_callbacks_invoice_id",
+                table: "payment_callbacks",
+                column: "invoice_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_penalty_points_range",
@@ -3541,11 +3941,23 @@ namespace TruLoad.Backend.Migrations
                 column: "issued_by_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_prohibition_orders_OrganizationId",
+                schema: "weighing",
+                table: "prohibition_orders",
+                column: "OrganizationId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_prohibition_orders_prohibition_no",
                 schema: "weighing",
                 table: "prohibition_orders",
                 column: "prohibition_no",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_prohibition_orders_StationId",
+                schema: "weighing",
+                table: "prohibition_orders",
+                column: "StationId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_prohibition_orders_status",
@@ -3604,6 +4016,31 @@ namespace TruLoad.Backend.Migrations
                 .Annotation("Npgsql:IndexOperators", new[] { "vector_cosine_ops" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_prosecution_cases_OrganizationId",
+                table: "prosecution_cases",
+                column: "OrganizationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_prosecution_cases_StationId",
+                table: "prosecution_cases",
+                column: "StationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_push_subscriptions_OrganizationId",
+                table: "push_subscriptions",
+                column: "OrganizationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_push_subscriptions_StationId",
+                table: "push_subscriptions",
+                column: "StationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_push_subscriptions_UserId",
+                table: "push_subscriptions",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "idx_receipts_idempotency_key",
                 table: "receipts",
                 column: "idempotency_key",
@@ -3632,9 +4069,24 @@ namespace TruLoad.Backend.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_receipts_OrganizationId",
+                table: "receipts",
+                column: "OrganizationId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_receipts_received_by_id",
                 table: "receipts",
                 column: "received_by_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_receipts_StationId",
+                table: "receipts",
+                column: "StationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RefreshTokens_UserId",
+                table: "RefreshTokens",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "idx_release_types_code",
@@ -3726,9 +4178,19 @@ namespace TruLoad.Backend.Migrations
                 column: "issued_at");
 
             migrationBuilder.CreateIndex(
+                name: "IX_special_releases_OrganizationId",
+                table: "special_releases",
+                column: "OrganizationId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_special_releases_release_type_id",
                 table: "special_releases",
                 column: "release_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_special_releases_StationId",
+                table: "special_releases",
+                column: "StationId");
 
             migrationBuilder.CreateIndex(
                 name: "idx_stations_code",
@@ -3750,6 +4212,11 @@ namespace TruLoad.Backend.Migrations
                 name: "IX_stations_road_id",
                 table: "stations",
                 column: "road_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_stations_StationId1",
+                table: "stations",
+                column: "StationId1");
 
             migrationBuilder.CreateIndex(
                 name: "idx_subcounties_code",
@@ -3860,6 +4327,16 @@ namespace TruLoad.Backend.Migrations
                 name: "IX_user_shifts_work_shift_id",
                 table: "user_shifts",
                 column: "work_shift_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserNotifications_OrganizationId",
+                table: "UserNotifications",
+                column: "OrganizationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserNotifications_StationId",
+                table: "UserNotifications",
+                column: "StationId");
 
             migrationBuilder.CreateIndex(
                 name: "idx_vehicle_makes_code",
@@ -4153,6 +4630,12 @@ namespace TruLoad.Backend.Migrations
                 column: "driver_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_weighing_transactions_OrganizationId",
+                schema: "weighing",
+                table: "weighing_transactions",
+                column: "OrganizationId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_weighing_transactions_original_weighing_id",
                 schema: "weighing",
                 table: "weighing_transactions",
@@ -4228,6 +4711,12 @@ namespace TruLoad.Backend.Migrations
                 column: "weighed_at");
 
             migrationBuilder.CreateIndex(
+                name: "IX_weighing_transactions_weighed_by_user_id",
+                schema: "weighing",
+                table: "weighing_transactions",
+                column: "weighed_by_user_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_work_shift_schedules_work_shift_id",
                 table: "work_shift_schedules",
                 column: "work_shift_id");
@@ -4256,6 +4745,11 @@ namespace TruLoad.Backend.Migrations
                 name: "idx_yard_entries_weighing_id",
                 table: "yard_entries",
                 column: "weighing_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_yard_entries_OrganizationId",
+                table: "yard_entries",
+                column: "OrganizationId");
         }
 
         /// <inheritdoc />
@@ -4316,6 +4810,12 @@ namespace TruLoad.Backend.Migrations
                 name: "device_sync_events");
 
             migrationBuilder.DropTable(
+                name: "document_conventions");
+
+            migrationBuilder.DropTable(
+                name: "document_sequences");
+
+            migrationBuilder.DropTable(
                 name: "documents");
 
             migrationBuilder.DropTable(
@@ -4323,10 +4823,19 @@ namespace TruLoad.Backend.Migrations
                 schema: "weighing");
 
             migrationBuilder.DropTable(
+                name: "exchange_rate_api_settings");
+
+            migrationBuilder.DropTable(
+                name: "exchange_rates");
+
+            migrationBuilder.DropTable(
                 name: "hardware_health_logs");
 
             migrationBuilder.DropTable(
                 name: "integration_configs");
+
+            migrationBuilder.DropTable(
+                name: "payment_callbacks");
 
             migrationBuilder.DropTable(
                 name: "penalty_schedules");
@@ -4340,7 +4849,13 @@ namespace TruLoad.Backend.Migrations
                 schema: "weighing");
 
             migrationBuilder.DropTable(
+                name: "push_subscriptions");
+
+            migrationBuilder.DropTable(
                 name: "receipts");
+
+            migrationBuilder.DropTable(
+                name: "RefreshTokens");
 
             migrationBuilder.DropTable(
                 name: "role_permissions");
@@ -4359,6 +4874,9 @@ namespace TruLoad.Backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "user_shifts");
+
+            migrationBuilder.DropTable(
+                name: "UserNotifications");
 
             migrationBuilder.DropTable(
                 name: "vehicle_models");
@@ -4452,10 +4970,6 @@ namespace TruLoad.Backend.Migrations
                 name: "case_registers");
 
             migrationBuilder.DropTable(
-                name: "weighing_transactions",
-                schema: "weighing");
-
-            migrationBuilder.DropTable(
                 name: "case_managers");
 
             migrationBuilder.DropTable(
@@ -4469,6 +4983,10 @@ namespace TruLoad.Backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "violation_types");
+
+            migrationBuilder.DropTable(
+                name: "weighing_transactions",
+                schema: "weighing");
 
             migrationBuilder.DropTable(
                 name: "act_definitions");

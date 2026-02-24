@@ -13,6 +13,7 @@ using Xunit;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using TruLoad.Backend.Services.Interfaces.CaseManagement;
 using TruLoad.Backend.Services.Interfaces.Yard;
+using TruLoad.Backend.Services.Interfaces.Shared;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Data.Repositories.Infrastructure;
 using TruLoad.Backend.Repositories.Infrastructure;
@@ -43,6 +44,7 @@ public class WeighingServiceTests
     private readonly TruLoadDbContext _dbContext;
     private readonly Mock<ISettingsService> _mockSettingsService;
     private readonly Mock<IDocumentNumberService> _mockDocumentNumberService;
+    private readonly Mock<INotificationService> _mockNotificationService;
     private readonly Mock<ILogger<WeighingService>> _mockLogger;
     private readonly WeighingService _service;
 
@@ -69,6 +71,7 @@ public class WeighingServiceTests
         _dbContext = new TruLoadDbContext(dbOptions);
         _mockSettingsService = new Mock<ISettingsService>();
         _mockDocumentNumberService = new Mock<IDocumentNumberService>();
+        _mockNotificationService = new Mock<INotificationService>();
         _mockLogger = new Mock<ILogger<WeighingService>>();
 
         // Setup default behavior for aggregation service
@@ -99,6 +102,7 @@ public class WeighingServiceTests
             _dbContext,
             _mockSettingsService.Object,
             _mockDocumentNumberService.Object,
+            _mockNotificationService.Object,
             _mockLogger.Object
         );
     }
@@ -115,7 +119,7 @@ public class WeighingServiceTests
         var generatedTicketNumber = "NRBM01-A-20260218-0001-KAA001A";
 
         // Seed a station so the orgId lookup query works
-        _dbContext.Stations.Add(new TruLoad.Backend.Models.Infrastructure.Station
+        _dbContext.Stations.Add(new TruLoad.Backend.Models.Station
         {
             Id = stationId,
             Code = "NRBM01",

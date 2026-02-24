@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.Models.Yard;
 
 namespace TruLoad.Backend.Data.Configurations.Yard;
@@ -220,8 +221,11 @@ public static class YardModuleDbContextConfiguration
             entity.HasIndex(e => new { e.RegNo, e.Status })
                 .HasDatabaseName("idx_vehicle_tags_reg_status");
 
-            // NOTE: ReasonEmbedding vector property is configured in TruLoadDbContext.OnModelCreating
-            // conditionally for PostgreSQL only (not supported by InMemory provider for tests)
+            // ReasonEmbedding: always mapped with HNSW index
+            entity.Property(e => e.ReasonEmbedding).HasColumnType("vector(384)");
+            entity.HasIndex(e => e.ReasonEmbedding)
+                .HasMethod("hnsw")
+                .HasOperators("vector_cosine_ops");
         });
 
         // ===== TagCategory Entity Configuration =====

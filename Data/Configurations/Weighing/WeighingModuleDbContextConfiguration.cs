@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.System;
@@ -237,8 +238,11 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.HasIndex(e => e.AxleConfigurationId);
                 entity.HasIndex(e => e.IsFlagged);
 
-                // NOTE: DescriptionEmbedding vector property is configured in TruLoadDbContext.OnModelCreating
-                // conditionally for PostgreSQL only (not supported by InMemory provider for tests)
+                // DescriptionEmbedding: always mapped with HNSW index
+                entity.Property(e => e.DescriptionEmbedding).HasColumnType("vector(384)");
+                entity.HasIndex(e => e.DescriptionEmbedding)
+                    .HasMethod("hnsw")
+                    .HasOperators("vector_cosine_ops");
             });
 
             // Permit entity configuration
@@ -439,8 +443,11 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.HasIndex(e => e.ControlStatus);
                 entity.HasIndex(e => e.OriginalWeighingId);
 
-                // NOTE: ViolationReasonEmbedding vector property is configured in TruLoadDbContext.OnModelCreating
-                // conditionally for PostgreSQL only (not supported by InMemory provider for tests)
+                // ViolationReasonEmbedding: always mapped with HNSW index
+                entity.Property(e => e.ViolationReasonEmbedding).HasColumnType("vector(384)");
+                entity.HasIndex(e => e.ViolationReasonEmbedding)
+                    .HasMethod("hnsw")
+                    .HasOperators("vector_cosine_ops");
             });
 
             // WeighingAxle entity configuration

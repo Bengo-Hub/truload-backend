@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Data.Repositories.Weighing;
 
@@ -14,13 +16,16 @@ public class DriverController : ControllerBase
 {
     private readonly IDriverRepository _driverRepository;
     private readonly ILogger<DriverController> _logger;
+    private readonly TruLoadDbContext _context;
 
     public DriverController(
         IDriverRepository driverRepository,
-        ILogger<DriverController> logger)
+        ILogger<DriverController> logger,
+        TruLoadDbContext context)
     {
         _driverRepository = driverRepository;
         _logger = logger;
+        _context = context;
     }
 
     [HttpGet("{id}")]
@@ -116,19 +121,22 @@ public class DriverController : ControllerBase
     {
         try
         {
-            var drivers = await _driverRepository.SearchAsync(string.Empty);
-            
-            // Return drivers sorted by demerit points
-            var topOffenders = drivers
-                .OrderByDescending(d => d.CurrentDemeritPoints)
+            var topOffenders = await _context.MvDriverDemeritRankings
+                .AsNoTracking()
+                .OrderByDescending(d => d.TotalCases)
                 .Take(limit)
                 .Select(d => new
                 {
-                    name = $"{d.FullNames} {d.Surname}".Trim(),
-                    points = d.CurrentDemeritPoints,
-                    violations = d.DemeritRecords?.Count ?? 0
+                    name = d.FullName,
+                    idNo = d.IdNoOrPassport,
+                    totalCases = d.TotalCases,
+                    openCases = d.OpenCases,
+                    totalFeesCharged = d.TotalFeesCharged,
+                    lastViolation = d.LastViolationDate,
+                    isRepeatOffender = d.IsRepeatOffender,
+                    activeWarrants = d.ActiveWarrants
                 })
-                .ToList();
+                .ToListAsync();
 
             return Ok(topOffenders);
         }

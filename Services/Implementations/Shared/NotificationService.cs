@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Configuration;
 using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Data;

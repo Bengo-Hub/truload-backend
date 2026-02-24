@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.CaseManagement;
 
@@ -189,8 +190,11 @@ public static class CoreCaseEntitiesConfiguration
                 .HasDatabaseName("idx_case_registers_escalated")
                 .HasFilter("escalated_to_case_manager = TRUE");
 
-            // NOTE: ViolationDetailsEmbedding vector property is configured in TruLoadDbContext.OnModelCreating
-            // conditionally for PostgreSQL only (not supported by InMemory provider for tests)
+            // ViolationDetailsEmbedding: always mapped with HNSW index
+            entity.Property(e => e.ViolationDetailsEmbedding).HasColumnType("vector(384)");
+            entity.HasIndex(e => e.ViolationDetailsEmbedding)
+                .HasMethod("hnsw")
+                .HasOperators("vector_cosine_ops");
 
             // Relationships
             entity.HasOne(e => e.ViolationType)
@@ -328,8 +332,11 @@ public static class CoreCaseEntitiesConfiguration
             entity.HasIndex(e => e.UploadedAt)
                 .HasDatabaseName("idx_case_subfiles_uploaded");
 
-            // NOTE: ContentEmbedding vector property is configured in TruLoadDbContext.OnModelCreating
-            // conditionally for PostgreSQL only (not supported by InMemory provider for tests)
+            // ContentEmbedding: always mapped with HNSW index
+            entity.Property(e => e.ContentEmbedding).HasColumnType("vector(384)");
+            entity.HasIndex(e => e.ContentEmbedding)
+                .HasMethod("hnsw")
+                .HasOperators("vector_cosine_ops");
 
             // Relationships
             entity.HasOne(e => e.SubfileType)
@@ -597,8 +604,11 @@ public static class CoreCaseEntitiesConfiguration
                 .HasDatabaseName("idx_court_hearings_court")
                 .HasFilter("court_id IS NOT NULL");
 
-            // NOTE: MinuteNotesEmbedding vector property is configured in TruLoadDbContext.OnModelCreating
-            // conditionally for PostgreSQL only (not supported by InMemory provider for tests)
+            // MinuteNotesEmbedding: always mapped with HNSW index
+            entity.Property(e => e.MinuteNotesEmbedding).HasColumnType("vector(384)");
+            entity.HasIndex(e => e.MinuteNotesEmbedding)
+                .HasMethod("hnsw")
+                .HasOperators("vector_cosine_ops");
 
             // Relationships
             entity.HasOne(e => e.HearingType)

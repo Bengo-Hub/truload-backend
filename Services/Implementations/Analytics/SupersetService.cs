@@ -345,7 +345,7 @@ SQL:";
         // Simple word-boundary check to avoid false positives (e.g., "updated_at" column)
         foreach (var word in blacklist)
         {
-            if (System.Text.RegularExpressions.Regex.IsMatch(upperSql, $@"\b{word}\b"))
+            if (global::System.Text.RegularExpressions.Regex.IsMatch(upperSql, $@"\b{word}\b"))
             {
                 return false;
             }
@@ -415,19 +415,46 @@ SQL:";
     private static string GetDefaultSchemaContext()
     {
         return @"
-TABLES AND COLUMNS:
+COLUMN NAME CONVENTIONS:
+- snake_case columns: id, created_at, deleted_at, station_id, vehicle_id, driver_id, transporter_id,
+  ticket_number, vehicle_reg_number, gvw_measured_kg, gvw_permissible_kg, overload_kg,
+  control_status, total_fee_usd, weighed_at, capture_source, weighing_type, bound
+- PascalCase / mixed-case columns (must be double-quoted in SQL):
+  ""IsCompliant"", ""IsSentToYard"", ""WeighingType"", ""OriginId"", ""DestinationId"",
+  ""CargoId"", ""ToleranceApplied"", ""ReweighCycleNo"", ""CaptureStatus""
+- Identity table: asp_net_users (not AspNetUsers). Columns: ""Id"", ""FullName"", ""Email"", ""UserName""
+- Counties table: ""Counties"" (quoted, PascalCase). Columns: ""Id"", ""Name""
+
+KEY TABLES:
 
 weighing_transactions (
-  id UUID PK, ticket_number VARCHAR, vehicle_reg_number VARCHAR,
-  gvw_measured_kg INT, gvw_permissible_kg INT, overload_kg INT,
-  is_compliant BOOLEAN, control_status VARCHAR, total_fee_usd DECIMAL,
-  weighed_at TIMESTAMPTZ, capture_source VARCHAR,
+  id UUID PK, ticket_number, vehicle_reg_number, gvw_measured_kg INT,
+  gvw_permissible_kg INT, overload_kg INT, control_status VARCHAR,
+  total_fee_usd DECIMAL, total_fee_kes DECIMAL, weighed_at TIMESTAMPTZ,
+  capture_source VARCHAR, weighing_type VARCHAR, bound VARCHAR,
   station_id UUID FK, vehicle_id UUID FK, driver_id UUID FK, transporter_id UUID FK,
+  ""OriginId"" UUID FK NULL, ""DestinationId"" UUID FK NULL, ""CargoId"" UUID FK NULL,
+  ""IsCompliant"" BOOLEAN, ""IsSentToYard"" BOOLEAN, ""ToleranceApplied"" BOOLEAN,
+  ""ReweighCycleNo"" INT, ""CaptureStatus"" VARCHAR,
+  created_at TIMESTAMPTZ, deleted_at TIMESTAMPTZ NULL
+)
+NOTE: weighing_axles has no overload_kg column; compute as (measured_weight_kg - permissible_weight_kg)
+
+drivers (
+  id UUID PK, full_names VARCHAR, surname VARCHAR, id_number VARCHAR,
+  phone_number VARCHAR, email VARCHAR, ntac_no VARCHAR,
   created_at TIMESTAMPTZ, deleted_at TIMESTAMPTZ NULL
 )
 
 transporters (
-  id UUID PK, name VARCHAR, code VARCHAR, contact_person VARCHAR, email VARCHAR
+  id UUID PK, name VARCHAR, code VARCHAR, contact_person VARCHAR, email VARCHAR,
+  created_at TIMESTAMPTZ, deleted_at TIMESTAMPTZ NULL
+)
+
+stations (
+  id UUID PK, name VARCHAR, code VARCHAR, station_type VARCHAR,
+  road_id UUID FK NULL, county_id UUID FK NULL, is_active BOOLEAN,
+  created_at TIMESTAMPTZ
 )
 
 case_registers (
@@ -435,6 +462,12 @@ case_registers (
   violation_type_id UUID FK, case_status_id UUID FK, disposition_type_id UUID FK NULL,
   escalated_to_case_manager BOOLEAN, created_at TIMESTAMPTZ, closed_at TIMESTAMPTZ NULL,
   deleted_at TIMESTAMPTZ NULL
+)
+
+prosecution_cases (
+  id UUID PK, case_register_id UUID FK, status VARCHAR,
+  gvw_overload_kg INT, gvw_fee_usd DECIMAL, total_fee_usd DECIMAL, total_fee_kes DECIMAL,
+  certificate_no VARCHAR, created_at TIMESTAMPTZ, deleted_at TIMESTAMPTZ NULL
 )
 
 invoices (
@@ -449,31 +482,119 @@ receipts (
 )
 
 yard_entries (
-  id UUID PK, vehicle_reg_number VARCHAR, entry_time TIMESTAMPTZ,
-  release_time TIMESTAMPTZ NULL, status VARCHAR, weighing_id UUID FK NULL,
-  created_at TIMESTAMPTZ, deleted_at TIMESTAMPTZ NULL
+  id UUID PK, vehicle_reg_number VARCHAR, entered_at TIMESTAMPTZ,
+  released_at TIMESTAMPTZ NULL, status VARCHAR, weighing_id UUID FK NULL,
+  case_register_id UUID FK NULL, created_at TIMESTAMPTZ, deleted_at TIMESTAMPTZ NULL
 )
 
-stations (
-  id UUID PK, name VARCHAR, code VARCHAR, county VARCHAR, road VARCHAR,
-  is_active BOOLEAN
+vehicle_tags (
+  id UUID PK, reg_no VARCHAR, tag_type VARCHAR, tag_category_id UUID FK,
+  status VARCHAR, opened_at TIMESTAMPTZ, expires_at TIMESTAMPTZ NULL,
+  created_by_id UUID FK, created_at TIMESTAMPTZ, deleted_at TIMESTAMPTZ NULL
 )
+
+MATERIALIZED VIEWS (FASTEST — ALWAYS PREFER FOR DASHBOARDS AND SUMMARIES):
+
+mv_daily_weighing_stats (
+  station_id UUID, station_name VARCHAR, weighing_date DATE,
+  total_weighings BIGINT, compliant_count BIGINT, non_compliant_count BIGINT,
+  sent_to_yard_count BIGINT, avg_gvw_measured NUMERIC, avg_overload NUMERIC,
+  max_overload NUMERIC, total_fees_collected NUMERIC,
+  unique_vehicles BIGINT, unique_transporters BIGINT
+)
+
+mv_charge_summaries (
+  prosecution_case_id UUID, case_register_id UUID, case_no VARCHAR,
+  vehicle_id UUID, weighing_id UUID, act_id UUID, act_name VARCHAR,
+  gvw_overload_kg NUMERIC, gvw_fee_usd NUMERIC, max_axle_overload_kg NUMERIC,
+  max_axle_fee_usd NUMERIC, best_charge_basis VARCHAR, penalty_multiplier NUMERIC,
+  total_fee_usd NUMERIC, total_fee_kes NUMERIC, forex_rate NUMERIC,
+  status VARCHAR, certificate_no VARCHAR, created_at TIMESTAMPTZ,
+  charge_reason VARCHAR, fee_difference_usd NUMERIC
+)
+
+mv_axle_group_violations (
+  axle_grouping VARCHAR, tyre_type VARCHAR,
+  total_weighings BIGINT, violations BIGINT, violation_rate_pct NUMERIC,
+  avg_measured_weight NUMERIC, avg_permissible_weight NUMERIC,
+  avg_overload NUMERIC, max_overload NUMERIC, total_fees_generated NUMERIC,
+  stations_with_violations BIGINT, violating_stations TEXT[]
+)
+
+mv_driver_demerit_rankings (
+  driver_id UUID, id_no_or_passport VARCHAR, full_name VARCHAR,
+  phone VARCHAR, email VARCHAR, total_cases BIGINT, closed_cases BIGINT,
+  open_cases BIGINT, total_overload_kg NUMERIC, total_fees_charged NUMERIC,
+  last_violation_date TIMESTAMPTZ, max_single_overload_kg NUMERIC,
+  is_repeat_offender BOOLEAN, active_warrants BIGINT
+)
+
+mv_vehicle_violation_history (
+  vehicle_id UUID, reg_no VARCHAR, make VARCHAR, model VARCHAR,
+  vehicle_type VARCHAR, owner_name VARCHAR, transporter_name VARCHAR,
+  total_weighings BIGINT, violations BIGINT, violation_rate_pct NUMERIC,
+  total_overload_kg NUMERIC, total_fees_charged NUMERIC,
+  last_weighing_date TIMESTAMPTZ, max_overload_kg NUMERIC,
+  is_currently_tagged BOOLEAN, is_in_yard BOOLEAN
+)
+
+mv_station_performance_scorecard (
+  station_id UUID, station_code VARCHAR, station_name VARCHAR,
+  station_type VARCHAR, road_name VARCHAR, county_name VARCHAR,
+  total_weighings BIGINT, weighings_last_30_days BIGINT, weighings_last_7_days BIGINT,
+  compliance_rate_pct NUMERIC, total_revenue_usd NUMERIC, revenue_last_30_days NUMERIC,
+  unique_vehicles BIGINT, unique_transporters BIGINT,
+  total_yard_entries BIGINT, active_yard_entries BIGINT,
+  total_cases_generated BIGINT, last_scale_test_date TIMESTAMPTZ,
+  passed_scale_tests BIGINT, failed_scale_tests BIGINT
+)
+
+REGULAR VIEWS (REAL-TIME — USE WHEN CURRENT STATE IS NEEDED):
+- active_cases: Open cases with vehicle, driver, violation, and status details
+- yard_status_summary: Current yard occupancy with release and case linkage
+- active_arrest_warrants: Unexecuted warrants with accused and case details
+- pending_court_hearings: Upcoming court hearings with case and vehicle details
+- active_vehicle_tags: Current tags with category, expiry, and station
+- pending_special_releases: Special release requests awaiting approval
+- active_permits: Valid overload permits with extension weights and expiry
+- recent_compliant_weighings: Last compliant weighings with vehicle and transporter
 
 EXAMPLE QUERIES:
--- Count all weighing transactions
-SELECT COUNT(*) as total FROM weighing_transactions WHERE deleted_at IS NULL;
+-- Compliance rate by station (last 7 days) using MV
+SELECT station_name, weighing_date,
+       ROUND(compliant_count * 100.0 / NULLIF(total_weighings, 0), 1) AS compliance_pct
+FROM mv_daily_weighing_stats
+WHERE weighing_date >= CURRENT_DATE - INTERVAL '7 days'
+ORDER BY weighing_date DESC, station_name;
+
+-- Top 10 repeat offender drivers
+SELECT full_name, id_no_or_passport, total_cases, open_cases, total_fees_charged
+FROM mv_driver_demerit_rankings
+WHERE is_repeat_offender = true
+ORDER BY total_cases DESC LIMIT 10;
+
+-- Revenue collected per station (all time)
+SELECT station_name, total_revenue_usd, compliance_rate_pct
+FROM mv_station_performance_scorecard
+ORDER BY total_revenue_usd DESC;
+
+-- Vehicles currently in yard
+SELECT vehicle_reg_number, station_name, entered_at, entry_reason
+FROM yard_status_summary
+WHERE status = 'in_yard'
+ORDER BY entered_at DESC;
 
 -- Overloaded vehicles in last 30 days
-SELECT vehicle_reg_number, overload_kg, created_at
+SELECT vehicle_reg_number, overload_kg, control_status, weighed_at, station_id
 FROM weighing_transactions
-WHERE is_overloaded = true AND deleted_at IS NULL
-  AND created_at >= CURRENT_DATE - INTERVAL '30 days'
-ORDER BY created_at DESC LIMIT 1000;
+WHERE ""IsCompliant"" = false AND deleted_at IS NULL
+  AND weighed_at >= CURRENT_DATE - INTERVAL '30 days'
+ORDER BY weighed_at DESC LIMIT 500;
 
 -- Total revenue by currency
-SELECT currency, SUM(amount_due) as total_revenue, COUNT(*) as invoice_count
+SELECT currency, SUM(amount_due) AS total_revenue, COUNT(*) AS invoice_count
 FROM invoices WHERE deleted_at IS NULL AND status != 'cancelled'
-GROUP BY currency;
+GROUP BY currency ORDER BY total_revenue DESC;
 ";
     }
 

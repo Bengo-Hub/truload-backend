@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Authorization.Attributes;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.User;
 using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Middleware;
@@ -19,17 +21,20 @@ public class StationsController : ControllerBase
     private readonly IWeighingService _weighingService;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<StationsController> _logger;
+    private readonly TruLoadDbContext _context;
 
     public StationsController(
         IStationRepository stationRepository,
         IWeighingService weighingService,
         ITenantContext tenantContext,
-        ILogger<StationsController> logger)
+        ILogger<StationsController> logger,
+        TruLoadDbContext context)
     {
         _stationRepository = stationRepository;
         _weighingService = weighingService;
         _tenantContext = tenantContext;
         _logger = logger;
+        _context = context;
     }
 
     /// <summary>
@@ -209,35 +214,25 @@ public class StationsController : ControllerBase
     {
         try
         {
-            var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-            var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
-
             var orgId = _tenantContext.OrganizationId;
-            var stations = await _stationRepository.GetByOrganizationIdAsync(orgId, ct);
+            var stationIds = (await _stationRepository.GetByOrganizationIdAsync(orgId, ct))
+                .Select(s => s.Id)
+                .ToHashSet();
 
-            var result = new List<object>();
-
-            foreach (var station in stations)
-            {
-                var (items, _) = await _weighingService.SearchTransactionsLightAsync(
-                    stationId: station.Id,
-                    fromDate: from,
-                    toDate: to,
-                    take: 10000);
-
-                var total = items.Count;
-                var legalCount = items.Count(t => string.Equals(t.ControlStatus, "LEGAL", StringComparison.OrdinalIgnoreCase));
-                var complianceRate = total > 0 ? Math.Round((decimal)legalCount / total * 100, 1) : 0;
-                var revenue = items.Sum(t => t.TotalFeeUsd);
-
-                result.Add(new
+            var result = await _context.MvStationPerformanceScorecards
+                .AsNoTracking()
+                .Where(s => stationIds.Contains(s.StationId))
+                .Select(s => new
                 {
-                    name = station.Name,
-                    weighings = total,
-                    compliance = complianceRate,
-                    revenue
-                });
-            }
+                    name = s.StationName,
+                    stationCode = s.StationCode,
+                    weighings = s.TotalWeighings,
+                    weighings30d = s.WeighingsLast30Days,
+                    compliance = s.ComplianceRatePct,
+                    revenue = s.TotalRevenueUsd ?? 0,
+                    revenue30d = s.RevenueLast30Days ?? 0
+                })
+                .ToListAsync(ct);
 
             return Ok(result);
         }

@@ -422,6 +422,11 @@ builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<IActConfigurationService, ActConfigurationService>();
 builder.Services.AddScoped<IBackupService, BackupService>();
 
+// Materialized view refresh + partition lifecycle management
+builder.Services.AddScoped<IMaterializedViewService, MaterializedViewService>();
+builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.MaterializedViewRefreshJob>();
+builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.PartitionMaintenanceJob>();
+
 // Analytics services (Superset integration)
 builder.Services.Configure<SupersetOptions>(builder.Configuration.GetSection(SupersetOptions.SectionName));
 builder.Services.Configure<OllamaOptions>(builder.Configuration.GetSection(OllamaOptions.SectionName));
@@ -470,8 +475,6 @@ try
         var dbContext = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-        // pgvector extension is now initialized automatically by initdb script
-        // No need to check/create it here - skip for faster startup
         Log.Information("Checking pending migrations...");
 
         var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
@@ -487,8 +490,10 @@ try
             Log.Information("✓ Database is up to date (no pending migrations)");
         }
 
+
+
         // Check if initial seeding has already been completed
-        var seedingVersion = 12; // Increment this when you need to re-seed
+        var seedingVersion = 1; // Increment this when you need to re-seed
         var seedingName = "InitialSeed";
 
         var existingSeed = await dbContext.DatabaseSeedingHistory
@@ -533,15 +538,25 @@ try
             Log.Information("✓ Database seeding completed in {Duration}ms", sw.ElapsedMilliseconds);
         }
 
-        // Sprint 15: Seed IntegrationConfig for eCitizen/Pesaflow (Development only)
-        if (app.Environment.IsDevelopment())
+        // Seed IntegrationConfig for eCitizen/Pesaflow (all environments)
+        var encryptionService = scope.ServiceProvider.GetRequiredService<IEncryptionService>();
+        var integrationLogger = scope.ServiceProvider.GetRequiredService<ILogger<TruLoad.Backend.Data.Seeders.SystemConfiguration.IntegrationConfigSeeder>>();
+        var integrationSeeder = new TruLoad.Backend.Data.Seeders.SystemConfiguration.IntegrationConfigSeeder(
+            dbContext, encryptionService, builder.Configuration, integrationLogger);
+        await integrationSeeder.SeedAsync();
+        Log.Information("✓ Integration config seeding completed");
+
+        // Ensure monthly partitions exist and populate materialized views on startup
+        try
         {
-            var encryptionService = scope.ServiceProvider.GetRequiredService<IEncryptionService>();
-            var integrationLogger = scope.ServiceProvider.GetRequiredService<ILogger<TruLoad.Backend.Data.Seeders.SystemConfiguration.IntegrationConfigSeeder>>();
-            var integrationSeeder = new TruLoad.Backend.Data.Seeders.SystemConfiguration.IntegrationConfigSeeder(
-                dbContext, encryptionService, builder.Configuration, integrationLogger);
-            await integrationSeeder.SeedAsync();
-            Log.Information("✓ Integration config seeding completed");
+            var mvService = scope.ServiceProvider.GetRequiredService<IMaterializedViewService>();
+            await mvService.EnsurePartitionsAsync();
+            await mvService.RefreshAllAsync();
+            Log.Information("✓ Partitions ensured and materialized views refreshed on startup");
+        }
+        catch (Exception mvEx)
+        {
+            Log.Warning(mvEx, "Failed to initialize partitions/materialized views on startup — will retry via Hangfire");
         }
     }
 }
@@ -684,6 +699,36 @@ Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.Backup
     "automated-database-backup",
     job => job.ExecuteAsync(),
     "0 2 * * *", // Daily at 2 AM UTC (configurable via settings)
+    new Hangfire.RecurringJobOptions
+    {
+        TimeZone = TimeZoneInfo.Utc,
+        QueueName = "default"
+    });
+
+Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.MaterializedViewRefreshJob>(
+    "mv-refresh",
+    job => job.ExecuteAsync(default),
+    "0 * * * *", // Hourly
+    new Hangfire.RecurringJobOptions
+    {
+        TimeZone = TimeZoneInfo.Utc,
+        QueueName = "default"
+    });
+
+Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.PartitionMaintenanceJob>(
+    "partition-maintenance",
+    job => job.ExecuteAsync(default),
+    "0 1 1 * *", // 1st of every month at 01:00 UTC
+    new Hangfire.RecurringJobOptions
+    {
+        TimeZone = TimeZoneInfo.Utc,
+        QueueName = "default"
+    });
+
+Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.PartitionMaintenanceJob>(
+    "partition-archive",
+    job => job.ExecuteQuarterlyAsync(default),
+    "0 2 1 1,4,7,10 *", // Quarterly Jan/Apr/Jul/Oct at 02:00 UTC
     new Hangfire.RecurringJobOptions
     {
         TimeZone = TimeZoneInfo.Utc,

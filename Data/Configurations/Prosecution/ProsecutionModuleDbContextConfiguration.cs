@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.Models.Prosecution;
 
 namespace TruLoad.Backend.Data.Configurations.Prosecution;
@@ -161,8 +162,11 @@ public static class ProsecutionModuleDbContextConfiguration
             entity.HasIndex(e => e.CreatedAt)
                 .HasDatabaseName("idx_prosecution_cases_created_at");
 
-            // NOTE: CaseNotesEmbedding vector property is configured in TruLoadDbContext.OnModelCreating
-            // conditionally for PostgreSQL only (not supported by InMemory provider for tests)
+            // CaseNotesEmbedding: always mapped with HNSW index
+            entity.Property(e => e.CaseNotesEmbedding).HasColumnType("vector(384)");
+            entity.HasIndex(e => e.CaseNotesEmbedding)
+                .HasMethod("hnsw")
+                .HasOperators("vector_cosine_ops");
 
             // CHECK constraints
             entity.HasCheckConstraint("chk_prosecution_case_basis",

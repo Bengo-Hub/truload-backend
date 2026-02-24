@@ -14,8 +14,8 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Backend.Migrations
 {
     [DbContext(typeof(TruLoadDbContext))]
-    [Migration("20260212101828_AddTagHoldYardReason")]
-    partial class AddTagHoldYardReason
+    [Migration("20260224185018_AddAnalyticsIndexes")]
+    partial class AddAnalyticsIndexes
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1255,6 +1255,9 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("ob_no");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("ProhibitionOrderId")
                         .HasColumnType("uuid")
                         .HasColumnName("prohibition_order_id");
@@ -1266,6 +1269,9 @@ namespace TruLoad.Backend.Migrations
                     b.Property<Guid?>("RoadId")
                         .HasColumnType("uuid")
                         .HasColumnName("road_id");
+
+                    b.Property<Guid?>("StationId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("SubcountyId")
                         .HasColumnType("uuid")
@@ -1333,9 +1339,13 @@ namespace TruLoad.Backend.Migrations
                         .HasDatabaseName("idx_case_registers_escalated")
                         .HasFilter("escalated_to_case_manager = TRUE");
 
+                    b.HasIndex("OrganizationId");
+
                     b.HasIndex("RoadId")
                         .HasDatabaseName("idx_case_registers_road")
                         .HasFilter("road_id IS NOT NULL");
+
+                    b.HasIndex("StationId");
 
                     b.HasIndex("TransporterNtacNo")
                         .HasDatabaseName("idx_case_registers_transporter_ntac")
@@ -2369,6 +2379,9 @@ namespace TruLoad.Backend.Migrations
                     b.Property<Guid?>("LoadCorrectionMemoId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
                     b.Property<int?>("OverloadKg")
                         .HasColumnType("integer")
                         .HasColumnName("overload_kg");
@@ -2408,6 +2421,9 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("reweigh_weighing_id");
 
+                    b.Property<Guid?>("StationId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2424,7 +2440,11 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("IssuedAt")
                         .HasDatabaseName("idx_special_releases_issued");
 
+                    b.HasIndex("OrganizationId");
+
                     b.HasIndex("ReleaseTypeId");
+
+                    b.HasIndex("StationId");
 
                     b.ToTable("special_releases", (string)null);
                 });
@@ -2718,6 +2738,50 @@ namespace TruLoad.Backend.Migrations
                     b.ToTable("Districts");
                 });
 
+            modelBuilder.Entity("TruLoad.Backend.Models.Financial.ExchangeRate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("EffectiveDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("FromCurrency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("Rate")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ToCurrency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("exchange_rates");
+                });
+
             modelBuilder.Entity("TruLoad.Backend.Models.Financial.Invoice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2774,6 +2838,9 @@ namespace TruLoad.Backend.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal?>("PesaflowAmountNet")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("pesaflow_amount_net")
@@ -2815,6 +2882,9 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("prosecution_case_id");
 
+                    b.Property<Guid?>("StationId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -2848,12 +2918,16 @@ namespace TruLoad.Backend.Migrations
                         .IsUnique()
                         .HasDatabaseName("idx_invoices_invoice_no");
 
+                    b.HasIndex("OrganizationId");
+
                     b.HasIndex("PesaflowInvoiceNumber")
                         .HasDatabaseName("idx_invoices_pesaflow_invoice_no")
                         .HasFilter("pesaflow_invoice_number IS NOT NULL");
 
                     b.HasIndex("ProsecutionCaseId")
                         .HasDatabaseName("idx_invoices_prosecution_case_id");
+
+                    b.HasIndex("StationId");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("idx_invoices_status");
@@ -2983,6 +3057,9 @@ namespace TruLoad.Backend.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("PaymentChannel")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
@@ -3012,6 +3089,9 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("received_by_id");
 
+                    b.Property<Guid?>("StationId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("TransactionReference")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -3032,6 +3112,8 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("InvoiceId")
                         .HasDatabaseName("idx_receipts_invoice_id");
 
+                    b.HasIndex("OrganizationId");
+
                     b.HasIndex("PaymentDate")
                         .HasDatabaseName("idx_receipts_payment_date");
 
@@ -3040,6 +3122,8 @@ namespace TruLoad.Backend.Migrations
                         .HasDatabaseName("idx_receipts_receipt_no");
 
                     b.HasIndex("ReceivedById");
+
+                    b.HasIndex("StationId");
 
                     b.HasIndex("TransactionReference")
                         .IsUnique()
@@ -3231,6 +3315,39 @@ namespace TruLoad.Backend.Migrations
                         .HasDatabaseName("idx_users_station_id");
 
                     b.ToTable("asp_net_users", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Identity.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReplacedByTokenId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.Infrastructure.DatabaseSeedingHistory", b =>
@@ -3849,6 +3966,127 @@ namespace TruLoad.Backend.Migrations
                     b.ToTable("weighbridge_hardware");
                 });
 
+            modelBuilder.Entity("TruLoad.Backend.Models.Notifications.PushSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Auth")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeviceName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("P256dh")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("StationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("StationId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("push_subscriptions");
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Notifications.UserNotification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LinkUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("StationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("StationId");
+
+                    b.ToTable("UserNotifications");
+                });
+
             modelBuilder.Entity("TruLoad.Backend.Models.Offline.DeviceSyncEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4241,6 +4479,9 @@ namespace TruLoad.Backend.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("offense_count");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal>("PenaltyMultiplier")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(5,2)")
@@ -4250,6 +4491,9 @@ namespace TruLoad.Backend.Migrations
                     b.Property<Guid>("ProsecutionOfficerId")
                         .HasColumnType("uuid")
                         .HasColumnName("prosecution_officer_id");
+
+                    b.Property<Guid?>("StationId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -4297,8 +4541,12 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("idx_prosecution_cases_created_at");
 
+                    b.HasIndex("OrganizationId");
+
                     b.HasIndex("ProsecutionOfficerId")
                         .HasDatabaseName("idx_prosecution_cases_officer_id");
+
+                    b.HasIndex("StationId");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("idx_prosecution_cases_status");
@@ -4548,6 +4796,12 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("road_id");
 
+                    b.Property<Guid?>("StationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("StationId1")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("StationType")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -4573,6 +4827,8 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("OrganizationId");
 
                     b.HasIndex("RoadId");
+
+                    b.HasIndex("StationId1");
 
                     b.ToTable("stations", (string)null);
                 });
@@ -4889,6 +5145,199 @@ namespace TruLoad.Backend.Migrations
                         .HasDatabaseName("idx_demerit_violation_overload");
 
                     b.ToTable("demerit_point_schedules", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.System.DocumentConvention", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DateFormat")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("IncludeBound")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IncludeDate")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IncludeStationCode")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IncludeVehicleReg")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("ResetFrequency")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Separator")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)");
+
+                    b.Property<int>("SequencePadding")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("document_conventions");
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.System.DocumentSequence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CurrentSequence")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastResetDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ResetFrequency")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("bytea");
+
+                    b.Property<Guid?>("StationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("StationId");
+
+                    b.ToTable("document_sequences");
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.System.ExchangeRateApiSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ApiEndpoint")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EncryptedAccessKey")
+                        .HasColumnType("text");
+
+                    b.Property<TimeOnly>("FetchTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastFetchAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastFetchError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("LastFetchStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("ProviderName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SourceCurrency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("TargetCurrenciesJson")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("exchange_rate_api_settings");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.System.IntegrationConfig", b =>
@@ -5308,6 +5757,1032 @@ namespace TruLoad.Backend.Migrations
                     b.ToTable("user_shifts", (string)null);
                 });
 
+            modelBuilder.Entity("TruLoad.Backend.Models.Views.ActiveArrestWarrant", b =>
+                {
+                    b.Property<string>("AccusedIdNo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CaseNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CaseRegisterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double>("DaysSinceIssued")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DriverName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DriverPhone")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("DroppedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ExecutedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExecutionDetails")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("IssuedAgainst")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IssuedByCourtOfficer")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("VehicleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VehicleRegNo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ViolationDetails")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("WarrantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("WarrantNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("WarrantStatusId")
+                        .HasColumnType("uuid");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("active_arrest_warrants", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Views.ActiveCase", b =>
+                {
+                    b.Property<Guid>("ActId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CaseManagerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CaseManagerName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CaseNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("CaseStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CaseStatusId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ComplainantOfficerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CourtId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CourtName")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("DaysOpen")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("DispositionType")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("DispositionTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DriverIdNo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DriverName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DriverNtacNo")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("EscalatedToCaseManager")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("InvestigatingOfficerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Make")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Model")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ObNo")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ProsecutorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RegNo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TicketNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TransporterNtacNo")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("VehicleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VehicleRegNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ViolationDetails")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ViolationSeverity")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ViolationType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ViolationTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("WeighingId")
+                        .HasColumnType("uuid");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("active_cases", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Views.ActivePermit", b =>
+                {
+                    b.Property<decimal>("AxleExtensionKg")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double>("DaysUntilExpiry")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("GvwExtensionKg")
+                        .HasColumnType("numeric");
+
+                    b.Property<bool>("IsExpiringSoon")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("IssueDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IssuingAuthority")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Make")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Model")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("PermitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PermitNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PermitType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PermitTypeDescription")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("PermitTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RegNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("VehicleId")
+                        .HasColumnType("uuid");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("active_permits", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Views.ActiveVehicleTag", b =>
+                {
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByFullName")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CreatedByUsername")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double>("DaysOpen")
+                        .HasColumnType("double precision");
+
+                    b.Property<TimeSpan?>("EffectiveTimePeriod")
+                        .HasColumnType("interval");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsExpired")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("OpenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RegNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("StationCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TagCategoryDescription")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TagCategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TagCategoryName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TagPhotoPath")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TagType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("active_vehicle_tags", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Views.MvAxleGroupViolation", b =>
+                {
+                    b.Property<decimal>("AvgMeasuredWeight")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("AvgOverload")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("AvgPermissibleWeight")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("AxleGrouping")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("MaxOverload")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("StationsWithViolations")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("TotalFeesGenerated")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("TotalWeighings")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TyreType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.PrimitiveCollection<string[]>("ViolatingStations")
+                        .HasColumnType("text[]");
+
+                    b.Property<decimal>("ViolationRatePct")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("Violations")
+                        .HasColumnType("bigint");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("mv_axle_group_violations", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Views.MvChargeSummary", b =>
+                {
+                    b.Property<Guid>("ActId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("BestChargeBasis")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("CaseNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CaseRegisterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CertificateNo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ChargeReason")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("FeeDifferenceUsd")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("ForexRate")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("GvwFeeUsd")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("GvwOverloadKg")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MaxAxleFeeUsd")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MaxAxleOverloadKg")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("PenaltyMultiplier")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("ProsecutionCaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("TotalFeeKes")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("TotalFeeUsd")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid?>("VehicleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("WeighingId")
+                        .HasColumnType("uuid");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("mv_charge_summaries", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Views.MvDailyWeighingStats", b =>
+                {
+                    b.Property<decimal?>("AvgGvwMeasured")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("AvgOverload")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("CompliantCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal?>("MaxOverload")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("NonCompliantCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("SentToYardCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("StationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("StationName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("TotalFeesCollected")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("TotalWeighings")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("UniqueTransporters")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("UniqueVehicles")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("WeighingDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("mv_daily_weighing_stats", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Views.MvDriverDemeritRanking", b =>
+                {
+                    b.Property<long>("ActiveWarrants")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("ClosedCases")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("IdNoOrPassport")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsRepeatOffender")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastViolationDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("MaxSingleOverloadKg")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("OpenCases")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Phone")
+                        .HasColumnType("text");
+
+                    b.Property<long>("TotalCases")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal?>("TotalFeesCharged")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("TotalOverloadKg")
+                        .HasColumnType("numeric");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("mv_driver_demerit_rankings", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Views.MvStationPerformanceScorecard", b =>
+                {
+                    b.Property<long>("ActiveYardEntries")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("ComplianceRatePct")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("CountyName")
+                        .HasColumnType("text");
+
+                    b.Property<long>("FailedScaleTests")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("LastScaleTestDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("PassedScaleTests")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal?>("RevenueLast30Days")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("RoadName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("StationCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("StationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("StationName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("StationType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("TotalCasesGenerated")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal?>("TotalRevenueUsd")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("TotalWeighings")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TotalYardEntries")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("UniqueTransporters")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("UniqueVehicles")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("WeighingsLast30Days")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("WeighingsLast7Days")
+                        .HasColumnType("bigint");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("mv_station_performance_scorecard", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Views.MvVehicleViolationHistory", b =>
+                {
+                    b.Property<bool>("IsCurrentlyTagged")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsInYard")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastWeighingDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Make")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("MaxOverloadKg")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Model")
+                        .HasColumnType("text");
+
+                    b.Property<string>("OwnerName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RegNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("TotalFeesCharged")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("TotalOverloadKg")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("TotalWeighings")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TransporterName")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("VehicleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VehicleType")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("ViolationRatePct")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("Violations")
+                        .HasColumnType("bigint");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("mv_vehicle_violation_history", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Views.PendingCourtHearing", b =>
+                {
+                    b.Property<string>("AdjournmentReason")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CaseNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CaseRegisterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CourtId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CourtLocation")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CourtName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DaysUntilHearing")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DriverName")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("HearingDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("HearingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("HearingOutcome")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("HearingOutcomeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("HearingStatus")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("HearingStatusId")
+                        .HasColumnType("uuid");
+
+                    b.Property<TimeSpan>("HearingTime")
+                        .HasColumnType("interval");
+
+                    b.Property<string>("HearingType")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("HearingTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MinuteNotes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("NextHearingDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PresidingOfficer")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("VehicleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VehicleRegNo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ViolationDetails")
+                        .HasColumnType("text");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("pending_court_hearings", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Views.PendingSpecialRelease", b =>
+                {
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ApprovedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ApprovedByName")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ApproverRoleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CaseNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CaseRegisterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("DaysPending")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DriverName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReleaseMemoNo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReleaseType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RequestedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RequestedByName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SpecialReleaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TicketNumber")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("VehicleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VehicleRegNo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ViolationDetails")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("WeighingId")
+                        .HasColumnType("uuid");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("pending_special_releases", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Views.RecentCompliantWeighing", b =>
+                {
+                    b.Property<Guid?>("CargoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CargoType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ControlStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("DestinationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DestinationName")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DriverName")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("GvwMeasuredKg")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("GvwPermissibleKg")
+                        .HasColumnType("numeric");
+
+                    b.Property<bool>("IsCompliant")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Make")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Model")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("OriginId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OriginName")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("OverloadKg")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("StationCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("StationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("StationName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TicketNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("ToleranceApplied")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("TransporterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TransporterName")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("VehicleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VehicleRegNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("WeighedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WeighingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("WeighingType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("recent_compliant_weighings", (string)null);
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Views.YardStatusSummary", b =>
+                {
+                    b.Property<string>("CaseNo")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("CaseRegisterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DriverName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DriverPhone")
+                        .HasColumnType("text");
+
+                    b.Property<double>("DurationHours")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("EnteredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EntryReason")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReleaseMemoNo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReleaseType")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ReleasedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SpecialReleaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("StationCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("StationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("StationName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TicketNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TransporterName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TransporterPhone")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("VehicleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VehicleRegNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ViolationDetails")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("WeighingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("YardEntryId")
+                        .HasColumnType("uuid");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("yard_status_summary", (string)null);
+                });
+
             modelBuilder.Entity("TruLoad.Backend.Models.Weighing.Driver", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5670,6 +7145,9 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("issued_by_id");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("ProhibitionNo")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -5680,6 +7158,9 @@ namespace TruLoad.Backend.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("reason");
+
+                    b.Property<Guid?>("StationId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -5700,8 +7181,12 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasIndex("IssuedById");
 
+                    b.HasIndex("OrganizationId");
+
                     b.HasIndex("ProhibitionNo")
                         .IsUnique();
+
+                    b.HasIndex("StationId");
 
                     b.HasIndex("Status");
 
@@ -6081,6 +7566,9 @@ namespace TruLoad.Backend.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_sync");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("OriginId")
                         .HasColumnType("uuid");
 
@@ -6184,6 +7672,8 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasIndex("DriverId");
 
+                    b.HasIndex("OrganizationId");
+
                     b.HasIndex("OriginId");
 
                     b.HasIndex("OriginalWeighingId");
@@ -6205,6 +7695,8 @@ namespace TruLoad.Backend.Migrations
                     NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("ViolationReasonEmbedding"), new[] { "vector_cosine_ops" });
 
                     b.HasIndex("WeighedAt");
+
+                    b.HasIndex("WeighedByUserId");
 
                     b.HasIndex("StationId", "WeighedAt")
                         .HasDatabaseName("IX_weighing_transactions_station_date");
@@ -6688,6 +8180,9 @@ namespace TruLoad.Backend.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Reason")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -6724,6 +8219,8 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasIndex("EnteredAt")
                         .HasDatabaseName("idx_yard_entries_entered_at");
+
+                    b.HasIndex("OrganizationId");
 
                     b.HasIndex("StationId")
                         .HasDatabaseName("idx_yard_entries_station_id");
@@ -6994,11 +8491,26 @@ namespace TruLoad.Backend.Migrations
                         .HasForeignKey("DispositionTypeId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("TruLoad.Backend.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TruLoad.Backend.Models.Station", "Station")
+                        .WithMany()
+                        .HasForeignKey("StationId");
+
                     b.HasOne("TruLoad.Backend.Models.CaseManagement.ViolationType", "ViolationType")
                         .WithMany("CaseRegisters")
                         .HasForeignKey("ViolationTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "Weighing")
+                        .WithMany()
+                        .HasForeignKey("WeighingId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("ActDefinition");
 
@@ -7008,7 +8520,13 @@ namespace TruLoad.Backend.Migrations
 
                     b.Navigation("DispositionType");
 
+                    b.Navigation("Organization");
+
+                    b.Navigation("Station");
+
                     b.Navigation("ViolationType");
+
+                    b.Navigation("Weighing");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.CaseManagement.CaseSubfile", b =>
@@ -7142,15 +8660,29 @@ namespace TruLoad.Backend.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("TruLoad.Backend.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("TruLoad.Backend.Models.CaseManagement.ReleaseType", "ReleaseType")
                         .WithMany("SpecialReleases")
                         .HasForeignKey("ReleaseTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("TruLoad.Backend.Models.Station", "Station")
+                        .WithMany()
+                        .HasForeignKey("StationId");
+
                     b.Navigation("CaseRegister");
 
+                    b.Navigation("Organization");
+
                     b.Navigation("ReleaseType");
+
+                    b.Navigation("Station");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.Department", b =>
@@ -7182,10 +8714,20 @@ namespace TruLoad.Backend.Migrations
                         .HasForeignKey("CaseRegisterId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("TruLoad.Backend.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("TruLoad.Backend.Models.Prosecution.ProsecutionCase", "ProsecutionCase")
                         .WithMany("Invoices")
                         .HasForeignKey("ProsecutionCaseId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("TruLoad.Backend.Models.Station", "Station")
+                        .WithMany()
+                        .HasForeignKey("StationId");
 
                     b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "Weighing")
                         .WithMany()
@@ -7194,7 +8736,11 @@ namespace TruLoad.Backend.Migrations
 
                     b.Navigation("CaseRegister");
 
+                    b.Navigation("Organization");
+
                     b.Navigation("ProsecutionCase");
+
+                    b.Navigation("Station");
 
                     b.Navigation("Weighing");
                 });
@@ -7216,14 +8762,28 @@ namespace TruLoad.Backend.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("TruLoad.Backend.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("TruLoad.Backend.Models.Identity.ApplicationUser", "ReceivedBy")
                         .WithMany()
                         .HasForeignKey("ReceivedById")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("TruLoad.Backend.Models.Station", "Station")
+                        .WithMany()
+                        .HasForeignKey("StationId");
+
                     b.Navigation("Invoice");
 
+                    b.Navigation("Organization");
+
                     b.Navigation("ReceivedBy");
+
+                    b.Navigation("Station");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.Identity.ApplicationUser", b =>
@@ -7248,6 +8808,17 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("Organization");
 
                     b.Navigation("Station");
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Identity.RefreshToken", b =>
+                {
+                    b.HasOne("TruLoad.Backend.Models.Identity.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.Infrastructure.Document", b =>
@@ -7330,6 +8901,48 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("Station");
                 });
 
+            modelBuilder.Entity("TruLoad.Backend.Models.Notifications.PushSubscription", b =>
+                {
+                    b.HasOne("TruLoad.Backend.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TruLoad.Backend.Models.Station", "Station")
+                        .WithMany()
+                        .HasForeignKey("StationId");
+
+                    b.HasOne("TruLoad.Backend.Models.Identity.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Station");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.Notifications.UserNotification", b =>
+                {
+                    b.HasOne("TruLoad.Backend.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TruLoad.Backend.Models.Station", "Station")
+                        .WithMany()
+                        .HasForeignKey("StationId");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Station");
+                });
+
             modelBuilder.Entity("TruLoad.Backend.Models.Prosecution.ProsecutionCase", b =>
                 {
                     b.HasOne("TruLoad.Backend.Models.ActDefinition", "Act")
@@ -7344,11 +8957,21 @@ namespace TruLoad.Backend.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("TruLoad.Backend.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("TruLoad.Backend.Models.Identity.ApplicationUser", "ProsecutionOfficer")
                         .WithMany()
                         .HasForeignKey("ProsecutionOfficerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("TruLoad.Backend.Models.Station", "Station")
+                        .WithMany()
+                        .HasForeignKey("StationId");
 
                     b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "Weighing")
                         .WithMany()
@@ -7359,7 +8982,11 @@ namespace TruLoad.Backend.Migrations
 
                     b.Navigation("CaseRegister");
 
+                    b.Navigation("Organization");
+
                     b.Navigation("ProsecutionOfficer");
+
+                    b.Navigation("Station");
 
                     b.Navigation("Weighing");
                 });
@@ -7439,11 +9066,45 @@ namespace TruLoad.Backend.Migrations
                         .HasForeignKey("RoadId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("TruLoad.Backend.Models.Station", "Station")
+                        .WithMany()
+                        .HasForeignKey("StationId1");
+
                     b.Navigation("County");
 
                     b.Navigation("Organization");
 
                     b.Navigation("Road");
+
+                    b.Navigation("Station");
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.System.DocumentConvention", b =>
+                {
+                    b.HasOne("TruLoad.Backend.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("TruLoad.Backend.Models.System.DocumentSequence", b =>
+                {
+                    b.HasOne("TruLoad.Backend.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TruLoad.Backend.Models.Station", "Station")
+                        .WithMany()
+                        .HasForeignKey("StationId");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Station");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.UserShift", b =>
@@ -7516,6 +9177,16 @@ namespace TruLoad.Backend.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("TruLoad.Backend.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TruLoad.Backend.Models.Station", "Station")
+                        .WithMany()
+                        .HasForeignKey("StationId");
+
                     b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "Weighing")
                         .WithMany()
                         .HasForeignKey("WeighingId")
@@ -7523,6 +9194,10 @@ namespace TruLoad.Backend.Migrations
                         .IsRequired();
 
                     b.Navigation("IssuedBy");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Station");
 
                     b.Navigation("Weighing");
                 });
@@ -7570,6 +9245,12 @@ namespace TruLoad.Backend.Migrations
                         .HasForeignKey("DriverId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("TruLoad.Backend.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("TruLoad.Backend.Models.OriginsDestinations", "Origin")
                         .WithMany()
                         .HasForeignKey("OriginId");
@@ -7600,6 +9281,12 @@ namespace TruLoad.Backend.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("TruLoad.Backend.Models.Identity.ApplicationUser", "WeighedByUser")
+                        .WithMany()
+                        .HasForeignKey("WeighedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Act");
 
                     b.Navigation("Cargo");
@@ -7607,6 +9294,8 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("Destination");
 
                     b.Navigation("Driver");
+
+                    b.Navigation("Organization");
 
                     b.Navigation("Origin");
 
@@ -7619,6 +9308,8 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("Transporter");
 
                     b.Navigation("Vehicle");
+
+                    b.Navigation("WeighedByUser");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.WeighingAxle", b =>
@@ -7707,6 +9398,12 @@ namespace TruLoad.Backend.Migrations
 
             modelBuilder.Entity("TruLoad.Backend.Models.Yard.YardEntry", b =>
                 {
+                    b.HasOne("TruLoad.Backend.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("TruLoad.Backend.Models.Station", "Station")
                         .WithMany()
                         .HasForeignKey("StationId")
@@ -7718,6 +9415,8 @@ namespace TruLoad.Backend.Migrations
                         .HasForeignKey("WeighingId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Organization");
 
                     b.Navigation("Station");
 

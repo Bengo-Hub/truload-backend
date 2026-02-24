@@ -1,3 +1,6 @@
+using TruLoad.Backend.DTOs.Shared;
+using TruLoad.Backend.Models.Notifications;
+
 namespace TruLoad.Backend.Services.Interfaces.Shared;
 
 /// <summary>

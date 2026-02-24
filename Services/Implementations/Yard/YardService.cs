@@ -230,7 +230,7 @@ public class YardService : IYardService
         {
             Id = entry.Id,
             WeighingId = entry.WeighingId,
-            StationId = entry.StationId,
+            StationId = entry.StationId ?? Guid.Empty,
             StationName = entry.Station?.Name ?? "",
             Reason = entry.Reason,
             Status = entry.Status,

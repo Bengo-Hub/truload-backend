@@ -4,6 +4,7 @@ using Moq;
 using TruLoad.Backend.DTOs.Financial;
 using TruLoad.Backend.Models.Financial;
 using TruLoad.Backend.Models.System;
+using TruLoad.Backend.Infrastructure.Security;
 using TruLoad.Backend.Services.Implementations.Financial;
 using TruLoad.Backend.Tests.Integration.Helpers;
 using Xunit;
@@ -24,8 +25,9 @@ public class ExchangeRateTests
         var cache = new MemoryCache(new MemoryCacheOptions());
         var httpFactory = new Mock<IHttpClientFactory>();
         httpFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(new HttpClient());
+        var encryptionService = new Mock<IEncryptionService>();
         var logger = NullLogger<CurrencyService>.Instance;
-        return new CurrencyService(context, cache, httpFactory.Object, logger);
+        return new CurrencyService(context, cache, httpFactory.Object, encryptionService.Object, logger);
     }
 
     private (CurrencyService service, string dbName) CreateServiceWithDbName()

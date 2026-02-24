@@ -19,6 +19,7 @@ using TruLoad.Backend.Models.Prosecution;
 using TruLoad.Backend.Models.Financial;
 using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Services.Interfaces.System;
+using TruLoad.Backend.Services.Interfaces.Shared;
 
 namespace TruLoad.Backend.Services.Implementations.Weighing;
 
@@ -626,7 +627,7 @@ public class WeighingService : IWeighingService
                                 new CreateYardEntryRequest
                                 {
                                     WeighingId = transactionId,
-                                    StationId = transaction.StationId,
+                                    StationId = transaction.StationId ?? Guid.Empty,
                                     Reason = "gvw_overload"
                                 },
                                 transaction.WeighedByUserId);
@@ -691,7 +692,7 @@ public class WeighingService : IWeighingService
                         new CreateYardEntryRequest
                         {
                             WeighingId = transactionId,
-                            StationId = transaction.StationId,
+                            StationId = transaction.StationId ?? Guid.Empty,
                             Reason = "tag_hold"
                         },
                         transaction.WeighedByUserId);

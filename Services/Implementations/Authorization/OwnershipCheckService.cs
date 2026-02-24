@@ -66,7 +66,7 @@ public class OwnershipCheckService : IOwnershipCheckService
                 .Select(wt => wt.StationId)
                 .FirstOrDefaultAsync(cancellationToken);
 
-            if (stationId == Guid.Empty)
+            if (stationId == null || stationId == Guid.Empty)
             {
                 _logger.LogWarning(
                     "Weighing transaction not found for station check: TransactionId={TransactionId}",
@@ -74,7 +74,7 @@ public class OwnershipCheckService : IOwnershipCheckService
                 return false;
             }
 
-            return await UserBelongsToStationAsync(userId, stationId, cancellationToken);
+            return await UserBelongsToStationAsync(userId, stationId.Value, cancellationToken);
         }
         catch (Exception ex)
         {

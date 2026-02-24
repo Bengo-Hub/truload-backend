@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Authorization.Attributes;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.User;
 using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.DTOs.Weighing;
@@ -17,15 +18,18 @@ public class UsersController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
+    private readonly TruLoadDbContext _context;
     private readonly ILogger<UsersController> _logger;
 
     public UsersController(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
+        TruLoadDbContext context,
         ILogger<UsersController> logger)
     {
         _userManager = userManager;
         _roleManager = roleManager;
+        _context = context;
         _logger = logger;
     }
 
@@ -84,10 +88,10 @@ public class UsersController : ControllerBase
         }
 
         // 4. Create user within a transaction to ensure role assignment success
-        using var strategy = _userManager.Users.Context.Database.CreateExecutionStrategy();
+        var strategy = _context.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
-            using var transaction = await _userManager.Users.Context.Database.BeginTransactionAsync();
+            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 var user = new ApplicationUser
@@ -418,10 +422,10 @@ public class UsersController : ControllerBase
             }
         }
 
-        using var strategy = _userManager.Users.Context.Database.CreateExecutionStrategy();
+        var strategy = _context.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
-            using var transaction = await _userManager.Users.Context.Database.BeginTransactionAsync();
+            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 // Remove existing roles

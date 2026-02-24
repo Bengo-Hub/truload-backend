@@ -298,7 +298,7 @@ public class CaseRegisterService : ICaseRegisterService
 
         // NOTIFY: Case Closed
         await _notificationService.SendInternalNotificationAsync(
-            caseRegister.CreatedById, 
+            caseRegister.CreatedById.GetValueOrDefault(), 
             "Case Closed",
             $"Case {caseRegister.CaseNo} has been closed by {userId}.",
             "success",

@@ -1,6 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using TruLoad.Backend.Data;
+using TruLoad.Backend.Services.Interfaces;
 using TruLoad.Backend.Services.Interfaces.Weighing;
 using TruLoad.Backend.Services.Interfaces.Integration;
 using TruLoad.Backend.Services.Interfaces.Yard;
@@ -27,6 +31,8 @@ public class WeighingController : ControllerBase
     private readonly IVehicleTagService _vehicleTagService;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<WeighingController> _logger;
+    private readonly TruLoadDbContext _context;
+    private readonly ICacheService _cacheService;
 
     public WeighingController(
         IWeighingService weighingService,
@@ -34,7 +40,9 @@ public class WeighingController : ControllerBase
         IKeNHAService kenhaService,
         IVehicleTagService vehicleTagService,
         ITenantContext tenantContext,
-        ILogger<WeighingController> logger)
+        ILogger<WeighingController> logger,
+        TruLoadDbContext context,
+        ICacheService cacheService)
     {
         _weighingService = weighingService;
         _vehicleRepository = vehicleRepository;
@@ -42,6 +50,8 @@ public class WeighingController : ControllerBase
         _vehicleTagService = vehicleTagService;
         _tenantContext = tenantContext;
         _logger = logger;
+        _context = context;
+        _cacheService = cacheService;
     }
 
     /// <summary>
@@ -539,30 +549,31 @@ public class WeighingController : ControllerBase
         try
         {
             var effectiveStationId = stationId ?? _tenantContext.StationId;
-            var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-            var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+            var from = (dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30)).Date;
+            var to = (dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow).Date;
 
-            var (items, _) = await _weighingService.SearchTransactionsLightAsync(
-                stationId: effectiveStationId,
-                fromDate: from,
-                toDate: to,
-                take: 10000);
+            var rows = await _context.MvDailyWeighingStats
+                .AsNoTracking()
+                .Where(m => m.WeighingDate >= from && m.WeighingDate <= to)
+                .Where(m => !effectiveStationId.HasValue || m.StationId == effectiveStationId)
+                .ToListAsync(ct);
 
-            var totalWeighings = items.Count;
-            var legalCount = items.Count(t => string.Equals(t.ControlStatus, "LEGAL", StringComparison.OrdinalIgnoreCase));
-            var overloadedCount = items.Count(t => string.Equals(t.ControlStatus, "OVERLOAD", StringComparison.OrdinalIgnoreCase));
-            var warningCount = items.Count(t => string.Equals(t.ControlStatus, "WARNING", StringComparison.OrdinalIgnoreCase));
+            var totalWeighings = rows.Sum(m => m.TotalWeighings);
+            var legalCount = rows.Sum(m => m.CompliantCount);
+            var overloadedCount = rows.Sum(m => m.NonCompliantCount);
+            var warningCount = totalWeighings - legalCount - overloadedCount;
             var complianceRate = totalWeighings > 0 ? Math.Round((decimal)legalCount / totalWeighings * 100, 1) : 0;
-            var totalFeesKes = items.Sum(t => t.TotalFeeUsd);
-            var overloadedItems = items.Where(t => t.OverloadKg > 0).ToList();
-            var avgOverloadKg = overloadedItems.Count > 0 ? Math.Round((decimal)overloadedItems.Average(t => t.OverloadKg), 0) : 0;
+            var totalFeesKes = rows.Sum(m => m.TotalFeesCollected ?? 0);
+            var avgOverloadKg = rows.Any()
+                ? Math.Round((decimal)rows.Average(m => (double)(m.AvgOverload ?? 0)), 0)
+                : 0m;
 
             return Ok(new WeighingStatisticsDto
             {
-                TotalWeighings = totalWeighings,
-                LegalCount = legalCount,
-                OverloadedCount = overloadedCount,
-                WarningCount = warningCount,
+                TotalWeighings = (int)totalWeighings,
+                LegalCount = (int)legalCount,
+                OverloadedCount = (int)overloadedCount,
+                WarningCount = (int)warningCount,
                 ComplianceRate = complianceRate,
                 TotalFeesKes = totalFeesKes,
                 AvgOverloadKg = avgOverloadKg
@@ -595,23 +606,29 @@ public class WeighingController : ControllerBase
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
             var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
-            var (items, _) = await _weighingService.SearchTransactionsAsync(
-                stationId: effectiveStationId,
-                fromDate: from,
-                toDate: to,
-                take: 10000);
-
-            var trend = items
-                .GroupBy(t => t.WeighedAt.Date)
+            // Server-side GROUP BY using composite index IX_weighing_transactions_station_status_date
+            var trendData = await _context.WeighingTransactions
+                .AsNoTracking()
+                .Where(wt => wt.WeighedAt >= from && wt.WeighedAt <= to && wt.DeletedAt == null)
+                .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId)
+                .GroupBy(wt => wt.WeighedAt.Date)
                 .OrderBy(g => g.Key)
-                .Select(g => new ComplianceTrendDto
+                .Select(g => new
                 {
-                    Name = g.Key.ToString("MMM dd"),
+                    Date = g.Key,
                     Compliant = g.Count(t => t.ControlStatus == "LEGAL"),
                     Overloaded = g.Count(t => t.ControlStatus == "OVERLOAD"),
                     Warning = g.Count(t => t.ControlStatus == "WARNING")
                 })
-                .ToList();
+                .ToListAsync(ct);
+
+            var trend = trendData.Select(d => new ComplianceTrendDto
+            {
+                Name = d.Date.ToString("MMM dd"),
+                Compliant = d.Compliant,
+                Overloaded = d.Overloaded,
+                Warning = d.Warning
+            }).ToList();
 
             return Ok(trend);
         }
@@ -641,32 +658,33 @@ public class WeighingController : ControllerBase
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
             var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
-            var (items, _) = await _weighingService.SearchTransactionsAsync(
-                stationId: effectiveStationId,
-                fromDate: from,
-                toDate: to,
-                controlStatus: "OVERLOAD",
-                take: 10000);
+            var cacheKey = $"dashboard:overload-dist:{from:yyyyMMdd}:{to:yyyyMMdd}:{effectiveStationId}";
+            var cached = await _cacheService.GetStringAsync(cacheKey, ct);
+            if (cached != null)
+                return Ok(JsonSerializer.Deserialize<List<OverloadDistributionDto>>(cached));
 
-            var total = items.Count;
-            var bands = new List<(string Name, int Min, int Max)>
+            // Project only the overload percentage from DB (avoids loading full records)
+            var pcts = await _context.WeighingTransactions
+                .AsNoTracking()
+                .Where(wt => wt.WeighedAt >= from && wt.WeighedAt <= to && wt.DeletedAt == null)
+                .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId)
+                .Where(wt => wt.ControlStatus == "OVERLOAD" && wt.GvwPermissibleKg > 0)
+                .Select(wt => (double)wt.OverloadKg / (double)wt.GvwPermissibleKg * 100)
+                .ToListAsync(ct);
+
+            var total = pcts.Count;
+            var bands = new List<(string Name, double Min, double Max)>
             {
-                ("0-5%", 0, 5),
-                ("5-10%", 5, 10),
-                ("10-20%", 10, 20),
-                ("20-50%", 20, 50),
-                (">50%", 50, int.MaxValue)
+                ("0-5%",    0,   5),
+                ("5-10%",   5,  10),
+                ("10-20%", 10,  20),
+                ("20-50%", 20,  50),
+                (">50%",   50, double.MaxValue)
             };
 
             var distribution = bands.Select(b =>
             {
-                var count = items.Count(t =>
-                {
-                    if (t.GvwPermissibleKg <= 0) return false;
-                    var pct = (decimal)t.OverloadKg / t.GvwPermissibleKg * 100;
-                    return pct >= b.Min && (b.Max == int.MaxValue || pct < b.Max);
-                });
-
+                var count = pcts.Count(p => p >= b.Min && (b.Max == double.MaxValue || p < b.Max));
                 return new OverloadDistributionDto
                 {
                     Name = b.Name,
@@ -675,6 +693,7 @@ public class WeighingController : ControllerBase
                 };
             }).ToList();
 
+            await _cacheService.SetStringAsync(cacheKey, JsonSerializer.Serialize(distribution), TimeSpan.FromMinutes(5), ct);
             return Ok(distribution);
         }
         catch (Exception ex)
@@ -703,24 +722,24 @@ public class WeighingController : ControllerBase
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
             var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
-            var (items, _) = await _weighingService.SearchTransactionsAsync(
-                stationId: effectiveStationId,
-                fromDate: from,
-                toDate: to,
-                take: 10000);
+            var cacheKey = $"dashboard:vehicle-dist:{from:yyyyMMdd}:{to:yyyyMMdd}:{effectiveStationId}";
+            var cached = await _cacheService.GetStringAsync(cacheKey, ct);
+            if (cached != null)
+                return Ok(JsonSerializer.Deserialize<List<object>>(cached));
 
-            // Group by axle count as proxy for vehicle type
-            var distribution = items
-                .GroupBy(t => t.WeighingAxles?.Count ?? 2)
-                .Select(g => new
-                {
-                    Name = $"{g.Key}-Axle",
-                    Value = g.Count()
-                })
-                .OrderBy(d => d.Name)
-                .ToList();
+            // Server-side GroupBy by WeighingType — avoids loading full records + axle joins
+            var data = await _context.WeighingTransactions
+                .AsNoTracking()
+                .Where(wt => wt.WeighedAt >= from && wt.WeighedAt <= to && wt.DeletedAt == null)
+                .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId)
+                .GroupBy(wt => wt.WeighingType)
+                .OrderBy(g => g.Key)
+                .Select(g => new { Name = g.Key ?? "Unknown", Value = g.Count() })
+                .ToListAsync(ct);
 
-            return Ok(distribution);
+            var json = JsonSerializer.Serialize(data);
+            await _cacheService.SetStringAsync(cacheKey, json, TimeSpan.FromMinutes(5), ct);
+            return Ok(data);
         }
         catch (Exception ex)
         {
@@ -745,22 +764,22 @@ public class WeighingController : ControllerBase
         try
         {
             var effectiveStationId = stationId ?? _tenantContext.StationId;
-            var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-            var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+            var from = (dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30)).Date;
+            var to = (dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow).Date;
 
-            var (items, _) = await _weighingService.SearchTransactionsAsync(
-                stationId: effectiveStationId,
-                fromDate: from,
-                toDate: to,
-                take: 10000);
+            var rows = await _context.MvDailyWeighingStats
+                .AsNoTracking()
+                .Where(m => m.WeighingDate >= from && m.WeighingDate <= to)
+                .Where(m => !effectiveStationId.HasValue || m.StationId == effectiveStationId)
+                .ToListAsync(ct);
 
-            var volume = items
-                .GroupBy(t => t.WeighedAt.Date)
+            var volume = rows
+                .GroupBy(m => m.WeighingDate)
                 .OrderBy(g => g.Key)
                 .Select(g => new
                 {
-                    Name = g.Key.ToString("MMM dd"),
-                    Value = g.Count()
+                    name = g.Key.ToString("MMM dd"),
+                    total = g.Sum(m => m.TotalWeighings)
                 })
                 .ToList();
 
@@ -788,38 +807,19 @@ public class WeighingController : ControllerBase
     {
         try
         {
-            var effectiveStationId = stationId ?? _tenantContext.StationId;
-            var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-            var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
-
-            var (items, _) = await _weighingService.SearchTransactionsAsync(
-                stationId: effectiveStationId,
-                fromDate: from,
-                toDate: to,
-                controlStatus: "OVERLOAD",
-                take: 10000);
-
-            // Flatten axles and count violations per axle position
-            var axleViolations = items
-                .SelectMany(t => t.WeighingAxles ?? new List<WeighingAxle>())
-                .Where(a => a.OverloadKg > 0)
-                .GroupBy(a => a.AxleNumber)
-                .Select(g => new OverloadDistributionDto
+            // mv_axle_group_violations is aggregated across all history (no date/station filter)
+            var violations = await _context.MvAxleGroupViolations
+                .AsNoTracking()
+                .OrderByDescending(v => v.ViolationRatePct)
+                .Select(v => new OverloadDistributionDto
                 {
-                    Name = $"Axle {g.Key}",
-                    Count = g.Count(),
-                    Percentage = 0 // Will calculate below
+                    Name = v.AxleGrouping,
+                    Count = (int)v.Violations,
+                    Percentage = v.ViolationRatePct
                 })
-                .OrderBy(d => d.Name)
-                .ToList();
+                .ToListAsync(ct);
 
-            var totalViolations = axleViolations.Sum(v => v.Count);
-            foreach (var v in axleViolations)
-            {
-                v.Percentage = totalViolations > 0 ? Math.Round((decimal)v.Count / totalViolations * 100, 1) : 0;
-            }
-
-            return Ok(axleViolations);
+            return Ok(violations);
         }
         catch (Exception ex)
         {
@@ -915,7 +915,7 @@ public class WeighingController : ControllerBase
             VehicleRegNumber = transaction.VehicleRegNumber,
             DriverId = transaction.DriverId,
             TransporterId = transaction.TransporterId,
-            StationId = transaction.StationId,
+            StationId = transaction.StationId ?? Guid.Empty,
             WeighedByUserId = transaction.WeighedByUserId,
             WeighingType = transaction.WeighingType,
             Bound = transaction.Bound,

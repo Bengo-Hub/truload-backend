@@ -1,4 +1,11 @@
 -- =====================================================
+-- Set search_path so both public and weighing schema
+-- tables are accessible. Materialized views are created
+-- in public (first schema in path).
+-- =====================================================
+SET LOCAL search_path = public, weighing;
+
+-- =====================================================
 -- Materialized Views for Dashboard Performance
 -- =====================================================
 -- These materialized views pre-aggregate data for dashboards and Superset integration.
@@ -18,9 +25,9 @@ SELECT
     s.name AS station_name,
     DATE(wt.weighed_at) AS weighing_date,
     COUNT(*) AS total_weighings,
-    COUNT(*) FILTER (WHERE wt.is_compliant = TRUE) AS compliant_count,
-    COUNT(*) FILTER (WHERE wt.is_compliant = FALSE) AS non_compliant_count,
-    COUNT(*) FILTER (WHERE wt.is_sent_to_yard = TRUE) AS sent_to_yard_count,
+    COUNT(*) FILTER (WHERE wt."IsCompliant" = TRUE) AS compliant_count,
+    COUNT(*) FILTER (WHERE wt."IsCompliant" = FALSE) AS non_compliant_count,
+    COUNT(*) FILTER (WHERE wt."IsSentToYard" = TRUE) AS sent_to_yard_count,
     AVG(wt.gvw_measured_kg) AS avg_gvw_measured,
     AVG(wt.overload_kg) FILTER (WHERE wt.overload_kg > 0) AS avg_overload,
     MAX(wt.overload_kg) AS max_overload,
@@ -28,7 +35,7 @@ SELECT
     COUNT(DISTINCT wt.vehicle_id) AS unique_vehicles,
     COUNT(DISTINCT wt.transporter_id) AS unique_transporters
 FROM weighing_transactions wt
-INNER JOIN stations s ON s.id = wt.station_id
+INNER JOIN stations s ON s."Id" = wt.station_id
 GROUP BY wt.station_id, s.name, DATE(wt.weighed_at);
 
 -- Create indexes for fast lookups
@@ -106,20 +113,20 @@ SELECT
     wa.axle_grouping,
     tt.name AS tyre_type,
     COUNT(*) AS total_weighings,
-    COUNT(*) FILTER (WHERE wa.overload_kg > 0) AS violations,
-    ROUND(100.0 * COUNT(*) FILTER (WHERE wa.overload_kg > 0) / COUNT(*), 2) AS violation_rate_pct,
+    COUNT(*) FILTER (WHERE (wa.measured_weight_kg - wa.permissible_weight_kg) > 0) AS violations,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE (wa.measured_weight_kg - wa.permissible_weight_kg) > 0) / COUNT(*), 2) AS violation_rate_pct,
     AVG(wa.measured_weight_kg) AS avg_measured_weight,
     AVG(wa.permissible_weight_kg) AS avg_permissible_weight,
-    AVG(wa.overload_kg) FILTER (WHERE wa.overload_kg > 0) AS avg_overload,
-    MAX(wa.overload_kg) AS max_overload,
+    AVG(wa.measured_weight_kg - wa.permissible_weight_kg) FILTER (WHERE (wa.measured_weight_kg - wa.permissible_weight_kg) > 0) AS avg_overload,
+    MAX(wa.measured_weight_kg - wa.permissible_weight_kg) AS max_overload,
     SUM(wa.fee_usd) AS total_fees_generated,
     -- Geographic breakdown
     COUNT(DISTINCT wt.station_id) AS stations_with_violations,
-    ARRAY_AGG(DISTINCT s.name) FILTER (WHERE wa.overload_kg > 0) AS violating_stations
+    ARRAY_AGG(DISTINCT s.name) FILTER (WHERE (wa.measured_weight_kg - wa.permissible_weight_kg) > 0) AS violating_stations
 FROM weighing_axles wa
 INNER JOIN weighing_transactions wt ON wt.id = wa.weighing_id
-INNER JOIN stations s ON s.id = wt.station_id
-INNER JOIN tyre_types tt ON tt.id = wa.tyre_type_id
+INNER JOIN stations s ON s."Id" = wt.station_id
+LEFT JOIN tyre_types tt ON tt."Id" = wa.tyre_type_id
 GROUP BY wa.axle_grouping, tt.name;
 
 -- Create indexes
@@ -137,16 +144,16 @@ CREATE INDEX idx_mv_axle_group_violations_rate
 CREATE MATERIALIZED VIEW mv_driver_demerit_rankings AS
 SELECT
     d.id AS driver_id,
-    d.id_no_or_passport,
-    d.full_name,
-    d.phone,
+    d.id_number AS id_no_or_passport,
+    d.full_names AS full_name,
+    d.phone_number AS phone,
     d.email,
     COUNT(DISTINCT cr.id) AS total_cases,
     COUNT(DISTINCT cr.id) FILTER (WHERE cr.case_status_id IN (
-        SELECT id FROM case_statuses WHERE status = 'closed'
+        SELECT id FROM case_statuses WHERE name = 'closed'
     )) AS closed_cases,
     COUNT(DISTINCT cr.id) FILTER (WHERE cr.case_status_id IN (
-        SELECT id FROM case_statuses WHERE status = 'open'
+        SELECT id FROM case_statuses WHERE name = 'open'
     )) AS open_cases,
     SUM(wt.overload_kg) AS total_overload_kg,
     SUM(wt.total_fee_usd) AS total_fees_charged,
@@ -158,12 +165,12 @@ SELECT
         WHERE cr.created_at >= CURRENT_DATE - INTERVAL '12 months'
     ) > 1 AS is_repeat_offender,
     -- Active warrants
-    COUNT(DISTINCT aw.id) FILTER (WHERE aw.status = 'active') AS active_warrants
+    COUNT(DISTINCT aw.id) FILTER (WHERE aw."IsActive" = TRUE) AS active_warrants
 FROM drivers d
 LEFT JOIN case_registers cr ON cr.driver_id = d.id
 LEFT JOIN weighing_transactions wt ON wt.id = cr.weighing_id
 LEFT JOIN arrest_warrants aw ON aw.case_register_id = cr.id
-GROUP BY d.id, d.id_no_or_passport, d.full_name, d.phone, d.email
+GROUP BY d.id, d.id_number, d.full_names, d.phone_number, d.email
 HAVING COUNT(DISTINCT cr.id) > 0; -- Only include drivers with at least one case
 
 -- Create indexes
@@ -196,8 +203,8 @@ SELECT
     vo.full_name AS owner_name,
     t.name AS transporter_name,
     COUNT(DISTINCT wt.id) AS total_weighings,
-    COUNT(DISTINCT wt.id) FILTER (WHERE wt.is_compliant = FALSE) AS violations,
-    ROUND(100.0 * COUNT(DISTINCT wt.id) FILTER (WHERE wt.is_compliant = FALSE) / COUNT(DISTINCT wt.id), 2) AS violation_rate_pct,
+    COUNT(DISTINCT wt.id) FILTER (WHERE wt."IsCompliant" = FALSE) AS violations,
+    ROUND(100.0 * COUNT(DISTINCT wt.id) FILTER (WHERE wt."IsCompliant" = FALSE) / COUNT(DISTINCT wt.id), 2) AS violation_rate_pct,
     SUM(wt.overload_kg) FILTER (WHERE wt.overload_kg > 0) AS total_overload_kg,
     SUM(wt.total_fee_usd) AS total_fees_charged,
     MAX(wt.weighed_at) AS last_weighing_date,
@@ -243,18 +250,18 @@ CREATE INDEX idx_mv_vehicle_violation_history_tagged
 -- Used by: Management dashboards, regional performance comparison
 CREATE MATERIALIZED VIEW mv_station_performance_scorecard AS
 SELECT
-    s.id AS station_id,
+    s."Id" AS station_id,
     s.code AS station_code,
     s.name AS station_name,
     s.station_type,
     r.name AS road_name,
-    c.name AS county_name,
+    c."Name" AS county_name,
     -- Weighing metrics
     COUNT(DISTINCT wt.id) AS total_weighings,
     COUNT(DISTINCT wt.id) FILTER (WHERE wt.weighed_at >= CURRENT_DATE - INTERVAL '30 days') AS weighings_last_30_days,
     COUNT(DISTINCT wt.id) FILTER (WHERE wt.weighed_at >= CURRENT_DATE - INTERVAL '7 days') AS weighings_last_7_days,
     -- Compliance metrics
-    ROUND(100.0 * COUNT(*) FILTER (WHERE wt.is_compliant = TRUE) / NULLIF(COUNT(*), 0), 2) AS compliance_rate_pct,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE wt."IsCompliant" = TRUE) / NULLIF(COUNT(*), 0), 2) AS compliance_rate_pct,
     -- Financial metrics
     SUM(wt.total_fee_usd) AS total_revenue_usd,
     SUM(wt.total_fee_usd) FILTER (WHERE wt.weighed_at >= CURRENT_DATE - INTERVAL '30 days') AS revenue_last_30_days,
@@ -267,17 +274,17 @@ SELECT
     -- Case metrics
     COUNT(DISTINCT cr.id) AS total_cases_generated,
     -- Equipment status
-    MAX(st.tested_at) AS last_scale_test_date,
-    COUNT(DISTINCT st.id) FILTER (WHERE st.result = 'passed') AS passed_scale_tests,
-    COUNT(DISTINCT st.id) FILTER (WHERE st.result = 'failed') AS failed_scale_tests
+    MAX(st.carried_at) AS last_scale_test_date,
+    COUNT(DISTINCT st.id) FILTER (WHERE st.result = 'pass') AS passed_scale_tests,
+    COUNT(DISTINCT st.id) FILTER (WHERE st.result = 'fail') AS failed_scale_tests
 FROM stations s
 LEFT JOIN roads r ON r.id = s.road_id
-LEFT JOIN counties c ON c.id = s.county_id
-LEFT JOIN weighing_transactions wt ON wt.station_id = s.id
-LEFT JOIN yard_entries ye ON ye.station_id = s.id
+LEFT JOIN "Counties" c ON c."Id" = s.county_id
+LEFT JOIN weighing_transactions wt ON wt.station_id = s."Id"
+LEFT JOIN yard_entries ye ON ye.station_id = s."Id"
 LEFT JOIN case_registers cr ON cr.weighing_id = wt.id
-LEFT JOIN scale_tests st ON st.station_id = s.id
-GROUP BY s.id, s.code, s.name, s.station_type, r.name, c.name;
+LEFT JOIN scale_tests st ON st.station_id = s."Id"
+GROUP BY s."Id", s.code, s.name, s.station_type, r.name, c."Name";
 
 -- Create indexes
 CREATE UNIQUE INDEX idx_mv_station_performance_scorecard_unique
