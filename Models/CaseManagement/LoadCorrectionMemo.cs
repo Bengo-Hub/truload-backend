@@ -8,7 +8,7 @@ namespace TruLoad.Backend.Models.CaseManagement;
 /// Load correction/redistribution memos issued for overloaded vehicles.
 /// Tracks the correction process and scheduled reweighs.
 /// </summary>
-public class LoadCorrectionMemo : BaseEntity
+public class LoadCorrectionMemo : TenantAwareEntity
 {
     /// <summary>
     /// Unique memo number

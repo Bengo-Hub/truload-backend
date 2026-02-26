@@ -8,7 +8,7 @@ namespace TruLoad.Backend.Models.CaseManagement;
 /// Compliance certificates issued after successful reweigh.
 /// Confirms vehicle has achieved compliance after load correction.
 /// </summary>
-public class ComplianceCertificate : BaseEntity
+public class ComplianceCertificate : TenantAwareEntity
 {
     /// <summary>
     /// Unique certificate number

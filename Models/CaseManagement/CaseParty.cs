@@ -16,7 +16,7 @@ namespace TruLoad.Backend.Models.CaseManagement;
 /// Design Principle: DO NOT repeat fields that exist in linked entities.
 /// Use FK relationships and navigation properties to access data.
 /// </summary>
-public class CaseParty : BaseEntity
+public class CaseParty : TenantAwareEntity
 {
     /// <summary>
     /// Foreign key to case register

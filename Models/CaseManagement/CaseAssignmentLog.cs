@@ -8,7 +8,7 @@ namespace TruLoad.Backend.Models.CaseManagement;
 /// Tracks chain of custody - history of which IOs were assigned to cases.
 /// Follows KenloadV2 CaseIOs pattern with IsCurrent flag for active IO tracking.
 /// </summary>
-public class CaseAssignmentLog : BaseEntity
+public class CaseAssignmentLog : TenantAwareEntity
 {
     /// <summary>
     /// Foreign key to case register

@@ -6,7 +6,7 @@ namespace TruLoad.Backend.Models.CaseManagement;
 /// <summary>
 /// Closure requirement tracking by disposition type (validates Subfiles A-J completeness).
 /// </summary>
-public class CaseClosureChecklist : BaseEntity
+public class CaseClosureChecklist : TenantAwareEntity
 {
 
     /// <summary>

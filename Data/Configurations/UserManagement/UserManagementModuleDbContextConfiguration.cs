@@ -504,6 +504,10 @@ public static class UserManagementModuleDbContextConfiguration
             entity.ToTable("stations");
             entity.HasKey(e => e.Id);
 
+            // Station is the root of station isolation; ignore redundant properties from TenantAwareEntity
+            entity.Ignore(e => e.StationId);
+            entity.Ignore(e => e.Station);
+
             entity.Property(e => e.Code)
                 .HasColumnName("code")
                 .HasMaxLength(50)

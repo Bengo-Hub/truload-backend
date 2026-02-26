@@ -8,7 +8,7 @@ namespace TruLoad.Backend.Models.CaseManagement;
 /// Case subfiles B through J: Document Evidence, Expert Reports, Witness Statements, etc.
 /// Supports multi-file uploads with flexible document types per case.
 /// </summary>
-public class CaseSubfile : BaseEntity
+public class CaseSubfile : TenantAwareEntity
 {
 
     /// <summary>

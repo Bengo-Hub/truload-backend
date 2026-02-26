@@ -7,7 +7,7 @@ using TruLoad.Backend.Models.Common;
 namespace TruLoad.Backend.Models.Infrastructure
 {
     [Table("scale_tests")]
-    public class ScaleTest : BaseEntity
+    public class ScaleTest : TenantAwareEntity
     {
 
         [Required]

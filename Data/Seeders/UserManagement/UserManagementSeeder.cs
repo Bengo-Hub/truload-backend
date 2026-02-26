@@ -89,6 +89,7 @@ public class UserManagementSeeder
         foreach (var org in organizations)
         {
             var existing = await _context.Organizations
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(o => o.Code == org.Code);
             
             if (existing == null)
@@ -104,7 +105,7 @@ public class UserManagementSeeder
     private async Task SeedDepartmentsAsync()
     {
         // Get organization for department seeding
-        var kura = await _context.Organizations.FirstOrDefaultAsync(o => o.Code == "KURA");
+        var kura = await _context.Organizations.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Code == "KURA");
         if (kura == null) return;
 
         var departments = new[]
@@ -136,6 +137,7 @@ public class UserManagementSeeder
         foreach (var dept in departments)
         {
             var existing = await _context.Departments
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(d => d.Code == dept.Code && d.OrganizationId == dept.OrganizationId);
             
             if (existing == null)
@@ -150,7 +152,7 @@ public class UserManagementSeeder
 
     private async Task SeedStationsAsync()
     {
-        var kura = await _context.Organizations.FirstOrDefaultAsync(o => o.Code == "KURA");
+        var kura = await _context.Organizations.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Code == "KURA");
 
         if (kura == null) return;
 
@@ -184,6 +186,7 @@ public class UserManagementSeeder
         foreach (var station in stations)
         {
             var existing = await _context.Stations
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(s => s.Code == station.Code);
 
             if (existing == null)
@@ -255,6 +258,7 @@ public class UserManagementSeeder
         foreach (var shift in shifts)
         {
             var existing = await _context.WorkShifts
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(s => s.Code == shift.Code);
             
             if (existing == null)

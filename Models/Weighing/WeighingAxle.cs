@@ -8,7 +8,7 @@ namespace TruLoad.Backend.Models;
 /// Records actual weights, configurations, and fees for each axle during a weighing event.
 /// Maps to weighing_axles table in database.
 /// </summary>
-public class WeighingAxle : BaseEntity
+public class WeighingAxle : TenantAwareEntity
 {
     
     /// <summary>

@@ -9,7 +9,7 @@ namespace TruLoad.Backend.Models.Infrastructure;
 /// Supports polling monitoring as per FRD C.1 - Hardware Health Monitoring
 /// </summary>
 [Table("hardware_health_logs")]
-public class HardwareHealthLog : BaseEntity
+public class HardwareHealthLog : TenantAwareEntity
 {
 
     [Required]
@@ -69,7 +69,7 @@ public class HardwareHealthLog : BaseEntity
 /// Registry of weighbridge hardware devices for monitoring
 /// </summary>
 [Table("weighbridge_hardware")]
-public class WeighbridgeHardware : BaseEntity
+public class WeighbridgeHardware : TenantAwareEntity
 {
 
     [Required]

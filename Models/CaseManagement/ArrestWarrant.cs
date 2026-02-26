@@ -6,7 +6,7 @@ namespace TruLoad.Backend.Models.CaseManagement;
 /// <summary>
 /// Arrest warrant tracking (part of Subfile G).
 /// </summary>
-public class ArrestWarrant : BaseEntity
+public class ArrestWarrant : TenantAwareEntity
 {
 
     /// <summary>

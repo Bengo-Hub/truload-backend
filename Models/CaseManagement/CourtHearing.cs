@@ -7,7 +7,7 @@ namespace TruLoad.Backend.Models.CaseManagement;
 /// <summary>
 /// Court hearing schedule and minutes (part of Subfile J).
 /// </summary>
-public class CourtHearing : BaseEntity
+public class CourtHearing : TenantAwareEntity
 {
 
     /// <summary>
