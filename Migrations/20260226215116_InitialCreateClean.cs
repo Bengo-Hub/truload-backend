@@ -9,7 +9,7 @@ using Pgvector;
 namespace TruLoad.Backend.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialCreateClean : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -1201,9 +1201,7 @@ namespace TruLoad.Backend.Migrations
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
-                    StationId = table.Column<Guid>(type: "uuid", nullable: true),
-                    StationId1 = table.Column<Guid>(type: "uuid", nullable: true)
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1215,8 +1213,8 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_stations_organizations_OrganizationId",
-                        column: x => x.OrganizationId,
+                        name: "FK_stations_organizations_organization_id",
+                        column: x => x.organization_id,
                         principalTable: "organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
@@ -1226,11 +1224,6 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "roads",
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_stations_stations_StationId1",
-                        column: x => x.StationId1,
-                        principalTable: "stations",
-                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1337,11 +1330,18 @@ namespace TruLoad.Backend.Migrations
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_hardware_health_logs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_hardware_health_logs_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_hardware_health_logs_stations_station_id",
                         column: x => x.station_id,
@@ -1367,21 +1367,21 @@ namespace TruLoad.Backend.Migrations
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
-                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_UserNotifications", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_UserNotifications_organizations_OrganizationId",
-                        column: x => x.OrganizationId,
+                        name: "FK_UserNotifications_organizations_organization_id",
+                        column: x => x.organization_id,
                         principalTable: "organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_UserNotifications_stations_StationId",
-                        column: x => x.StationId,
+                        name: "FK_UserNotifications_stations_station_id",
+                        column: x => x.station_id,
                         principalTable: "stations",
                         principalColumn: "Id");
                 });
@@ -1408,11 +1408,18 @@ namespace TruLoad.Backend.Migrations
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_weighbridge_hardware", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_weighbridge_hardware_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_weighbridge_hardware_stations_station_id",
                         column: x => x.station_id,
@@ -1618,8 +1625,8 @@ namespace TruLoad.Backend.Migrations
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
-                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1631,14 +1638,14 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_push_subscriptions_organizations_OrganizationId",
-                        column: x => x.OrganizationId,
+                        name: "FK_push_subscriptions_organizations_organization_id",
+                        column: x => x.organization_id,
                         principalTable: "organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_push_subscriptions_stations_StationId",
-                        column: x => x.StationId,
+                        name: "FK_push_subscriptions_stations_station_id",
+                        column: x => x.station_id,
                         principalTable: "stations",
                         principalColumn: "Id");
                 });
@@ -1686,7 +1693,8 @@ namespace TruLoad.Backend.Migrations
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1697,6 +1705,12 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "asp_net_users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_scale_tests_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_scale_tests_stations_station_id",
                         column: x => x.station_id,
@@ -1881,7 +1895,9 @@ namespace TruLoad.Backend.Migrations
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1889,11 +1905,22 @@ namespace TruLoad.Backend.Migrations
                     table.CheckConstraint("chk_permit_dates", "\"valid_to\" > \"valid_from\"");
                     table.CheckConstraint("chk_permit_status", "\"status\" IN ('active', 'expired', 'revoked')");
                     table.ForeignKey(
+                        name: "FK_permits_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
                         name: "FK_permits_permit_types_permit_type_id",
                         column: x => x.permit_type_id,
                         principalTable: "permit_types",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_permits_stations_station_id",
+                        column: x => x.station_id,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_permits_vehicles_vehicle_id",
                         column: x => x.vehicle_id,
@@ -1949,7 +1976,7 @@ namespace TruLoad.Backend.Migrations
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
                     station_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
@@ -1979,8 +2006,8 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_weighing_transactions_organizations_OrganizationId",
-                        column: x => x.OrganizationId,
+                        name: "FK_weighing_transactions_organizations_organization_id",
+                        column: x => x.organization_id,
                         principalTable: "organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -2068,8 +2095,8 @@ namespace TruLoad.Backend.Migrations
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
-                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2104,14 +2131,14 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_case_registers_organizations_OrganizationId",
-                        column: x => x.OrganizationId,
+                        name: "FK_case_registers_organizations_organization_id",
+                        column: x => x.organization_id,
                         principalTable: "organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_case_registers_stations_StationId",
-                        column: x => x.StationId,
+                        name: "FK_case_registers_stations_station_id",
+                        column: x => x.station_id,
                         principalTable: "stations",
                         principalColumn: "Id");
                     table.ForeignKey(
@@ -2146,8 +2173,8 @@ namespace TruLoad.Backend.Migrations
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
-                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2159,14 +2186,14 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_prohibition_orders_organizations_OrganizationId",
-                        column: x => x.OrganizationId,
+                        name: "FK_prohibition_orders_organizations_organization_id",
+                        column: x => x.organization_id,
                         principalTable: "organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_prohibition_orders_stations_StationId",
-                        column: x => x.StationId,
+                        name: "FK_prohibition_orders_stations_station_id",
+                        column: x => x.station_id,
                         principalTable: "stations",
                         principalColumn: "Id");
                     table.ForeignKey(
@@ -2203,7 +2230,9 @@ namespace TruLoad.Backend.Migrations
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2226,6 +2255,17 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "axle_weight_references",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_weighing_axles_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_weighing_axles_stations_station_id",
+                        column: x => x.station_id,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_weighing_axles_tyre_types_tyre_type_id",
                         column: x => x.tyre_type_id,
@@ -2255,7 +2295,7 @@ namespace TruLoad.Backend.Migrations
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
                     station_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
@@ -2264,8 +2304,8 @@ namespace TruLoad.Backend.Migrations
                     table.CheckConstraint("chk_yard_entry_reason", "reason IN ('redistribution', 'gvw_overload', 'permit_check', 'offload', 'tag_hold')");
                     table.CheckConstraint("chk_yard_entry_status", "status IN ('pending', 'processing', 'released', 'escalated')");
                     table.ForeignKey(
-                        name: "FK_yard_entries_organizations_OrganizationId",
-                        column: x => x.OrganizationId,
+                        name: "FK_yard_entries_organizations_organization_id",
+                        column: x => x.organization_id,
                         principalTable: "organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -2304,7 +2344,9 @@ namespace TruLoad.Backend.Migrations
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2315,6 +2357,17 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "case_registers",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_arrest_warrants_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_arrest_warrants_stations_station_id",
+                        column: x => x.station_id,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_arrest_warrants_warrant_statuses_warrant_status_id",
                         column: x => x.warrant_status_id,
@@ -2340,7 +2393,9 @@ namespace TruLoad.Backend.Migrations
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2370,6 +2425,17 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "case_registers",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_case_assignment_logs_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_case_assignment_logs_stations_station_id",
+                        column: x => x.station_id,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -2402,7 +2468,9 @@ namespace TruLoad.Backend.Migrations
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2431,6 +2499,17 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "legal_sections",
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_case_closure_checklists_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_case_closure_checklists_stations_station_id",
+                        column: x => x.station_id,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -2454,7 +2533,9 @@ namespace TruLoad.Backend.Migrations
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2479,6 +2560,17 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "drivers",
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_case_parties_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_case_parties_stations_station_id",
+                        column: x => x.station_id,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_case_parties_transporters_transporter_id",
                         column: x => x.transporter_id,
@@ -2517,7 +2609,9 @@ namespace TruLoad.Backend.Migrations
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2528,6 +2622,17 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "case_registers",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_case_subfiles_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_case_subfiles_stations_station_id",
+                        column: x => x.station_id,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_case_subfiles_subfile_types_subfile_type_id",
                         column: x => x.subfile_type_id,
@@ -2556,7 +2661,9 @@ namespace TruLoad.Backend.Migrations
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2590,6 +2697,17 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "hearing_types",
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_court_hearings_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_court_hearings_stations_station_id",
+                        column: x => x.station_id,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -2612,7 +2730,9 @@ namespace TruLoad.Backend.Migrations
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2630,6 +2750,17 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "case_registers",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_load_correction_memos_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_load_correction_memos_stations_station_id",
+                        column: x => x.station_id,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_load_correction_memos_weighing_transactions_reweigh_weighin~",
                         column: x => x.reweigh_weighing_id,
@@ -2676,8 +2807,8 @@ namespace TruLoad.Backend.Migrations
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
-                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2704,14 +2835,14 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_prosecution_cases_organizations_OrganizationId",
-                        column: x => x.OrganizationId,
+                        name: "FK_prosecution_cases_organizations_organization_id",
+                        column: x => x.organization_id,
                         principalTable: "organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_prosecution_cases_stations_StationId",
-                        column: x => x.StationId,
+                        name: "FK_prosecution_cases_stations_station_id",
+                        column: x => x.station_id,
                         principalTable: "stations",
                         principalColumn: "Id");
                     table.ForeignKey(
@@ -2753,8 +2884,8 @@ namespace TruLoad.Backend.Migrations
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
-                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2766,8 +2897,8 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_special_releases_organizations_OrganizationId",
-                        column: x => x.OrganizationId,
+                        name: "FK_special_releases_organizations_organization_id",
+                        column: x => x.organization_id,
                         principalTable: "organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -2778,8 +2909,8 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_special_releases_stations_StationId",
-                        column: x => x.StationId,
+                        name: "FK_special_releases_stations_station_id",
+                        column: x => x.station_id,
                         principalTable: "stations",
                         principalColumn: "Id");
                 });
@@ -2808,7 +2939,9 @@ namespace TruLoad.Backend.Migrations
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2833,6 +2966,17 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "case_registers",
                         principalColumn: "id");
                     table.ForeignKey(
+                        name: "FK_vehicle_tags_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_vehicle_tags_stations_station_id",
+                        column: x => x.station_id,
+                        principalTable: "stations",
+                        principalColumn: "Id");
+                    table.ForeignKey(
                         name: "FK_vehicle_tags_tag_categories_tag_category_id",
                         column: x => x.tag_category_id,
                         principalTable: "tag_categories",
@@ -2854,7 +2998,9 @@ namespace TruLoad.Backend.Migrations
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2877,6 +3023,17 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "load_correction_memos",
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_compliance_certificates_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_compliance_certificates_stations_station_id",
+                        column: x => x.station_id,
+                        principalTable: "stations",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_compliance_certificates_weighing_transactions_weighing_id",
                         column: x => x.weighing_id,
@@ -2911,8 +3068,8 @@ namespace TruLoad.Backend.Migrations
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
-                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -2927,8 +3084,8 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_invoices_organizations_OrganizationId",
-                        column: x => x.OrganizationId,
+                        name: "FK_invoices_organizations_organization_id",
+                        column: x => x.organization_id,
                         principalTable: "organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -2939,8 +3096,8 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_invoices_stations_StationId",
-                        column: x => x.StationId,
+                        name: "FK_invoices_stations_station_id",
+                        column: x => x.station_id,
                         principalTable: "stations",
                         principalColumn: "Id");
                     table.ForeignKey(
@@ -2999,8 +3156,8 @@ namespace TruLoad.Backend.Migrations
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
-                    StationId = table.Column<Guid>(type: "uuid", nullable: true)
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    station_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -3021,14 +3178,14 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_receipts_organizations_OrganizationId",
-                        column: x => x.OrganizationId,
+                        name: "FK_receipts_organizations_organization_id",
+                        column: x => x.organization_id,
                         principalTable: "organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_receipts_stations_StationId",
-                        column: x => x.StationId,
+                        name: "FK_receipts_stations_station_id",
+                        column: x => x.station_id,
                         principalTable: "stations",
                         principalColumn: "Id");
                 });
@@ -3071,6 +3228,16 @@ namespace TruLoad.Backend.Migrations
                 table: "arrest_warrants",
                 column: "warrant_no",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_arrest_warrants_organization_id",
+                table: "arrest_warrants",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_arrest_warrants_station_id",
+                table: "arrest_warrants",
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_roles_code",
@@ -3307,9 +3474,19 @@ namespace TruLoad.Backend.Migrations
                 column: "assigned_by_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_case_assignment_logs_organization_id",
+                table: "case_assignment_logs",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_case_assignment_logs_previous_officer_id",
                 table: "case_assignment_logs",
                 column: "previous_officer_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_case_assignment_logs_station_id",
+                table: "case_assignment_logs",
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_case_closure_checklists_case",
@@ -3328,9 +3505,19 @@ namespace TruLoad.Backend.Migrations
                 column: "legal_section_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_case_closure_checklists_organization_id",
+                table: "case_closure_checklists",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_case_closure_checklists_review_status_id",
                 table: "case_closure_checklists",
                 column: "review_status_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_case_closure_checklists_station_id",
+                table: "case_closure_checklists",
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_case_managers_role",
@@ -3372,6 +3559,16 @@ namespace TruLoad.Backend.Migrations
                 name: "idx_case_parties_user_id",
                 table: "case_parties",
                 column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_case_parties_organization_id",
+                table: "case_parties",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_case_parties_station_id",
+                table: "case_parties",
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_case_parties_transporter_id",
@@ -3462,14 +3659,14 @@ namespace TruLoad.Backend.Migrations
                 column: "disposition_type_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_case_registers_OrganizationId",
+                name: "IX_case_registers_organization_id",
                 table: "case_registers",
-                column: "OrganizationId");
+                column: "organization_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_case_registers_StationId",
+                name: "IX_case_registers_station_id",
                 table: "case_registers",
-                column: "StationId");
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_case_registers_ViolationDetailsEmbedding",
@@ -3506,6 +3703,16 @@ namespace TruLoad.Backend.Migrations
                 column: "ContentEmbedding")
                 .Annotation("Npgsql:IndexMethod", "hnsw")
                 .Annotation("Npgsql:IndexOperators", new[] { "vector_cosine_ops" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_case_subfiles_organization_id",
+                table: "case_subfiles",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_case_subfiles_station_id",
+                table: "case_subfiles",
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_case_subfiles_subfile_type_id",
@@ -3550,6 +3757,16 @@ namespace TruLoad.Backend.Migrations
                 column: "load_correction_memo_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_compliance_certificates_organization_id",
+                table: "compliance_certificates",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_compliance_certificates_station_id",
+                table: "compliance_certificates",
+                column: "station_id");
+
+            migrationBuilder.CreateIndex(
                 name: "idx_court_hearings_case_date",
                 table: "court_hearings",
                 columns: new[] { "case_register_id", "hearing_date" });
@@ -3581,6 +3798,16 @@ namespace TruLoad.Backend.Migrations
                 column: "MinuteNotesEmbedding")
                 .Annotation("Npgsql:IndexMethod", "hnsw")
                 .Annotation("Npgsql:IndexOperators", new[] { "vector_cosine_ops" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_court_hearings_organization_id",
+                table: "court_hearings",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_court_hearings_station_id",
+                table: "court_hearings",
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_courts_code",
@@ -3710,6 +3937,11 @@ namespace TruLoad.Backend.Migrations
                 column: "ntsa_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_hardware_health_logs_organization_id",
+                table: "hardware_health_logs",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_hardware_health_logs_station_id",
                 table: "hardware_health_logs",
                 column: "station_id");
@@ -3786,14 +4018,14 @@ namespace TruLoad.Backend.Migrations
                 column: "weighing_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_invoices_OrganizationId",
+                name: "IX_invoices_organization_id",
                 table: "invoices",
-                column: "OrganizationId");
+                column: "organization_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_invoices_StationId",
+                name: "IX_invoices_station_id",
                 table: "invoices",
-                column: "StationId");
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_legal_sections_framework_section_no",
@@ -3834,9 +4066,19 @@ namespace TruLoad.Backend.Migrations
                 column: "issued_by_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_load_correction_memos_organization_id",
+                table: "load_correction_memos",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_load_correction_memos_reweigh_weighing_id",
                 table: "load_correction_memos",
                 column: "reweigh_weighing_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_load_correction_memos_station_id",
+                table: "load_correction_memos",
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_organizations_code",
@@ -3898,6 +4140,12 @@ namespace TruLoad.Backend.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_permits_organization_id",
+                schema: "weighing",
+                table: "permits",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_permits_permit_no",
                 schema: "weighing",
                 table: "permits",
@@ -3909,6 +4157,12 @@ namespace TruLoad.Backend.Migrations
                 schema: "weighing",
                 table: "permits",
                 column: "permit_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_permits_station_id",
+                schema: "weighing",
+                table: "permits",
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_permits_status",
@@ -3941,10 +4195,10 @@ namespace TruLoad.Backend.Migrations
                 column: "issued_by_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_prohibition_orders_OrganizationId",
+                name: "IX_prohibition_orders_organization_id",
                 schema: "weighing",
                 table: "prohibition_orders",
-                column: "OrganizationId");
+                column: "organization_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_prohibition_orders_prohibition_no",
@@ -3954,10 +4208,10 @@ namespace TruLoad.Backend.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_prohibition_orders_StationId",
+                name: "IX_prohibition_orders_station_id",
                 schema: "weighing",
                 table: "prohibition_orders",
-                column: "StationId");
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_prohibition_orders_status",
@@ -4016,24 +4270,24 @@ namespace TruLoad.Backend.Migrations
                 .Annotation("Npgsql:IndexOperators", new[] { "vector_cosine_ops" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_prosecution_cases_OrganizationId",
+                name: "IX_prosecution_cases_organization_id",
                 table: "prosecution_cases",
-                column: "OrganizationId");
+                column: "organization_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_prosecution_cases_StationId",
+                name: "IX_prosecution_cases_station_id",
                 table: "prosecution_cases",
-                column: "StationId");
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_push_subscriptions_OrganizationId",
+                name: "IX_push_subscriptions_organization_id",
                 table: "push_subscriptions",
-                column: "OrganizationId");
+                column: "organization_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_push_subscriptions_StationId",
+                name: "IX_push_subscriptions_station_id",
                 table: "push_subscriptions",
-                column: "StationId");
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_push_subscriptions_UserId",
@@ -4069,9 +4323,9 @@ namespace TruLoad.Backend.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_receipts_OrganizationId",
+                name: "IX_receipts_organization_id",
                 table: "receipts",
-                column: "OrganizationId");
+                column: "organization_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_receipts_received_by_id",
@@ -4079,9 +4333,9 @@ namespace TruLoad.Backend.Migrations
                 column: "received_by_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_receipts_StationId",
+                name: "IX_receipts_station_id",
                 table: "receipts",
-                column: "StationId");
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_UserId",
@@ -4146,6 +4400,11 @@ namespace TruLoad.Backend.Migrations
                 column: "deleted_at");
 
             migrationBuilder.CreateIndex(
+                name: "IX_scale_tests_organization_id",
+                table: "scale_tests",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_scale_tests_result",
                 table: "scale_tests",
                 column: "result");
@@ -4178,9 +4437,9 @@ namespace TruLoad.Backend.Migrations
                 column: "issued_at");
 
             migrationBuilder.CreateIndex(
-                name: "IX_special_releases_OrganizationId",
+                name: "IX_special_releases_organization_id",
                 table: "special_releases",
-                column: "OrganizationId");
+                column: "organization_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_special_releases_release_type_id",
@@ -4188,9 +4447,9 @@ namespace TruLoad.Backend.Migrations
                 column: "release_type_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_special_releases_StationId",
+                name: "IX_special_releases_station_id",
                 table: "special_releases",
-                column: "StationId");
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_stations_code",
@@ -4204,19 +4463,14 @@ namespace TruLoad.Backend.Migrations
                 column: "county_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_stations_OrganizationId",
+                name: "IX_stations_organization_id",
                 table: "stations",
-                column: "OrganizationId");
+                column: "organization_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_stations_road_id",
                 table: "stations",
                 column: "road_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_stations_StationId1",
-                table: "stations",
-                column: "StationId1");
 
             migrationBuilder.CreateIndex(
                 name: "idx_subcounties_code",
@@ -4329,14 +4583,14 @@ namespace TruLoad.Backend.Migrations
                 column: "work_shift_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserNotifications_OrganizationId",
+                name: "IX_UserNotifications_organization_id",
                 table: "UserNotifications",
-                column: "OrganizationId");
+                column: "organization_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserNotifications_StationId",
+                name: "IX_UserNotifications_station_id",
                 table: "UserNotifications",
-                column: "StationId");
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_vehicle_makes_code",
@@ -4462,11 +4716,21 @@ namespace TruLoad.Backend.Migrations
                 column: "created_by_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_vehicle_tags_organization_id",
+                table: "vehicle_tags",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_vehicle_tags_ReasonEmbedding",
                 table: "vehicle_tags",
                 column: "ReasonEmbedding")
                 .Annotation("Npgsql:IndexMethod", "hnsw")
                 .Annotation("Npgsql:IndexOperators", new[] { "vector_cosine_ops" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_vehicle_tags_station_id",
+                table: "vehicle_tags",
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_vehicles_axle_configuration_id",
@@ -4540,6 +4804,11 @@ namespace TruLoad.Backend.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_weighbridge_hardware_organization_id",
+                table: "weighbridge_hardware",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_weighbridge_hardware_station_id",
                 table: "weighbridge_hardware",
                 column: "station_id");
@@ -4580,6 +4849,18 @@ namespace TruLoad.Backend.Migrations
                 schema: "weighing",
                 table: "weighing_axles",
                 column: "axle_weight_reference_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_weighing_axles_organization_id",
+                schema: "weighing",
+                table: "weighing_axles",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_weighing_axles_station_id",
+                schema: "weighing",
+                table: "weighing_axles",
+                column: "station_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_weighing_axles_tyre_type_id",
@@ -4630,10 +4911,10 @@ namespace TruLoad.Backend.Migrations
                 column: "driver_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_weighing_transactions_OrganizationId",
+                name: "IX_weighing_transactions_organization_id",
                 schema: "weighing",
                 table: "weighing_transactions",
-                column: "OrganizationId");
+                column: "organization_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_weighing_transactions_original_weighing_id",
@@ -4747,9 +5028,14 @@ namespace TruLoad.Backend.Migrations
                 column: "weighing_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_yard_entries_OrganizationId",
+                name: "IX_yard_entries_organization_id",
                 table: "yard_entries",
-                column: "OrganizationId");
+                column: "organization_id");
+
+            // Custom SQL scripts for views and partitioning
+            migrationBuilder.Sql(Data.Migrations.MigrationScriptHelper.GetScript("CreateRegularViews.sql"));
+            migrationBuilder.Sql(Data.Migrations.MigrationScriptHelper.GetScript("CreateMaterializedViews.sql"));
+            migrationBuilder.Sql(Data.Migrations.MigrationScriptHelper.GetScript("CreateWeighingTransactionPartitioning.sql"));
         }
 
         /// <inheritdoc />

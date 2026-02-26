@@ -105,6 +105,12 @@ public static class FinancialModuleDbContextConfiguration
                 .HasColumnName("updated_at")
                 .HasDefaultValueSql("NOW()");
 
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
+
             entity.Property(e => e.DeletedAt)
                 .HasColumnName("deleted_at");
 
@@ -226,6 +232,12 @@ public static class FinancialModuleDbContextConfiguration
             entity.Property(e => e.UpdatedAt)
                 .HasColumnName("updated_at")
                 .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
 
             entity.Property(e => e.DeletedAt)
                 .HasColumnName("deleted_at");

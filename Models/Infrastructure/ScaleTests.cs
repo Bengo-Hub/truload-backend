@@ -12,7 +12,7 @@ namespace TruLoad.Backend.Models.Infrastructure
 
         [Required]
         [Column("station_id")]
-        public Guid StationId { get; set; }
+        public new Guid StationId { get; set; }
 
         /// <summary>
         /// Direction/bound for bidirectional stations (A or B).
@@ -76,7 +76,7 @@ namespace TruLoad.Backend.Models.Infrastructure
 
         // Navigation properties
         [ForeignKey("StationId")]
-        public virtual Station? Station { get; set; }
+        public new virtual Station? Station { get; set; }
 
         [ForeignKey("CarriedById")]
         public virtual ApplicationUser? CarriedBy { get; set; }

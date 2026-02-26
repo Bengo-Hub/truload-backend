@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.DTOs.Reporting;
 using TruLoad.Backend.Services.Interfaces.Reporting;
 using TruLoad.Backend.Authorization.Attributes;
+using System.Text.Json;
+using TruLoad.Backend.Services.Interfaces;
 
 namespace TruLoad.Backend.Controllers.Reporting;
 
@@ -16,13 +18,16 @@ namespace TruLoad.Backend.Controllers.Reporting;
 public class ReportController : ControllerBase
 {
     private readonly IReportService _reportService;
+    private readonly ICacheService _cache;
     private readonly ILogger<ReportController> _logger;
 
     public ReportController(
         IReportService reportService,
+        ICacheService cache,
         ILogger<ReportController> logger)
     {
         _reportService = reportService;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -33,9 +38,34 @@ public class ReportController : ControllerBase
     [HttpGet("catalog")]
     [HasPermission("analytics.read")]
     [ProducesResponseType(typeof(ReportCatalogResponse), StatusCodes.Status200OK)]
-    public ActionResult<ReportCatalogResponse> GetCatalog([FromQuery] string? module = null)
+    public async Task<ActionResult<ReportCatalogResponse>> GetCatalog([FromQuery] string? module = null)
     {
+        var cacheKey = $"report_catalog_{module ?? "all"}";
+        
+        try
+        {
+            var cached = await _cache.GetStringAsync(cacheKey);
+            if (!string.IsNullOrEmpty(cached))
+            {
+                return Ok(JsonSerializer.Deserialize<ReportCatalogResponse>(cached));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get report catalog from cache");
+        }
+
         var catalog = _reportService.GetCatalog(module);
+
+        try
+        {
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(catalog), TimeSpan.FromHours(4));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to cache report catalog");
+        }
+
         return Ok(catalog);
     }
 

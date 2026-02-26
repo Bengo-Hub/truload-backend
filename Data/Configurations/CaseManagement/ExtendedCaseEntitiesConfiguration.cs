@@ -141,6 +141,12 @@ public static class ExtendedCaseEntitiesConfiguration
                 .HasColumnName("updated_at")
                 .HasDefaultValueSql("NOW()");
 
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
+
             entity.Property(e => e.DeletedAt)
                 .HasColumnName("deleted_at");
 
@@ -231,6 +237,12 @@ public static class ExtendedCaseEntitiesConfiguration
             entity.Property(e => e.UpdatedAt)
                 .HasColumnName("updated_at")
                 .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
 
             entity.Property(e => e.DeletedAt)
                 .HasColumnName("deleted_at");
@@ -332,6 +344,12 @@ public static class ExtendedCaseEntitiesConfiguration
             entity.Property(e => e.UpdatedAt)
                 .HasColumnName("updated_at")
                 .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
 
             entity.Property(e => e.DeletedAt)
                 .HasColumnName("deleted_at");
@@ -451,6 +469,12 @@ public static class ExtendedCaseEntitiesConfiguration
             entity.Property(e => e.UpdatedAt)
                 .HasColumnName("updated_at")
                 .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
 
             entity.Property(e => e.DeletedAt)
                 .HasColumnName("deleted_at");

@@ -290,6 +290,12 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                     .HasColumnName("created_at")
                     .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                entity.Property(e => e.OrganizationId)
+                    .HasColumnName("organization_id");
+
+                entity.Property(e => e.StationId)
+                    .HasColumnName("station_id");
+
                 // Foreign keys
                 entity.Property(e => e.PermitTypeId)
                     .HasColumnName("permit_type_id")
@@ -386,6 +392,9 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.Property(e => e.IsSync)
                     .HasColumnName("is_sync")
                     .HasDefaultValue(false);
+
+                entity.Property(e => e.OrganizationId)
+                    .HasColumnName("organization_id");
 
                 // Foreign Keys
                 entity.Property(e => e.VehicleId).HasColumnName("vehicle_id").IsRequired();

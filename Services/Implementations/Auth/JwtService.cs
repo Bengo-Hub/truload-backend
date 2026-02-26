@@ -58,9 +58,17 @@ public class JwtService : IJwtService
             claims.Add(new Claim("permission", permission));
         }
 
-        // Add organization/station/department if assigned
-        if (user.OrganizationId.HasValue)
-            claims.Add(new Claim("organization_id", user.OrganizationId.Value.ToString()));
+        // Add organization/station/department (mandatory fallback to KURA for organization)
+        var orgId = user.OrganizationId;
+        if (!orgId.HasValue)
+        {
+            // Fallback to KURA organization if not explicitly assigned
+            var kura = _context.Organizations.AsNoTracking().FirstOrDefault(o => o.Code == "KURA");
+            if (kura != null) orgId = kura.Id;
+        }
+
+        if (orgId.HasValue)
+            claims.Add(new Claim("organization_id", orgId.Value.ToString()));
 
         if (user.StationId.HasValue)
             claims.Add(new Claim("station_id", user.StationId.Value.ToString()));

@@ -21,11 +21,11 @@ SET LOCAL search_path = public, weighing;
 -- =====================================================
 -- 1. Active Vehicle Tags View
 -- =====================================================
--- Shows only currently open/active tags
--- Used by: ANPR integration, watchlist alerts, tag management
 CREATE OR REPLACE VIEW active_vehicle_tags AS
 SELECT
     vt.id,
+    vt.organization_id,  -- From vehicle_tags
+    vt.station_id,       -- Add station_id if available or join from stations
     vt.reg_no,
     vt.tag_type,
     vt.tag_category_id,
@@ -40,20 +40,17 @@ SELECT
     u.user_name AS created_by_username,
     u.full_name AS created_by_full_name,
     vt.opened_at,
-    -- Calculate expiry date
     CASE
         WHEN vt.effective_time_period IS NOT NULL
         THEN vt.opened_at + vt.effective_time_period
         ELSE NULL
     END AS expires_at,
-    -- Calculate if tag is expired
     CASE
         WHEN vt.effective_time_period IS NOT NULL
         AND (vt.opened_at + vt.effective_time_period) < NOW()
         THEN TRUE
         ELSE FALSE
     END AS is_expired,
-    -- Days since tagged
     EXTRACT(DAY FROM (NOW() - vt.opened_at)) AS days_open,
     vt.created_at,
     vt.updated_at
@@ -67,40 +64,34 @@ AND tc.is_active = TRUE;
 -- =====================================================
 -- 2. Yard Status Summary View
 -- =====================================================
--- Real-time view of vehicles currently in holding yards
--- Used by: Yard management, vehicle release workflow
 CREATE OR REPLACE VIEW yard_status_summary AS
 SELECT
     ye.id AS yard_entry_id,
+    ye.organization_id,
+    ye.station_id,
     ye.weighing_id,
     wt.ticket_number,
     wt.vehicle_reg_number,
     wt.vehicle_id,
-    ye.station_id,
     s.name AS station_name,
     s.code AS station_code,
     ye.reason AS entry_reason,
     ye.status,
     ye.entered_at,
     ye.released_at,
-    -- Duration in yard
     CASE
         WHEN ye.released_at IS NOT NULL
-        THEN EXTRACT(EPOCH FROM (ye.released_at - ye.entered_at)) / 3600 -- Hours
-        ELSE EXTRACT(EPOCH FROM (NOW() - ye.entered_at)) / 3600 -- Hours
+        THEN EXTRACT(EPOCH FROM (ye.released_at - ye.entered_at)) / 3600
+        ELSE EXTRACT(EPOCH FROM (NOW() - ye.entered_at)) / 3600
     END AS duration_hours,
-    -- Case information if applicable
     cr.id AS case_register_id,
     cr.case_no,
     cr.violation_details,
-    -- Special release information if exists
     sr.id AS special_release_id,
     rt.name AS release_type,
     sr.certificate_no AS release_memo_no,
-    -- Transporter info
     t.name AS transporter_name,
     t.phone AS transporter_phone,
-    -- Driver info
     d.full_names AS driver_name,
     d.phone_number AS driver_phone,
     ye.created_at,
@@ -120,11 +111,11 @@ AND (ye.status IN ('pending', 'processing') OR ye.released_at >= NOW() - INTERVA
 -- =====================================================
 -- 3. Active Cases View
 -- =====================================================
--- Shows all open/pending cases with enriched details
--- Used by: Case management, officer dashboards
 CREATE OR REPLACE VIEW active_cases AS
 SELECT
     cr.id AS case_id,
+    cr.organization_id,
+    cr.station_id,
     cr.case_no,
     cr.weighing_id,
     wt.ticket_number,
@@ -158,7 +149,6 @@ SELECT
     cr.complainant_officer_id,
     cr.investigating_officer_id,
     cr.created_by_id,
-    -- Days since case creation
     EXTRACT(DAY FROM (NOW() - cr.created_at)) AS days_open,
     cr.created_at,
     cr.updated_at
@@ -180,11 +170,11 @@ AND cr.closed_at IS NULL;
 -- =====================================================
 -- 4. Pending Court Hearings View
 -- =====================================================
--- Shows upcoming and recently completed court hearings
--- Used by: Court calendar, hearing reminders, case tracking
 CREATE OR REPLACE VIEW pending_court_hearings AS
 SELECT
     ch.id AS hearing_id,
+    ch.organization_id,
+    cr.station_id,       -- Join from case_registers
     ch.case_register_id,
     cr.case_no,
     ch.court_id,
@@ -202,9 +192,7 @@ SELECT
     ch.next_hearing_date,
     ch.adjournment_reason,
     ch.presiding_officer,
-    -- Days until hearing (date - date returns integer in PostgreSQL)
     (ch.hearing_date - CURRENT_DATE) AS days_until_hearing,
-    -- Case details
     cr.vehicle_id,
     v.reg_no AS vehicle_reg_no,
     cr.driver_id,
@@ -222,18 +210,18 @@ LEFT JOIN vehicles v ON v.id = cr.vehicle_id
 LEFT JOIN drivers d ON d.id = cr.driver_id
 WHERE ch."DeletedAt" IS NULL
 AND (
-    ch.hearing_date >= CURRENT_DATE - INTERVAL '7 days' -- Include past week
+    ch.hearing_date >= CURRENT_DATE - INTERVAL '7 days'
     OR ch.hearing_status_id IN (SELECT id FROM hearing_statuses WHERE name = 'scheduled')
 );
 
 -- =====================================================
 -- 5. Active Arrest Warrants View
 -- =====================================================
--- Shows all active arrest warrants
--- Used by: Law enforcement integration, warrant tracking
 CREATE OR REPLACE VIEW active_arrest_warrants AS
 SELECT
     aw.id AS warrant_id,
+    aw.organization_id,
+    cr.station_id,       -- Join from case_registers
     aw.warrant_no,
     aw.case_register_id,
     cr.case_no,
@@ -247,9 +235,7 @@ SELECT
     aw.executed_at,
     aw.dropped_at,
     aw.execution_details,
-    -- Days since issued
     EXTRACT(DAY FROM (NOW() - aw.issued_at)) AS days_since_issued,
-    -- Case details
     cr.vehicle_id,
     v.reg_no AS vehicle_reg_no,
     cr.driver_id,
@@ -269,11 +255,11 @@ AND aw.dropped_at IS NULL;
 -- =====================================================
 -- 6. Compliant Weighings (Recent) View
 -- =====================================================
--- Shows recent compliant weighings for compliance analysis
--- Used by: Compliance reports, station performance
 CREATE OR REPLACE VIEW recent_compliant_weighings AS
 SELECT
     wt.id AS weighing_id,
+    wt.organization_id,
+    wt.station_id,
     wt.ticket_number,
     wt.vehicle_reg_number,
     wt.vehicle_id,
@@ -283,7 +269,6 @@ SELECT
     d.full_names AS driver_name,
     wt.transporter_id,
     t.name AS transporter_name,
-    wt.station_id,
     s.name AS station_name,
     s.code AS station_code,
     wt."WeighingType" AS weighing_type,
@@ -304,7 +289,7 @@ FROM weighing_transactions wt
 INNER JOIN stations s ON s."Id" = wt.station_id
 LEFT JOIN vehicles v ON v.id = wt.vehicle_id
 LEFT JOIN drivers d ON d.id = wt.driver_id
-LEFT JOIN transporters t ON t.id = wt.transporter_id
+LEFT JOIN transporters t ON t.id = v.transporter_id
 LEFT JOIN origins_destinations od_origin ON od_origin.id = wt."OriginId"
 LEFT JOIN origins_destinations od_dest ON od_dest.id = wt."DestinationId"
 LEFT JOIN cargo_types ct ON ct.id = wt."CargoId"
@@ -314,11 +299,11 @@ AND wt.weighed_at >= NOW() - INTERVAL '30 days';
 -- =====================================================
 -- 7. Pending Special Releases View
 -- =====================================================
--- Shows special releases awaiting approval/processing
--- Used by: Special release workflow, approvals dashboard
 CREATE OR REPLACE VIEW pending_special_releases AS
 SELECT
     sr.id AS special_release_id,
+    sr.organization_id,
+    cr.station_id,       -- Join from case_registers
     sr.certificate_no AS release_memo_no,
     sr.case_register_id,
     cr.case_no,
@@ -336,9 +321,7 @@ SELECT
     sr.reason,
     sr.issued_at AS requested_at,
     sr."ApprovedAt" AS approved_at,
-    -- Days since requested
     EXTRACT(DAY FROM (NOW() - sr.issued_at)) AS days_pending,
-    -- Case details
     cr.vehicle_id,
     v.reg_no AS vehicle_reg_no,
     cr.driver_id,
@@ -361,11 +344,11 @@ AND sr."IsRejected" = FALSE;
 -- =====================================================
 -- 8. Active Permits View
 -- =====================================================
--- Shows currently valid permits
--- Used by: Permit verification during weighing
 CREATE OR REPLACE VIEW active_permits AS
 SELECT
     p.id AS permit_id,
+    p.organization_id,
+    NULL::uuid AS station_id, -- Permits are typically org-wide
     p.permit_no,
     p.vehicle_id,
     v.reg_no,
@@ -379,9 +362,7 @@ SELECT
     p.issuing_authority,
     p.valid_from AS issue_date,
     p.valid_to AS expiry_date,
-    -- Days until expiry (valid_to is timestamptz, difference is interval)
     EXTRACT(DAY FROM (p.valid_to - NOW())) AS days_until_expiry,
-    -- Is about to expire (within 7 days)
     p.valid_to <= NOW() + INTERVAL '7 days' AS is_expiring_soon,
     p.created_at,
     p."UpdatedAt" AS updated_at

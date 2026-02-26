@@ -9,7 +9,7 @@ namespace TruLoad.Backend.Models.Yard;
 /// Violation tags for vehicles (automatic or manual flagging).
 /// Used for cross-station enforcement and watchlist tracking.
 /// </summary>
-public class VehicleTag : BaseEntity
+public class VehicleTag : TenantAwareEntity
 {
     /// <summary>
     /// Vehicle registration number

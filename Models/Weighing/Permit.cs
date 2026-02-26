@@ -7,7 +7,7 @@ using TruLoad.Backend.Models.Common;
 namespace TruLoad.Backend.Models.Weighing
 {
     [Table("permits")]
-    public class Permit : BaseEntity
+    public class Permit : TenantAwareEntity
     {
 
         [Required]

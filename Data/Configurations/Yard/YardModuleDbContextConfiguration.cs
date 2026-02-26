@@ -54,6 +54,12 @@ public static class YardModuleDbContextConfiguration
             entity.Property(e => e.ReleasedAt)
                 .HasColumnName("released_at");
 
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
+
             entity.Property(e => e.IsActive)
                 .HasColumnName("is_active")
                 .HasDefaultValue(true);
@@ -181,6 +187,12 @@ public static class YardModuleDbContextConfiguration
             entity.Property(e => e.UpdatedAt)
                 .HasColumnName("updated_at")
                 .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
 
             entity.Property(e => e.DeletedAt)
                 .HasColumnName("deleted_at");

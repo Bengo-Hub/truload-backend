@@ -17,10 +17,9 @@ SET LOCAL search_path = public, weighing;
 -- =====================================================
 -- 1. Daily Weighing Statistics by Station
 -- =====================================================
--- Pre-aggregates daily statistics for each station
--- Used by: Main dashboard, station performance reports
 CREATE MATERIALIZED VIEW mv_daily_weighing_stats AS
 SELECT
+    wt.organization_id,  -- From weighing_transactions
     wt.station_id,
     s.name AS station_name,
     DATE(wt.weighed_at) AS weighing_date,
@@ -36,26 +35,26 @@ SELECT
     COUNT(DISTINCT wt.transporter_id) AS unique_transporters
 FROM weighing_transactions wt
 INNER JOIN stations s ON s."Id" = wt.station_id
-GROUP BY wt.station_id, s.name, DATE(wt.weighed_at);
+GROUP BY wt.organization_id, wt.station_id, s.name, DATE(wt.weighed_at);
 
 -- Create indexes for fast lookups
 CREATE UNIQUE INDEX idx_mv_daily_weighing_stats_unique
-    ON mv_daily_weighing_stats (station_id, weighing_date);
+    ON mv_daily_weighing_stats (organization_id, station_id, weighing_date);
 
 CREATE INDEX idx_mv_daily_weighing_stats_date
     ON mv_daily_weighing_stats (weighing_date DESC);
 
-CREATE INDEX idx_mv_daily_weighing_stats_station
-    ON mv_daily_weighing_stats (station_id, weighing_date DESC);
+CREATE INDEX idx_mv_daily_weighing_stats_tenant
+    ON mv_daily_weighing_stats (organization_id, station_id, weighing_date DESC);
 
 -- =====================================================
 -- 2. Charge Summaries (GVW vs Axle Best-Basis Analysis)
 -- =====================================================
--- Pre-computed charge summaries for prosecution workflow
--- Used by: Prosecution module, financial reports
 CREATE MATERIALIZED VIEW mv_charge_summaries AS
 SELECT
     pc.id AS prosecution_case_id,
+    pc.organization_id,
+    cr.station_id,       -- Join from case_registers
     pc.case_register_id,
     cr.case_no,
     cr.vehicle_id,
@@ -74,13 +73,11 @@ SELECT
     pc.status,
     pc.certificate_no,
     pc.created_at,
-    -- Determine charge reason
     CASE
         WHEN pc.best_charge_basis = 'gvw' THEN 'GVW Overload'
         WHEN pc.best_charge_basis = 'axle' THEN 'Axle Overload'
         ELSE 'Unknown'
     END AS charge_reason,
-    -- Calculate fee difference (how much more the best basis charges vs the other)
     CASE
         WHEN pc.best_charge_basis = 'gvw' THEN pc.gvw_fee_usd - pc.max_axle_fee_usd
         WHEN pc.best_charge_basis = 'axle' THEN pc.max_axle_fee_usd - pc.gvw_fee_usd
@@ -94,22 +91,16 @@ INNER JOIN act_definitions ad ON ad.id = pc.act_id;
 CREATE UNIQUE INDEX idx_mv_charge_summaries_unique
     ON mv_charge_summaries (prosecution_case_id);
 
-CREATE INDEX idx_mv_charge_summaries_case_no
-    ON mv_charge_summaries (case_no);
-
-CREATE INDEX idx_mv_charge_summaries_status
-    ON mv_charge_summaries (status, created_at DESC);
-
-CREATE INDEX idx_mv_charge_summaries_charge_basis
-    ON mv_charge_summaries (best_charge_basis);
+CREATE INDEX idx_mv_charge_summaries_tenant
+    ON mv_charge_summaries (organization_id, station_id);
 
 -- =====================================================
 -- 3. Axle Group Violation Patterns
 -- =====================================================
--- Analyzes which axle groups violate weight limits most frequently
--- Used by: Compliance analysis, enforcement strategy
 CREATE MATERIALIZED VIEW mv_axle_group_violations AS
 SELECT
+    wt.organization_id,
+    wt.station_id,
     wa.axle_grouping,
     tt.name AS tyre_type,
     COUNT(*) AS total_weighings,
@@ -120,29 +111,24 @@ SELECT
     AVG(wa.measured_weight_kg - wa.permissible_weight_kg) FILTER (WHERE (wa.measured_weight_kg - wa.permissible_weight_kg) > 0) AS avg_overload,
     MAX(wa.measured_weight_kg - wa.permissible_weight_kg) AS max_overload,
     SUM(wa.fee_usd) AS total_fees_generated,
-    -- Geographic breakdown
     COUNT(DISTINCT wt.station_id) AS stations_with_violations,
     ARRAY_AGG(DISTINCT s.name) FILTER (WHERE (wa.measured_weight_kg - wa.permissible_weight_kg) > 0) AS violating_stations
 FROM weighing_axles wa
 INNER JOIN weighing_transactions wt ON wt.id = wa.weighing_id
 INNER JOIN stations s ON s."Id" = wt.station_id
 LEFT JOIN tyre_types tt ON tt."Id" = wa.tyre_type_id
-GROUP BY wa.axle_grouping, tt.name;
+GROUP BY wt.organization_id, wt.station_id, wa.axle_grouping, tt.name;
 
 -- Create indexes
 CREATE UNIQUE INDEX idx_mv_axle_group_violations_unique
-    ON mv_axle_group_violations (axle_grouping, tyre_type);
-
-CREATE INDEX idx_mv_axle_group_violations_rate
-    ON mv_axle_group_violations (violation_rate_pct DESC);
+    ON mv_axle_group_violations (organization_id, station_id, axle_grouping, tyre_type);
 
 -- =====================================================
 -- 4. Driver Demerit Rankings
 -- =====================================================
--- Ranks drivers by demerit points for enforcement prioritization
--- Used by: Driver monitoring, repeat offender tracking
 CREATE MATERIALIZED VIEW mv_driver_demerit_rankings AS
 SELECT
+    cr.organization_id,
     d.id AS driver_id,
     d.id_number AS id_no_or_passport,
     d.full_names AS full_name,
@@ -157,44 +143,29 @@ SELECT
     )) AS open_cases,
     SUM(wt.overload_kg) AS total_overload_kg,
     SUM(wt.total_fee_usd) AS total_fees_charged,
-    -- Last violation details
     MAX(cr.created_at) AS last_violation_date,
     MAX(wt.overload_kg) AS max_single_overload_kg,
-    -- Repeat offender flag (more than 1 case in last 12 months)
     COUNT(DISTINCT cr.id) FILTER (
         WHERE cr.created_at >= CURRENT_DATE - INTERVAL '12 months'
     ) > 1 AS is_repeat_offender,
-    -- Active warrants
     COUNT(DISTINCT aw.id) FILTER (WHERE aw."IsActive" = TRUE) AS active_warrants
 FROM drivers d
 LEFT JOIN case_registers cr ON cr.driver_id = d.id
 LEFT JOIN weighing_transactions wt ON wt.id = cr.weighing_id
 LEFT JOIN arrest_warrants aw ON aw.case_register_id = cr.id
-GROUP BY d.id, d.id_number, d.full_names, d.phone_number, d.email
-HAVING COUNT(DISTINCT cr.id) > 0; -- Only include drivers with at least one case
+GROUP BY cr.organization_id, d.id, d.id_number, d.full_names, d.phone_number, d.email
+HAVING COUNT(DISTINCT cr.id) > 0;
 
 -- Create indexes
 CREATE UNIQUE INDEX idx_mv_driver_demerit_rankings_unique
-    ON mv_driver_demerit_rankings (driver_id);
-
-CREATE INDEX idx_mv_driver_demerit_rankings_cases
-    ON mv_driver_demerit_rankings (total_cases DESC);
-
-CREATE INDEX idx_mv_driver_demerit_rankings_repeat
-    ON mv_driver_demerit_rankings (is_repeat_offender)
-    WHERE is_repeat_offender = TRUE;
-
-CREATE INDEX idx_mv_driver_demerit_rankings_warrants
-    ON mv_driver_demerit_rankings (active_warrants DESC)
-    WHERE active_warrants > 0;
+    ON mv_driver_demerit_rankings (organization_id, driver_id);
 
 -- =====================================================
 -- 5. Vehicle Violation History Summary
 -- =====================================================
--- Aggregates violation history per vehicle for quick lookups
--- Used by: Vehicle watchlist, ANPR integration
 CREATE MATERIALIZED VIEW mv_vehicle_violation_history AS
 SELECT
+    wt.organization_id,
     v.id AS vehicle_id,
     v.reg_no,
     v.make,
@@ -209,71 +180,53 @@ SELECT
     SUM(wt.total_fee_usd) AS total_fees_charged,
     MAX(wt.weighed_at) AS last_weighing_date,
     MAX(wt.overload_kg) AS max_overload_kg,
-    -- Tagging status
     EXISTS(
         SELECT 1 FROM vehicle_tags vt
         WHERE vt.reg_no = v.reg_no
         AND vt.status = 'open'
+        AND vt.organization_id = wt.organization_id
     ) AS is_currently_tagged,
-    -- Yard status
     EXISTS(
         SELECT 1 FROM yard_entries ye
         JOIN weighing_transactions wt2 ON wt2.id = ye.weighing_id
         WHERE wt2.vehicle_id = v.id
         AND ye.status IN ('pending', 'processing')
+        AND ye.organization_id = wt.organization_id
     ) AS is_in_yard
 FROM vehicles v
 LEFT JOIN vehicle_owners vo ON vo.id = v.owner_id
 LEFT JOIN transporters t ON t.id = v.transporter_id
 LEFT JOIN weighing_transactions wt ON wt.vehicle_id = v.id
-GROUP BY v.id, v.reg_no, v.make, v.model, v.vehicle_type, vo.full_name, t.name
+GROUP BY wt.organization_id, v.id, v.reg_no, v.make, v.model, v.vehicle_type, vo.full_name, t.name
 HAVING COUNT(DISTINCT wt.id) > 0;
 
 -- Create indexes
 CREATE UNIQUE INDEX idx_mv_vehicle_violation_history_unique
-    ON mv_vehicle_violation_history (vehicle_id);
-
-CREATE INDEX idx_mv_vehicle_violation_history_reg_no
-    ON mv_vehicle_violation_history (reg_no);
-
-CREATE INDEX idx_mv_vehicle_violation_history_rate
-    ON mv_vehicle_violation_history (violation_rate_pct DESC);
-
-CREATE INDEX idx_mv_vehicle_violation_history_tagged
-    ON mv_vehicle_violation_history (is_currently_tagged)
-    WHERE is_currently_tagged = TRUE;
+    ON mv_vehicle_violation_history (organization_id, vehicle_id);
 
 -- =====================================================
 -- 6. Station Performance Scorecard
 -- =====================================================
--- Comprehensive station performance metrics
--- Used by: Management dashboards, regional performance comparison
 CREATE MATERIALIZED VIEW mv_station_performance_scorecard AS
 SELECT
+    s.organization_id,
     s."Id" AS station_id,
     s.code AS station_code,
     s.name AS station_name,
     s.station_type,
     r.name AS road_name,
     c."Name" AS county_name,
-    -- Weighing metrics
     COUNT(DISTINCT wt.id) AS total_weighings,
     COUNT(DISTINCT wt.id) FILTER (WHERE wt.weighed_at >= CURRENT_DATE - INTERVAL '30 days') AS weighings_last_30_days,
     COUNT(DISTINCT wt.id) FILTER (WHERE wt.weighed_at >= CURRENT_DATE - INTERVAL '7 days') AS weighings_last_7_days,
-    -- Compliance metrics
     ROUND(100.0 * COUNT(*) FILTER (WHERE wt."IsCompliant" = TRUE) / NULLIF(COUNT(*), 0), 2) AS compliance_rate_pct,
-    -- Financial metrics
     SUM(wt.total_fee_usd) AS total_revenue_usd,
     SUM(wt.total_fee_usd) FILTER (WHERE wt.weighed_at >= CURRENT_DATE - INTERVAL '30 days') AS revenue_last_30_days,
-    -- Vehicle diversity
     COUNT(DISTINCT wt.vehicle_id) AS unique_vehicles,
     COUNT(DISTINCT wt.transporter_id) AS unique_transporters,
-    -- Yard metrics
     COUNT(DISTINCT ye.id) AS total_yard_entries,
     COUNT(DISTINCT ye.id) FILTER (WHERE ye.status IN ('pending', 'processing')) AS active_yard_entries,
-    -- Case metrics
     COUNT(DISTINCT cr.id) AS total_cases_generated,
-    -- Equipment status
     MAX(st.carried_at) AS last_scale_test_date,
     COUNT(DISTINCT st.id) FILTER (WHERE st.result = 'pass') AS passed_scale_tests,
     COUNT(DISTINCT st.id) FILTER (WHERE st.result = 'fail') AS failed_scale_tests
@@ -284,17 +237,11 @@ LEFT JOIN weighing_transactions wt ON wt.station_id = s."Id"
 LEFT JOIN yard_entries ye ON ye.station_id = s."Id"
 LEFT JOIN case_registers cr ON cr.weighing_id = wt.id
 LEFT JOIN scale_tests st ON st.station_id = s."Id"
-GROUP BY s."Id", s.code, s.name, s.station_type, r.name, c."Name";
+GROUP BY s.organization_id, s."Id", s.code, s.name, s.station_type, r.name, c."Name";
 
 -- Create indexes
 CREATE UNIQUE INDEX idx_mv_station_performance_scorecard_unique
-    ON mv_station_performance_scorecard (station_id);
-
-CREATE INDEX idx_mv_station_performance_scorecard_code
-    ON mv_station_performance_scorecard (station_code);
-
-CREATE INDEX idx_mv_station_performance_scorecard_compliance
-    ON mv_station_performance_scorecard (compliance_rate_pct DESC);
+    ON mv_station_performance_scorecard (organization_id, station_id);
 
 -- =====================================================
 -- Refresh Functions

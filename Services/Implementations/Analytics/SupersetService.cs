@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using TruLoad.Backend.DTOs.Analytics;
+using TruLoad.Backend.Services.Interfaces;
 using TruLoad.Backend.Services.Interfaces.Analytics;
 
 namespace TruLoad.Backend.Services.Implementations.Analytics;
@@ -18,18 +19,22 @@ public class SupersetService : ISupersetService
     private readonly IMemoryCache _cache;
     private readonly SupersetOptions _supersetOptions;
     private readonly OllamaOptions _ollamaOptions;
+    private readonly ICacheService _redisCache;
     private readonly ILogger<SupersetService> _logger;
     private const string AccessTokenCacheKey = "superset_access_token";
+    private const string DashboardsCacheKey = "superset_dashboards";
 
     public SupersetService(
         HttpClient httpClient,
         IMemoryCache cache,
+        ICacheService redisCache,
         IOptions<SupersetOptions> supersetOptions,
         IOptions<OllamaOptions> ollamaOptions,
         ILogger<SupersetService> logger)
     {
         _httpClient = httpClient;
         _cache = cache;
+        _redisCache = redisCache;
         _supersetOptions = supersetOptions.Value;
         _ollamaOptions = ollamaOptions.Value;
         _logger = logger;
@@ -85,6 +90,20 @@ public class SupersetService : ISupersetService
 
     public async Task<List<SupersetDashboardDto>> GetDashboardsAsync(CancellationToken ct = default)
     {
+        // Try get from Redis cache first
+        var cachedDashboards = await _redisCache.GetStringAsync(DashboardsCacheKey, ct);
+        if (!string.IsNullOrEmpty(cachedDashboards))
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<List<SupersetDashboardDto>>(cachedDashboards) ?? new List<SupersetDashboardDto>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to deserialize cached dashboards");
+            }
+        }
+
         var accessToken = await GetAccessTokenAsync(ct);
 
         var httpRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/dashboard/");
@@ -117,6 +136,17 @@ public class SupersetService : ISupersetService
 
             _logger.LogDebug("Filtered dashboards by service tag '{Tag}': {Count} of {Total}",
                 tag, dashboards.Count, resultArray.GetArrayLength());
+        }
+
+        // Cache in Redis for 1 hour
+        try
+        {
+            var encodedDashboards = JsonSerializer.Serialize(dashboards);
+            await _redisCache.SetStringAsync(DashboardsCacheKey, encodedDashboards, TimeSpan.FromHours(1), ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to cache dashboards in Redis");
         }
 
         return dashboards;

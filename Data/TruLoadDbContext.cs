@@ -301,11 +301,24 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
             modelBuilder.Entity<Models.Weighing.Vehicle>().Ignore(e => e.DescriptionEmbedding);
         }
 
-        // ===== Global Multi-tenancy Isolation =====
+        // ===== Global Multi-tenancy Isolation & Column Mapping =====
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             if (typeof(TenantAwareEntity).IsAssignableFrom(entityType.ClrType))
             {
+                // Set column names to snake_case for multi-tenancy columns to satisfy SQL views
+                var orgIdProperty = entityType.FindProperty(nameof(TenantAwareEntity.OrganizationId));
+                if (orgIdProperty != null)
+                {
+                    orgIdProperty.SetColumnName("organization_id");
+                }
+
+                var stationIdProperty = entityType.FindProperty(nameof(TenantAwareEntity.StationId));
+                if (stationIdProperty != null)
+                {
+                    stationIdProperty.SetColumnName("station_id");
+                }
+
                 var method = typeof(TruLoadDbContext)
                     .GetMethod(nameof(ApplyTenantFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
                     ?.MakeGenericMethod(entityType.ClrType);
@@ -317,7 +330,9 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
 
     private void ApplyTenantFilter<T>(ModelBuilder modelBuilder) where T : TenantAwareEntity
     {
-        modelBuilder.Entity<T>().HasQueryFilter(e => e.OrganizationId == _tenantContext.OrganizationId);
+        modelBuilder.Entity<T>().HasQueryFilter(e => 
+            e.OrganizationId == _tenantContext.OrganizationId &&
+            (!_tenantContext.StationId.HasValue || e.StationId == null || e.StationId == _tenantContext.StationId));
     }
 
     public override int SaveChanges()
@@ -347,8 +362,9 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
                     entry.Entity.OrganizationId = _tenantContext.OrganizationId;
                 }
 
-                // Auto-populate StationId if not set and available in context
-                if (!entry.Entity.StationId.HasValue && _tenantContext.StationId.HasValue)
+                // Auto-populate StationId if available in context and not explicitly set
+                // Only populate if the entity specifically has a nullable StationId or it's empty
+                if ((entry.Entity.StationId == null || entry.Entity.StationId == Guid.Empty) && _tenantContext.StationId.HasValue)
                 {
                     entry.Entity.StationId = _tenantContext.StationId;
                 }

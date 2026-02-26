@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using TruLoad.Backend.Models.Common;
 
 namespace TruLoad.Backend.Models.Views;
 
@@ -6,16 +7,14 @@ namespace TruLoad.Backend.Models.Views;
  * REGULAR VIEWS
  */
 
-public class ActiveVehicleTag
+public class ActiveVehicleTag : TenantAwareEntity
 {
-    public Guid Id { get; set; }
     public string RegNo { get; set; } = null!;
     public string TagType { get; set; } = null!;
     public Guid TagCategoryId { get; set; }
     public string TagCategoryName { get; set; } = null!;
     public string? TagCategoryDescription { get; set; }
     public string? Reason { get; set; }
-    public string StationCode { get; set; } = null!;
     public string Status { get; set; } = null!;
     public string? TagPhotoPath { get; set; }
     public TimeSpan? EffectiveTimePeriod { get; set; }
@@ -26,18 +25,15 @@ public class ActiveVehicleTag
     public DateTime? ExpiresAt { get; set; }
     public bool IsExpired { get; set; }
     public double DaysOpen { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
 }
 
-public class YardStatusSummary
+public class YardStatusSummary : TenantAwareEntity
 {
     public Guid YardEntryId { get; set; }
     public Guid WeighingId { get; set; }
     public string TicketNumber { get; set; } = null!;
     public string VehicleRegNumber { get; set; } = null!;
     public Guid? VehicleId { get; set; }
-    public Guid StationId { get; set; }
     public string StationName { get; set; } = null!;
     public string StationCode { get; set; } = null!;
     public string? EntryReason { get; set; }
@@ -55,11 +51,9 @@ public class YardStatusSummary
     public string? TransporterPhone { get; set; }
     public string? DriverName { get; set; }
     public string? DriverPhone { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
 }
 
-public class ActiveCase
+public class ActiveCase : TenantAwareEntity
 {
     public Guid CaseId { get; set; }
     public string CaseNo { get; set; } = null!;
@@ -96,11 +90,9 @@ public class ActiveCase
     public Guid? InvestigatingOfficerId { get; set; }
     public Guid CreatedById { get; set; }
     public double DaysOpen { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
 }
 
-public class PendingCourtHearing
+public class PendingCourtHearing : TenantAwareEntity
 {
     public Guid HearingId { get; set; }
     public Guid CaseRegisterId { get; set; }
@@ -120,29 +112,26 @@ public class PendingCourtHearing
     public DateTime? NextHearingDate { get; set; }
     public string? AdjournmentReason { get; set; }
     public string? PresidingOfficer { get; set; }
-    public int DaysUntilHearing { get; set; }   // date - date = integer in PostgreSQL
+    public int DaysUntilHearing { get; set; }
     public Guid? VehicleId { get; set; }
     public string? VehicleRegNo { get; set; }
     public Guid? DriverId { get; set; }
     public string? DriverName { get; set; }
     public string? ViolationDetails { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
 }
 
-public class ActiveArrestWarrant
+public class ActiveArrestWarrant : TenantAwareEntity
 {
     public Guid WarrantId { get; set; }
     public string WarrantNo { get; set; } = null!;
     public Guid CaseRegisterId { get; set; }
     public string CaseNo { get; set; } = null!;
-    public string IssuedAgainst { get; set; } = null!;      // accused_name alias
+    public string IssuedAgainst { get; set; } = null!;
     public string? AccusedIdNo { get; set; }
-    public string? Reason { get; set; }                      // offence_description alias
-    public string? IssuedByCourtOfficer { get; set; }        // issued_by alias
+    public string? Reason { get; set; }
+    public string? IssuedByCourtOfficer { get; set; }
     public DateTime IssuedAt { get; set; }
     public Guid? WarrantStatusId { get; set; }
-    public bool IsActive { get; set; }
     public DateTime? ExecutedAt { get; set; }
     public DateTime? DroppedAt { get; set; }
     public string? ExecutionDetails { get; set; }
@@ -153,10 +142,9 @@ public class ActiveArrestWarrant
     public string? DriverName { get; set; }
     public string? DriverPhone { get; set; }
     public string? ViolationDetails { get; set; }
-    public DateTime CreatedAt { get; set; }
 }
 
-public class RecentCompliantWeighing
+public class RecentCompliantWeighing : TenantAwareEntity
 {
     public Guid WeighingId { get; set; }
     public string TicketNumber { get; set; } = null!;
@@ -168,7 +156,6 @@ public class RecentCompliantWeighing
     public string? DriverName { get; set; }
     public Guid? TransporterId { get; set; }
     public string? TransporterName { get; set; }
-    public Guid StationId { get; set; }
     public string StationName { get; set; } = null!;
     public string StationCode { get; set; } = null!;
     public string WeighingType { get; set; } = null!;
@@ -187,7 +174,7 @@ public class RecentCompliantWeighing
     public string? CargoType { get; set; }
 }
 
-public class PendingSpecialRelease
+public class PendingSpecialRelease : TenantAwareEntity
 {
     public Guid SpecialReleaseId { get; set; }
     public string? ReleaseMemoNo { get; set; }
@@ -213,7 +200,7 @@ public class PendingSpecialRelease
     public string? TicketNumber { get; set; }
 }
 
-public class ActivePermit
+public class ActivePermit : TenantAwareEntity
 {
     public Guid PermitId { get; set; }
     public string PermitNo { get; set; } = null!;
@@ -227,21 +214,18 @@ public class ActivePermit
     public decimal GvwExtensionKg { get; set; }
     public decimal AxleExtensionKg { get; set; }
     public string? IssuingAuthority { get; set; }
-    public DateTime IssueDate { get; set; }             // valid_from alias
-    public DateTime ExpiryDate { get; set; }            // valid_to alias
+    public DateTime IssueDate { get; set; }
+    public DateTime ExpiryDate { get; set; }
     public double DaysUntilExpiry { get; set; }
     public bool IsExpiringSoon { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
 }
 
 /* 
  * MATERIALIZED VIEWS
  */
 
-public class MvDailyWeighingStats
+public class MvDailyWeighingStats : TenantAwareEntity
 {
-    public Guid StationId { get; set; }
     public string StationName { get; set; } = null!;
     public DateTime WeighingDate { get; set; }
     public long TotalWeighings { get; set; }
@@ -256,7 +240,7 @@ public class MvDailyWeighingStats
     public long UniqueTransporters { get; set; }
 }
 
-public class MvChargeSummary
+public class MvChargeSummary : TenantAwareEntity
 {
     public Guid ProsecutionCaseId { get; set; }
     public Guid CaseRegisterId { get; set; }
@@ -276,12 +260,11 @@ public class MvChargeSummary
     public decimal ForexRate { get; set; }
     public string Status { get; set; } = null!;
     public string? CertificateNo { get; set; }
-    public DateTime CreatedAt { get; set; }
     public string ChargeReason { get; set; } = null!;
     public decimal FeeDifferenceUsd { get; set; }
 }
 
-public class MvAxleGroupViolation
+public class MvAxleGroupViolation : TenantAwareEntity
 {
     public string AxleGrouping { get; set; } = null!;
     public string TyreType { get; set; } = null!;
@@ -297,7 +280,7 @@ public class MvAxleGroupViolation
     public string[]? ViolatingStations { get; set; }
 }
 
-public class MvDriverDemeritRanking
+public class MvDriverDemeritRanking : TenantAwareEntity
 {
     public Guid DriverId { get; set; }
     public string IdNoOrPassport { get; set; } = null!;
@@ -315,7 +298,7 @@ public class MvDriverDemeritRanking
     public long ActiveWarrants { get; set; }
 }
 
-public class MvVehicleViolationHistory
+public class MvVehicleViolationHistory : TenantAwareEntity
 {
     public Guid VehicleId { get; set; }
     public string RegNo { get; set; } = null!;
@@ -335,9 +318,8 @@ public class MvVehicleViolationHistory
     public bool IsInYard { get; set; }
 }
 
-public class MvStationPerformanceScorecard
+public class MvStationPerformanceScorecard : TenantAwareEntity
 {
-    public Guid StationId { get; set; }
     public string StationCode { get; set; } = null!;
     public string StationName { get; set; } = null!;
     public string StationType { get; set; } = null!;

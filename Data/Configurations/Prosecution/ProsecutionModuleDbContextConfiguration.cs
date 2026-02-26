@@ -117,6 +117,12 @@ public static class ProsecutionModuleDbContextConfiguration
                 .HasColumnName("updated_at")
                 .HasDefaultValueSql("NOW()");
 
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
+
             entity.Property(e => e.DeletedAt)
                 .HasColumnName("deleted_at");
 

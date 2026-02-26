@@ -221,7 +221,7 @@ public class StationsController : ControllerBase
 
             var result = await _context.MvStationPerformanceScorecards
                 .AsNoTracking()
-                .Where(s => stationIds.Contains(s.StationId))
+                .Where(s => s.StationId.HasValue && stationIds.Contains(s.StationId.Value))
                 .Select(s => new
                 {
                     name = s.StationName,

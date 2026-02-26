@@ -131,6 +131,12 @@ public static class CoreCaseEntitiesConfiguration
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .IsRequired();
 
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
+
             entity.Property(e => e.ClosedAt)
                 .HasColumnName("closed_at")
                 .HasColumnType("timestamp with time zone");
@@ -325,6 +331,12 @@ public static class CoreCaseEntitiesConfiguration
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .IsRequired();
 
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
+
             // Indexes
             entity.HasIndex(e => new { e.CaseRegisterId, e.SubfileTypeId })
                 .HasDatabaseName("idx_case_subfiles_case_type");
@@ -409,6 +421,12 @@ public static class CoreCaseEntitiesConfiguration
                 .HasColumnType("timestamp with time zone")
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .IsRequired();
+
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
 
             // Indexes
             entity.HasIndex(e => e.CaseRegisterId)
@@ -505,6 +523,12 @@ public static class CoreCaseEntitiesConfiguration
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .IsRequired();
 
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
+
             // Indexes
             entity.HasIndex(e => e.CaseRegisterId)
                 .HasDatabaseName("idx_arrest_warrants_case");
@@ -592,6 +616,12 @@ public static class CoreCaseEntitiesConfiguration
                 .HasColumnType("timestamp with time zone")
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .IsRequired();
+
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
 
             // Indexes
             entity.HasIndex(e => new { e.CaseRegisterId, e.HearingDate })
@@ -733,6 +763,12 @@ public static class CoreCaseEntitiesConfiguration
                 .HasColumnType("timestamp with time zone")
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .IsRequired();
+
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
 
             // Index
             entity.HasIndex(e => e.CaseRegisterId)

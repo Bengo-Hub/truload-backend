@@ -26,6 +26,7 @@ public class AuthController : ControllerBase
     private readonly INotificationService _notificationService;
     private readonly ISettingsService _settingsService;
     private readonly IUserShiftRepository _userShiftRepository;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthController> _logger;
 
@@ -38,6 +39,7 @@ public class AuthController : ControllerBase
         INotificationService notificationService,
         ISettingsService settingsService,
         IUserShiftRepository userShiftRepository,
+        IOrganizationRepository organizationRepository,
         IConfiguration configuration,
         ILogger<AuthController> logger)
     {
@@ -49,6 +51,7 @@ public class AuthController : ControllerBase
         _notificationService = notificationService;
         _settingsService = settingsService;
         _userShiftRepository = userShiftRepository;
+        _organizationRepository = organizationRepository;
         _configuration = configuration;
         _logger = logger;
     }
@@ -65,13 +68,20 @@ public class AuthController : ControllerBase
             return BadRequest(ModelState);
         }
 
+        var orgId = request.OrganizationId;
+        if (!orgId.HasValue)
+        {
+            var kura = await _organizationRepository.GetByCodeAsync("KURA");
+            orgId = kura?.Id;
+        }
+
         var user = new ApplicationUser
         {
             UserName = request.Email,
             Email = request.Email,
             FullName = request.FullName,
             PhoneNumber = request.PhoneNumber,
-            OrganizationId = request.OrganizationId,
+            OrganizationId = orgId,
             StationId = request.StationId,
             DepartmentId = request.DepartmentId,
             CreatedAt = DateTime.UtcNow
@@ -225,7 +235,7 @@ public class AuthController : ControllerBase
                 roles = roles,
                 permissions = uniquePermissions,
                 isSuperUser,
-                organizationId = user.OrganizationId,
+                organizationId = user.OrganizationId ?? (await _organizationRepository.GetByCodeAsync("KURA"))?.Id,
                 stationId = user.StationId,
                 departmentId = user.DepartmentId
             }
