@@ -425,7 +425,6 @@ builder.Services.AddScoped<IBackupService, BackupService>();
 // Materialized view refresh + partition lifecycle management
 builder.Services.AddScoped<IMaterializedViewService, MaterializedViewService>();
 builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.MaterializedViewRefreshJob>();
-builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.PartitionMaintenanceJob>();
 
 // Analytics services (Superset integration)
 builder.Services.Configure<SupersetOptions>(builder.Configuration.GetSection(SupersetOptions.SectionName));
@@ -493,7 +492,7 @@ try
 
 
         // Check if initial seeding has already been completed
-        var seedingVersion = 1; // Increment this when you need to re-seed
+        var seedingVersion = 2; // Increment this when you need to re-seed
         var seedingName = "InitialSeed";
 
         var existingSeed = await dbContext.DatabaseSeedingHistory
@@ -546,17 +545,16 @@ try
         await integrationSeeder.SeedAsync();
         Log.Information("✓ Integration config seeding completed");
 
-        // Ensure monthly partitions exist and populate materialized views on startup
+        // Initialize materialized views on startup
         try
         {
             var mvService = scope.ServiceProvider.GetRequiredService<IMaterializedViewService>();
-            await mvService.EnsurePartitionsAsync();
             await mvService.RefreshAllAsync();
-            Log.Information("✓ Partitions ensured and materialized views refreshed on startup");
+            Log.Information("✓ Materialized views refreshed on startup");
         }
         catch (Exception mvEx)
         {
-            Log.Warning(mvEx, "Failed to initialize partitions/materialized views on startup — will retry via Hangfire");
+            Log.Warning(mvEx, "Failed to refresh materialized views on startup — will retry via Hangfire");
         }
     }
 }
@@ -715,25 +713,6 @@ Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.Materi
         QueueName = "default"
     });
 
-Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.PartitionMaintenanceJob>(
-    "partition-maintenance",
-    job => job.ExecuteAsync(default),
-    "0 1 1 * *", // 1st of every month at 01:00 UTC
-    new Hangfire.RecurringJobOptions
-    {
-        TimeZone = TimeZoneInfo.Utc,
-        QueueName = "default"
-    });
-
-Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.PartitionMaintenanceJob>(
-    "partition-archive",
-    job => job.ExecuteQuarterlyAsync(default),
-    "0 2 1 1,4,7,10 *", // Quarterly Jan/Apr/Jul/Oct at 02:00 UTC
-    new Hangfire.RecurringJobOptions
-    {
-        TimeZone = TimeZoneInfo.Utc,
-        QueueName = "default"
-    });
 
 // Health endpoint
 app.MapHealthChecks("/health");

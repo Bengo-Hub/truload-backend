@@ -14,18 +14,4 @@ public interface IMaterializedViewService
     /// </summary>
     Task RefreshAllAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Creates monthly partitions for weighing_transactions covering the next 12 months
-    /// and the previous 1 month. Safe to call repeatedly — skips existing partitions.
-    /// Calls the DB function: SELECT create_weighing_partitions(12, 1)
-    /// Should run on startup and monthly via Hangfire.
-    /// </summary>
-    Task EnsurePartitionsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Archives or detaches weighing_transactions partitions older than 24 months.
-    /// Calls the DB function: SELECT archive_old_weighing_partitions(24, false)
-    /// Should run quarterly via Hangfire.
-    /// </summary>
-    Task RunQuarterlyMaintenanceAsync(CancellationToken ct = default);
 }
