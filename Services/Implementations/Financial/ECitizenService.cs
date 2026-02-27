@@ -70,11 +70,18 @@ public class ECitizenService : IECitizenService
 
     public async Task<string> GetAccessTokenAsync(CancellationToken ct = default)
     {
-        var db = _redis.GetDatabase();
-        var cachedToken = await db.StringGetAsync(RedisTokenKey);
+        try
+        {
+            var db = _redis.GetDatabase();
+            var cachedToken = await db.StringGetAsync(RedisTokenKey);
 
-        if (cachedToken.HasValue)
-            return cachedToken.ToString();
+            if (cachedToken.HasValue)
+                return cachedToken.ToString();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read from Redis cache for Pesaflow OAuth token");
+        }
 
         var credentials = await _integrationConfigService.GetDecryptedCredentialsAsync(ProviderName, ct);
         var config = await _integrationConfigService.GetByProviderAsync(ProviderName, ct)
@@ -117,7 +124,16 @@ public class ECitizenService : IECitizenService
 
         // Cache for the full validity period minus 60s buffer
         var cacheTtl = TimeSpan.FromSeconds(Math.Max(expiresIn - 60, 60));
-        await db.StringSetAsync(RedisTokenKey, token, cacheTtl);
+        
+        try
+        {
+            var db = _redis.GetDatabase();
+            await db.StringSetAsync(RedisTokenKey, token, cacheTtl);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to cache Pesaflow OAuth token to Redis");
+        }
 
         _logger.LogInformation("Pesaflow OAuth token acquired, expires in {ExpiresIn}s, caching for {CacheTtl}s",
             expiresIn, cacheTtl.TotalSeconds);
