@@ -7921,7 +7921,7 @@
       "penaltyDescription": "EAC Axle Overload >500 kg - USD 0.50/kg"
     },
     {
-      "legalFramework": "TrafficAct",
+      "legalFramework": "TRAFFIC_ACT",
       "feeType": "GVW",
       "overloadMinKg": 1,
       "overloadMaxKg": 2000,
@@ -7931,7 +7931,7 @@
       "penaltyDescription": "Kenya Traffic Act GVW 1-2000kg - KSh 500/100kg (KSh 5/kg)"
     },
     {
-      "legalFramework": "TrafficAct",
+      "legalFramework": "TRAFFIC_ACT",
       "feeType": "GVW",
       "overloadMinKg": 2001,
       "overloadMaxKg": 5000,
@@ -7941,7 +7941,7 @@
       "penaltyDescription": "Kenya Traffic Act GVW 2001-5000kg - KSh 1,000/100kg (KSh 10/kg)"
     },
     {
-      "legalFramework": "TrafficAct",
+      "legalFramework": "TRAFFIC_ACT",
       "feeType": "GVW",
       "overloadMinKg": 5001,
       "overloadMaxKg": null,
@@ -7951,7 +7951,7 @@
       "penaltyDescription": "Kenya Traffic Act GVW >5000kg - KSh 1,500/100kg (KSh 15/kg)"
     },
     {
-      "legalFramework": "TrafficAct",
+      "legalFramework": "TRAFFIC_ACT",
       "feeType": "AXLE",
       "overloadMinKg": 1,
       "overloadMaxKg": 1000,
@@ -7961,7 +7961,7 @@
       "penaltyDescription": "Kenya Traffic Act Axle 1-1000kg - KSh 250/100kg (KSh 2.50/kg)"
     },
     {
-      "legalFramework": "TrafficAct",
+      "legalFramework": "TRAFFIC_ACT",
       "feeType": "AXLE",
       "overloadMinKg": 1001,
       "overloadMaxKg": null,
