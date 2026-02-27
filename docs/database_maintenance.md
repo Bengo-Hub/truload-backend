@@ -19,7 +19,7 @@ kubectl scale deployment truload-backend -n truload --replicas=0
 ### 3. Terminate Active Sessions
 If the database is still being accessed, terminate sessions from the `postgres` or `admin_user` context:
 ```powershell
-kubectl exec postgresql-0 -n infra -- /bin/bash -c "export PGPASSWORD='<ADMIN_PASSWORD>'; psql -h 127.0.0.1 -U admin_user -d postgres -c \"SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = 'truload' AND pid <> pg_backend_pid();\""
+kubectl exec postgresql-0 -n infra -- /bin/bash -c "export PGPASSWORD='<ADMIN_PASSWORD>'; psql -h 127.0.0.1 -U admin_user -d postgres -c `"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'truload' AND pid != pg_backend_pid();`""
 ```
 
 ### 4. Drop and Recreate Database
