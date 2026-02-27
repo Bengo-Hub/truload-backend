@@ -97,10 +97,10 @@ SELECT
     ye.created_at,
     ye.updated_at
 FROM yard_entries ye
-INNER JOIN weighing_transactions wt ON wt.id = ye.weighing_id
+INNER JOIN weighing_transactions wt ON wt.id = ye.weighing_id AND wt.organization_id = ye.organization_id
 INNER JOIN stations s ON s."Id" = ye.station_id
-LEFT JOIN case_registers cr ON cr.yard_entry_id = ye.id
-LEFT JOIN special_releases sr ON sr.case_register_id = cr.id
+LEFT JOIN case_registers cr ON cr.yard_entry_id = ye.id AND cr.organization_id = ye.organization_id
+LEFT JOIN special_releases sr ON sr.case_register_id = cr.id AND sr.organization_id = ye.organization_id
 LEFT JOIN release_types rt ON rt.id = sr.release_type_id
 LEFT JOIN vehicles v ON v.id = wt.vehicle_id
 LEFT JOIN transporters t ON t.id = v.transporter_id
@@ -155,7 +155,7 @@ SELECT
 FROM case_registers cr
 INNER JOIN case_statuses cs ON cs.id = cr.case_status_id
 INNER JOIN violation_types vty ON vty.id = cr.violation_type_id
-LEFT JOIN weighing_transactions wt ON wt.id = cr.weighing_id
+LEFT JOIN weighing_transactions wt ON wt.id = cr.weighing_id AND wt.organization_id = cr.organization_id
 LEFT JOIN vehicles v ON v.id = cr.vehicle_id
 LEFT JOIN drivers d ON d.id = cr.driver_id
 LEFT JOIN act_definitions ad ON ad.id = cr.act_id
@@ -330,13 +330,13 @@ SELECT
     cr.weighing_id,
     wt.ticket_number
 FROM special_releases sr
-INNER JOIN case_registers cr ON cr.id = sr.case_register_id
+INNER JOIN case_registers cr ON cr.id = sr.case_register_id AND cr.organization_id = sr.organization_id
 INNER JOIN release_types rt ON rt.id = sr.release_type_id
 INNER JOIN asp_net_users u_req ON u_req."Id" = sr.authorized_by_id
 LEFT JOIN asp_net_users u_app ON u_app."Id" = sr."ApprovedById"
 LEFT JOIN vehicles v ON v.id = cr.vehicle_id
 LEFT JOIN drivers d ON d.id = cr.driver_id
-LEFT JOIN weighing_transactions wt ON wt.id = cr.weighing_id
+LEFT JOIN weighing_transactions wt ON wt.id = cr.weighing_id AND wt.organization_id = sr.organization_id
 WHERE sr."DeletedAt" IS NULL
 AND sr."IsApproved" = FALSE
 AND sr."IsRejected" = FALSE;

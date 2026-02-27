@@ -14,7 +14,7 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Backend.Migrations
 {
     [DbContext(typeof(TruLoadDbContext))]
-    [Migration("20260226215116_InitialCreateClean")]
+    [Migration("20260227170542_InitialCreateClean")]
     partial class InitialCreateClean
     {
         /// <inheritdoc />
@@ -1419,6 +1419,8 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("VehicleId", "CreatedAt")
                         .HasDatabaseName("idx_case_registers_vehicle");
 
+                    b.HasIndex("WeighingId", "OrganizationId");
+
                     b.ToTable("case_registers", (string)null);
                 });
 
@@ -1779,6 +1781,8 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasIndex("WeighingId")
                         .HasDatabaseName("idx_compliance_certificates_weighing_id");
+
+                    b.HasIndex("WeighingId", "OrganizationId");
 
                     b.ToTable("compliance_certificates", (string)null);
                 });
@@ -2346,12 +2350,14 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasIndex("OrganizationId");
 
-                    b.HasIndex("ReweighWeighingId");
-
                     b.HasIndex("StationId");
 
                     b.HasIndex("WeighingId")
                         .HasDatabaseName("idx_load_correction_memos_weighing_id");
+
+                    b.HasIndex("ReweighWeighingId", "OrganizationId");
+
+                    b.HasIndex("WeighingId", "OrganizationId");
 
                     b.ToTable("load_correction_memos", null, t =>
                         {
@@ -3036,6 +3042,8 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasIndex("WeighingId")
                         .HasDatabaseName("idx_invoices_weighing_id");
+
+                    b.HasIndex("WeighingId", "OrganizationId");
 
                     b.ToTable("invoices", null, t =>
                         {
@@ -4681,6 +4689,8 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasIndex("WeighingId")
                         .HasDatabaseName("idx_prosecution_cases_weighing_id");
+
+                    b.HasIndex("WeighingId", "OrganizationId");
 
                     b.ToTable("prosecution_cases", null, t =>
                         {
@@ -7647,6 +7657,8 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasIndex("WeighingId");
 
+                    b.HasIndex("WeighingId", "OrganizationId");
+
                     b.ToTable("prohibition_orders", "weighing");
                 });
 
@@ -7942,6 +7954,10 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
                     b.Property<Guid?>("ActId")
                         .HasColumnType("uuid");
 
@@ -8020,10 +8036,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("is_sync");
-
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("organization_id");
 
                     b.Property<Guid?>("OriginId")
                         .HasColumnType("uuid");
@@ -8116,7 +8128,7 @@ namespace TruLoad.Backend.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id", "OrganizationId");
 
                     b.HasIndex("ActId");
 
@@ -8153,6 +8165,8 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("WeighedAt");
 
                     b.HasIndex("WeighedByUserId");
+
+                    b.HasIndex("OriginalWeighingId", "OrganizationId");
 
                     b.HasIndex("StationId", "WeighedAt")
                         .HasDatabaseName("IX_weighing_transactions_station_date");
@@ -8296,6 +8310,8 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("WeighingId", "AxleNumber")
                         .IsUnique()
                         .HasDatabaseName("idx_weighing_axles_weighing_axle_unique");
+
+                    b.HasIndex("WeighingId", "OrganizationId");
 
                     b.HasIndex("WeighingId", "AxleGrouping", "AxleType")
                         .HasDatabaseName("IX_weighing_axles_weighing_grouping_type");
@@ -8715,6 +8731,8 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("StationId", "Status")
                         .HasDatabaseName("idx_yard_entries_station_status");
 
+                    b.HasIndex("WeighingId", "OrganizationId");
+
                     b.ToTable("yard_entries", null, t =>
                         {
                             t.HasCheckConstraint("chk_yard_entry_reason", "reason IN ('redistribution', 'gvw_overload', 'permit_check', 'offload', 'tag_hold')");
@@ -9046,7 +9064,7 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "Weighing")
                         .WithMany()
-                        .HasForeignKey("WeighingId")
+                        .HasForeignKey("WeighingId", "OrganizationId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("ActDefinition");
@@ -9130,7 +9148,7 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "Weighing")
                         .WithMany()
-                        .HasForeignKey("WeighingId")
+                        .HasForeignKey("WeighingId", "OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -9217,18 +9235,18 @@ namespace TruLoad.Backend.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "ReweighWeighing")
-                        .WithMany()
-                        .HasForeignKey("ReweighWeighingId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("TruLoad.Backend.Models.Station", "Station")
                         .WithMany()
                         .HasForeignKey("StationId");
 
+                    b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "ReweighWeighing")
+                        .WithMany()
+                        .HasForeignKey("ReweighWeighingId", "OrganizationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "Weighing")
                         .WithMany()
-                        .HasForeignKey("WeighingId")
+                        .HasForeignKey("WeighingId", "OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -9324,7 +9342,7 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "Weighing")
                         .WithMany()
-                        .HasForeignKey("WeighingId")
+                        .HasForeignKey("WeighingId", "OrganizationId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("CaseRegister");
@@ -9592,7 +9610,7 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "Weighing")
                         .WithMany()
-                        .HasForeignKey("WeighingId")
+                        .HasForeignKey("WeighingId", "OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Act");
@@ -10052,7 +10070,7 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "Weighing")
                         .WithMany()
-                        .HasForeignKey("WeighingId")
+                        .HasForeignKey("WeighingId", "OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -10118,11 +10136,6 @@ namespace TruLoad.Backend.Migrations
                         .WithMany()
                         .HasForeignKey("OriginId");
 
-                    b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "OriginalWeighing")
-                        .WithMany()
-                        .HasForeignKey("OriginalWeighingId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("TruLoad.Backend.Models.Infrastructure.ScaleTest", "ScaleTest")
                         .WithMany()
                         .HasForeignKey("ScaleTestId");
@@ -10149,6 +10162,11 @@ namespace TruLoad.Backend.Migrations
                         .HasForeignKey("WeighedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "OriginalWeighing")
+                        .WithMany()
+                        .HasForeignKey("OriginalWeighingId", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Act");
 
@@ -10211,7 +10229,7 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "WeighingTransaction")
                         .WithMany("WeighingAxles")
-                        .HasForeignKey("WeighingId")
+                        .HasForeignKey("WeighingId", "OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -10303,7 +10321,7 @@ namespace TruLoad.Backend.Migrations
 
                     b.HasOne("TruLoad.Backend.Models.Weighing.WeighingTransaction", "Weighing")
                         .WithMany()
-                        .HasForeignKey("WeighingId")
+                        .HasForeignKey("WeighingId", "OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 

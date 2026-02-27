@@ -17,6 +17,7 @@ SET LOCAL search_path = public, weighing;
 -- =====================================================
 -- 1. Daily Weighing Statistics by Station
 -- =====================================================
+DROP MATERIALIZED VIEW IF EXISTS mv_daily_weighing_stats CASCADE;
 CREATE MATERIALIZED VIEW mv_daily_weighing_stats AS
 SELECT
     wt.organization_id,  -- From weighing_transactions
@@ -50,6 +51,7 @@ CREATE INDEX idx_mv_daily_weighing_stats_tenant
 -- =====================================================
 -- 2. Charge Summaries (GVW vs Axle Best-Basis Analysis)
 -- =====================================================
+DROP MATERIALIZED VIEW IF EXISTS mv_charge_summaries CASCADE;
 CREATE MATERIALIZED VIEW mv_charge_summaries AS
 SELECT
     pc.id AS prosecution_case_id,
@@ -84,7 +86,7 @@ SELECT
         ELSE 0
     END AS fee_difference_usd
 FROM prosecution_cases pc
-INNER JOIN case_registers cr ON cr.id = pc.case_register_id
+INNER JOIN case_registers cr ON cr.id = pc.case_register_id AND cr.organization_id = pc.organization_id
 INNER JOIN act_definitions ad ON ad.id = pc.act_id;
 
 -- Create indexes
@@ -97,6 +99,7 @@ CREATE INDEX idx_mv_charge_summaries_tenant
 -- =====================================================
 -- 3. Axle Group Violation Patterns
 -- =====================================================
+DROP MATERIALIZED VIEW IF EXISTS mv_axle_group_violations CASCADE;
 CREATE MATERIALIZED VIEW mv_axle_group_violations AS
 SELECT
     wt.organization_id,
@@ -114,7 +117,7 @@ SELECT
     COUNT(DISTINCT wt.station_id) AS stations_with_violations,
     ARRAY_AGG(DISTINCT s.name) FILTER (WHERE (wa.measured_weight_kg - wa.permissible_weight_kg) > 0) AS violating_stations
 FROM weighing_axles wa
-INNER JOIN weighing_transactions wt ON wt.id = wa.weighing_id
+INNER JOIN weighing_transactions wt ON wt.id = wa.weighing_id AND wt.organization_id = wa.organization_id
 INNER JOIN stations s ON s."Id" = wt.station_id
 LEFT JOIN tyre_types tt ON tt."Id" = wa.tyre_type_id
 GROUP BY wt.organization_id, wt.station_id, wa.axle_grouping, tt.name;
@@ -126,6 +129,7 @@ CREATE UNIQUE INDEX idx_mv_axle_group_violations_unique
 -- =====================================================
 -- 4. Driver Demerit Rankings
 -- =====================================================
+DROP MATERIALIZED VIEW IF EXISTS mv_driver_demerit_rankings CASCADE;
 CREATE MATERIALIZED VIEW mv_driver_demerit_rankings AS
 SELECT
     cr.organization_id,
@@ -151,8 +155,8 @@ SELECT
     COUNT(DISTINCT aw.id) FILTER (WHERE aw."IsActive" = TRUE) AS active_warrants
 FROM drivers d
 LEFT JOIN case_registers cr ON cr.driver_id = d.id
-LEFT JOIN weighing_transactions wt ON wt.id = cr.weighing_id
-LEFT JOIN arrest_warrants aw ON aw.case_register_id = cr.id
+LEFT JOIN weighing_transactions wt ON wt.id = cr.weighing_id AND wt.organization_id = cr.organization_id
+LEFT JOIN arrest_warrants aw ON aw.case_register_id = cr.id AND aw.organization_id = cr.organization_id
 GROUP BY cr.organization_id, d.id, d.id_number, d.full_names, d.phone_number, d.email
 HAVING COUNT(DISTINCT cr.id) > 0;
 
@@ -163,6 +167,7 @@ CREATE UNIQUE INDEX idx_mv_driver_demerit_rankings_unique
 -- =====================================================
 -- 5. Vehicle Violation History Summary
 -- =====================================================
+DROP MATERIALIZED VIEW IF EXISTS mv_vehicle_violation_history CASCADE;
 CREATE MATERIALIZED VIEW mv_vehicle_violation_history AS
 SELECT
     wt.organization_id,
@@ -207,6 +212,7 @@ CREATE UNIQUE INDEX idx_mv_vehicle_violation_history_unique
 -- =====================================================
 -- 6. Station Performance Scorecard
 -- =====================================================
+DROP MATERIALIZED VIEW IF EXISTS mv_station_performance_scorecard CASCADE;
 CREATE MATERIALIZED VIEW mv_station_performance_scorecard AS
 SELECT
     s.organization_id,
@@ -235,7 +241,7 @@ LEFT JOIN roads r ON r.id = s.road_id
 LEFT JOIN "Counties" c ON c."Id" = s.county_id
 LEFT JOIN weighing_transactions wt ON wt.station_id = s."Id"
 LEFT JOIN yard_entries ye ON ye.station_id = s."Id"
-LEFT JOIN case_registers cr ON cr.weighing_id = wt.id
+LEFT JOIN case_registers cr ON cr.weighing_id = wt.id AND cr.organization_id = wt.organization_id
 LEFT JOIN scale_tests st ON st.station_id = s."Id"
 GROUP BY s.organization_id, s."Id", s.code, s.name, s.station_type, r.name, c."Name";
 

@@ -1936,6 +1936,7 @@ namespace TruLoad.Backend.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
                     ticket_number = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     vehicle_id = table.Column<Guid>(type: "uuid", nullable: false),
                     vehicle_reg_number = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
@@ -1976,12 +1977,11 @@ namespace TruLoad.Backend.Migrations
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
                     station_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_weighing_transactions", x => x.id);
+                    table.PrimaryKey("PK_weighing_transactions", x => new { x.id, x.organization_id });
                     table.ForeignKey(
                         name: "FK_weighing_transactions_act_definitions_ActId",
                         column: x => x.ActId,
@@ -2048,10 +2048,10 @@ namespace TruLoad.Backend.Migrations
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_weighing_transactions_weighing_transactions_original_weighi~",
-                        column: x => x.original_weighing_id,
+                        columns: x => new { x.original_weighing_id, x.organization_id },
                         principalSchema: "weighing",
                         principalTable: "weighing_transactions",
-                        principalColumn: "id",
+                        principalColumns: new[] { "id", "organization_id" },
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -2148,11 +2148,11 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_case_registers_weighing_transactions_weighing_id",
-                        column: x => x.weighing_id,
+                        name: "FK_case_registers_weighing_transactions_weighing_id_organizati~",
+                        columns: x => new { x.weighing_id, x.organization_id },
                         principalSchema: "weighing",
                         principalTable: "weighing_transactions",
-                        principalColumn: "id",
+                        principalColumns: new[] { "id", "organization_id" },
                         onDelete: ReferentialAction.SetNull);
                 });
 
@@ -2197,11 +2197,11 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "stations",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_prohibition_orders_weighing_transactions_weighing_id",
-                        column: x => x.weighing_id,
+                        name: "FK_prohibition_orders_weighing_transactions_weighing_id_organi~",
+                        columns: x => new { x.weighing_id, x.organization_id },
                         principalSchema: "weighing",
                         principalTable: "weighing_transactions",
-                        principalColumn: "id",
+                        principalColumns: new[] { "id", "organization_id" },
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -2273,11 +2273,11 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_weighing_axles_weighing_transactions_weighing_id",
-                        column: x => x.weighing_id,
+                        name: "FK_weighing_axles_weighing_transactions_weighing_id_organizati~",
+                        columns: x => new { x.weighing_id, x.organization_id },
                         principalSchema: "weighing",
                         principalTable: "weighing_transactions",
-                        principalColumn: "id",
+                        principalColumns: new[] { "id", "organization_id" },
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -2316,11 +2316,11 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_yard_entries_weighing_transactions_weighing_id",
-                        column: x => x.weighing_id,
+                        name: "FK_yard_entries_weighing_transactions_weighing_id_organization~",
+                        columns: x => new { x.weighing_id, x.organization_id },
                         principalSchema: "weighing",
                         principalTable: "weighing_transactions",
-                        principalColumn: "id",
+                        principalColumns: new[] { "id", "organization_id" },
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -2763,17 +2763,17 @@ namespace TruLoad.Backend.Migrations
                         principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_load_correction_memos_weighing_transactions_reweigh_weighin~",
-                        column: x => x.reweigh_weighing_id,
+                        columns: x => new { x.reweigh_weighing_id, x.organization_id },
                         principalSchema: "weighing",
                         principalTable: "weighing_transactions",
-                        principalColumn: "id",
+                        principalColumns: new[] { "id", "organization_id" },
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_load_correction_memos_weighing_transactions_weighing_id",
-                        column: x => x.weighing_id,
+                        name: "FK_load_correction_memos_weighing_transactions_weighing_id_org~",
+                        columns: x => new { x.weighing_id, x.organization_id },
                         principalSchema: "weighing",
                         principalTable: "weighing_transactions",
-                        principalColumn: "id",
+                        principalColumns: new[] { "id", "organization_id" },
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -2846,11 +2846,11 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "stations",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_prosecution_cases_weighing_transactions_weighing_id",
-                        column: x => x.weighing_id,
+                        name: "FK_prosecution_cases_weighing_transactions_weighing_id_organiz~",
+                        columns: x => new { x.weighing_id, x.organization_id },
                         principalSchema: "weighing",
                         principalTable: "weighing_transactions",
-                        principalColumn: "id",
+                        principalColumns: new[] { "id", "organization_id" },
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -3035,11 +3035,11 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "stations",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_compliance_certificates_weighing_transactions_weighing_id",
-                        column: x => x.weighing_id,
+                        name: "FK_compliance_certificates_weighing_transactions_weighing_id_o~",
+                        columns: x => new { x.weighing_id, x.organization_id },
                         principalSchema: "weighing",
                         principalTable: "weighing_transactions",
-                        principalColumn: "id",
+                        principalColumns: new[] { "id", "organization_id" },
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -3101,11 +3101,11 @@ namespace TruLoad.Backend.Migrations
                         principalTable: "stations",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_invoices_weighing_transactions_weighing_id",
-                        column: x => x.weighing_id,
+                        name: "FK_invoices_weighing_transactions_weighing_id_organization_id",
+                        columns: x => new { x.weighing_id, x.organization_id },
                         principalSchema: "weighing",
                         principalTable: "weighing_transactions",
-                        principalColumn: "id",
+                        principalColumns: new[] { "id", "organization_id" },
                         onDelete: ReferentialAction.SetNull);
                 });
 
@@ -3676,6 +3676,11 @@ namespace TruLoad.Backend.Migrations
                 .Annotation("Npgsql:IndexOperators", new[] { "vector_cosine_ops" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_case_registers_weighing_id_organization_id",
+                table: "case_registers",
+                columns: new[] { "weighing_id", "organization_id" });
+
+            migrationBuilder.CreateIndex(
                 name: "idx_case_review_statuses_code",
                 table: "case_review_statuses",
                 column: "code",
@@ -3765,6 +3770,11 @@ namespace TruLoad.Backend.Migrations
                 name: "IX_compliance_certificates_station_id",
                 table: "compliance_certificates",
                 column: "station_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_compliance_certificates_weighing_id_organization_id",
+                table: "compliance_certificates",
+                columns: new[] { "weighing_id", "organization_id" });
 
             migrationBuilder.CreateIndex(
                 name: "idx_court_hearings_case_date",
@@ -4028,6 +4038,11 @@ namespace TruLoad.Backend.Migrations
                 column: "station_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_invoices_weighing_id_organization_id",
+                table: "invoices",
+                columns: new[] { "weighing_id", "organization_id" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_legal_sections_framework_section_no",
                 table: "legal_sections",
                 columns: new[] { "legal_framework", "section_no" },
@@ -4071,14 +4086,19 @@ namespace TruLoad.Backend.Migrations
                 column: "organization_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_load_correction_memos_reweigh_weighing_id",
+                name: "IX_load_correction_memos_reweigh_weighing_id_organization_id",
                 table: "load_correction_memos",
-                column: "reweigh_weighing_id");
+                columns: new[] { "reweigh_weighing_id", "organization_id" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_load_correction_memos_station_id",
                 table: "load_correction_memos",
                 column: "station_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_load_correction_memos_weighing_id_organization_id",
+                table: "load_correction_memos",
+                columns: new[] { "weighing_id", "organization_id" });
 
             migrationBuilder.CreateIndex(
                 name: "idx_organizations_code",
@@ -4226,6 +4246,12 @@ namespace TruLoad.Backend.Migrations
                 column: "weighing_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_prohibition_orders_weighing_id_organization_id",
+                schema: "weighing",
+                table: "prohibition_orders",
+                columns: new[] { "weighing_id", "organization_id" });
+
+            migrationBuilder.CreateIndex(
                 name: "idx_prosecution_cases_case_register_id",
                 table: "prosecution_cases",
                 column: "case_register_id",
@@ -4278,6 +4304,11 @@ namespace TruLoad.Backend.Migrations
                 name: "IX_prosecution_cases_station_id",
                 table: "prosecution_cases",
                 column: "station_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_prosecution_cases_weighing_id_organization_id",
+                table: "prosecution_cases",
+                columns: new[] { "weighing_id", "organization_id" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_push_subscriptions_organization_id",
@@ -4881,6 +4912,12 @@ namespace TruLoad.Backend.Migrations
                 columns: new[] { "weighing_id", "axle_grouping", "axle_type" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_weighing_axles_weighing_id_organization_id",
+                schema: "weighing",
+                table: "weighing_axles",
+                columns: new[] { "weighing_id", "organization_id" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_weighing_transactions_ActId",
                 schema: "weighing",
                 table: "weighing_transactions",
@@ -4921,6 +4958,12 @@ namespace TruLoad.Backend.Migrations
                 schema: "weighing",
                 table: "weighing_transactions",
                 column: "original_weighing_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_weighing_transactions_original_weighing_id_organization_id",
+                schema: "weighing",
+                table: "weighing_transactions",
+                columns: new[] { "original_weighing_id", "organization_id" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_weighing_transactions_OriginId",
@@ -5032,10 +5075,10 @@ namespace TruLoad.Backend.Migrations
                 table: "yard_entries",
                 column: "organization_id");
 
-            // Custom SQL scripts for views and partitioning
-            migrationBuilder.Sql(Data.Migrations.MigrationScriptHelper.GetScript("CreateRegularViews.sql"));
-            migrationBuilder.Sql(Data.Migrations.MigrationScriptHelper.GetScript("CreateMaterializedViews.sql"));
-            migrationBuilder.Sql(Data.Migrations.MigrationScriptHelper.GetScript("CreateWeighingTransactionPartitioning.sql"));
+            migrationBuilder.CreateIndex(
+                name: "IX_yard_entries_weighing_id_organization_id",
+                table: "yard_entries",
+                columns: new[] { "weighing_id", "organization_id" });
         }
 
         /// <inheritdoc />

@@ -334,7 +334,7 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
             {
                 entity.ToTable("weighing_transactions", "weighing");
 
-                entity.HasKey(e => e.Id);
+                entity.HasKey(e => new { e.Id, e.OrganizationId });
 
                 entity.Property(e => e.Id)
                     .HasColumnName("id")
@@ -431,7 +431,7 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
 
                 entity.HasOne(e => e.OriginalWeighing)
                     .WithMany()
-                    .HasForeignKey(e => e.OriginalWeighingId)
+                    .HasForeignKey(e => new { e.OriginalWeighingId, e.OrganizationId })
                     .OnDelete(DeleteBehavior.Restrict);
 
                 // Indexes
@@ -507,7 +507,7 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 // Relationships
                 entity.HasOne(e => e.WeighingTransaction)
                     .WithMany(w => w.WeighingAxles)
-                    .HasForeignKey(e => e.WeighingId)
+                    .HasForeignKey(e => new { e.WeighingId, e.OrganizationId })
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(e => e.AxleConfiguration)
@@ -631,7 +631,7 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
 
                 entity.HasOne(e => e.Weighing)
                     .WithMany()
-                    .HasForeignKey(e => e.WeighingId)
+                    .HasForeignKey(e => new { e.WeighingId, e.OrganizationId })
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(e => e.IssuedBy)

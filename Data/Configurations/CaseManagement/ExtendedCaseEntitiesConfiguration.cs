@@ -158,12 +158,12 @@ public static class ExtendedCaseEntitiesConfiguration
 
             entity.HasOne(e => e.Weighing)
                 .WithMany()
-                .HasForeignKey(e => e.WeighingId)
+                .HasForeignKey(e => new { e.WeighingId, e.OrganizationId })
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.ReweighWeighing)
                 .WithMany()
-                .HasForeignKey(e => e.ReweighWeighingId)
+                .HasForeignKey(e => new { e.ReweighWeighingId, e.OrganizationId })
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasOne(e => e.IssuedBy)
@@ -255,7 +255,7 @@ public static class ExtendedCaseEntitiesConfiguration
 
             entity.HasOne(e => e.Weighing)
                 .WithMany()
-                .HasForeignKey(e => e.WeighingId)
+                .HasForeignKey(e => new { e.WeighingId, e.OrganizationId })
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.LoadCorrectionMemo)

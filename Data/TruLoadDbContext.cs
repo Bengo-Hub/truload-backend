@@ -320,7 +320,7 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
                 }
 
                 var method = typeof(TruLoadDbContext)
-                    .GetMethod(nameof(ApplyTenantFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                    .GetMethod(nameof(ApplyFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
                     ?.MakeGenericMethod(entityType.ClrType);
 
                 method?.Invoke(this, new object[] { modelBuilder });
@@ -328,11 +328,18 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
         }
     }
 
-    private void ApplyTenantFilter<T>(ModelBuilder modelBuilder) where T : TenantAwareEntity
+    private void ApplyFilter<T>(ModelBuilder modelBuilder) where T : TenantAwareEntity
     {
-        modelBuilder.Entity<T>().HasQueryFilter(e => 
-            e.OrganizationId == _tenantContext.OrganizationId &&
-            (!_tenantContext.StationId.HasValue || e.StationId == null || e.StationId == _tenantContext.StationId));
+        if (typeof(T) == typeof(Station))
+        {
+            modelBuilder.Entity<T>().HasQueryFilter(e => e.OrganizationId == _tenantContext.OrganizationId);
+        }
+        else
+        {
+            modelBuilder.Entity<T>().HasQueryFilter(e =>
+                e.OrganizationId == _tenantContext.OrganizationId &&
+                (!_tenantContext.StationId.HasValue || e.StationId == null || e.StationId == _tenantContext.StationId));
+        }
     }
 
     public override int SaveChanges()

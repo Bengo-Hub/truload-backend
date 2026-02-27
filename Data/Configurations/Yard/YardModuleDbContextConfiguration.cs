@@ -78,7 +78,7 @@ public static class YardModuleDbContextConfiguration
             // Relationships
             entity.HasOne(e => e.Weighing)
                 .WithMany()
-                .HasForeignKey(e => e.WeighingId)
+                .HasForeignKey(e => new { e.WeighingId, e.OrganizationId })
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.Station)

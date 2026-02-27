@@ -127,7 +127,7 @@ public static class FinancialModuleDbContextConfiguration
 
             entity.HasOne(e => e.Weighing)
                 .WithMany()
-                .HasForeignKey(e => e.WeighingId)
+                .HasForeignKey(e => new { e.WeighingId, e.OrganizationId })
                 .OnDelete(DeleteBehavior.SetNull);
 
             // Indexes
