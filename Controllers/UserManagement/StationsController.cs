@@ -52,15 +52,27 @@ public class StationsController : ControllerBase
 
         if (string.IsNullOrEmpty(stationIdClaim) || !Guid.TryParse(stationIdClaim, out var stationId))
         {
-            _logger.LogWarning("User {UserId} does not have a linked station", User.FindFirst("sub")?.Value);
-            return NotFound(new { message = "No station linked to current user" });
+            _logger.LogInformation("User {UserId} does not have a linked station (e.g. Superuser or Global Admin)", User.FindFirst("sub")?.Value);
+            var defaultStation = await _context.Stations.FirstOrDefaultAsync(s => s.IsDefault && s.IsActive && s.DeletedAt == null, cancellationToken);
+            if (defaultStation != null)
+            {
+                _logger.LogDebug("Returning fallback default station: {StationCode}", defaultStation.Code);
+                return Ok(MapToDto(defaultStation));
+            }
+            return NoContent();
         }
 
         var station = await _stationRepository.GetByIdAsync(stationId, cancellationToken);
         if (station == null)
         {
             _logger.LogWarning("Station {StationId} linked to user not found", stationId);
-            return NotFound(new { message = "Linked station not found" });
+            var defaultStation = await _context.Stations.FirstOrDefaultAsync(s => s.IsDefault && s.IsActive && s.DeletedAt == null, cancellationToken);
+            if (defaultStation != null)
+            {
+                _logger.LogDebug("Returning fallback default station: {StationCode}", defaultStation.Code);
+                return Ok(MapToDto(defaultStation));
+            }
+            return NoContent();
         }
 
         _logger.LogDebug("Returning user's linked station: {StationCode}", station.Code);

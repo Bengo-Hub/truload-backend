@@ -94,6 +94,21 @@ public class UsersController : ControllerBase
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                // Fetch default organization and station ONLY if they were not provided in the request
+                var finalOrgId = request.OrganizationId;
+                if (!finalOrgId.HasValue || finalOrgId.Value == Guid.Empty)
+                {
+                    var defaultOrg = await _context.Organizations.FirstOrDefaultAsync(o => o.IsDefault);
+                    finalOrgId = defaultOrg?.Id;
+                }
+
+                var finalStationId = request.StationId;
+                if (!finalStationId.HasValue || finalStationId.Value == Guid.Empty)
+                {
+                    var defaultStation = await _context.Stations.FirstOrDefaultAsync(s => s.IsDefault);
+                    finalStationId = defaultStation?.Id;
+                }
+
                 var user = new ApplicationUser
                 {
                     Id = Guid.NewGuid(),
@@ -101,8 +116,8 @@ public class UsersController : ControllerBase
                     Email = request.Email,
                     FullName = request.FullName ?? string.Empty,
                     PhoneNumber = request.PhoneNumber,
-                    OrganizationId = request.OrganizationId,
-                    StationId = request.StationId,
+                    OrganizationId = finalOrgId ?? Guid.Empty, // Identity might require a valid guid or null depending on FK constraint
+                    StationId = finalStationId,
                     DepartmentId = request.DepartmentId,
                     EmailConfirmed = true, // Auto-confirm for admin-created users
                     CreatedAt = DateTime.UtcNow,

@@ -224,8 +224,10 @@ public class ActivePermit : TenantAwareEntity
  * MATERIALIZED VIEWS
  */
 
-public class MvDailyWeighingStats : TenantAwareEntity
+public class MvDailyWeighingStats : ITenantAware
 {
+    public Guid OrganizationId { get; set; }
+    public Guid? StationId { get; set; }
     public string StationName { get; set; } = null!;
     public DateTime WeighingDate { get; set; }
     public long TotalWeighings { get; set; }
@@ -240,8 +242,10 @@ public class MvDailyWeighingStats : TenantAwareEntity
     public long UniqueTransporters { get; set; }
 }
 
-public class MvChargeSummary : TenantAwareEntity
+public class MvChargeSummary : ITenantAware
 {
+    public Guid OrganizationId { get; set; }
+    public Guid? StationId { get; set; }
     public Guid ProsecutionCaseId { get; set; }
     public Guid CaseRegisterId { get; set; }
     public string CaseNo { get; set; } = null!;
@@ -264,8 +268,10 @@ public class MvChargeSummary : TenantAwareEntity
     public decimal FeeDifferenceUsd { get; set; }
 }
 
-public class MvAxleGroupViolation : TenantAwareEntity
+public class MvAxleGroupViolation : ITenantAware
 {
+    public Guid OrganizationId { get; set; }
+    public Guid? StationId { get; set; }
     public string AxleGrouping { get; set; } = null!;
     public string TyreType { get; set; } = null!;
     public long TotalWeighings { get; set; }
@@ -280,8 +286,10 @@ public class MvAxleGroupViolation : TenantAwareEntity
     public string[]? ViolatingStations { get; set; }
 }
 
-public class MvDriverDemeritRanking : TenantAwareEntity
+public class MvDriverDemeritRanking : ITenantAware
 {
+    public Guid OrganizationId { get; set; }
+    public Guid? StationId { get; set; }
     public Guid DriverId { get; set; }
     public string IdNoOrPassport { get; set; } = null!;
     public string FullName { get; set; } = null!;
@@ -298,8 +306,10 @@ public class MvDriverDemeritRanking : TenantAwareEntity
     public long ActiveWarrants { get; set; }
 }
 
-public class MvVehicleViolationHistory : TenantAwareEntity
+public class MvVehicleViolationHistory : ITenantAware
 {
+    public Guid OrganizationId { get; set; }
+    public Guid? StationId { get; set; }
     public Guid VehicleId { get; set; }
     public string RegNo { get; set; } = null!;
     public string? Make { get; set; }
@@ -318,19 +328,29 @@ public class MvVehicleViolationHistory : TenantAwareEntity
     public bool IsInYard { get; set; }
 }
 
-public class MvStationPerformanceScorecard : TenantAwareEntity
+public class MvStationPerformanceScorecard : ITenantAware
 {
+    public Guid OrganizationId { get; set; }
+    public Guid? StationId { get; set; }
     public string StationCode { get; set; } = null!;
     public string StationName { get; set; } = null!;
     public string StationType { get; set; } = null!;
     public string? RoadName { get; set; }
     public string? CountyName { get; set; }
     public long TotalWeighings { get; set; }
+
+    [Column("weighings_last_30_days")]
     public long WeighingsLast30Days { get; set; }
+
+    [Column("weighings_last_7_days")]
     public long WeighingsLast7Days { get; set; }
+
     public decimal ComplianceRatePct { get; set; }
     public decimal? TotalRevenueUsd { get; set; }
+
+    [Column("revenue_last_30_days")]
     public decimal? RevenueLast30Days { get; set; }
+
     public long UniqueVehicles { get; set; }
     public long UniqueTransporters { get; set; }
     public long TotalYardEntries { get; set; }

@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.Models.Infrastructure;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Repositories.Infrastructure;
@@ -19,18 +21,43 @@ public class ScaleTestsController : ControllerBase
     private readonly IScaleTestRepository _scaleTestRepository;
     private readonly IStationRepository _stationRepository;
     private readonly ITenantContext _tenantContext;
+    private readonly TruLoadDbContext _context;
     private readonly ILogger<ScaleTestsController> _logger;
 
     public ScaleTestsController(
         IScaleTestRepository scaleTestRepository,
         IStationRepository stationRepository,
         ITenantContext tenantContext,
+        TruLoadDbContext context,
         ILogger<ScaleTestsController> logger)
     {
         _scaleTestRepository = scaleTestRepository;
         _stationRepository = stationRepository;
         _tenantContext = tenantContext;
+        _context = context;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Resolve the user's station ID from tenant context, falling back to the default station.
+    /// </summary>
+    private async Task<Guid?> ResolveStationIdAsync(CancellationToken ct = default)
+    {
+        if (_tenantContext.StationId.HasValue)
+            return _tenantContext.StationId.Value;
+
+        // Fallback: find the default active station
+        var defaultStation = await _context.Stations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.IsDefault && s.IsActive && s.DeletedAt == null, ct);
+
+        if (defaultStation != null)
+        {
+            _logger.LogDebug("ScaleTest: Using fallback default station {Code} for user without station claim", defaultStation.Code);
+            return defaultStation.Id;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -42,16 +69,24 @@ public class ScaleTestsController : ControllerBase
     [ProducesResponseType(400)]
     public async Task<IActionResult> GetMyStationStatus([FromQuery] string? bound)
     {
-        if (!_tenantContext.StationId.HasValue)
-            return BadRequest(new { Message = "No station assigned to current user" });
+        var stationId = await ResolveStationIdAsync();
+        if (!stationId.HasValue)
+        {
+            return Ok(new ScaleTestStatusDto
+            {
+                HasValidTest = false,
+                WeighingAllowed = false,
+                Message = "No station assigned. Weighing operations require a station assignment."
+            });
+        }
 
-        var stationId = _tenantContext.StationId.Value;
-        var hasPassed = await _scaleTestRepository.HasPassedDailyCalibrationalAsync(stationId, bound);
-        var latestTest = await _scaleTestRepository.GetLatestByStationAsync(stationId, bound);
+        var sid = stationId.Value;
+        var hasPassed = await _scaleTestRepository.HasPassedDailyCalibrationalAsync(sid, bound);
+        var latestTest = await _scaleTestRepository.GetLatestByStationAsync(sid, bound);
 
         var status = new ScaleTestStatusDto
         {
-            StationId = stationId,
+            StationId = sid,
             Bound = bound,
             HasValidTest = hasPassed,
             WeighingAllowed = hasPassed,
@@ -72,10 +107,11 @@ public class ScaleTestsController : ControllerBase
     [ProducesResponseType(400)]
     public async Task<IActionResult> GetMyStationTests([FromQuery] string? bound)
     {
-        if (!_tenantContext.StationId.HasValue)
-            return BadRequest(new { Message = "No station assigned to current user" });
+        var stationId = await ResolveStationIdAsync();
+        if (!stationId.HasValue)
+            return Ok(new List<ScaleTestDto>());
 
-        var tests = await _scaleTestRepository.GetByStationAsync(_tenantContext.StationId.Value, bound);
+        var tests = await _scaleTestRepository.GetByStationAsync(stationId.Value, bound);
         return Ok(tests.Select(MapToDto).ToList());
     }
 
@@ -88,12 +124,13 @@ public class ScaleTestsController : ControllerBase
     [ProducesResponseType(404)]
     public async Task<IActionResult> GetMyLatestTest([FromQuery] string? bound)
     {
-        if (!_tenantContext.StationId.HasValue)
-            return BadRequest(new { Message = "No station assigned to current user" });
+        var stationId = await ResolveStationIdAsync();
+        if (!stationId.HasValue)
+            return NoContent();
 
-        var test = await _scaleTestRepository.GetLatestByStationAsync(_tenantContext.StationId.Value, bound);
+        var test = await _scaleTestRepository.GetLatestByStationAsync(stationId.Value, bound);
         if (test == null)
-            return NotFound(new { Message = "No scale tests found for your station" });
+            return NoContent();
 
         return Ok(MapToDto(test));
     }

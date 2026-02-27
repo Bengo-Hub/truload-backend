@@ -136,6 +136,18 @@ public class ScaleTestRepository : IScaleTestRepository
 
     public async Task<ScaleTest> CreateAsync(ScaleTest scaleTest, CancellationToken cancellationToken = default)
     {
+        // Validate against Annual Calibration statutory limits
+        var annualRecord = await _context.AnnualCalibrationRecords
+            .Where(r => r.StationId == scaleTest.StationId && r.Status == "active")
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (annualRecord != null && scaleTest.TestType == "calibration_weight" && scaleTest.ActualWeightKg.HasValue)
+        {
+            var deviation = Math.Abs(scaleTest.ActualWeightKg.Value - annualRecord.TargetWeightKg);
+            scaleTest.DeviationKg = deviation;
+            scaleTest.Result = (deviation <= annualRecord.MaxDeviationKg) ? "pass" : "fail";
+        }
+
         if (scaleTest.Id == Guid.Empty)
             scaleTest.Id = Guid.NewGuid();
         scaleTest.CreatedAt = DateTime.UtcNow;
@@ -149,6 +161,18 @@ public class ScaleTestRepository : IScaleTestRepository
 
     public async Task<ScaleTest> UpdateAsync(ScaleTest scaleTest, CancellationToken cancellationToken = default)
     {
+        // Re-validate against Annual Calibration statutory limits if actual weight changes
+        var annualRecord = await _context.AnnualCalibrationRecords
+            .Where(r => r.StationId == scaleTest.StationId && r.Status == "active")
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (annualRecord != null && scaleTest.TestType == "calibration_weight" && scaleTest.ActualWeightKg.HasValue)
+        {
+            var deviation = Math.Abs(scaleTest.ActualWeightKg.Value - annualRecord.TargetWeightKg);
+            scaleTest.DeviationKg = deviation;
+            scaleTest.Result = (deviation <= annualRecord.MaxDeviationKg) ? "pass" : "fail";
+        }
+
         scaleTest.UpdatedAt = DateTime.UtcNow;
 
         _context.ScaleTests.Update(scaleTest);

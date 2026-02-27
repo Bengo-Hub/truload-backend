@@ -37,11 +37,20 @@ public class YardController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var result = await _yardService.SearchAsync(request, _tenantContext.StationId, ct);
-        return Ok(result);
-    }
+        try
+        {
+            var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "yard.read");
+            var effectiveStationId = hasGlobalRead ? null : _tenantContext.StationId;
 
-    /// <summary>
+            var result = await _yardService.SearchAsync(request, effectiveStationId, ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching yard entries");
+            return StatusCode(500, "An error occurred while searching yard entries.");
+        }
+    }
     /// Get a yard entry by ID.
     /// </summary>
     [HttpGet("{id}")]
@@ -83,11 +92,20 @@ public class YardController : ControllerBase
     [ProducesResponseType(typeof(YardStatisticsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetStatistics(CancellationToken ct)
     {
-        var stats = await _yardService.GetStatisticsAsync(_tenantContext.StationId, ct);
-        return Ok(stats);
-    }
+        try
+        {
+            var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "yard.read");
+            var effectiveStationId = hasGlobalRead ? null : _tenantContext.StationId;
 
-    /// <summary>
+            var stats = await _yardService.GetStatisticsAsync(effectiveStationId, ct);
+            return Ok(stats);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting yard statistics");
+            return StatusCode(500, "An error occurred while getting yard statistics.");
+        }
+    }
     /// Get yard processing time trend for charts
     /// </summary>
     [HttpGet("processing-trend")]
@@ -107,7 +125,11 @@ public class YardController : ControllerBase
             ToDate = to,
             PageSize = 10000
         };
-        var result = await _yardService.SearchAsync(request, _tenantContext.StationId, ct);
+        
+        var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "yard.read");
+        var effectiveStationId = hasGlobalRead ? null : _tenantContext.StationId;
+
+        var result = await _yardService.SearchAsync(request, effectiveStationId, ct);
 
         var trend = result.Items
             .Where(e => e.EnteredAt != default)

@@ -54,6 +54,7 @@ public class UserManagementSeeder
                 ContactEmail = "info@kura.go.ke",
                 ContactPhone = "+254-20-7654321",
                 Address = "KURA Headquarters, Mombasa Road, Nairobi",
+                IsDefault = true,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -176,6 +177,7 @@ public class UserManagementSeeder
                     BoundACode = "A",
                     BoundBCode = "B",
                     OrganizationId = kura.Id,
+                    IsDefault = true,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow

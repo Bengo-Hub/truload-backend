@@ -492,7 +492,7 @@ try
 
 
         // Check if initial seeding has already been completed
-        var seedingVersion = 2; // Increment this when you need to re-seed
+        var seedingVersion = 1; // Increment this when you need to re-seed
         var seedingName = "InitialSeed";
 
         var existingSeed = await dbContext.DatabaseSeedingHistory
@@ -604,7 +604,7 @@ app.UseExceptionHandler(errorApp =>
         var exception = exceptionHandlerPathFeature?.Error;
 
         var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        logger.LogError(exception, "Unhandled exception occurred");
+        logger.LogError(exception, "Unhandled exception occurred: {ExceptionDetails}", exception?.ToString());
 
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
@@ -615,7 +615,7 @@ app.UseExceptionHandler(errorApp =>
             {
                 code = "INTERNAL_SERVER_ERROR",
                 message = "An unexpected error occurred",
-                details = app.Environment.IsDevelopment() ? exception?.Message : null,
+                details = app.Environment.IsDevelopment() ? exception?.ToString() : null,
                 traceId = context.TraceIdentifier,
                 timestamp = DateTime.UtcNow
             }

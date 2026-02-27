@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace TruloadBackend.Controllers;
+namespace TruLoad.Backend.Controllers.System;
 
 [ApiController]
-[Route("api/v1/[controller]")]
 public class HealthController : ControllerBase
 {
     private readonly ILogger<HealthController> _logger;
@@ -13,17 +12,20 @@ public class HealthController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Health check endpoint — accessible at both /health and /api/v1/health.
+    /// </summary>
     [HttpGet]
     [Route("/health")]
+    [Route("/api/v1/health")]
     public IActionResult Get()
     {
         return Ok(new
         {
             status = "healthy",
-            service = "Backend API",
+            service = "TruLoad Backend API",
             timestamp = DateTime.UtcNow,
             version = "v1.0.0"
         });
     }
 }
-

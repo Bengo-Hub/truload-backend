@@ -14,6 +14,11 @@ public class Organization
     /// </summary>
     public string OrgType { get; set; } = "Private";
     
+    /// <summary>
+    /// Indicates if this is the default organization for the system
+    /// </summary>
+    public bool IsDefault { get; set; } = false;
+    
     public string? ContactEmail { get; set; }
     public string? ContactPhone { get; set; }
     public string? Address { get; set; }

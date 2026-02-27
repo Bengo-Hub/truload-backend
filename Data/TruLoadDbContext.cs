@@ -9,6 +9,7 @@ using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Models.Infrastructure;
+using TruLoad.Backend.Models.Technical;
 using TruLoad.Backend.Data.Configurations.Weighing;
 using TruLoad.Backend.Data.Configurations.UserManagement;
 using TruLoad.Backend.Data.Configurations.AxleConfiguration;
@@ -166,6 +167,10 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     // ===== Sprint 10: Case Management & Special Release =====
     public DbSet<CaseRegister> CaseRegisters { get; set; } = null!;
     public DbSet<CaseSubfile> CaseSubfiles { get; set; } = null!;
+
+    // Technical / Calibration
+    public DbSet<AnnualCalibrationRecord> AnnualCalibrationRecords { get; set; } = null!;
+
     public DbSet<SpecialRelease> SpecialReleases { get; set; } = null!;
     public DbSet<ArrestWarrant> ArrestWarrants { get; set; } = null!;
     public DbSet<CourtHearing> CourtHearings { get; set; } = null!;
@@ -285,6 +290,20 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
         modelBuilder.Entity<MvVehicleViolationHistory>(e => { e.HasNoKey(); e.ToView("mv_vehicle_violation_history"); });
         modelBuilder.Entity<MvStationPerformanceScorecard>(e => { e.HasNoKey(); e.ToView("mv_station_performance_scorecard"); });
 
+        // Force snake_case names for all view entities so EF Core queries them correctly
+        foreach (var entity in modelBuilder.Model.GetEntityTypes())
+        {
+            if (entity.GetViewName() != null)
+            {
+                foreach (var property in entity.GetProperties())
+                {
+                    // Convert PascalCase to snake_case
+                    var snakeCaseName = string.Concat(property.Name.Select((x, i) => i > 0 && char.IsUpper(x) ? "_" + x.ToString() : x.ToString())).ToLower();
+                    property.SetColumnName(snakeCaseName);
+                }
+            }
+        }
+
         // Post-configuration adjustments for InMemory provider
         if (IsInMemoryProvider)
         {
@@ -304,16 +323,16 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
         // ===== Global Multi-tenancy Isolation & Column Mapping =====
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
-            if (typeof(TenantAwareEntity).IsAssignableFrom(entityType.ClrType))
+            if (typeof(ITenantAware).IsAssignableFrom(entityType.ClrType))
             {
                 // Set column names to snake_case for multi-tenancy columns to satisfy SQL views
-                var orgIdProperty = entityType.FindProperty(nameof(TenantAwareEntity.OrganizationId));
+                var orgIdProperty = entityType.FindProperty(nameof(ITenantAware.OrganizationId));
                 if (orgIdProperty != null)
                 {
                     orgIdProperty.SetColumnName("organization_id");
                 }
 
-                var stationIdProperty = entityType.FindProperty(nameof(TenantAwareEntity.StationId));
+                var stationIdProperty = entityType.FindProperty(nameof(ITenantAware.StationId));
                 if (stationIdProperty != null)
                 {
                     stationIdProperty.SetColumnName("station_id");
@@ -328,7 +347,7 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
         }
     }
 
-    private void ApplyFilter<T>(ModelBuilder modelBuilder) where T : TenantAwareEntity
+    private void ApplyFilter<T>(ModelBuilder modelBuilder) where T : class, ITenantAware
     {
         if (typeof(T) == typeof(Station))
         {

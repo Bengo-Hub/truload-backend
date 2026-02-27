@@ -40,15 +40,17 @@ public class UserSeeder
     {
         // Check if KURA organization exists (required for linking - KURA is the default tenant)
         var kuraOrg = await _context.Organizations
+            .FirstOrDefaultAsync(o => o.IsDefault) ?? await _context.Organizations
             .FirstOrDefaultAsync(o => o.Code == "KURA");
 
         if (kuraOrg == null)
         {
-            throw new InvalidOperationException("KURA organization not found. Ensure UserManagementSeeder runs before UserSeeder.");
+            throw new InvalidOperationException("Default or KURA organization not found. Ensure UserManagementSeeder runs before UserSeeder.");
         }
 
         // Get the first mobile station to link to the user (NRB-MOBILE-01)
         var mobileStation = await _context.Stations
+            .FirstOrDefaultAsync(s => s.IsDefault) ?? await _context.Stations
             .FirstOrDefaultAsync(s => s.Code == "NRB-MOBILE-01");
 
         // Check if SUPERUSER role exists
@@ -127,13 +129,19 @@ public class UserSeeder
 
         // Get KURA organization for linking
         var kuraOrg = await _context.Organizations
+            .FirstOrDefaultAsync(o => o.IsDefault) ?? await _context.Organizations
             .FirstOrDefaultAsync(o => o.Code == "KURA");
 
         if (kuraOrg == null)
         {
-            Console.WriteLine("⚠ KURA organization not found, skipping middleware user seed");
+            Console.WriteLine("⚠ Default or KURA organization not found, skipping middleware user seed");
             return;
         }
+
+        // Get the default mobile station
+        var mobileStation = await _context.Stations
+            .FirstOrDefaultAsync(s => s.IsDefault) ?? await _context.Stations
+            .FirstOrDefaultAsync(s => s.Code == "NRB-MOBILE-01");
 
         // Seed middleware service user: middleware@truconnect.local
         var middlewareEmail = "middleware@truconnect.local";
@@ -149,6 +157,7 @@ public class UserSeeder
                 NormalizedUserName = middlewareEmail.ToUpper(),
                 FullName = "TruConnect Middleware",
                 OrganizationId = kuraOrg.Id,
+                StationId = mobileStation?.Id,
                 EmailConfirmed = true,
                 PhoneNumberConfirmed = true,
                 TwoFactorEnabled = false,
@@ -172,7 +181,18 @@ public class UserSeeder
         }
         else
         {
-            Console.WriteLine($"✓ Middleware service user {middlewareEmail} already exists, skipping seed");
+            // Update existing user to link station if not already linked
+            if (existingUser.StationId == null && mobileStation != null)
+            {
+                existingUser.StationId = mobileStation.Id;
+                existingUser.OrganizationId = kuraOrg.Id;
+                await _userManager.UpdateAsync(existingUser);
+                Console.WriteLine($"✓ Updated middleware user {middlewareEmail} to link station {mobileStation.Name}");
+            }
+            else
+            {
+                Console.WriteLine($"✓ Middleware service user {middlewareEmail} already exists, skipping seed");
+            }
         }
     }
 }

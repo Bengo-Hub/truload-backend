@@ -55,6 +55,11 @@ public static class DatabaseSeeder
             var weighingSeeder = new WeighingOperationsSeeder(context, seedDataPath);
             await weighingSeeder.SeedAsync();
 
+            // Seed Technical / Annual Calibration Logic
+            logger.LogInformation("Seeding annual calibration baseline...");
+            var annualCalibrationSeeder = new TruLoad.Backend.Data.Seeders.Technical.AnnualCalibrationSeeder(context);
+            await annualCalibrationSeeder.SeedAsync();
+
             // Seed reference data (cargo types, origins/destinations, roads)
             logger.LogInformation("Seeding reference data...");
             var cargoTypesSeeder = new CargoTypesSeeder(context);

@@ -23,6 +23,11 @@ public class Station : TenantAwareEntity
     /// </summary>
     public string StationType { get; set; } = "weigh_bridge";
 
+    /// <summary>
+    /// Indicates if this is the default station for new users without explicit assignments
+    /// </summary>
+    public bool IsDefault { get; set; } = false;
+
     public string? Location { get; set; } // Address/location description
 
     /// <summary>

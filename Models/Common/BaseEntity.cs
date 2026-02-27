@@ -43,7 +43,7 @@ public abstract class BaseEntity
 /// Inherit from this for entities that should be isolated by tenant/station.
 /// The TenantContext middleware automatically populates these from request context.
 /// </summary>
-public abstract class TenantAwareEntity : BaseEntity
+public abstract class TenantAwareEntity : BaseEntity, ITenantAware
 {
     /// <summary>
     /// Organization/Tenant ID - provides multi-tenant data isolation.
