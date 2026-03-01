@@ -123,6 +123,19 @@ class ComplianceE2EScenario3:
         user = data.get("user", data)
         self.data["userId"] = user.get("id")
         self.data["stationId"] = user.get("stationId")
+        
+        # Fallback: if user has no station, fetch available stations and pick first one
+        if not self.data["stationId"]:
+            print("    [INFO] No stationId in user profile, fetching fallback...")
+            rs = self._get("stations")
+            if rs.status_code == 200:
+                stations = rs.json()
+                if isinstance(stations, dict):
+                    stations = stations.get("items", [])
+                if stations:
+                    self.data["stationId"] = stations[0]["id"]
+                    print(f"    stationId (fallback): {self.data['stationId']} ({stations[0].get('name')})")
+
         print(f"    userId:    {self.data['userId']}")
         print(f"    stationId: {self.data['stationId']}")
 
@@ -133,16 +146,16 @@ class ComplianceE2EScenario3:
         created = []
 
         # -- Driver --
-        r = self._get("drivers/search?query=E2E")
+        r = self._get(f"drivers/search?query=E2E")
         drivers = r.json() if r.status_code == 200 else []
         if isinstance(drivers, dict):
             drivers = drivers.get("items", drivers.get("data", []))
         if drivers:
             self.data["driverId"] = drivers[0]["id"]
-            print(f"    Driver found: {drivers[0].get('fullNames', 'N/A')} ({self.data['driverId']})")
+            print(f"    Driver found: {drivers[0].get('fullName', drivers[0].get('fullNames', 'N/A'))} ({self.data['driverId']})")
         else:
             r = self._post("drivers", {
-                "fullNames": "John E2E",
+                "fullName": "John E2E",
                 "surname": "Kamau",
                 "idNumber": "E2E-ID-001",
                 "drivingLicenseNo": "E2E-DL-001",
@@ -163,10 +176,10 @@ class ComplianceE2EScenario3:
                     all_drivers = all_drivers.get("items", all_drivers.get("data", []))
                 if all_drivers:
                     self.data["driverId"] = all_drivers[0]["id"]
-                    print(f"    Driver fallback: {all_drivers[0].get('fullNames', 'N/A')}")
+                    print(f"    Driver fallback: {all_drivers[0].get('fullName', 'N/A')}")
 
         # -- Transporter --
-        r = self._get("transporters/search?query=E2E")
+        r = self._get(f"transporters/search?query=E2E")
         transporters = r.json() if r.status_code == 200 else []
         if isinstance(transporters, dict):
             transporters = transporters.get("items", transporters.get("data", []))
@@ -207,9 +220,9 @@ class ComplianceE2EScenario3:
             print(f"    Cargo type found: {cargos[0].get('name', 'N/A')}")
         else:
             r = self._post("cargo-types", {
-                "code": "GENERAL_CARGO",
-                "name": "General Cargo",
-                "category": "General",
+                "code": "AGRICULTURAL_PRODUCE",
+                "name": "Agricultural Produce",
+                "category": "Agricultural",
             })
             print(f"    POST /cargo-types -> {r.status_code}")
             if r.status_code in (200, 201):
@@ -229,8 +242,8 @@ class ComplianceE2EScenario3:
             print(f"    Destination: {locations[1].get('name', 'N/A')}")
         else:
             for loc in [
-                {"code": "NBI", "name": "Nairobi", "locationType": "city", "country": "Kenya"},
-                {"code": "MSA", "name": "Mombasa", "locationType": "port", "country": "Kenya"},
+                {"code": "BUSIA", "name": "Busia Border", "locationType": "border", "country": "Kenya"},
+                {"code": "ELD", "name": "Eldoret", "locationType": "city", "country": "Kenya"},
             ]:
                 r = self._post("origins-destinations", loc)
                 print(f"    POST /origins-destinations ({loc['code']}) -> {r.status_code}")
@@ -308,14 +321,15 @@ class ComplianceE2EScenario3:
         """Create passing scale test for the station."""
         body = {
             "stationId": self.data["stationId"],
-            "testType": "standard",
-            "status": "passed",
-            "targetWeight": 10000,
-            "measuredWeight": 10005,
-            "deviationPercent": 0.05,
-            "instrumentId": "WIM-001",
-            "testedByUserId": self.data["userId"],
-            "notes": "E2E scenario 3 - tag hold test calibration",
+            "bound": "A",
+            "testType": "calibration_weight",
+            "vehiclePlate": "E2E-TEST",
+            "weighingMode": "static",
+            "testWeightKg": 10000,
+            "actualWeightKg": 10005,
+            "result": "pass",
+            "deviationKg": 5,
+            "details": "E2E scenario 3 - tag hold test calibration",
         }
         r = self._post("scale-tests", body)
         print(f"    POST /scale-tests -> {r.status_code}")

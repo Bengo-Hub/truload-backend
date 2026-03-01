@@ -53,7 +53,7 @@ public class DocumentSequence : BaseEntity
     /// Prevents duplicate sequence numbers under concurrent access.
     /// </summary>
     [Timestamp]
-    public byte[] RowVersion { get; set; } = null!;
+    public uint RowVersion { get; set; }
 
     // Navigation
     [ForeignKey("OrganizationId")]

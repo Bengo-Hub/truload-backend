@@ -368,7 +368,7 @@ var similarEntities = await dbContext.Vehicles
 
 ### Overview
 
-TruConnect is a Node.js/Electron middleware running on client machines that connects to scale indicators (ZM, Cardinal, Haenni, PAW, etc.) and provides weight data to TruLoad via real-time WebSocket or HTTP polling.
+TruConnect is a Node.js/Electron middleware running on client machines that connects to scale indicators (ZM, Cardinal, Cardinal2, 1310, Haenni, PAW, **MCGS mobile scale**, etc.) and provides weight data to TruLoad via real-time WebSocket or HTTP polling.
 
 ### Connection Modes (Updated Sprint 22.1)
 
@@ -497,7 +497,7 @@ No bound switching
 }
 ```
 
-**Mobile Mode (Axle-by-Axle / Haenni)**
+**Mobile Mode (Axle-by-Axle / Haenni / PAW / MCGS)**
 ```json
 {
   "mode": "mobile",
@@ -512,6 +512,8 @@ No bound switching
   "timestamp": "2026-01-28T10:00:00Z"
 }
 ```
+
+> **Normalization Guarantee:** All supported mobile scales (Haenni API, PAW serial/UDP, and MCGS serial frames `=SG+0000123kR`) are normalized by TruConnect into this unified mobile payload structure before reaching the backend. Backend code (`AutoweighCaptureRequest` and `WeighingService.ProcessAutoweighAsync`) remains protocol-agnostic and does not need to know which physical device produced the weights.
 
 ### Integration Points
 

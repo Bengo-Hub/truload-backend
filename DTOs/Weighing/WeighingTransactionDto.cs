@@ -148,9 +148,8 @@ public class KeNHATagAlertDto
 /// </summary>
 public class CreateWeighingRequest
 {
-    [Required]
     [StringLength(50)]
-    public string TicketNumber { get; set; } = string.Empty;
+    public string? TicketNumber { get; set; }
 
     [Required]
     public Guid StationId { get; set; }

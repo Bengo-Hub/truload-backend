@@ -3,6 +3,7 @@ using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Backend.Migrations
 {
     [DbContext(typeof(TruLoadDbContext))]
-    partial class TruLoadDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260301175809_UpdateDocumentSequenceUintFinal")]
+    partial class UpdateDocumentSequenceUintFinal
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -6793,7 +6796,7 @@ namespace TruLoad.Backend.Migrations
 
                     b.Property<decimal?>("RevenueLast30Days")
                         .HasColumnType("numeric")
-                        .HasColumnName("revenue_last_30_days");
+                        .HasColumnName("revenue_last30_days");
 
                     b.Property<string>("RoadName")
                         .HasColumnType("text")
@@ -6844,11 +6847,11 @@ namespace TruLoad.Backend.Migrations
 
                     b.Property<long>("WeighingsLast30Days")
                         .HasColumnType("bigint")
-                        .HasColumnName("weighings_last_30_days");
+                        .HasColumnName("weighings_last30_days");
 
                     b.Property<long>("WeighingsLast7Days")
                         .HasColumnType("bigint")
-                        .HasColumnName("weighings_last_7_days");
+                        .HasColumnName("weighings_last7_days");
 
                     b.ToTable((string)null);
 

@@ -63,9 +63,15 @@ public class CaseRegisterService : ICaseRegisterService
         if (criteria.DispositionTypeId.HasValue)
             countQuery = countQuery.Where(c => c.DispositionTypeId == criteria.DispositionTypeId.Value);
         if (criteria.CreatedFrom.HasValue)
-            countQuery = countQuery.Where(c => c.CreatedAt >= criteria.CreatedFrom.Value);
+        {
+            var from = DateTime.SpecifyKind(criteria.CreatedFrom.Value, DateTimeKind.Utc);
+            countQuery = countQuery.Where(c => c.CreatedAt >= from);
+        }
         if (criteria.CreatedTo.HasValue)
-            countQuery = countQuery.Where(c => c.CreatedAt <= criteria.CreatedTo.Value);
+        {
+            var to = DateTime.SpecifyKind(criteria.CreatedTo.Value, DateTimeKind.Utc);
+            countQuery = countQuery.Where(c => c.CreatedAt <= to);
+        }
         if (criteria.EscalatedToCaseManager.HasValue)
             countQuery = countQuery.Where(c => c.EscalatedToCaseManager == criteria.EscalatedToCaseManager.Value);
         if (criteria.CaseManagerId.HasValue)

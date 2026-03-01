@@ -26,6 +26,7 @@ using TruLoad.Backend.Data.Configurations.Yard;
 using TruLoad.Backend.Data.Configurations.Prosecution;
 using TruLoad.Backend.Data.Configurations.Financial;
 using TruLoad.Backend.Data.Configurations.Offline;
+using Microsoft.EntityFrameworkCore.Metadata;
 using TruLoad.Backend.Models.Notifications;
 using TruLoad.Backend.Models.Views;
 
@@ -281,7 +282,16 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
         modelBuilder.Entity<ActiveArrestWarrant>(e => { e.HasNoKey(); e.ToView("active_arrest_warrants"); });
         modelBuilder.Entity<RecentCompliantWeighing>(e => { e.HasNoKey(); e.ToView("recent_compliant_weighings"); });
         modelBuilder.Entity<PendingSpecialRelease>(e => { e.HasNoKey(); e.ToView("pending_special_releases"); });
-        modelBuilder.Entity<ActivePermit>(e => { e.HasNoKey(); e.ToView("active_permits"); });
+        modelBuilder.Entity<Models.System.DocumentSequence>(entity =>
+        {
+            entity.Property(e => e.RowVersion)
+                .HasColumnName("xmin")
+                .HasColumnType("xid")
+                .ValueGeneratedOnAddOrUpdate()
+                .IsConcurrencyToken();
+        });
+
+
 
         modelBuilder.Entity<MvDailyWeighingStats>(e => { e.HasNoKey(); e.ToView("mv_daily_weighing_stats"); });
         modelBuilder.Entity<MvChargeSummary>(e => { e.HasNoKey(); e.ToView("mv_charge_summaries"); });
@@ -293,12 +303,31 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
         // Force snake_case names for all view entities so EF Core queries them correctly
         foreach (var entity in modelBuilder.Model.GetEntityTypes())
         {
-            if (entity.GetViewName() != null)
+            // Only apply to views/materialized views
+            if (entity.GetViewName() != null || entity.GetTableName() == null)
             {
                 foreach (var property in entity.GetProperties())
                 {
-                    // Convert PascalCase to snake_case
-                    var snakeCaseName = string.Concat(property.Name.Select((x, i) => i > 0 && char.IsUpper(x) ? "_" + x.ToString() : x.ToString())).ToLower();
+                    // Skip if the property has an explicit column name mapping (e.g. from [Column] attribute)
+                    // We check if the store-specific column name is different from the property name
+                    var storeObject = StoreObjectIdentifier.Create(entity, StoreObjectType.Table) 
+                                   ?? StoreObjectIdentifier.Create(entity, StoreObjectType.View);
+                    
+                    if (storeObject.HasValue)
+                    {
+                        var explicitName = property.GetColumnName(storeObject.Value);
+                        if (explicitName != null && explicitName != property.Name)
+                            continue;
+                    }
+
+                    // Convert PascalCase to snake_case with better handling for numbers
+                    // e.g. Last30Days -> last_30_days
+                    var name = property.Name;
+                    var snakeCaseName = string.Concat(name.Select((x, i) => 
+                        i > 0 && (char.IsUpper(x) || (char.IsDigit(x) && !char.IsDigit(name[i-1]))) 
+                        ? "_" + x.ToString() 
+                        : x.ToString())).ToLower();
+                    
                     property.SetColumnName(snakeCaseName);
                 }
             }

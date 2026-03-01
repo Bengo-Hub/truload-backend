@@ -552,4 +552,96 @@ public class ECitizenService : IECitizenService
         _logger.LogInformation("Reconciliation complete: {Count} invoices reconciled", reconciled);
         return reconciled;
     }
+
+    public async Task<bool> ReconcileInvoiceAsync(Guid invoiceId, string? transactionReference, decimal? amountPaid, CancellationToken ct = default)
+    {
+        var invoice = await _context.Invoices
+            .Include(i => i.Receipts)
+            .FirstOrDefaultAsync(i => i.Id == invoiceId && i.DeletedAt == null, ct)
+            ?? throw new InvalidOperationException($"Invoice {invoiceId} not found");
+
+        if (invoice.Status == "paid")
+        {
+            _logger.LogInformation("Invoice {InvoiceNo} is already paid", invoice.InvoiceNo);
+            return true;
+        }
+
+        try
+        {
+            // Query Pesaflow status
+            var status = await QueryPaymentStatusAsync(invoice.InvoiceNo, ct);
+
+            if (status != null && (string.Equals(status.Status, "PAID", StringComparison.OrdinalIgnoreCase) || 
+                                   string.Equals(status.Status, "SUCCESS", StringComparison.OrdinalIgnoreCase)))
+            {
+                // Check if receipt already exists
+                var effectiveAmount = amountPaid ?? status.AmountPaid;
+                var effectiveReference = status.PaymentReference ?? transactionReference;
+
+                if (string.IsNullOrEmpty(effectiveReference))
+                {
+                    _logger.LogWarning("Cannot reconcile invoice {InvoiceNo}: missing payment reference", invoice.InvoiceNo);
+                    return false;
+                }
+
+                var existingReceipt = await _context.Receipts
+                    .AnyAsync(r => r.InvoiceId == invoice.Id && r.TransactionReference == effectiveReference && r.DeletedAt == null, ct);
+
+                if (!existingReceipt && effectiveAmount > 0)
+                {
+                    var paymentRequest = new RecordPaymentRequest
+                    {
+                        AmountPaid = effectiveAmount,
+                        Currency = invoice.Currency,
+                        PaymentMethod = "pesaflow",
+                        TransactionReference = effectiveReference,
+                        IdempotencyKey = Guid.NewGuid()
+                    };
+
+                    await _receiptService.RecordPaymentAsync(invoice.Id, paymentRequest, Guid.Empty, ct);
+
+                    // Update PaymentChannel on the created receipt
+                    if (!string.IsNullOrEmpty(status.PaymentChannel))
+                    {
+                        var receipt = await _context.Receipts
+                            .Where(r => r.TransactionReference == effectiveReference && r.DeletedAt == null)
+                            .FirstOrDefaultAsync(ct);
+
+                        if (receipt != null)
+                        {
+                            receipt.PaymentChannel = status.PaymentChannel;
+                        }
+                    }
+
+                    invoice.PesaflowPaymentReference = effectiveReference;
+                    invoice.Status = "paid";
+                    invoice.UpdatedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync(ct);
+
+                    _logger.LogInformation("Successfully reconciled invoice {InvoiceNo} manually", invoice.InvoiceNo);
+                    return true;
+                }
+                else if (existingReceipt)
+                {
+                    // If receipt exists but invoice wasn't marked paid, update it now
+                    if (invoice.Status != "paid")
+                    {
+                        invoice.Status = "paid";
+                        invoice.UpdatedAt = DateTime.UtcNow;
+                        await _context.SaveChangesAsync(ct);
+                    }
+                    return true;
+                }
+            }
+            
+            _logger.LogWarning("Pesaflow did not confirm payment for invoice {InvoiceNo}. Status: {Status}", 
+                invoice.InvoiceNo, status?.Status ?? "NULL");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to manually reconcile invoice {InvoiceNo}", invoice.InvoiceNo);
+            throw;
+        }
+    }
 }

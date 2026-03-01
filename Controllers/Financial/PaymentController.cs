@@ -71,4 +71,32 @@ public class PaymentController : ControllerBase
         var reconciled = await _eCitizenService.ReconcileUnpaidInvoicesAsync(ct);
         return Ok(new { reconciled, message = $"{reconciled} invoices reconciled" });
     }
+
+    /// <summary>
+    /// Reconcile a single invoice against Pesaflow.
+    /// </summary>
+    [HttpPost("api/v1/invoices/{invoiceId}/reconcile")]
+    [HasPermission("invoice.update")]
+    public async Task<IActionResult> ReconcileInvoice(
+        Guid invoiceId,
+        [FromBody] ReconcileInvoiceRequest request,
+        CancellationToken ct)
+    {
+        var success = await _eCitizenService.ReconcileInvoiceAsync(
+            invoiceId, 
+            request.TransactionReference, 
+            request.AmountPaid, 
+            ct);
+
+        if (!success)
+            return BadRequest(new { success = false, message = "Reconciliation failed. Payment could not be verified on Pesaflow." });
+
+        return Ok(new { success = true, message = "Invoice reconciled successfully" });
+    }
+}
+
+public class ReconcileInvoiceRequest
+{
+    public string? TransactionReference { get; set; }
+    public decimal? AmountPaid { get; set; }
 }

@@ -133,6 +133,7 @@ DROP MATERIALIZED VIEW IF EXISTS mv_driver_demerit_rankings CASCADE;
 CREATE MATERIALIZED VIEW mv_driver_demerit_rankings AS
 SELECT
     cr.organization_id,
+    cr.station_id,
     d.id AS driver_id,
     d.id_number AS id_no_or_passport,
     d.full_names AS full_name,
@@ -157,12 +158,12 @@ FROM drivers d
 LEFT JOIN case_registers cr ON cr.driver_id = d.id
 LEFT JOIN weighing_transactions wt ON wt.id = cr.weighing_id AND wt.organization_id = cr.organization_id
 LEFT JOIN arrest_warrants aw ON aw.case_register_id = cr.id AND aw.organization_id = cr.organization_id
-GROUP BY cr.organization_id, d.id, d.id_number, d.full_names, d.phone_number, d.email
+GROUP BY cr.organization_id, cr.station_id, d.id, d.id_number, d.full_names, d.phone_number, d.email
 HAVING COUNT(DISTINCT cr.id) > 0;
 
 -- Create indexes
 CREATE UNIQUE INDEX idx_mv_driver_demerit_rankings_unique
-    ON mv_driver_demerit_rankings (organization_id, driver_id);
+    ON mv_driver_demerit_rankings (organization_id, station_id, driver_id);
 
 -- =====================================================
 -- 5. Vehicle Violation History Summary

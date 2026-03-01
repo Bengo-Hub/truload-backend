@@ -1,0 +1,820 @@
+2026-03-01 21:44:43.684 +03:00 [INF] Checking pending migrations...
+2026-03-01 21:44:45.860 +03:00 [INF] ✓ Database is up to date (no pending migrations)
+2026-03-01 21:44:46.167 +03:00 [INF] ✓ Database seeding already completed (Version 1 on "2026-03-01T18:27:15.9524410Z")
+2026-03-01 21:44:46.245 +03:00 [INF] IntegrationConfig for ecitizen_pesaflow already exists, skipping seed
+2026-03-01 21:44:46.256 +03:00 [INF] IntegrationConfig for kenha already exists, skipping seed
+2026-03-01 21:44:46.266 +03:00 [INF] IntegrationConfig for ntsa already exists, skipping seed
+2026-03-01 21:44:46.269 +03:00 [INF] ✓ Integration config seeding completed
+2026-03-01 21:44:46.271 +03:00 [INF] [MV] Starting refresh of all materialized views...
+2026-03-01 21:44:46.422 +03:00 [INF] [MV] All materialized views refreshed in 150ms
+2026-03-01 21:44:46.423 +03:00 [INF] ✓ Materialized views refreshed on startup
+2026-03-01 21:44:46.550 +03:00 [INF] ✓ Rate limit settings loaded from database
+2026-03-01 21:44:46.846 +03:00 [INF] Start installing Hangfire SQL objects...
+2026-03-01 21:44:46.856 +03:00 [INF] Hangfire SQL objects installed.
+2026-03-01 21:44:47.015 +03:00 [INF] Starting TruLoad Backend API
+2026-03-01 21:44:47.092 +03:00 [INF] Starting Hangfire Server using job storage: 'PostgreSQL Server: Host: localhost, DB: truload, Schema: hangfire'
+2026-03-01 21:44:47.094 +03:00 [INF] Using the following options for PostgreSQL job storage:
+2026-03-01 21:44:47.096 +03:00 [INF]     Queue poll interval: 00:00:15.
+2026-03-01 21:44:47.097 +03:00 [INF]     Invisibility timeout: 00:30:00.
+2026-03-01 21:44:47.098 +03:00 [INF]     Use sliding invisibility timeout: False.
+2026-03-01 21:44:47.101 +03:00 [INF] Using the following options for Hangfire Server:
+    Worker count: 5
+    Listening queues: 'critical', 'default', 'payments'
+    Shutdown timeout: 00:00:15
+    Schedule polling interval: 00:00:15
+2026-03-01 21:44:47.130 +03:00 [INF] Server truload-titus:12972:9486f3a5 successfully announced in 9.4375 ms
+2026-03-01 21:44:47.135 +03:00 [INF] Server truload-titus:12972:9486f3a5 is starting the registered dispatchers: ServerWatchdog, ServerJobCancellationWatcher, ExpirationManager, CountersAggregator, Worker, DelayedJobScheduler, RecurringJobScheduler...
+2026-03-01 21:44:47.141 +03:00 [INF] Server truload-titus:12972:9486f3a5 all the dispatchers started
+2026-03-01 21:45:02.663 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-01 21:45:02.746 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-01 21:46:29.373 +03:00 [INF] Server truload-titus:12972:9486f3a5 caught stopping signal...
+2026-03-01 21:46:29.379 +03:00 [INF] Server truload-titus:12972:9486f3a5 All dispatchers stopped
+2026-03-01 21:46:29.390 +03:00 [INF] Server truload-titus:12972:9486f3a5 successfully reported itself as stopped in 3.4118 ms
+2026-03-01 21:46:29.396 +03:00 [INF] Server truload-titus:12972:9486f3a5 has been stopped in total 18.6605 ms
+2026-03-01 21:47:25.377 +03:00 [INF] Checking pending migrations...
+2026-03-01 21:47:27.162 +03:00 [INF] ✓ Database is up to date (no pending migrations)
+2026-03-01 21:47:27.500 +03:00 [INF] Starting database seeding (Version 1)...
+2026-03-01 21:47:27.514 +03:00 [INF] === Starting TruLoad Database Seeding ===
+2026-03-01 21:47:27.518 +03:00 [INF] Seeding roles...
+2026-03-01 21:47:27.759 +03:00 [INF] Seeding user management data...
+2026-03-01 21:47:28.189 +03:00 [INF] Seeding permissions...
+2026-03-01 21:47:28.364 +03:00 [INF] Seeding users...
+2026-03-01 21:47:28.748 +03:00 [INF] Seeding weighing operations data...
+2026-03-01 21:47:30.180 +03:00 [INF] Seeding annual calibration baseline...
+2026-03-01 21:47:30.186 +03:00 [INF] Seeding reference data...
+2026-03-01 21:47:30.374 +03:00 [INF] Seeding fee bands...
+2026-03-01 21:47:30.381 +03:00 [INF] Seeding system configuration data...
+2026-03-01 21:47:30.971 +03:00 [INF] Seeding tag categories...
+2026-03-01 21:47:31.026 +03:00 [INF] Seeding case management taxonomies...
+2026-03-01 21:47:31.631 +03:00 [INF] Seeding act definitions...
+2026-03-01 21:47:31.697 +03:00 [INF] Seeding exchange rate defaults...
+2026-03-01 21:47:31.813 +03:00 [INF] Seeding document conventions...
+2026-03-01 21:47:31.821 +03:00 [WRN] The query uses the 'First'/'FirstOrDefault' operator without 'OrderBy' and filter operators. This may lead to unpredictable results.
+2026-03-01 21:47:31.900 +03:00 [INF] === Database seeding completed successfully ===
+2026-03-01 21:47:31.944 +03:00 [INF] ✓ Database seeding completed in 4402ms
+2026-03-01 21:47:32.031 +03:00 [INF] Seeded IntegrationConfig for ecitizen_pesaflow with BaseUrl=https://test.pesaflow.com, WebhookUrl=http://localhost:4000/api/v1/payments/webhook/ecitizen-pesaflow
+2026-03-01 21:47:32.066 +03:00 [INF] Seeded IntegrationConfig for kenha (inactive - awaiting live credentials), BaseUrl=https://kenload.kenha.co.ke
+2026-03-01 21:47:32.102 +03:00 [INF] Seeded IntegrationConfig for ntsa (inactive - awaiting live credentials), BaseUrl=https://api.ntsa.go.ke
+2026-03-01 21:47:32.104 +03:00 [INF] ✓ Integration config seeding completed
+2026-03-01 21:47:32.106 +03:00 [INF] [MV] Starting refresh of all materialized views...
+2026-03-01 21:47:32.305 +03:00 [INF] [MV] All materialized views refreshed in 198ms
+2026-03-01 21:47:32.307 +03:00 [INF] ✓ Materialized views refreshed on startup
+2026-03-01 21:47:32.351 +03:00 [INF] ✓ Rate limit settings loaded from database
+2026-03-01 21:47:32.605 +03:00 [INF] Start installing Hangfire SQL objects...
+2026-03-01 21:47:32.977 +03:00 [INF] Hangfire SQL objects installed.
+2026-03-01 21:47:33.138 +03:00 [INF] Starting TruLoad Backend API
+2026-03-01 21:47:33.202 +03:00 [INF] Starting Hangfire Server using job storage: 'PostgreSQL Server: Host: localhost, DB: truload, Schema: hangfire'
+2026-03-01 21:47:33.204 +03:00 [INF] Using the following options for PostgreSQL job storage:
+2026-03-01 21:47:33.205 +03:00 [INF]     Queue poll interval: 00:00:15.
+2026-03-01 21:47:33.206 +03:00 [INF]     Invisibility timeout: 00:30:00.
+2026-03-01 21:47:33.207 +03:00 [INF]     Use sliding invisibility timeout: False.
+2026-03-01 21:47:33.208 +03:00 [INF] Using the following options for Hangfire Server:
+    Worker count: 5
+    Listening queues: 'critical', 'default', 'payments'
+    Shutdown timeout: 00:00:15
+    Schedule polling interval: 00:00:15
+2026-03-01 21:47:33.234 +03:00 [INF] Server truload-titus:158284:92211628 successfully announced in 9.0896 ms
+2026-03-01 21:47:33.238 +03:00 [INF] Server truload-titus:158284:92211628 is starting the registered dispatchers: ServerWatchdog, ServerJobCancellationWatcher, ExpirationManager, CountersAggregator, Worker, DelayedJobScheduler, RecurringJobScheduler...
+2026-03-01 21:47:33.248 +03:00 [INF] Server truload-titus:158284:92211628 all the dispatchers started
+2026-03-01 21:50:03.977 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-01 21:50:04.033 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-01 21:53:29.879 +03:00 [INF] User gadmin@masterspace.co.ke logged in successfully
+2026-03-01 21:53:29.956 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 3420.9596 ms
+2026-03-01 21:53:30.050 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: station.read
+2026-03-01 21:53:30.063 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-01 21:53:30.107 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=station ResourceId=null Endpoint=/api/v1/stations Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:30.0539545Z"
+2026-03-01 21:53:30.194 +03:00 [INF] HTTP GET /api/v1/stations responded 200 in 211.9936 ms
+2026-03-01 21:53:30.244 +03:00 [WRN] The query uses a row limiting operator ('Skip'/'Take') without an 'OrderBy' operator. This may lead to unpredictable results. If the 'Distinct' operator is used after 'OrderBy', then make sure to use the 'OrderBy' operator after 'Distinct' as the ordering would otherwise get erased.
+2026-03-01 21:53:30.289 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:30.2258884Z"
+2026-03-01 21:53:30.296 +03:00 [INF] HTTP GET /api/v1/drivers/search responded 200 in 88.5589 ms
+2026-03-01 21:53:30.331 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=POST Status=400 Success=false Timestamp="2026-03-01T18:53:30.3078163Z"
+2026-03-01 21:53:30.337 +03:00 [INF] HTTP POST /api/v1/drivers responded 400 in 36.0318 ms
+2026-03-01 21:53:30.359 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:30.3583897Z"
+2026-03-01 21:53:30.365 +03:00 [INF] HTTP GET /api/v1/drivers/search responded 200 in 8.9854 ms
+2026-03-01 21:53:30.430 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=transporter ResourceId=null Endpoint=/api/v1/transporters Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:30.3738211Z"
+2026-03-01 21:53:30.437 +03:00 [INF] HTTP GET /api/v1/transporters/search responded 200 in 65.5857 ms
+2026-03-01 21:53:30.472 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: transporter.create
+2026-03-01 21:53:30.536 +03:00 [INF] Created transporter E2E-TRANS-001 - E2E Test Transporters Ltd
+2026-03-01 21:53:30.555 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=transporter ResourceId=null Endpoint=/api/v1/transporters Method=POST Status=201 Success=true Timestamp="2026-03-01T18:53:30.4764248Z"
+2026-03-01 21:53:30.560 +03:00 [INF] HTTP POST /api/v1/transporters responded 201 in 92.3100 ms
+2026-03-01 21:53:30.594 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=cargo-type ResourceId=null Endpoint=/api/v1/cargo-types Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:30.5802285Z"
+2026-03-01 21:53:30.600 +03:00 [INF] HTTP GET /api/v1/cargo-types responded 200 in 21.8920 ms
+2026-03-01 21:53:30.624 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=origins-destination ResourceId=null Endpoint=/api/v1/origins-destinations Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:30.6087272Z"
+2026-03-01 21:53:30.631 +03:00 [INF] HTTP GET /api/v1/origins-destinations responded 200 in 24.4894 ms
+2026-03-01 21:53:31.907 +03:00 [INF] User gadmin@masterspace.co.ke logged in successfully
+2026-03-01 21:53:31.913 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 87.0603 ms
+2026-03-01 21:53:31.939 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: station.read
+2026-03-01 21:53:31.942 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-01 21:53:31.947 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=station ResourceId=null Endpoint=/api/v1/stations Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:31.9407930Z"
+2026-03-01 21:53:31.953 +03:00 [INF] HTTP GET /api/v1/stations responded 200 in 17.3450 ms
+2026-03-01 21:53:31.990 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:31.9882965Z"
+2026-03-01 21:53:31.999 +03:00 [INF] HTTP GET /api/v1/drivers/search responded 200 in 14.5809 ms
+2026-03-01 21:53:32.024 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=POST Status=400 Success=false Timestamp="2026-03-01T18:53:32.0229621Z"
+2026-03-01 21:53:32.032 +03:00 [INF] HTTP POST /api/v1/drivers responded 400 in 12.7827 ms
+2026-03-01 21:53:32.041 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:32.0412297Z"
+2026-03-01 21:53:32.046 +03:00 [INF] HTTP GET /api/v1/drivers/search responded 200 in 6.5329 ms
+2026-03-01 21:53:32.055 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=transporter ResourceId=null Endpoint=/api/v1/transporters Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:32.0531977Z"
+2026-03-01 21:53:32.060 +03:00 [INF] HTTP GET /api/v1/transporters/search responded 200 in 9.5231 ms
+2026-03-01 21:53:32.089 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=cargo-type ResourceId=null Endpoint=/api/v1/cargo-types Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:32.0877568Z"
+2026-03-01 21:53:32.096 +03:00 [INF] HTTP GET /api/v1/cargo-types responded 200 in 11.6447 ms
+2026-03-01 21:53:32.125 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=origins-destination ResourceId=null Endpoint=/api/v1/origins-destinations Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:32.1227427Z"
+2026-03-01 21:53:32.132 +03:00 [INF] HTTP GET /api/v1/origins-destinations responded 200 in 14.4532 ms
+2026-03-01 21:53:32.612 +03:00 [INF] User gadmin@masterspace.co.ke logged in successfully
+2026-03-01 21:53:32.621 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 82.3685 ms
+2026-03-01 21:53:32.628 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: station.read
+2026-03-01 21:53:32.638 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-01 21:53:32.647 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=station ResourceId=null Endpoint=/api/v1/stations Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:32.6310491Z"
+2026-03-01 21:53:32.653 +03:00 [INF] HTTP GET /api/v1/stations responded 200 in 26.1659 ms
+2026-03-01 21:53:32.661 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:32.6606168Z"
+2026-03-01 21:53:32.667 +03:00 [INF] HTTP GET /api/v1/drivers/search responded 200 in 8.3477 ms
+2026-03-01 21:53:32.675 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=POST Status=400 Success=false Timestamp="2026-03-01T18:53:32.6751822Z"
+2026-03-01 21:53:32.680 +03:00 [INF] HTTP POST /api/v1/drivers responded 400 in 7.2172 ms
+2026-03-01 21:53:32.702 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:32.7027073Z"
+2026-03-01 21:53:32.708 +03:00 [INF] HTTP GET /api/v1/drivers/search responded 200 in 7.7294 ms
+2026-03-01 21:53:32.732 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=transporter ResourceId=null Endpoint=/api/v1/transporters Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:32.7303170Z"
+2026-03-01 21:53:32.740 +03:00 [INF] HTTP GET /api/v1/transporters/search responded 200 in 12.7117 ms
+2026-03-01 21:53:32.771 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=cargo-type ResourceId=null Endpoint=/api/v1/cargo-types Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:32.7641389Z"
+2026-03-01 21:53:32.780 +03:00 [INF] HTTP GET /api/v1/cargo-types responded 200 in 19.3497 ms
+2026-03-01 21:53:32.811 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=origins-destination ResourceId=null Endpoint=/api/v1/origins-destinations Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:32.8081969Z"
+2026-03-01 21:53:32.827 +03:00 [INF] HTTP GET /api/v1/origins-destinations responded 200 in 23.9184 ms
+2026-03-01 21:53:33.322 +03:00 [INF] User gadmin@masterspace.co.ke logged in successfully
+2026-03-01 21:53:33.325 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 70.6752 ms
+2026-03-01 21:53:33.331 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: station.read
+2026-03-01 21:53:33.332 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-01 21:53:33.334 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=station ResourceId=null Endpoint=/api/v1/stations Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:33.3322253Z"
+2026-03-01 21:53:33.340 +03:00 [INF] HTTP GET /api/v1/stations responded 200 in 10.2055 ms
+2026-03-01 21:53:33.346 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:33.3459630Z"
+2026-03-01 21:53:33.351 +03:00 [INF] HTTP GET /api/v1/drivers/search responded 200 in 7.2910 ms
+2026-03-01 21:53:33.358 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=POST Status=400 Success=false Timestamp="2026-03-01T18:53:33.3579643Z"
+2026-03-01 21:53:33.362 +03:00 [INF] HTTP POST /api/v1/drivers responded 400 in 5.5030 ms
+2026-03-01 21:53:33.368 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=GET Status=200 Success=true Timestamp="2026-03-01T18:53:33.3681034Z"
+2026-03-01 21:53:33.372 +03:00 [INF] HTTP GET /api/v1/drivers/search responded 200 in 6.9558 ms
+2026-03-01 21:54:09.413 +03:00 [INF] HTTP OPTIONS /api/v1/invoices/search responded 204 in 2.6052 ms
+2026-03-01 21:54:09.413 +03:00 [INF] HTTP OPTIONS /api/v1/Stations responded 204 in 0.2449 ms
+2026-03-01 21:54:09.413 +03:00 [INF] HTTP OPTIONS /api/v1/invoices/statistics responded 204 in 0.3166 ms
+2026-03-01 21:54:09.417 +03:00 [INF] HTTP OPTIONS /api/v1/exchange-rates/current responded 204 in 0.2505 ms
+2026-03-01 21:54:09.418 +03:00 [INF] HTTP OPTIONS /api/v1/auth/profile responded 204 in 0.0829 ms
+2026-03-01 21:54:09.506 +03:00 [INF] HTTP GET /api/v1/exchange-rates/current responded 429 in 60.4217 ms
+2026-03-01 21:54:10.660 +03:00 [INF] HTTP GET /api/v1/exchange-rates/current responded 429 in 0.8068 ms
+2026-03-01 21:54:12.693 +03:00 [INF] HTTP GET /api/v1/exchange-rates/current responded 429 in 0.8184 ms
+2026-03-01 21:54:26.603 +03:00 [WRN] Organization "17d45848-eb35-4be5-b4cb-672d28045a8f" not found or inactive
+2026-03-01 21:54:26.631 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "17d45848-eb35-4be5-b4cb-672d28045a8f", clearing station
+2026-03-01 21:54:26.640 +03:00 [INF] Superuser 019caaa7-9b1a-7134-bf8b-e84dc4c1c284 bypassed permission check for: station.read
+2026-03-01 21:54:26.646 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-01 21:54:26.651 +03:00 [INF] AUDIT: User="019caaa7-9b1a-7134-bf8b-e84dc4c1c284" Action=READ ResourceType=Station ResourceId=null Endpoint=/api/v1/Stations Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:26.6457111Z"
+2026-03-01 21:54:26.674 +03:00 [ERR] Failed executing DbCommand (10ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?', @p2='?' (DbType = DateTime), @p3='?', @p4='?', @p5='?', @p6='?', @p7='?' (DbType = Object), @p8='?' (DbType = Object), @p9='?' (DbType = Guid), @p10='?', @p11='?', @p12='?' (DbType = Guid), @p13='?', @p14='?', @p15='?' (DbType = Int32), @p16='?' (DbType = Boolean), @p17='?', @p18='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO audit_logs ("Id", action, created_at, "DenialReason", "Endpoint", "HttpMethod", ip_address, new_values, old_values, "OrganizationId", "RequestId", "RequiredPermission", resource_id, "ResourceName", resource_type, "StatusCode", "Success", user_agent, user_id)
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18);
+2026-03-01 21:54:26.714 +03:00 [ERR] An exception occurred in the database while saving changes for context type 'TruLoad.Backend.Data.TruLoadDbContext'.
+Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+ ---> Npgsql.PostgresException (0x80004005): 23503: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+
+DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+  Exception data:
+    Severity: ERROR
+    SqlState: 23503
+    MessageText: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+    Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+    SchemaName: public
+    TableName: audit_logs
+    ConstraintName: FK_audit_logs_asp_net_users_user_id
+    File: ri_triggers.c
+    Line: 2610
+    Routine: ri_ReportViolation
+   --- End of inner exception stack trace ---
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+ ---> Npgsql.PostgresException (0x80004005): 23503: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+
+DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+  Exception data:
+    Severity: ERROR
+    SqlState: 23503
+    MessageText: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+    Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+    SchemaName: public
+    TableName: audit_logs
+    ConstraintName: FK_audit_logs_asp_net_users_user_id
+    File: ri_triggers.c
+    Line: 2610
+    Routine: ri_ReportViolation
+   --- End of inner exception stack trace ---
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-03-01 21:54:26.739 +03:00 [WRN] Failed to save audit log to database
+Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+ ---> Npgsql.PostgresException (0x80004005): 23503: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+
+DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+  Exception data:
+    Severity: ERROR
+    SqlState: 23503
+    MessageText: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+    Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+    SchemaName: public
+    TableName: audit_logs
+    ConstraintName: FK_audit_logs_asp_net_users_user_id
+    File: ri_triggers.c
+    Line: 2610
+    Routine: ri_ReportViolation
+   --- End of inner exception stack trace ---
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at TruLoad.Backend.Middleware.AuditMiddleware.LogAuditEntryAsync(TruLoadDbContext dbContext, HttpContext context, String requestPath, String requestMethod, Int32 statusCode, DateTime timestamp, Boolean success, String denialReason) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\AuditMiddleware.cs:line 150
+2026-03-01 21:54:26.753 +03:00 [WRN] Organization "17d45848-eb35-4be5-b4cb-672d28045a8f" not found or inactive
+2026-03-01 21:54:26.769 +03:00 [INF] HTTP GET /api/v1/Stations responded 200 in 17333.6905 ms
+2026-03-01 21:54:26.772 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "17d45848-eb35-4be5-b4cb-672d28045a8f", clearing station
+2026-03-01 21:54:26.776 +03:00 [INF] Superuser 019caaa7-9b1a-7134-bf8b-e84dc4c1c284 bypassed permission check for: invoice.read
+2026-03-01 21:54:26.785 +03:00 [WRN] Organization "17d45848-eb35-4be5-b4cb-672d28045a8f" not found or inactive
+2026-03-01 21:54:26.791 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "17d45848-eb35-4be5-b4cb-672d28045a8f", clearing station
+2026-03-01 21:54:26.796 +03:00 [INF] Superuser 019caaa7-9b1a-7134-bf8b-e84dc4c1c284 bypassed permission check for: invoice.read
+2026-03-01 21:54:26.826 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=transporter ResourceId=null Endpoint=/api/v1/transporters Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:26.8210597Z"
+2026-03-01 21:54:26.831 +03:00 [WRN] Organization "17d45848-eb35-4be5-b4cb-672d28045a8f" not found or inactive
+2026-03-01 21:54:26.835 +03:00 [INF] HTTP GET /api/v1/transporters/search responded 200 in 53457.6100 ms
+2026-03-01 21:54:26.835 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "17d45848-eb35-4be5-b4cb-672d28045a8f", clearing station
+2026-03-01 21:54:26.853 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=cargo-type ResourceId=null Endpoint=/api/v1/cargo-types Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:26.8491202Z"
+2026-03-01 21:54:26.862 +03:00 [INF] HTTP GET /api/v1/cargo-types responded 200 in 16.3339 ms
+2026-03-01 21:54:26.870 +03:00 [INF] AUDIT: User="019caaa7-9b1a-7134-bf8b-e84dc4c1c284" Action=READ ResourceType=auth ResourceId=null Endpoint=/api/v1/auth Method=GET Status=404 Success=false Timestamp="2026-03-01T18:54:26.8426686Z"
+2026-03-01 21:54:26.878 +03:00 [ERR] Failed executing DbCommand (2ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?', @p2='?' (DbType = DateTime), @p3='?', @p4='?', @p5='?', @p6='?', @p7='?' (DbType = Object), @p8='?' (DbType = Object), @p9='?' (DbType = Guid), @p10='?', @p11='?', @p12='?' (DbType = Guid), @p13='?', @p14='?', @p15='?' (DbType = Int32), @p16='?' (DbType = Boolean), @p17='?', @p18='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO audit_logs ("Id", action, created_at, "DenialReason", "Endpoint", "HttpMethod", ip_address, new_values, old_values, "OrganizationId", "RequestId", "RequiredPermission", resource_id, "ResourceName", resource_type, "StatusCode", "Success", user_agent, user_id)
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18);
+2026-03-01 21:54:26.885 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=origins-destination ResourceId=null Endpoint=/api/v1/origins-destinations Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:26.8841473Z"
+2026-03-01 21:54:26.885 +03:00 [ERR] An exception occurred in the database while saving changes for context type 'TruLoad.Backend.Data.TruLoadDbContext'.
+Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+ ---> Npgsql.PostgresException (0x80004005): 23503: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+
+DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+  Exception data:
+    Severity: ERROR
+    SqlState: 23503
+    MessageText: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+    Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+    SchemaName: public
+    TableName: audit_logs
+    ConstraintName: FK_audit_logs_asp_net_users_user_id
+    File: ri_triggers.c
+    Line: 2610
+    Routine: ri_ReportViolation
+   --- End of inner exception stack trace ---
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+ ---> Npgsql.PostgresException (0x80004005): 23503: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+
+DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+  Exception data:
+    Severity: ERROR
+    SqlState: 23503
+    MessageText: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+    Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+    SchemaName: public
+    TableName: audit_logs
+    ConstraintName: FK_audit_logs_asp_net_users_user_id
+    File: ri_triggers.c
+    Line: 2610
+    Routine: ri_ReportViolation
+   --- End of inner exception stack trace ---
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-03-01 21:54:26.897 +03:00 [INF] HTTP GET /api/v1/origins-destinations responded 200 in 15.0948 ms
+2026-03-01 21:54:26.913 +03:00 [WRN] Failed to save audit log to database
+Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+ ---> Npgsql.PostgresException (0x80004005): 23503: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+
+DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+  Exception data:
+    Severity: ERROR
+    SqlState: 23503
+    MessageText: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+    Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+    SchemaName: public
+    TableName: audit_logs
+    ConstraintName: FK_audit_logs_asp_net_users_user_id
+    File: ri_triggers.c
+    Line: 2610
+    Routine: ri_ReportViolation
+   --- End of inner exception stack trace ---
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at TruLoad.Backend.Middleware.AuditMiddleware.LogAuditEntryAsync(TruLoadDbContext dbContext, HttpContext context, String requestPath, String requestMethod, Int32 statusCode, DateTime timestamp, Boolean success, String denialReason) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\AuditMiddleware.cs:line 150
+2026-03-01 21:54:26.936 +03:00 [INF] AUDIT: User="019caaa7-9b1a-7134-bf8b-e84dc4c1c284" Action=READ ResourceType=invoice ResourceId=null Endpoint=/api/v1/invoices Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:26.7786152Z"
+2026-03-01 21:54:26.936 +03:00 [INF] HTTP GET /api/v1/auth/profile responded 404 in 17491.8023 ms
+2026-03-01 21:54:26.947 +03:00 [ERR] Failed executing DbCommand (1ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?', @p2='?' (DbType = DateTime), @p3='?', @p4='?', @p5='?', @p6='?', @p7='?' (DbType = Object), @p8='?' (DbType = Object), @p9='?' (DbType = Guid), @p10='?', @p11='?', @p12='?' (DbType = Guid), @p13='?', @p14='?', @p15='?' (DbType = Int32), @p16='?' (DbType = Boolean), @p17='?', @p18='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO audit_logs ("Id", action, created_at, "DenialReason", "Endpoint", "HttpMethod", ip_address, new_values, old_values, "OrganizationId", "RequestId", "RequiredPermission", resource_id, "ResourceName", resource_type, "StatusCode", "Success", user_agent, user_id)
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18);
+2026-03-01 21:54:26.953 +03:00 [ERR] An exception occurred in the database while saving changes for context type 'TruLoad.Backend.Data.TruLoadDbContext'.
+Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+ ---> Npgsql.PostgresException (0x80004005): 23503: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+
+DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+  Exception data:
+    Severity: ERROR
+    SqlState: 23503
+    MessageText: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+    Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+    SchemaName: public
+    TableName: audit_logs
+    ConstraintName: FK_audit_logs_asp_net_users_user_id
+    File: ri_triggers.c
+    Line: 2610
+    Routine: ri_ReportViolation
+   --- End of inner exception stack trace ---
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+ ---> Npgsql.PostgresException (0x80004005): 23503: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+
+DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+  Exception data:
+    Severity: ERROR
+    SqlState: 23503
+    MessageText: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+    Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+    SchemaName: public
+    TableName: audit_logs
+    ConstraintName: FK_audit_logs_asp_net_users_user_id
+    File: ri_triggers.c
+    Line: 2610
+    Routine: ri_ReportViolation
+   --- End of inner exception stack trace ---
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-03-01 21:54:26.960 +03:00 [INF] AUDIT: User="019caaa7-9b1a-7134-bf8b-e84dc4c1c284" Action=CREATE ResourceType=invoice ResourceId=null Endpoint=/api/v1/invoices Method=POST Status=200 Success=true Timestamp="2026-03-01T18:54:26.7985778Z"
+2026-03-01 21:54:26.976 +03:00 [WRN] Failed to save audit log to database
+Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+ ---> Npgsql.PostgresException (0x80004005): 23503: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+
+DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+  Exception data:
+    Severity: ERROR
+    SqlState: 23503
+    MessageText: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+    Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+    SchemaName: public
+    TableName: audit_logs
+    ConstraintName: FK_audit_logs_asp_net_users_user_id
+    File: ri_triggers.c
+    Line: 2610
+    Routine: ri_ReportViolation
+   --- End of inner exception stack trace ---
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at TruLoad.Backend.Middleware.AuditMiddleware.LogAuditEntryAsync(TruLoadDbContext dbContext, HttpContext context, String requestPath, String requestMethod, Int32 statusCode, DateTime timestamp, Boolean success, String denialReason) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\AuditMiddleware.cs:line 150
+2026-03-01 21:54:26.983 +03:00 [ERR] Failed executing DbCommand (3ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?', @p2='?' (DbType = DateTime), @p3='?', @p4='?', @p5='?', @p6='?', @p7='?' (DbType = Object), @p8='?' (DbType = Object), @p9='?' (DbType = Guid), @p10='?', @p11='?', @p12='?' (DbType = Guid), @p13='?', @p14='?', @p15='?' (DbType = Int32), @p16='?' (DbType = Boolean), @p17='?', @p18='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO audit_logs ("Id", action, created_at, "DenialReason", "Endpoint", "HttpMethod", ip_address, new_values, old_values, "OrganizationId", "RequestId", "RequiredPermission", resource_id, "ResourceName", resource_type, "StatusCode", "Success", user_agent, user_id)
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18);
+2026-03-01 21:54:26.998 +03:00 [INF] HTTP GET /api/v1/invoices/statistics responded 200 in 17562.2392 ms
+2026-03-01 21:54:27.002 +03:00 [ERR] An exception occurred in the database while saving changes for context type 'TruLoad.Backend.Data.TruLoadDbContext'.
+Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+ ---> Npgsql.PostgresException (0x80004005): 23503: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+
+DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+  Exception data:
+    Severity: ERROR
+    SqlState: 23503
+    MessageText: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+    Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+    SchemaName: public
+    TableName: audit_logs
+    ConstraintName: FK_audit_logs_asp_net_users_user_id
+    File: ri_triggers.c
+    Line: 2610
+    Routine: ri_ReportViolation
+   --- End of inner exception stack trace ---
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+ ---> Npgsql.PostgresException (0x80004005): 23503: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+
+DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+  Exception data:
+    Severity: ERROR
+    SqlState: 23503
+    MessageText: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+    Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+    SchemaName: public
+    TableName: audit_logs
+    ConstraintName: FK_audit_logs_asp_net_users_user_id
+    File: ri_triggers.c
+    Line: 2610
+    Routine: ri_ReportViolation
+   --- End of inner exception stack trace ---
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-03-01 21:54:27.024 +03:00 [WRN] Failed to save audit log to database
+Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+ ---> Npgsql.PostgresException (0x80004005): 23503: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+
+DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+  Exception data:
+    Severity: ERROR
+    SqlState: 23503
+    MessageText: insert or update on table "audit_logs" violates foreign key constraint "FK_audit_logs_asp_net_users_user_id"
+    Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+    SchemaName: public
+    TableName: audit_logs
+    ConstraintName: FK_audit_logs_asp_net_users_user_id
+    File: ri_triggers.c
+    Line: 2610
+    Routine: ri_ReportViolation
+   --- End of inner exception stack trace ---
+   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at TruLoad.Backend.Middleware.AuditMiddleware.LogAuditEntryAsync(TruLoadDbContext dbContext, HttpContext context, String requestPath, String requestMethod, Int32 statusCode, DateTime timestamp, Boolean success, String denialReason) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\AuditMiddleware.cs:line 150
+2026-03-01 21:54:27.043 +03:00 [INF] HTTP POST /api/v1/invoices/search responded 200 in 17614.4276 ms
+2026-03-01 21:54:28.350 +03:00 [INF] User gadmin@masterspace.co.ke logged in successfully
+2026-03-01 21:54:28.362 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 94.0597 ms
+2026-03-01 21:54:28.385 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:28.3830986Z"
+2026-03-01 21:54:28.395 +03:00 [INF] HTTP GET /api/v1/drivers/search responded 200 in 15.7583 ms
+2026-03-01 21:54:28.473 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=POST Status=201 Success=true Timestamp="2026-03-01T18:54:28.4028881Z"
+2026-03-01 21:54:28.477 +03:00 [INF] HTTP POST /api/v1/drivers responded 201 in 76.8591 ms
+2026-03-01 21:54:28.501 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=transporter ResourceId=null Endpoint=/api/v1/transporters Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:28.4985152Z"
+2026-03-01 21:54:28.508 +03:00 [INF] HTTP GET /api/v1/transporters/search responded 200 in 13.3505 ms
+2026-03-01 21:54:28.519 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=cargo-type ResourceId=null Endpoint=/api/v1/cargo-types Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:28.5171178Z"
+2026-03-01 21:54:28.527 +03:00 [INF] HTTP GET /api/v1/cargo-types responded 200 in 11.9170 ms
+2026-03-01 21:54:28.540 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=origins-destination ResourceId=null Endpoint=/api/v1/origins-destinations Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:28.5359490Z"
+2026-03-01 21:54:28.546 +03:00 [INF] HTTP GET /api/v1/origins-destinations responded 200 in 13.0622 ms
+2026-03-01 21:54:28.566 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=scale-test ResourceId=null Endpoint=/api/v1/scale-tests Method=POST Status=400 Success=false Timestamp="2026-03-01T18:54:28.5541173Z"
+2026-03-01 21:54:28.572 +03:00 [INF] HTTP POST /api/v1/scale-tests responded 400 in 20.7593 ms
+2026-03-01 21:54:29.137 +03:00 [INF] User gadmin@masterspace.co.ke logged in successfully
+2026-03-01 21:54:29.142 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 78.0908 ms
+2026-03-01 21:54:29.152 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:29.1502242Z"
+2026-03-01 21:54:29.157 +03:00 [INF] HTTP GET /api/v1/drivers/search responded 200 in 9.0305 ms
+2026-03-01 21:54:29.181 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=transporter ResourceId=null Endpoint=/api/v1/transporters Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:29.1795386Z"
+2026-03-01 21:54:29.187 +03:00 [INF] HTTP GET /api/v1/transporters/search responded 200 in 10.0334 ms
+2026-03-01 21:54:29.195 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=cargo-type ResourceId=null Endpoint=/api/v1/cargo-types Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:29.1941714Z"
+2026-03-01 21:54:29.200 +03:00 [INF] HTTP GET /api/v1/cargo-types responded 200 in 7.9845 ms
+2026-03-01 21:54:29.228 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=origins-destination ResourceId=null Endpoint=/api/v1/origins-destinations Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:29.2262243Z"
+2026-03-01 21:54:29.235 +03:00 [INF] HTTP GET /api/v1/origins-destinations responded 200 in 12.3084 ms
+2026-03-01 21:54:29.258 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=scale-test ResourceId=null Endpoint=/api/v1/scale-tests Method=POST Status=400 Success=false Timestamp="2026-03-01T18:54:29.2580145Z"
+2026-03-01 21:54:29.266 +03:00 [INF] HTTP POST /api/v1/scale-tests responded 400 in 10.7825 ms
+2026-03-01 21:54:30.745 +03:00 [INF] User gadmin@masterspace.co.ke logged in successfully
+2026-03-01 21:54:30.757 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 155.5640 ms
+2026-03-01 21:54:30.772 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=scale-test ResourceId=null Endpoint=/api/v1/scale-tests Method=POST Status=400 Success=false Timestamp="2026-03-01T18:54:30.7721581Z"
+2026-03-01 21:54:30.784 +03:00 [INF] HTTP POST /api/v1/scale-tests responded 400 in 14.9459 ms
+2026-03-01 21:54:33.868 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.2839 ms
+2026-03-01 21:54:34.068 +03:00 [INF] User gadmin@masterspace.co.ke logged in successfully
+2026-03-01 21:54:34.095 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 215.6356 ms
+2026-03-01 21:54:35.642 +03:00 [INF] HTTP OPTIONS /api/v1/exchange-rates/current responded 204 in 0.0855 ms
+2026-03-01 21:54:35.644 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/statistics responded 204 in 0.0975 ms
+2026-03-01 21:54:35.644 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/statistics responded 204 in 0.0900 ms
+2026-03-01 21:54:35.649 +03:00 [INF] HTTP OPTIONS /api/v1/yard-entries/statistics responded 204 in 0.1035 ms
+2026-03-01 21:54:35.655 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.1143 ms
+2026-03-01 21:54:35.658 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/compliance-trend responded 204 in 0.1011 ms
+2026-03-01 21:54:35.659 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/revenue-by-station responded 204 in 0.0782 ms
+2026-03-01 21:54:35.661 +03:00 [INF] HTTP OPTIONS /api/v1/stations/performance responded 204 in 0.0938 ms
+2026-03-01 21:54:35.665 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users/by-station responded 204 in 0.0962 ms
+2026-03-01 21:54:35.673 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:54:35.678 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:54:35.679 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: config.read
+2026-03-01 21:54:35.687 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:54:35.688 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:54:35.688 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-01 21:54:35.691 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:54:35.699 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-01 21:54:35.700 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:54:35.704 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: yard.read
+2026-03-01 21:54:35.714 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: analytics.read, receipt.read
+2026-03-01 21:54:35.719 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-01 21:54:35.742 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=exchange-rate ResourceId=null Endpoint=/api/v1/exchange-rates Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:35.6913504Z"
+2026-03-01 21:54:35.758 +03:00 [INF] HTTP GET /api/v1/exchange-rates/current responded 200 in 90.9667 ms
+2026-03-01 21:54:35.768 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:35.7014559Z"
+2026-03-01 21:54:35.771 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:54:35.772 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:35.7094699Z"
+2026-03-01 21:54:35.777 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/statistics responded 200 in 104.5936 ms
+2026-03-01 21:54:35.783 +03:00 [WRN] The query uses the 'First'/'FirstOrDefault' operator without 'OrderBy' and filter operators. This may lead to unpredictable results.
+2026-03-01 21:54:35.785 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-01 21:54:35.785 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 102.9244 ms
+2026-03-01 21:54:35.801 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:35.7209902Z"
+2026-03-01 21:54:35.804 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:35.6955085Z"
+2026-03-01 21:54:35.806 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=yard-entrie ResourceId=null Endpoint=/api/v1/yard-entries Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:35.7161826Z"
+2026-03-01 21:54:35.808 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-01 21:54:35.809 +03:00 [INF] HTTP GET /api/v1/receipts/revenue-by-station responded 200 in 113.5442 ms
+2026-03-01 21:54:35.814 +03:00 [INF] HTTP GET /api/v1/case/cases/statistics responded 200 in 135.3896 ms
+2026-03-01 21:54:35.819 +03:00 [INF] HTTP GET /api/v1/yard-entries/statistics responded 200 in 135.1015 ms
+2026-03-01 21:54:35.845 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T18:54:35.7961647Z"
+2026-03-01 21:54:35.852 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/compliance-trend responded 200 in 85.2270 ms
+2026-03-01 21:55:04.065 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-01 21:55:04.081 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-01 21:55:05.632 +03:00 [INF] HTTP GET /api/v1/stations/performance responded 200 in 29837.1650 ms
+2026-03-01 21:55:05.634 +03:00 [INF] HTTP GET /api/v1/user-management/users/by-station responded 200 in 29834.7968 ms
+2026-03-01 21:55:05.901 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 29999.1860 ms
+2026-03-01 21:55:06.634 +03:00 [INF] HTTP OPTIONS /api/v1/stations/performance responded 204 in 0.3211 ms
+2026-03-01 21:55:06.636 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users/by-station responded 204 in 0.0844 ms
+2026-03-01 21:55:12.596 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/search responded 204 in 0.2580 ms
+2026-03-01 21:55:12.597 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/statistics responded 204 in 0.0908 ms
+2026-03-01 21:55:19.361 +03:00 [INF] HTTP OPTIONS /api/v1/Stations/my-station responded 204 in 0.2677 ms
+2026-03-01 21:55:19.365 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0630 ms
+2026-03-01 21:55:19.365 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0245 ms
+2026-03-01 21:55:19.390 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 429 in 0.6331 ms
+2026-03-01 21:55:19.398 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 429 in 0.5988 ms
+2026-03-01 21:55:20.424 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 429 in 0.9423 ms
+2026-03-01 21:55:20.447 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 429 in 1.6002 ms
+2026-03-01 21:55:22.465 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 429 in 0.8587 ms
+2026-03-01 21:55:22.485 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 429 in 0.8952 ms
+2026-03-01 21:55:23.509 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 429 in 0.9039 ms
+2026-03-01 21:55:23.530 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 429 in 0.8266 ms
+2026-03-01 21:55:24.548 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0778 ms
+2026-03-01 21:55:24.554 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0457 ms
+2026-03-01 21:55:24.559 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 429 in 0.5224 ms
+2026-03-01 21:55:24.565 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 429 in 0.3767 ms
+2026-03-01 21:55:26.581 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 429 in 0.8234 ms
+2026-03-01 21:55:26.603 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 429 in 0.7821 ms
+2026-03-01 21:55:26.681 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:26.681 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:26.681 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:26.681 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:26.681 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:26.694 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: station.read
+2026-03-01 21:55:26.700 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: analytics.read, receipt.read
+2026-03-01 21:55:26.706 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: receipt.read
+2026-03-01 21:55:26.712 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-01 21:55:26.716 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: station.read
+2026-03-01 21:55:26.749 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-01 21:55:26.767 +03:00 [INF] User null does not have a linked station (e.g. Superuser or Global Admin)
+2026-03-01 21:55:26.779 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-01 21:55:26.795 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=Station ResourceId=null Endpoint=/api/v1/Stations Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:26.7241464Z"
+2026-03-01 21:55:26.811 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:26.7413147Z"
+2026-03-01 21:55:26.813 +03:00 [INF] HTTP GET /api/v1/Stations/my-station responded 200 in 7433.1093 ms
+2026-03-01 21:55:26.822 +03:00 [INF] HTTP GET /api/v1/user-management/users/by-station responded 200 in 20160.6522 ms
+2026-03-01 21:55:26.831 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=POST Status=200 Success=true Timestamp="2026-03-01T18:55:26.7360744Z"
+2026-03-01 21:55:26.842 +03:00 [INF] HTTP POST /api/v1/receipts/search responded 200 in 14234.6640 ms
+2026-03-01 21:55:26.856 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:26.7290610Z"
+2026-03-01 21:55:26.866 +03:00 [INF] HTTP GET /api/v1/receipts/statistics responded 200 in 14244.8309 ms
+2026-03-01 21:55:26.925 +03:00 [INF] HTTP OPTIONS /api/v1/scale-tests/station/ef26c390-1365-425e-bcff-e81968763ac7/range responded 204 in 0.0542 ms
+2026-03-01 21:55:26.926 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0439 ms
+2026-03-01 21:55:26.927 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0442 ms
+2026-03-01 21:55:26.928 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=station ResourceId=null Endpoint=/api/v1/stations Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:26.7519582Z"
+2026-03-01 21:55:26.948 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:26.949 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:26.952 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:26.964 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-01 21:55:26.955 +03:00 [INF] HTTP GET /api/v1/stations/performance responded 200 in 20305.1550 ms
+2026-03-01 21:55:26.957 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-01 21:55:26.997 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-01 21:55:27.000 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-01 21:55:27.040 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=scale-test ResourceId="ef26c390-1365-425e-bcff-e81968763ac7" Endpoint=/api/v1/scale-tests Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:26.9680288Z"
+2026-03-01 21:55:27.064 +03:00 [INF] HTTP GET /api/v1/scale-tests/station/ef26c390-1365-425e-bcff-e81968763ac7/range responded 200 in 114.7475 ms
+2026-03-01 21:55:27.273 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:26.9711403Z"
+2026-03-01 21:55:27.273 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:26.9857458Z"
+2026-03-01 21:55:27.281 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 336.9648 ms
+2026-03-01 21:55:27.288 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 344.2187 ms
+2026-03-01 21:55:40.338 +03:00 [INF] HTTP OPTIONS /api/v1/AxleConfiguration responded 204 in 0.0551 ms
+2026-03-01 21:55:40.342 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.2761 ms
+2026-03-01 21:55:40.343 +03:00 [INF] HTTP OPTIONS /api/v1/drivers/search responded 204 in 0.0392 ms
+2026-03-01 21:55:40.343 +03:00 [INF] HTTP OPTIONS /api/v1/transporters/search responded 204 in 0.0412 ms
+2026-03-01 21:55:40.344 +03:00 [INF] HTTP OPTIONS /api/v1/cargo-types responded 204 in 0.0379 ms
+2026-03-01 21:55:40.344 +03:00 [INF] HTTP OPTIONS /api/v1/origins-destinations responded 204 in 0.0434 ms
+2026-03-01 21:55:40.349 +03:00 [INF] HTTP OPTIONS /api/v1/vehicle-makes/active responded 204 in 0.0534 ms
+2026-03-01 21:55:40.350 +03:00 [INF] HTTP OPTIONS /api/v1/AxleConfiguration responded 204 in 0.1000 ms
+2026-03-01 21:55:40.356 +03:00 [INF] HTTP OPTIONS /api/v1/scale-tests/my-station/status responded 204 in 0.0495 ms
+2026-03-01 21:55:40.365 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:40.368 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:40.370 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:40.373 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:40.374 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:40.366 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:40.379 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-01 21:55:40.385 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-01 21:55:40.392 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=cargo-type ResourceId=null Endpoint=/api/v1/cargo-types Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:40.3909832Z"
+2026-03-01 21:55:40.400 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=origins-destination ResourceId=null Endpoint=/api/v1/origins-destinations Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:40.3932598Z"
+2026-03-01 21:55:40.401 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:40.4015511Z"
+2026-03-01 21:55:40.400 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=transporter ResourceId=null Endpoint=/api/v1/transporters Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:40.3878968Z"
+2026-03-01 21:55:40.424 +03:00 [INF] HTTP GET /api/v1/origins-destinations responded 200 in 53.1938 ms
+2026-03-01 21:55:40.433 +03:00 [INF] HTTP GET /api/v1/drivers/search responded 200 in 68.4651 ms
+2026-03-01 21:55:40.439 +03:00 [INF] HTTP GET /api/v1/cargo-types responded 200 in 69.6732 ms
+2026-03-01 21:55:40.450 +03:00 [INF] HTTP GET /api/v1/transporters/search responded 200 in 83.3975 ms
+2026-03-01 21:55:40.464 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:40.468 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:40.477 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:40.489 +03:00 [INF] AxleConfigurationRepository.GetAllAsync: Found 30 configurations for isStandard=null, legalFramework=null, axleCount=null, includeInactive=false
+2026-03-01 21:55:40.496 +03:00 [INF] AxleConfigurationController.GetAll: Returning 30 configurations for isStandard=null, includeInactive=false
+2026-03-01 21:55:40.521 +03:00 [INF] AxleConfigurationRepository.GetAllAsync: Found 30 configurations for isStandard=null, legalFramework=null, axleCount=null, includeInactive=false
+2026-03-01 21:55:40.525 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=vehicle-make ResourceId=null Endpoint=/api/v1/vehicle-makes Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:40.4846336Z"
+2026-03-01 21:55:40.565 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=scale-test ResourceId=null Endpoint=/api/v1/scale-tests Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:40.4692681Z"
+2026-03-01 21:55:40.575 +03:00 [INF] AxleConfigurationController.GetAll: Returning 30 configurations for isStandard=null, includeInactive=false
+2026-03-01 21:55:40.530 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=AxleConfiguration ResourceId=null Endpoint=/api/v1/AxleConfiguration Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:40.3984235Z"
+2026-03-01 21:55:40.589 +03:00 [INF] HTTP GET /api/v1/vehicle-makes/active responded 200 in 115.8845 ms
+2026-03-01 21:55:40.603 +03:00 [INF] HTTP GET /api/v1/scale-tests/my-station/status responded 200 in 145.6286 ms
+2026-03-01 21:55:40.605 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=AxleConfiguration ResourceId=null Endpoint=/api/v1/AxleConfiguration Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:40.4723592Z"
+2026-03-01 21:55:40.618 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:40.3853211Z"
+2026-03-01 21:55:40.626 +03:00 [INF] HTTP GET /api/v1/AxleConfiguration responded 200 in 263.8817 ms
+2026-03-01 21:55:40.820 +03:00 [INF] HTTP GET /api/v1/AxleConfiguration responded 200 in 357.5609 ms
+2026-03-01 21:55:40.824 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 464.5910 ms
+2026-03-01 21:55:41.153 +03:00 [INF] HTTP OPTIONS /api/v1/AxleWeightReferences/by-configuration/e253e661-9be6-42be-994f-bfac928f2d5c responded 204 in 0.1355 ms
+2026-03-01 21:55:41.179 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-01 21:55:41.250 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=AxleWeightReference ResourceId="e253e661-9be6-42be-994f-bfac928f2d5c" Endpoint=/api/v1/AxleWeightReferences Method=GET Status=200 Success=true Timestamp="2026-03-01T18:55:41.1864551Z"
+2026-03-01 21:55:41.258 +03:00 [INF] HTTP GET /api/v1/AxleWeightReferences/by-configuration/e253e661-9be6-42be-994f-bfac928f2d5c responded 200 in 86.4562 ms
+2026-03-01 21:58:06.780 +03:00 [INF] Server truload-titus:158284:92211628 caught stopping signal...
+2026-03-01 21:58:06.790 +03:00 [INF] Server truload-titus:158284:92211628 All dispatchers stopped
+2026-03-01 21:58:06.803 +03:00 [INF] Server truload-titus:158284:92211628 successfully reported itself as stopped in 2.2874 ms
+2026-03-01 21:58:06.805 +03:00 [INF] Server truload-titus:158284:92211628 has been stopped in total 22.7741 ms
