@@ -4,6 +4,11 @@ using TruLoad.Backend.Models.Technical;
 
 namespace TruLoad.Backend.Data.Seeders.Technical;
 
+/// <summary>
+/// Seeds annual calibration baseline record for the default station.
+/// Depends on UserManagementSeeder having run first so that at least one station exists (e.g. NRB-MOBILE-01 with IsDefault).
+/// Uses IgnoreQueryFilters() because seeding runs outside request context and tenant filter would hide stations.
+/// </summary>
 public class AnnualCalibrationSeeder
 {
     private readonly TruLoadDbContext _context;
@@ -15,8 +20,11 @@ public class AnnualCalibrationSeeder
 
     public async Task SeedAsync()
     {
+        // IgnoreQueryFilters: during seeding there is no request-scoped tenant, so Station filter would exclude all
         var mobileStation = await _context.Stations
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(s => s.IsDefault) ?? await _context.Stations
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(s => s.Code == "NRB-MOBILE-01");
 
         if (mobileStation == null)
@@ -26,7 +34,9 @@ public class AnnualCalibrationSeeder
         }
 
         var kuraOrg = await _context.Organizations
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(o => o.IsDefault) ?? await _context.Organizations
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(o => o.Code == "KURA");
 
         if (kuraOrg == null) return;

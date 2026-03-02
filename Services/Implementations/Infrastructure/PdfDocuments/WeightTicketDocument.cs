@@ -138,7 +138,7 @@ public class WeightTicketDocument : BaseDocument
                 ComposeInfoCell(table, "Vehicle Registration", _transaction.VehicleRegNumber, true);
                 ComposeInfoCell(table, "Vehicle Type", _transaction.Vehicle?.VehicleType ?? "N/A");
                 ComposeInfoCell(table, "Vehicle Make", _transaction.Vehicle?.Make ?? "N/A");
-                ComposeInfoCell(table, "Axle Configuration", _transaction.Vehicle?.AxleConfiguration?.AxleCode ?? "N/A");
+                ComposeInfoCell(table, "Axle Configuration", GetAxleConfigurationDisplay());
                 ComposeInfoCell(table, "Driver", _transaction.Driver?.FullNames ?? "N/A");
                 ComposeInfoCell(table, "Transporter", _transaction.Transporter?.Name ?? "N/A");
                 ComposeInfoCell(table, "Origin", _transaction.Origin?.Name ?? "N/A");
@@ -149,6 +149,21 @@ public class WeightTicketDocument : BaseDocument
                 ComposeInfoCell(table, "Station Code", _transaction.Station?.Code ?? "N/A");
             });
         });
+    }
+
+    /// <summary>
+    /// Axle configuration for display: from vehicle when set, otherwise from first weighing axle (e.g. mobile flow where vehicle is auto-created without config).
+    /// </summary>
+    private string GetAxleConfigurationDisplay()
+    {
+        var fromVehicle = _transaction.Vehicle?.AxleConfiguration?.AxleCode;
+        if (!string.IsNullOrEmpty(fromVehicle))
+            return fromVehicle;
+        var fromAxle = _transaction.WeighingAxles?
+            .OrderBy(a => a.AxleNumber)
+            .Select(a => a.AxleConfiguration?.AxleCode)
+            .FirstOrDefault(ac => !string.IsNullOrEmpty(ac));
+        return fromAxle ?? "N/A";
     }
 
     private static void ComposeInfoCell(TableDescriptor table, string label, string value, bool bold = false)

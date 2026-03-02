@@ -5,7 +5,9 @@ namespace TruLoad.Backend.Data.Seeders.SystemConfiguration;
 
 /// <summary>
 /// Seeds default document naming conventions for all document types.
-/// Idempotent - safe to run multiple times.
+/// Uses DocumentSeedDefinitions so conventions stay aligned with document sequences (same types, matching ResetFrequency).
+/// DocumentNumberService links convention and sequence by OrganizationId + DocumentType when generating numbers.
+/// Idempotent - safe to run multiple times. Seeds for all organizations (like DocumentSequenceSeeder).
 /// </summary>
 public class DocumentConventionSeeder
 {
@@ -18,167 +20,37 @@ public class DocumentConventionSeeder
 
     public async Task SeedAsync()
     {
-        // Get the first organization (or skip if none exist yet)
-        var org = await _context.Organizations.FirstOrDefaultAsync();
-        if (org == null) return;
+        var orgs = await _context.Organizations.ToListAsync();
+        if (orgs.Count == 0) return;
 
-        var conventions = new[]
+        foreach (var org in orgs)
         {
-            new DocumentConvention
+            foreach (var entry in DocumentSeedDefinitions.All)
             {
-                Id = Guid.NewGuid(),
-                OrganizationId = org.Id,
-                DocumentType = DocumentTypes.WeightTicket,
-                DisplayName = "Weight Ticket",
-                Prefix = "",
-                IncludeStationCode = true,
-                IncludeBound = true,
-                IncludeDate = true,
-                DateFormat = "yyyyMMdd",
-                IncludeVehicleReg = true,
-                SequencePadding = 4,
-                Separator = "-",
-                IsActive = true
-            },
-            new DocumentConvention
-            {
-                Id = Guid.NewGuid(),
-                OrganizationId = org.Id,
-                DocumentType = DocumentTypes.Invoice,
-                DisplayName = "Invoice",
-                Prefix = "INV",
-                IncludeStationCode = false,
-                IncludeBound = false,
-                IncludeDate = true,
-                DateFormat = "ddMMyy",
-                IncludeVehicleReg = false,
-                SequencePadding = 4,
-                Separator = "-",
-                IsActive = true
-            },
-            new DocumentConvention
-            {
-                Id = Guid.NewGuid(),
-                OrganizationId = org.Id,
-                DocumentType = DocumentTypes.Receipt,
-                DisplayName = "Receipt",
-                Prefix = "RCP",
-                IncludeStationCode = false,
-                IncludeBound = false,
-                IncludeDate = true,
-                DateFormat = "ddMMyy",
-                IncludeVehicleReg = false,
-                SequencePadding = 4,
-                Separator = "-",
-                IsActive = true
-            },
-            new DocumentConvention
-            {
-                Id = Guid.NewGuid(),
-                OrganizationId = org.Id,
-                DocumentType = DocumentTypes.ChargeSheet,
-                DisplayName = "Charge Sheet",
-                Prefix = "CS",
-                IncludeStationCode = true,
-                IncludeBound = false,
-                IncludeDate = true,
-                DateFormat = "yyyyMMdd",
-                IncludeVehicleReg = false,
-                SequencePadding = 4,
-                Separator = "-",
-                IsActive = true
-            },
-            new DocumentConvention
-            {
-                Id = Guid.NewGuid(),
-                OrganizationId = org.Id,
-                DocumentType = DocumentTypes.ComplianceCertificate,
-                DisplayName = "Compliance Certificate",
-                Prefix = "CC",
-                IncludeStationCode = true,
-                IncludeBound = false,
-                IncludeDate = true,
-                DateFormat = "yyyyMMdd",
-                IncludeVehicleReg = false,
-                SequencePadding = 4,
-                Separator = "-",
-                IsActive = true
-            },
-            new DocumentConvention
-            {
-                Id = Guid.NewGuid(),
-                OrganizationId = org.Id,
-                DocumentType = DocumentTypes.ProhibitionOrder,
-                DisplayName = "Prohibition Order",
-                Prefix = "PO",
-                IncludeStationCode = true,
-                IncludeBound = false,
-                IncludeDate = true,
-                DateFormat = "yyyyMMdd",
-                IncludeVehicleReg = false,
-                SequencePadding = 4,
-                Separator = "-",
-                IsActive = true
-            },
-            new DocumentConvention
-            {
-                Id = Guid.NewGuid(),
-                OrganizationId = org.Id,
-                DocumentType = DocumentTypes.SpecialRelease,
-                DisplayName = "Special Release Certificate",
-                Prefix = "SR",
-                IncludeStationCode = true,
-                IncludeBound = false,
-                IncludeDate = true,
-                DateFormat = "yyyyMMdd",
-                IncludeVehicleReg = false,
-                SequencePadding = 4,
-                Separator = "-",
-                IsActive = true
-            },
-            new DocumentConvention
-            {
-                Id = Guid.NewGuid(),
-                OrganizationId = org.Id,
-                DocumentType = DocumentTypes.LoadCorrectionMemo,
-                DisplayName = "Load Correction Memo",
-                Prefix = "LCM",
-                IncludeStationCode = true,
-                IncludeBound = false,
-                IncludeDate = true,
-                DateFormat = "yyyyMMdd",
-                IncludeVehicleReg = false,
-                SequencePadding = 4,
-                Separator = "-",
-                IsActive = true
-            },
-            new DocumentConvention
-            {
-                Id = Guid.NewGuid(),
-                OrganizationId = org.Id,
-                DocumentType = DocumentTypes.CourtMinutes,
-                DisplayName = "Court Minutes",
-                Prefix = "CM",
-                IncludeStationCode = true,
-                IncludeBound = false,
-                IncludeDate = true,
-                DateFormat = "yyyyMMdd",
-                IncludeVehicleReg = false,
-                SequencePadding = 4,
-                Separator = "-",
-                IsActive = true
-            },
-        };
+                var exists = await _context.DocumentConventions.AnyAsync(c =>
+                    c.OrganizationId == org.Id &&
+                    c.DocumentType == entry.DocumentType);
 
-        foreach (var convention in conventions)
-        {
-            var exists = await _context.DocumentConventions.AnyAsync(c =>
-                c.OrganizationId == convention.OrganizationId &&
-                c.DocumentType == convention.DocumentType);
-
-            if (!exists)
-            {
-                _context.DocumentConventions.Add(convention);
+                if (!exists)
+                {
+                    _context.DocumentConventions.Add(new DocumentConvention
+                    {
+                        Id = Guid.NewGuid(),
+                        OrganizationId = org.Id,
+                        DocumentType = entry.DocumentType,
+                        DisplayName = entry.DisplayName,
+                        Prefix = entry.Prefix,
+                        IncludeStationCode = entry.IncludeStationCode,
+                        IncludeBound = entry.IncludeBound,
+                        IncludeDate = entry.IncludeDate,
+                        DateFormat = entry.DateFormat,
+                        IncludeVehicleReg = entry.IncludeVehicleReg,
+                        SequencePadding = entry.SequencePadding,
+                        Separator = entry.Separator,
+                        ResetFrequency = entry.ResetFrequency,
+                        IsActive = true
+                    });
+                }
             }
         }
 

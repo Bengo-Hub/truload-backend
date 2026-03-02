@@ -943,6 +943,10 @@ public class WeighingController : ControllerBase
         var axles = transaction.WeighingAxles?.ToList() ?? new List<WeighingAxle>();
         var isMultiDeck = transaction.WeighingType == "multideck" || transaction.WeighingType == "static";
 
+        // Axle configuration: prefer vehicle's; when vehicle has none (e.g. mobile auto-created vehicle), use config from weighing axles
+        var axleConfigCode = transaction.Vehicle?.AxleConfiguration?.AxleCode
+            ?? axles.OrderBy(a => a.AxleNumber).Select(a => a.AxleConfiguration?.AxleCode).FirstOrDefault(ac => !string.IsNullOrEmpty(ac));
+
         return new WeighingTransactionDto
         {
             Id = transaction.Id,
@@ -972,11 +976,11 @@ public class WeighingController : ControllerBase
             OriginalWeighingId = transaction.OriginalWeighingId,
             HasPermit = transaction.HasPermit,
 
-            // Vehicle details
+            // Vehicle details (vehicle may be auto-created with only reg number on mobile)
             VehicleMake = transaction.Vehicle?.Make,
             VehicleModel = transaction.Vehicle?.Model,
             VehicleType = transaction.Vehicle?.VehicleType,
-            AxleConfiguration = transaction.Vehicle?.AxleConfiguration?.AxleCode,
+            AxleConfiguration = axleConfigCode,
             IsMultiDeck = isMultiDeck,
 
             // People
@@ -987,6 +991,11 @@ public class WeighingController : ControllerBase
             // Station
             StationName = transaction.Station?.Name,
             StationCode = transaction.Station?.Code,
+
+            // Scale test (daily calibration verification for this session)
+            ScaleTestId = transaction.ScaleTestId,
+            ScaleTestResult = transaction.ScaleTest?.Result,
+            ScaleTestCarriedAt = transaction.ScaleTest?.CarriedAt,
 
             // Timing
             TimeTakenSeconds = (int)(transaction.WeighedAt - transaction.CreatedAt).TotalSeconds,

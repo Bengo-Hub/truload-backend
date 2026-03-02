@@ -198,12 +198,18 @@ public class UserManagementSeeder
             }
             else
             {
-                // Update existing station with latest configuration
+                // Update existing station with latest configuration (ensure default station is set for calibration/users)
                 var updated = false;
 
                 if (existing.OrganizationId != station.OrganizationId)
                 {
                     existing.OrganizationId = station.OrganizationId;
+                    updated = true;
+                }
+
+                if (!existing.IsDefault && station.IsDefault)
+                {
+                    existing.IsDefault = true;
                     updated = true;
                 }
 
@@ -221,7 +227,7 @@ public class UserManagementSeeder
                 if (updated)
                 {
                     existing.UpdatedAt = DateTime.UtcNow;
-                    Console.WriteLine($"✓ Updated station: {station.Name} ({station.Code}) - bidirectional: {station.SupportsBidirectional}");
+                    Console.WriteLine($"✓ Updated station: {station.Name} ({station.Code}) - bidirectional: {station.SupportsBidirectional}" + (existing.IsDefault ? ", set as default" : ""));
                 }
             }
         }

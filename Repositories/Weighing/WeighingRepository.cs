@@ -31,6 +31,7 @@ public class WeighingRepository : IWeighingRepository
             .Include(t => t.WeighingAxles)
                 .ThenInclude(wa => wa.TyreType)
             .Include(t => t.Vehicle)
+                .ThenInclude(v => v!.AxleConfiguration)
             .Include(t => t.Driver)
             .Include(t => t.Transporter)
             .Include(t => t.Station)
@@ -38,6 +39,7 @@ public class WeighingRepository : IWeighingRepository
             .Include(t => t.Origin)
             .Include(t => t.Destination)
             .Include(t => t.Cargo)
+            .Include(t => t.ScaleTest)
             .FirstOrDefaultAsync(t => t.Id == id);
     }
 
@@ -135,6 +137,7 @@ public class WeighingRepository : IWeighingRepository
         var query = _context.WeighingTransactions
             .AsNoTracking()
             .Include(t => t.WeighingAxles)
+                .ThenInclude(wa => wa.AxleConfiguration)
             .Include(t => t.Vehicle)
                 .ThenInclude(v => v!.AxleConfiguration)
             .Include(t => t.Driver)
@@ -144,6 +147,7 @@ public class WeighingRepository : IWeighingRepository
             .Include(t => t.Origin)
             .Include(t => t.Destination)
             .Include(t => t.Cargo)
+            .Include(t => t.ScaleTest)
             .AsQueryable();
 
         // Apply filters

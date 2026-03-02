@@ -55,7 +55,7 @@ public static class DatabaseSeeder
             var weighingSeeder = new WeighingOperationsSeeder(context, seedDataPath);
             await weighingSeeder.SeedAsync();
 
-            // Seed Technical / Annual Calibration Logic
+            // Seed Technical / Annual Calibration Logic (requires UserManagementSeeder to have run so default station exists)
             logger.LogInformation("Seeding annual calibration baseline...");
             var annualCalibrationSeeder = new TruLoad.Backend.Data.Seeders.Technical.AnnualCalibrationSeeder(context);
             await annualCalibrationSeeder.SeedAsync();
@@ -102,7 +102,7 @@ public static class DatabaseSeeder
             var documentConventionSeeder = new DocumentConventionSeeder(context);
             await documentConventionSeeder.SeedAsync();
 
-            // Seed document sequences (default weight_ticket, reweigh_ticket for first org)
+            // Seed document sequences (all document types, all orgs; aligned with document conventions)
             logger.LogInformation("Seeding document sequences...");
             var documentSequenceSeeder = new DocumentSequenceSeeder(context);
             await documentSequenceSeeder.SeedAsync();
