@@ -153,6 +153,11 @@ public static class SettingKeys
     public const string NotificationServiceUrl = "notification.service_url";
     public const string NotificationDefaultChannel = "notification.default_channel";
 
+    // Prosecution defaults (courts, complainant, district)
+    public const string ProsecutionDefaultCourtId = "prosecution.default_court_id";
+    public const string ProsecutionDefaultComplainantOfficerId = "prosecution.default_complainant_officer_id";
+    public const string ProsecutionDefaultDistrict = "prosecution.default_district";
+
     // Categories
     public const string CategorySecurity = "Security";
     public const string CategoryShifts = "Shifts";
@@ -164,4 +169,5 @@ public static class SettingKeys
     public const string CategoryWeighing = "Weighing";
     public const string CategoryFinancial = "Financial";
     public const string CategoryCache = "Cache";
+    public const string CategoryProsecution = "Prosecution";
 }

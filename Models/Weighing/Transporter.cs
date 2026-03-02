@@ -10,7 +10,9 @@ namespace TruLoad.Backend.Models.Weighing
     public class Transporter : BaseEntity
     {
 
-        [Required]
+        /// <summary>
+        /// Transporter code. Optional on create; when empty, backend auto-generates from name + suffix.
+        /// </summary>
         [Column("code")]
         [StringLength(50)]
         public string Code { get; set; } = string.Empty;

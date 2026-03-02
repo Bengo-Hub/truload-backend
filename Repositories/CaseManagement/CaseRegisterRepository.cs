@@ -22,8 +22,16 @@ public class CaseRegisterRepository : ICaseRegisterRepository
             .Include(c => c.DispositionType)
             .Include(c => c.CaseStatus)
             .Include(c => c.CaseManager)
+            .Include(c => c.ComplainantOfficer)
+            .Include(c => c.DetentionStation)
             .Include(c => c.Subfiles)
             .Include(c => c.SpecialReleases)
+            .Include(c => c.Weighing)
+                .ThenInclude(w => w!.Driver)
+            .Include(c => c.Weighing)
+                .ThenInclude(w => w!.Vehicle)
+            .Include(c => c.Weighing)
+                .ThenInclude(w => w!.Transporter)
             .FirstOrDefaultAsync(c => c.Id == id);
     }
 

@@ -252,6 +252,12 @@ public class CaseRegisterService : ICaseRegisterService
         if (request.ProsecutorId.HasValue)
             caseRegister.ProsecutorId = request.ProsecutorId;
 
+        if (request.ComplainantOfficerId.HasValue)
+            caseRegister.ComplainantOfficerId = request.ComplainantOfficerId;
+
+        if (request.DetentionStationId.HasValue)
+            caseRegister.DetentionStationId = request.DetentionStationId;
+
         if (request.InvestigatingOfficerId.HasValue)
             caseRegister.InvestigatingOfficerId = request.InvestigatingOfficerId;
 
@@ -416,6 +422,14 @@ public class CaseRegisterService : ICaseRegisterService
 
     private CaseRegisterDto MapToDto(CaseRegister caseRegister)
     {
+        var weighing = caseRegister.Weighing;
+        var driverName = weighing?.Driver != null
+            ? $"{weighing.Driver.FullNames} {weighing.Driver.Surname}".Trim()
+            : null;
+        var driverLicenseNo = weighing?.Driver?.DrivingLicenseNo;
+        var vehicleRegNumber = weighing?.VehicleRegNumber ?? string.Empty;
+        var transporterName = weighing?.Transporter?.Name;
+
         return new CaseRegisterDto
         {
             Id = caseRegister.Id,
@@ -424,7 +438,10 @@ public class CaseRegisterService : ICaseRegisterService
             YardEntryId = caseRegister.YardEntryId,
             ProhibitionOrderId = caseRegister.ProhibitionOrderId,
             VehicleId = caseRegister.VehicleId,
+            VehicleRegNumber = vehicleRegNumber,
             DriverId = caseRegister.DriverId,
+            DriverName = driverName,
+            DriverLicenseNo = driverLicenseNo,
             ViolationTypeId = caseRegister.ViolationTypeId,
             ViolationType = caseRegister.ViolationType?.Name ?? string.Empty,
             ViolationDetails = caseRegister.ViolationDetails,
@@ -432,6 +449,7 @@ public class CaseRegisterService : ICaseRegisterService
             ActName = caseRegister.ActDefinition?.Name,
             DriverNtacNo = caseRegister.DriverNtacNo,
             TransporterNtacNo = caseRegister.TransporterNtacNo,
+            TransporterName = transporterName,
             ObNo = caseRegister.ObNo,
             CourtId = caseRegister.CourtId,
             DispositionTypeId = caseRegister.DispositionTypeId,
@@ -442,6 +460,9 @@ public class CaseRegisterService : ICaseRegisterService
             CaseManagerId = caseRegister.CaseManagerId,
             ProsecutorId = caseRegister.ProsecutorId,
             ComplainantOfficerId = caseRegister.ComplainantOfficerId,
+            ComplainantOfficerName = caseRegister.ComplainantOfficer?.FullName,
+            DetentionStationId = caseRegister.DetentionStationId,
+            DetentionStationName = caseRegister.DetentionStation?.Name,
             InvestigatingOfficerId = caseRegister.InvestigatingOfficerId,
             CreatedById = caseRegister.CreatedById,
             CreatedAt = caseRegister.CreatedAt,

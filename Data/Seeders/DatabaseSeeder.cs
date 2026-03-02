@@ -102,6 +102,11 @@ public static class DatabaseSeeder
             var documentConventionSeeder = new DocumentConventionSeeder(context);
             await documentConventionSeeder.SeedAsync();
 
+            // Seed document sequences (default weight_ticket, reweigh_ticket for first org)
+            logger.LogInformation("Seeding document sequences...");
+            var documentSequenceSeeder = new DocumentSequenceSeeder(context);
+            await documentSequenceSeeder.SeedAsync();
+
             logger.LogInformation("=== Database seeding completed successfully ===");
         }
         catch (Exception ex)

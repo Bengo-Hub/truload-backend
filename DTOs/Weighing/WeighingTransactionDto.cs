@@ -272,15 +272,16 @@ public class AxleComplianceDto
 
 /// <summary>
 /// Request DTO for initiating a reweigh cycle.
+/// ReweighTicketNumber is optional; when empty, the backend generates it from document sequence.
 /// </summary>
 public class InitiateReweighRequest
 {
     [Required]
     public Guid OriginalWeighingId { get; set; }
 
-    [Required]
+    /// <summary>Optional. When null or empty, server generates from document sequence.</summary>
     [StringLength(50)]
-    public string ReweighTicketNumber { get; set; } = string.Empty;
+    public string? ReweighTicketNumber { get; set; }
 
     /// <summary>
     /// Relief truck registration number (if offloading excess weight to another truck)

@@ -18,11 +18,36 @@ public class TransporterController : ControllerBase
 {
     private readonly ITransporterRepository _repository;
     private readonly ILogger<TransporterController> _logger;
+    private static readonly Random _rnd = new();
 
     public TransporterController(ITransporterRepository repository, ILogger<TransporterController> logger)
     {
         _repository = repository;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Generates a unique transporter code from name (e.g. "Acme Ltd" -> "ACME-LTD-1234").
+    /// </summary>
+    private async Task<string> GenerateUniqueTransporterCodeAsync(string name)
+    {
+        var slug = new string(name
+            .ToUpperInvariant()
+            .Where(c => char.IsLetterOrDigit(c) || c == ' ')
+            .ToArray());
+        slug = slug.Replace(" ", "-").Trim('-');
+        if (slug.Length > 25) slug = slug.Substring(0, 25);
+        if (string.IsNullOrEmpty(slug)) slug = "TRP";
+
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            var suffix = _rnd.Next(1000, 99999).ToString();
+            var code = $"{slug}-{suffix}";
+            var existing = await _repository.GetByCodeAsync(code);
+            if (existing == null) return code;
+        }
+
+        return $"{slug}-{Guid.NewGuid().ToString("N")[..8]}";
     }
 
     /// <summary>
@@ -109,13 +134,20 @@ public class TransporterController : ControllerBase
     [ProducesResponseType(409)]
     public async Task<IActionResult> Create([FromBody] Transporter transporter)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+        if (string.IsNullOrWhiteSpace(transporter.Name))
+            return BadRequest(new { Message = "Transporter name is required" });
 
-        // Check for duplicate code
-        var existing = await _repository.GetByCodeAsync(transporter.Code);
-        if (existing != null)
-            return Conflict(new { Message = $"Transporter with code {transporter.Code} already exists" });
+        // Auto-generate code from name if not provided (per Section 15: only name mandatory)
+        if (string.IsNullOrWhiteSpace(transporter.Code))
+        {
+            transporter.Code = await GenerateUniqueTransporterCodeAsync(transporter.Name);
+        }
+        else
+        {
+            var existing = await _repository.GetByCodeAsync(transporter.Code);
+            if (existing != null)
+                return Conflict(new { Message = $"Transporter with code {transporter.Code} already exists" });
+        }
 
         try
         {
@@ -154,7 +186,11 @@ public class TransporterController : ControllerBase
         if (existing == null)
             return NotFound(new { Message = $"Transporter with ID {id} not found" });
 
-        // Check for duplicate code
+        // Preserve existing code when frontend sends empty (Section 15: only name mandatory)
+        if (string.IsNullOrWhiteSpace(transporter.Code))
+            transporter.Code = existing.Code;
+
+        // Check for duplicate code (only when code was changed)
         var duplicate = await _repository.GetByCodeAsync(transporter.Code);
         if (duplicate != null && duplicate.Id != id)
             return Conflict(new { Message = $"Transporter with code {transporter.Code} already exists" });

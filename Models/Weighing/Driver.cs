@@ -12,21 +12,19 @@ public class Driver : BaseEntity
     
     /// <summary>
     /// NTSA (National Transport and Safety Authority) driver ID
-    /// Unique identifier from national database
+    /// Unique identifier from national database (optional).
     /// </summary>
-    public string NtsaId { get; set; } = string.Empty;
+    public string? NtsaId { get; set; }
     
     /// <summary>
-    /// National ID or Passport number
-    /// Primary identification document
+    /// National ID or Passport number (optional).
     /// </summary>
-    public string IdNumber { get; set; } = string.Empty;
+    public string? IdNumber { get; set; }
     
     /// <summary>
-    /// Driving license number
-    /// Unique per driver, issued by NTSA
+    /// Driving license number (optional).
     /// </summary>
-    public string DrivingLicenseNo { get; set; } = string.Empty;
+    public string? DrivingLicenseNo { get; set; }
     
     /// <summary>
     /// Driver's full names (first and middle names)
@@ -91,13 +89,13 @@ public class Driver : BaseEntity
     public DateTime? LicenseExpiryDate { get; set; }
     
     /// <summary>
-    /// Current license status
+    /// Current license status (optional; default active).
     /// - active: Valid and operational
     /// - suspended: Temporarily revoked due to violations
     /// - revoked: Permanently cancelled
     /// - expired: Past expiry date
     /// </summary>
-    public string LicenseStatus { get; set; } = "active";
+    public string? LicenseStatus { get; set; } = "active";
     
     /// <summary>
     /// Is this a professional/commercial driver?

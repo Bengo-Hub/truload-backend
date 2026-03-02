@@ -28,6 +28,12 @@ public class YardEntryDto
     public decimal? TotalFeeUsd { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Whether the linked case (if any) is closed.
+    /// Yard release is only allowed when the case is closed (per FRD).
+    /// </summary>
+    public bool IsCaseClosed { get; set; }
 }
 
 /// <summary>

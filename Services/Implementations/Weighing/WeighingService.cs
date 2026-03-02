@@ -162,7 +162,7 @@ public class WeighingService : IWeighingService
         return await _weighingRepository.CreateTransactionAsync(transaction);
     }
 
-    public async Task<WeighingTransaction> InitiateReweighAsync(Guid originalTransactionId, string ticketNumber, Guid userId,
+    public async Task<WeighingTransaction> InitiateReweighAsync(Guid originalTransactionId, string? ticketNumber, Guid userId,
         string? reliefTruckRegNumber = null, int? reliefTruckEmptyWeightKg = null)
     {
         var original = await _weighingRepository.GetTransactionByIdAsync(originalTransactionId);
@@ -174,9 +174,19 @@ public class WeighingService : IWeighingService
             throw new InvalidOperationException($"Maximum reweigh cycles ({maxReweighCycles}) reached for this transaction.");
         }
 
+        // Generate reweigh ticket number from document sequence when not provided
+        var effectiveTicketNumber = !string.IsNullOrWhiteSpace(ticketNumber)
+            ? ticketNumber
+            : await _documentNumberService.GenerateNumberAsync(
+                original.OrganizationId,
+                original.StationId,
+                Models.System.DocumentTypes.ReweighTicket,
+                original.VehicleRegNumber,
+                original.Bound);
+
         var transaction = new WeighingTransaction
         {
-            TicketNumber = ticketNumber,
+            TicketNumber = effectiveTicketNumber,
             StationId = original.StationId,
             VehicleId = original.VehicleId,
             VehicleRegNumber = original.VehicleRegNumber,

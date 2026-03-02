@@ -26,6 +26,8 @@ public class CaseRegisterDto
     public string? ActName { get; set; }
     public string? DriverNtacNo { get; set; }
     public string? TransporterNtacNo { get; set; }
+    /// <summary>Transporter name (from linked weighing when available).</summary>
+    public string? TransporterName { get; set; }
     public string? ObNo { get; set; }
     public Guid? CourtId { get; set; }
     public string? CourtName { get; set; }
@@ -40,6 +42,9 @@ public class CaseRegisterDto
     public string? ProsecutorName { get; set; }
     public Guid? ComplainantOfficerId { get; set; }
     public string? ComplainantOfficerName { get; set; }
+    /// <summary>Station where the vehicle is detained (for court/prosecution cases).</summary>
+    public Guid? DetentionStationId { get; set; }
+    public string? DetentionStationName { get; set; }
     public Guid? InvestigatingOfficerId { get; set; }
     public string? InvestigatingOfficerName { get; set; }
     public Guid? CreatedById { get; set; }
@@ -77,13 +82,19 @@ public class CreateCaseRegisterRequest
 public class UpdateCaseRegisterRequest
 {
     public string? ViolationDetails { get; set; }
+    /// <summary>Driver NTAC for this case (mandatory only when escalating to case manager; optional for prosecution).</summary>
     public string? DriverNtacNo { get; set; }
+    /// <summary>Transporter/owner NTAC for this case (mandatory only when escalating to case manager; optional for prosecution).</summary>
     public string? TransporterNtacNo { get; set; }
     public string? ObNo { get; set; }
     public Guid? CourtId { get; set; }
     public Guid? DispositionTypeId { get; set; }
     public Guid? CaseManagerId { get; set; }
     public Guid? ProsecutorId { get; set; }
+    /// <summary>Complainant officer (for court/prosecution cases).</summary>
+    public Guid? ComplainantOfficerId { get; set; }
+    /// <summary>Station where the vehicle is detained.</summary>
+    public Guid? DetentionStationId { get; set; }
     public Guid? InvestigatingOfficerId { get; set; }
 }
 

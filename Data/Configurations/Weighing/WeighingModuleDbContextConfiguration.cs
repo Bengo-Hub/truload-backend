@@ -549,8 +549,8 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                     .HasDefaultValueSql("gen_random_uuid()");
 
                 entity.Property(e => e.NtsaId).HasColumnName("ntsa_id").HasMaxLength(50);
-                entity.Property(e => e.IdNumber).HasColumnName("id_number").HasMaxLength(20).IsRequired();
-                entity.Property(e => e.DrivingLicenseNo).HasColumnName("driving_license_no").HasMaxLength(50).IsRequired();
+                entity.Property(e => e.IdNumber).HasColumnName("id_number").HasMaxLength(20);
+                entity.Property(e => e.DrivingLicenseNo).HasColumnName("driving_license_no").HasMaxLength(50);
                 entity.Property(e => e.FullNames).HasColumnName("full_names").HasMaxLength(100).IsRequired();
                 entity.Property(e => e.Surname).HasColumnName("surname").HasMaxLength(50).IsRequired();
                 entity.Property(e => e.Gender).HasColumnName("gender").HasMaxLength(20);

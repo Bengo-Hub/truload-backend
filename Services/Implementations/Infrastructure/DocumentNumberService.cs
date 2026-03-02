@@ -313,6 +313,19 @@ public class DocumentNumberService : IDocumentNumberService
                 Separator = "-",
                 ResetFrequency = "never"
             },
+            DocumentTypes.ReweighTicket => new DocumentConvention
+            {
+                DocumentType = DocumentTypes.ReweighTicket,
+                Prefix = "RWG",
+                IncludeStationCode = true,
+                IncludeBound = true,
+                IncludeDate = true,
+                DateFormat = "yyyyMMdd",
+                IncludeVehicleReg = true,
+                SequencePadding = 4,
+                Separator = "-",
+                ResetFrequency = "daily"
+            },
             _ => new DocumentConvention
             {
                 DocumentType = documentType,

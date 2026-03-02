@@ -155,15 +155,22 @@ public class YardController : ControllerBase
     [Authorize(Policy = "Permission:yard.create")]
     [ProducesResponseType(typeof(YardEntryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] CreateYardEntryRequest request, CancellationToken ct)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
         var userId = GetCurrentUserId();
-        var entry = await _yardService.CreateAsync(request, userId, ct);
-
-        return CreatedAtAction(nameof(GetById), new { id = entry.Id }, entry);
+        try
+        {
+            var entry = await _yardService.CreateAsync(request, userId, ct);
+            return CreatedAtAction(nameof(GetById), new { id = entry.Id }, entry);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+        {
+            return Conflict(new { message = "A yard entry already exists for this weighing transaction. Vehicle has already been sent to yard." });
+        }
     }
 
     /// <summary>

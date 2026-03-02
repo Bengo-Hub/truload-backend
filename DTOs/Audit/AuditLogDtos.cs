@@ -11,6 +11,8 @@ public record AuditLogDto
     public Guid UserId { get; init; }
     public string? UserName { get; init; }
     public string? UserFullName { get; init; }
+    /// <summary>User email (from Identity). Prefer for display over UserName.</summary>
+    public string? UserEmail { get; init; }
     public string Action { get; init; } = string.Empty;
     public string ResourceType { get; init; } = string.Empty;
     public Guid? ResourceId { get; init; }

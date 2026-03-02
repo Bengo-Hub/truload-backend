@@ -33,7 +33,7 @@ public interface IWeighingService
         Guid? transporterId = null,
         string weighingType = "static");
 
-    Task<WeighingTransaction> InitiateReweighAsync(Guid originalTransactionId, string ticketNumber, Guid userId,
+    Task<WeighingTransaction> InitiateReweighAsync(Guid originalTransactionId, string? ticketNumber, Guid userId,
         string? reliefTruckRegNumber = null, int? reliefTruckEmptyWeightKg = null);
     Task<WeighingTransaction> CaptureWeightsAsync(Guid transactionId, List<WeighingAxle> axles);
     Task<WeighingTransaction> CalculateComplianceAsync(Guid transactionId);

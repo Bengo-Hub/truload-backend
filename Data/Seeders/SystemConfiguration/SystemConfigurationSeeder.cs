@@ -822,6 +822,51 @@ public class SystemConfigurationSeeder
                 SortOrder = 5,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.ProsecutionDefaultCourtId,
+                SettingValue = "",
+                SettingType = "String",
+                Category = SettingKeys.CategoryProsecution,
+                DisplayName = "Default Court",
+                Description = "Default court for new prosecution cases (court ID). Used when creating prosecution from case register.",
+                DefaultValue = "",
+                IsEditable = true,
+                SortOrder = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.ProsecutionDefaultComplainantOfficerId,
+                SettingValue = "",
+                SettingType = "String",
+                Category = SettingKeys.CategoryProsecution,
+                DisplayName = "Default Complainant Officer",
+                Description = "Default complainant officer for prosecution (user ID). Used when creating prosecution from case register.",
+                DefaultValue = "",
+                IsEditable = true,
+                SortOrder = 2,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.ProsecutionDefaultDistrict,
+                SettingValue = "",
+                SettingType = "String",
+                Category = SettingKeys.CategoryProsecution,
+                DisplayName = "Default District",
+                Description = "Default district for prosecution cases (e.g. court district name).",
+                DefaultValue = "",
+                IsEditable = true,
+                SortOrder = 3,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             }
         };
 

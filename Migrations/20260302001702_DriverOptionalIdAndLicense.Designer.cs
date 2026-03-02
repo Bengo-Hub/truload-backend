@@ -3,6 +3,7 @@ using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Backend.Migrations
 {
     [DbContext(typeof(TruLoadDbContext))]
-    partial class TruLoadDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260302001702_DriverOptionalIdAndLicense")]
+    partial class DriverOptionalIdAndLicense
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1257,10 +1260,6 @@ namespace TruLoad.Backend.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("DetentionStationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("detention_station_id");
-
                     b.Property<Guid?>("DispositionTypeId")
                         .HasColumnType("uuid")
                         .HasColumnName("disposition_type_id");
@@ -1372,8 +1371,6 @@ namespace TruLoad.Backend.Migrations
                         .IsUnique()
                         .HasDatabaseName("idx_case_registers_case_no");
 
-                    b.HasIndex("ComplainantOfficerId");
-
                     b.HasIndex("CountyId")
                         .HasDatabaseName("idx_case_registers_county")
                         .HasFilter("county_id IS NOT NULL");
@@ -1381,8 +1378,6 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("CourtId")
                         .HasDatabaseName("idx_case_registers_court")
                         .HasFilter("court_id IS NOT NULL");
-
-                    b.HasIndex("DetentionStationId");
 
                     b.HasIndex("DispositionTypeId");
 
@@ -9292,19 +9287,9 @@ namespace TruLoad.Backend.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TruLoad.Backend.Models.Identity.ApplicationUser", "ComplainantOfficer")
-                        .WithMany()
-                        .HasForeignKey("ComplainantOfficerId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("TruLoad.Backend.Models.CaseManagement.Court", null)
                         .WithMany("CaseRegisters")
                         .HasForeignKey("CourtId");
-
-                    b.HasOne("TruLoad.Backend.Models.Station", "DetentionStation")
-                        .WithMany()
-                        .HasForeignKey("DetentionStationId")
-                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("TruLoad.Backend.Models.CaseManagement.DispositionType", "DispositionType")
                         .WithMany("CaseRegisters")
@@ -9337,10 +9322,6 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("CaseManager");
 
                     b.Navigation("CaseStatus");
-
-                    b.Navigation("ComplainantOfficer");
-
-                    b.Navigation("DetentionStation");
 
                     b.Navigation("DispositionType");
 

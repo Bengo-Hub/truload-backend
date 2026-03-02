@@ -31,18 +31,22 @@ public class VehicleRepository : IVehicleRepository
             .FirstOrDefaultAsync(v => v.RegNo == regNo);
     }
 
+    /// <summary>
+    /// Search vehicles by reg no, chassis, or engine. When query is empty, returns all vehicles (up to 500) for dropdowns and setup tabs.
+    /// </summary>
     public async Task<IEnumerable<Vehicle>> SearchAsync(string query)
     {
-        if (string.IsNullOrWhiteSpace(query))
-            return new List<Vehicle>();
+        var q = _context.Vehicles.AsNoTracking();
 
-        return await _context.Vehicles
-            .AsNoTracking()
-            .Where(v => v.RegNo.Contains(query) ||
-                        (v.ChassisNo != null && v.ChassisNo.Contains(query)) ||
-                        (v.EngineNo != null && v.EngineNo.Contains(query)))
-            .Take(20)
-            .ToListAsync();
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var term = query.Trim();
+            q = q.Where(v => (v.RegNo != null && v.RegNo.Contains(term)) ||
+                             (v.ChassisNo != null && v.ChassisNo.Contains(term)) ||
+                             (v.EngineNo != null && v.EngineNo.Contains(term)));
+        }
+
+        return await q.OrderBy(v => v.RegNo).Take(500).ToListAsync();
     }
 
     public async Task<Vehicle> CreateAsync(Vehicle vehicle)

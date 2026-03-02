@@ -26,7 +26,10 @@ public class AuditLogRepository : IAuditLogRepository
     }
     public async Task<AuditLog?> GetByIdAsync(Guid id)
     {
-        return await _context.AuditLogs.FindAsync(id);
+        return await _context.AuditLogs
+            .AsNoTracking()
+            .Include(a => a.User)
+            .FirstOrDefaultAsync(a => a.Id == id);
     }
     public async Task<(List<AuditLog> Items, int TotalCount)> GetPagedAsync(
         int skip = 0,
@@ -40,7 +43,10 @@ public class AuditLogRepository : IAuditLogRepository
         Guid? organizationId = null,
         string? orderBy = "CreatedAt")
     {
-        var query = _context.AuditLogs.AsNoTracking().AsQueryable();
+        var query = _context.AuditLogs
+            .AsNoTracking()
+            .Include(a => a.User)
+            .AsQueryable();
 
         if (userId.HasValue)
             query = query.Where(a => a.UserId == userId.Value);
@@ -74,6 +80,7 @@ public class AuditLogRepository : IAuditLogRepository
     {
         return await _context.AuditLogs
             .AsNoTracking()
+            .Include(a => a.User)
             .Where(a => a.ResourceType == resourceType && a.ResourceId == resourceId)
             .ToListAsync();
     }
@@ -81,6 +88,7 @@ public class AuditLogRepository : IAuditLogRepository
     {
         return await _context.AuditLogs
             .AsNoTracking()
+            .Include(a => a.User)
             .Where(a => a.UserId == userId)
             .OrderByDescending(a => a.CreatedAt)
             .Take(limit)
@@ -90,6 +98,7 @@ public class AuditLogRepository : IAuditLogRepository
     {
         return await _context.AuditLogs
             .AsNoTracking()
+            .Include(a => a.User)
             .Where(a => a.UserId == userId && !a.Success && a.CreatedAt >= since)
             .ToListAsync();
     }
@@ -97,6 +106,7 @@ public class AuditLogRepository : IAuditLogRepository
     {
         var query = _context.AuditLogs
             .AsNoTracking()
+            .Include(a => a.User)
             .Where(a => a.OrganizationId == organizationId);
 
         var totalCount = await query.CountAsync();

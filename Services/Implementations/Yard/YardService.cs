@@ -30,7 +30,9 @@ public class YardService : IYardService
             .Include(y => y.Weighing)
             .FirstOrDefaultAsync(y => y.Id == id && y.DeletedAt == null, ct);
 
-        return entry == null ? null : MapToDto(entry);
+        if (entry == null) return null;
+        var isCaseClosed = await GetIsCaseClosedAsync(entry.WeighingId, ct);
+        return MapToDto(entry, isCaseClosed);
     }
 
     public async Task<YardEntryDto?> GetByWeighingIdAsync(Guid weighingId, CancellationToken ct = default)
@@ -40,7 +42,9 @@ public class YardService : IYardService
             .Include(y => y.Weighing)
             .FirstOrDefaultAsync(y => y.WeighingId == weighingId && y.DeletedAt == null, ct);
 
-        return entry == null ? null : MapToDto(entry);
+        if (entry == null) return null;
+        var isCaseClosed = await GetIsCaseClosedAsync(entry.WeighingId, ct);
+        return MapToDto(entry, isCaseClosed);
     }
 
     public async Task<PagedResponse<YardEntryDto>> SearchAsync(SearchYardEntriesRequest request, Guid? tenantStationId, CancellationToken ct = default)
@@ -100,7 +104,14 @@ public class YardService : IYardService
             .Take(request.PageSize)
             .ToListAsync(ct);
 
-        return PagedResponse<YardEntryDto>.Create(items.Select(MapToDto).ToList(), totalCount, request.PageNumber, request.PageSize);
+        var dtos = new List<YardEntryDto>();
+        foreach (var item in items)
+        {
+            var isCaseClosed = await GetIsCaseClosedAsync(item.WeighingId, ct);
+            dtos.Add(MapToDto(item, isCaseClosed));
+        }
+
+        return PagedResponse<YardEntryDto>.Create(dtos, totalCount, request.PageNumber, request.PageSize);
     }
 
     public async Task<YardEntryDto> CreateAsync(CreateYardEntryRequest request, Guid userId, CancellationToken ct = default)
@@ -115,7 +126,7 @@ public class YardService : IYardService
             .FirstOrDefaultAsync(y => y.WeighingId == request.WeighingId && y.DeletedAt == null, ct);
 
         if (existingEntry != null)
-            throw new InvalidOperationException("A yard entry already exists for this weighing transaction");
+            throw new InvalidOperationException("A yard entry already exists for this weighing transaction. Vehicle has already been sent to yard.");
 
         var entry = new YardEntry
         {
@@ -139,7 +150,8 @@ public class YardService : IYardService
         _logger.LogInformation("Created yard entry {EntryId} for weighing {WeighingId}",
             entry.Id, request.WeighingId);
 
-        return MapToDto(entry);
+        var isCaseClosed = await GetIsCaseClosedAsync(entry.WeighingId, ct);
+        return MapToDto(entry, isCaseClosed);
     }
 
     public async Task<YardEntryDto> ReleaseAsync(Guid id, ReleaseYardEntryRequest request, Guid releasedById, CancellationToken ct = default)
@@ -152,6 +164,17 @@ public class YardService : IYardService
 
         if (entry.Status == "released")
             throw new InvalidOperationException("This yard entry has already been released");
+
+        // Business rule: case must be closed before yard release (per FRD)
+        var linkedCase = await _context.CaseRegisters
+            .AsNoTracking()
+            .Include(cr => cr.CaseStatus)
+            .FirstOrDefaultAsync(cr => cr.WeighingId == entry.WeighingId && cr.DeletedAt == null, ct);
+        if (linkedCase != null && !string.Equals(linkedCase.CaseStatus?.Code, "CLOSED", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "Case must be closed before yard release. Please complete the case closure process first.");
+        }
 
         entry.Status = "released";
         entry.ReleasedAt = DateTime.UtcNow;
@@ -170,7 +193,8 @@ public class YardService : IYardService
         _logger.LogInformation("Released yard entry {EntryId} by user {UserId} with notes: {Notes}",
             id, releasedById, request.Notes);
 
-        return MapToDto(entry);
+        var isCaseClosed = await GetIsCaseClosedAsync(entry.WeighingId, ct);
+        return MapToDto(entry, isCaseClosed);
     }
 
     public async Task<YardEntryDto> UpdateStatusAsync(Guid id, string status, Guid updatedById, CancellationToken ct = default)
@@ -196,7 +220,8 @@ public class YardService : IYardService
         _logger.LogInformation("Updated yard entry {EntryId} status to {Status} by user {UserId}",
             id, status, updatedById);
 
-        return MapToDto(entry);
+        var isCaseClosed = await GetIsCaseClosedAsync(entry.WeighingId, ct);
+        return MapToDto(entry, isCaseClosed);
     }
 
     public async Task<YardStatisticsDto> GetStatisticsAsync(Guid? stationId, CancellationToken ct = default)
@@ -224,7 +249,20 @@ public class YardService : IYardService
         return stats ?? new YardStatisticsDto();
     }
 
-    private static YardEntryDto MapToDto(YardEntry entry)
+    private async Task<bool> GetIsCaseClosedAsync(Guid weighingId, CancellationToken ct)
+    {
+        var closedStatus = await _context.CaseStatuses
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cs => cs.Code == "CLOSED", ct);
+        if (closedStatus == null) return true; // No closed status in DB - allow release
+
+        var caseRegister = await _context.CaseRegisters
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cr => cr.WeighingId == weighingId, ct);
+        return caseRegister == null || caseRegister.CaseStatusId == closedStatus.Id;
+    }
+
+    private static YardEntryDto MapToDto(YardEntry entry, bool isCaseClosed = true)
     {
         return new YardEntryDto
         {
@@ -243,7 +281,8 @@ public class YardService : IYardService
             OverloadKg = entry.Weighing?.OverloadKg,
             TotalFeeUsd = entry.Weighing?.TotalFeeUsd,
             CreatedAt = entry.CreatedAt,
-            UpdatedAt = entry.UpdatedAt
+            UpdatedAt = entry.UpdatedAt,
+            IsCaseClosed = isCaseClosed
         };
     }
 }

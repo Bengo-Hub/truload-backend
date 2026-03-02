@@ -112,6 +112,9 @@ public static class CoreCaseEntitiesConfiguration
             entity.Property(e => e.ComplainantOfficerId)
                 .HasColumnName("complainant_officer_id");
 
+            entity.Property(e => e.DetentionStationId)
+                .HasColumnName("detention_station_id");
+
             entity.Property(e => e.InvestigatingOfficerId)
                 .HasColumnName("investigating_officer_id");
 
@@ -226,6 +229,16 @@ public static class CoreCaseEntitiesConfiguration
             entity.HasOne(e => e.CaseManager)
                 .WithMany(cm => cm.CaseRegisters)
                 .HasForeignKey(e => e.CaseManagerId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.ComplainantOfficer)
+                .WithMany()
+                .HasForeignKey(e => e.ComplainantOfficerId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.DetentionStation)
+                .WithMany()
+                .HasForeignKey(e => e.DetentionStationId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasMany(e => e.Subfiles)

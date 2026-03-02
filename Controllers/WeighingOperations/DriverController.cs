@@ -8,6 +8,9 @@ using TruLoad.Backend.Data.Repositories.Weighing;
 
 namespace TruLoad.Backend.Controllers.WeighingOperations;
 
+/// <summary>
+/// Drivers are shared across the system (not tenant/station-scoped). Search returns all drivers; create returns 400 for validation, 409 for duplicates.
+/// </summary>
 [ApiController]
 [Route("api/v1/drivers")]
 [Authorize]

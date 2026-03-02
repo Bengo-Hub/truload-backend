@@ -101,4 +101,6 @@ public static class DocumentTypes
     public const string SpecialRelease = "special_release";
     public const string LoadCorrectionMemo = "load_correction_memo";
     public const string CourtMinutes = "court_minutes";
+    /// <summary>Reweigh cycle weight ticket (auto-generated when not provided).</summary>
+    public const string ReweighTicket = "reweigh_ticket";
 }

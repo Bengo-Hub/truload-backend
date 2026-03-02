@@ -34,19 +34,23 @@ public class DriverRepository : IDriverRepository
             .FirstOrDefaultAsync(d => d.DrivingLicenseNo == licenseNo);
     }
 
+    /// <summary>
+    /// Search drivers by name, ID number, or license. When query is empty, returns all drivers (up to 500) for dropdowns and setup tabs.
+    /// </summary>
     public async Task<IEnumerable<Driver>> SearchAsync(string query)
     {
-        if (string.IsNullOrWhiteSpace(query))
-            return new List<Driver>();
+        var q = _context.Drivers.AsNoTracking();
 
-        return await _context.Drivers
-            .AsNoTracking()
-            .Where(d => d.FullNames.Contains(query) ||
-                        d.Surname.Contains(query) ||
-                        d.IdNumber.Contains(query) ||
-                        d.DrivingLicenseNo.Contains(query))
-            .Take(20)
-            .ToListAsync();
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var term = query.Trim();
+            q = q.Where(d => (d.FullNames != null && d.FullNames.Contains(term)) ||
+                             (d.Surname != null && d.Surname.Contains(term)) ||
+                             (d.IdNumber != null && d.IdNumber.Contains(term)) ||
+                             (d.DrivingLicenseNo != null && d.DrivingLicenseNo.Contains(term)));
+        }
+
+        return await q.OrderBy(d => d.Surname).ThenBy(d => d.FullNames).Take(500).ToListAsync();
     }
 
     public async Task<Driver> CreateAsync(Driver driver)

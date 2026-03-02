@@ -1,0 +1,1310 @@
+2026-03-02 00:58:08.551 +03:00 [INF] Checking pending migrations...
+2026-03-02 00:58:11.557 +03:00 [INF] ✓ Database is up to date (no pending migrations)
+2026-03-02 00:58:12.187 +03:00 [INF] ✓ Database seeding already completed (Version 1 on "2026-03-01T18:47:27.4997550Z")
+2026-03-02 00:58:12.329 +03:00 [INF] IntegrationConfig for ecitizen_pesaflow already exists, skipping seed
+2026-03-02 00:58:12.343 +03:00 [INF] IntegrationConfig for kenha already exists, skipping seed
+2026-03-02 00:58:12.362 +03:00 [INF] IntegrationConfig for ntsa already exists, skipping seed
+2026-03-02 00:58:12.365 +03:00 [INF] ✓ Integration config seeding completed
+2026-03-02 00:58:12.369 +03:00 [INF] [MV] Starting refresh of all materialized views...
+2026-03-02 00:58:12.828 +03:00 [INF] [MV] All materialized views refreshed in 460ms
+2026-03-02 00:58:12.832 +03:00 [INF] ✓ Materialized views refreshed on startup
+2026-03-02 00:58:12.962 +03:00 [INF] ✓ Rate limit settings loaded from database
+2026-03-02 00:58:13.578 +03:00 [INF] Start installing Hangfire SQL objects...
+2026-03-02 00:58:13.598 +03:00 [INF] Hangfire SQL objects installed.
+2026-03-02 00:58:13.927 +03:00 [INF] Starting TruLoad Backend API
+2026-03-02 00:58:14.048 +03:00 [INF] Starting Hangfire Server using job storage: 'PostgreSQL Server: Host: localhost, DB: truload, Schema: hangfire'
+2026-03-02 00:58:14.050 +03:00 [INF] Using the following options for PostgreSQL job storage:
+2026-03-02 00:58:14.052 +03:00 [INF]     Queue poll interval: 00:00:15.
+2026-03-02 00:58:14.053 +03:00 [INF]     Invisibility timeout: 00:30:00.
+2026-03-02 00:58:14.054 +03:00 [INF]     Use sliding invisibility timeout: False.
+2026-03-02 00:58:14.056 +03:00 [INF] Using the following options for Hangfire Server:
+    Worker count: 5
+    Listening queues: 'critical', 'default', 'payments'
+    Shutdown timeout: 00:00:15
+    Schedule polling interval: 00:00:15
+2026-03-02 00:58:14.090 +03:00 [INF] Server truload-titus:176892:9f55528e successfully announced in 14.9965 ms
+2026-03-02 00:58:14.094 +03:00 [INF] Server truload-titus:176892:9f55528e is starting the registered dispatchers: ServerWatchdog, ServerJobCancellationWatcher, ExpirationManager, CountersAggregator, Worker, DelayedJobScheduler, RecurringJobScheduler...
+2026-03-02 00:58:14.104 +03:00 [INF] Server truload-titus:176892:9f55528e all the dispatchers started
+2026-03-02 00:58:14.675 +03:00 [INF] [MaterializedViewRefreshJob] Starting scheduled MV refresh
+2026-03-02 00:58:14.679 +03:00 [INF] [MV] Starting refresh of all materialized views...
+2026-03-02 00:58:14.983 +03:00 [INF] [MV] All materialized views refreshed in 303ms
+2026-03-02 00:58:14.987 +03:00 [INF] [MaterializedViewRefreshJob] Scheduled MV refresh completed
+2026-03-02 00:58:15.617 +03:00 [INF] Pesaflow OAuth token acquired, expires in 3599s, caching for 3539s
+2026-03-02 00:58:15.633 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 00:58:15.998 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 01:00:14.858 +03:00 [INF] [MaterializedViewRefreshJob] Starting scheduled MV refresh
+2026-03-02 01:00:14.875 +03:00 [INF] [MV] Starting refresh of all materialized views...
+2026-03-02 01:00:14.905 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 01:00:14.923 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 01:00:15.232 +03:00 [INF] [MV] All materialized views refreshed in 357ms
+2026-03-02 01:00:15.237 +03:00 [INF] [MaterializedViewRefreshJob] Scheduled MV refresh completed
+2026-03-02 01:01:17.146 +03:00 [INF] HTTP OPTIONS /api/v1/auth/profile responded 204 in 4.7073 ms
+2026-03-02 01:01:20.626 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:20.659 +03:00 [INF] HTTP GET /api/v1/auth/profile responded 401 in 3461.0579 ms
+2026-03-02 01:01:24.613 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.7529 ms
+2026-03-02 01:01:26.288 +03:00 [INF] User gadmin@masterspace.co.ke logged in successfully
+2026-03-02 01:01:26.560 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 1934.1835 ms
+2026-03-02 01:01:30.411 +03:00 [INF] HTTP OPTIONS /api/v1/Stations responded 204 in 0.2188 ms
+2026-03-02 01:01:30.414 +03:00 [INF] HTTP OPTIONS /api/v1/exchange-rates/current responded 204 in 0.1287 ms
+2026-03-02 01:01:30.415 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/statistics responded 204 in 0.1376 ms
+2026-03-02 01:01:30.432 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/revenue-by-station responded 204 in 0.0994 ms
+2026-03-02 01:01:30.421 +03:00 [INF] HTTP OPTIONS /api/v1/yard-entries/statistics responded 204 in 0.0904 ms
+2026-03-02 01:01:30.421 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0915 ms
+2026-03-02 01:01:30.421 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/statistics responded 204 in 0.0919 ms
+2026-03-02 01:01:30.433 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/compliance-trend responded 204 in 0.1058 ms
+2026-03-02 01:01:30.435 +03:00 [INF] HTTP OPTIONS /api/v1/stations/performance responded 204 in 0.0974 ms
+2026-03-02 01:01:30.451 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users/by-station responded 204 in 0.1330 ms
+2026-03-02 01:01:30.491 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:30.499 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:30.520 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: station.read
+2026-03-02 01:01:30.520 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: config.read
+2026-03-02 01:01:30.565 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:01:30.718 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:30.728 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:30.732 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=exchange-rate ResourceId=null Endpoint=/api/v1/exchange-rates Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:30.5288482Z"
+2026-03-02 01:01:30.741 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-02 01:01:30.741 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:01:30.752 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:30.759 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: analytics.read, receipt.read
+2026-03-02 01:01:30.763 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:01:30.781 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:30.789 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: yard.read
+2026-03-02 01:01:30.825 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:30.7480453Z"
+2026-03-02 01:01:30.849 +03:00 [INF] HTTP GET /api/v1/exchange-rates/current responded 200 in 408.1295 ms
+2026-03-02 01:01:30.849 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/statistics responded 200 in 405.4334 ms
+2026-03-02 01:01:30.868 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:30.868 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:30.872 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:01:30.880 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:30.7452731Z"
+2026-03-02 01:01:30.883 +03:00 [WRN] The query uses the 'First'/'FirstOrDefault' operator without 'OrderBy' and filter operators. This may lead to unpredictable results.
+2026-03-02 01:01:30.906 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:01:30.909 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 435.6308 ms
+2026-03-02 01:01:30.913 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:30.7624838Z"
+2026-03-02 01:01:30.918 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=yard-entrie ResourceId=null Endpoint=/api/v1/yard-entries Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:30.7928836Z"
+2026-03-02 01:01:30.925 +03:00 [INF] HTTP GET /api/v1/receipts/revenue-by-station responded 200 in 456.7532 ms
+2026-03-02 01:01:30.926 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:30.934 +03:00 [INF] HTTP GET /api/v1/yard-entries/statistics responded 200 in 454.2931 ms
+2026-03-02 01:01:30.941 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: station.read
+2026-03-02 01:01:30.946 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:30.950 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-02 01:01:30.959 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:30.962 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:01:30.962 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:30.8800788Z"
+2026-03-02 01:01:30.963 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-02 01:01:30.966 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:30.8768124Z"
+2026-03-02 01:01:30.977 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/compliance-trend responded 200 in 113.1458 ms
+2026-03-02 01:01:30.989 +03:00 [INF] HTTP GET /api/v1/case/cases/statistics responded 200 in 124.4636 ms
+2026-03-02 01:01:31.005 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:30.9761713Z"
+2026-03-02 01:01:31.017 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 66.7070 ms
+2026-03-02 01:01:31.024 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=Station ResourceId=null Endpoint=/api/v1/Stations Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:30.5316504Z"
+2026-03-02 01:01:31.025 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:30.9567026Z"
+2026-03-02 01:01:31.043 +03:00 [INF] HTTP GET /api/v1/user-management/users/by-station responded 200 in 100.9584 ms
+2026-03-02 01:01:31.085 +03:00 [INF] HTTP GET /api/v1/Stations responded 200 in 650.1273 ms
+2026-03-02 01:01:31.097 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=station ResourceId=null Endpoint=/api/v1/stations Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:30.9473648Z"
+2026-03-02 01:01:31.108 +03:00 [INF] HTTP GET /api/v1/stations/performance responded 200 in 187.8698 ms
+2026-03-02 01:01:31.309 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.1121 ms
+2026-03-02 01:01:31.328 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:31.333 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-02 01:01:31.363 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:31.3405695Z"
+2026-03-02 01:01:31.378 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 54.5500 ms
+2026-03-02 01:01:42.479 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.4431 ms
+2026-03-02 01:01:42.482 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.1440 ms
+2026-03-02 01:01:42.482 +03:00 [INF] HTTP OPTIONS /api/v1/Stations/my-station responded 204 in 0.2016 ms
+2026-03-02 01:01:42.722 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:42.777 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:42.788 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:01:42.795 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:42.795 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:01:42.807 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: station.read
+2026-03-02 01:01:42.873 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:01:42.905 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:01:42.921 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:01:42.936 +03:00 [INF] User null does not have a linked station (e.g. Superuser or Global Admin)
+2026-03-02 01:01:42.988 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=Station ResourceId=null Endpoint=/api/v1/Stations Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:42.8968436Z"
+2026-03-02 01:01:43.022 +03:00 [INF] HTTP GET /api/v1/Stations/my-station responded 200 in 239.8116 ms
+2026-03-02 01:01:43.118 +03:00 [INF] HTTP OPTIONS /api/v1/scale-tests/station/ef26c390-1365-425e-bcff-e81968763ac7/range responded 204 in 0.1035 ms
+2026-03-02 01:01:43.118 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0544 ms
+2026-03-02 01:01:43.118 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0356 ms
+2026-03-02 01:01:43.138 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:43.138 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:43.144 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:01:43.145 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:01:43.150 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:01:43.153 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:01:43.168 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:01:43.235 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=scale-test ResourceId="ef26c390-1365-425e-bcff-e81968763ac7" Endpoint=/api/v1/scale-tests Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:43.1466862Z"
+2026-03-02 01:01:43.276 +03:00 [INF] HTTP GET /api/v1/scale-tests/station/ef26c390-1365-425e-bcff-e81968763ac7/range responded 200 in 141.9424 ms
+2026-03-02 01:01:43.302 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:42.8015371Z"
+2026-03-02 01:01:43.302 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:42.8687053Z"
+2026-03-02 01:01:43.315 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 613.7449 ms
+2026-03-02 01:01:43.322 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 551.8910 ms
+2026-03-02 01:01:43.355 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:43.1677782Z"
+2026-03-02 01:01:43.365 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 227.7124 ms
+2026-03-02 01:01:43.376 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:01:43.1504974Z"
+2026-03-02 01:01:43.386 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 253.4686 ms
+2026-03-02 01:03:17.989 +03:00 [INF] AUDIT: User="00000000-0000-0000-0000-000000000000" Action=READ ResourceType=health ResourceId=null Endpoint=/api/v1/health Method=GET Status=200 Success=true Timestamp="2026-03-01T22:03:17.9629759Z"
+2026-03-02 01:03:18.030 +03:00 [INF] HTTP GET /api/v1/health responded 200 in 70.7152 ms
+2026-03-02 01:03:18.324 +03:00 [INF] User middleware@truconnect.local logged in successfully
+2026-03-02 01:03:18.358 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 282.3719 ms
+2026-03-02 01:03:23.904 +03:00 [INF] User middleware@truconnect.local logged in successfully
+2026-03-02 01:03:23.929 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 251.8235 ms
+2026-03-02 01:03:33.596 +03:00 [INF] AUDIT: User="00000000-0000-0000-0000-000000000000" Action=READ ResourceType=health ResourceId=null Endpoint=/api/v1/health Method=GET Status=200 Success=true Timestamp="2026-03-01T22:03:33.5952022Z"
+2026-03-02 01:03:33.645 +03:00 [INF] HTTP GET /api/v1/health responded 200 in 58.1820 ms
+2026-03-02 01:03:33.835 +03:00 [INF] User middleware@truconnect.local logged in successfully
+2026-03-02 01:03:33.854 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 193.9104 ms
+2026-03-02 01:05:00.205 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 01:05:00.218 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 01:07:09.129 +03:00 [INF] HTTP OPTIONS /api/v1/AxleConfiguration responded 204 in 0.5099 ms
+2026-03-02 01:07:09.136 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0485 ms
+2026-03-02 01:07:09.139 +03:00 [INF] HTTP OPTIONS /api/v1/drivers/search responded 204 in 0.0548 ms
+2026-03-02 01:07:09.139 +03:00 [INF] HTTP OPTIONS /api/v1/transporters/search responded 204 in 0.0536 ms
+2026-03-02 01:07:09.142 +03:00 [INF] HTTP OPTIONS /api/v1/cargo-types responded 204 in 0.2785 ms
+2026-03-02 01:07:09.149 +03:00 [INF] HTTP OPTIONS /api/v1/AxleConfiguration responded 204 in 0.0467 ms
+2026-03-02 01:07:09.144 +03:00 [INF] HTTP OPTIONS /api/v1/origins-destinations responded 204 in 0.0533 ms
+2026-03-02 01:07:09.146 +03:00 [INF] HTTP OPTIONS /api/v1/vehicle-makes/active responded 204 in 0.1365 ms
+2026-03-02 01:07:09.165 +03:00 [INF] HTTP OPTIONS /api/v1/scale-tests/my-station/status responded 204 in 0.0742 ms
+2026-03-02 01:07:09.170 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:07:09.170 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:07:09.184 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:07:09.187 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:07:09.186 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:07:09.198 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:07:09.200 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:07:09.199 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:07:09.245 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=GET Status=200 Success=true Timestamp="2026-03-01T22:07:09.2039067Z"
+2026-03-02 01:07:09.271 +03:00 [INF] HTTP GET /api/v1/drivers/search responded 200 in 91.7287 ms
+2026-03-02 01:07:09.290 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:07:09.392 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:07:09.1997991Z"
+2026-03-02 01:07:09.402 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 240.5647 ms
+2026-03-02 01:07:09.406 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=vehicle-make ResourceId=null Endpoint=/api/v1/vehicle-makes Method=GET Status=200 Success=true Timestamp="2026-03-01T22:07:09.2220492Z"
+2026-03-02 01:07:09.409 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=origins-destination ResourceId=null Endpoint=/api/v1/origins-destinations Method=GET Status=200 Success=true Timestamp="2026-03-01T22:07:09.2967115Z"
+2026-03-02 01:07:09.409 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=cargo-type ResourceId=null Endpoint=/api/v1/cargo-types Method=GET Status=200 Success=true Timestamp="2026-03-01T22:07:09.2090468Z"
+2026-03-02 01:07:09.418 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:07:09.420 +03:00 [INF] HTTP GET /api/v1/vehicle-makes/active responded 200 in 225.7395 ms
+2026-03-02 01:07:09.428 +03:00 [INF] AxleConfigurationRepository.GetAllAsync: Found 30 configurations for isStandard=null, legalFramework=null, axleCount=null, includeInactive=false
+2026-03-02 01:07:09.428 +03:00 [INF] AxleConfigurationRepository.GetAllAsync: Found 30 configurations for isStandard=null, legalFramework=null, axleCount=null, includeInactive=false
+2026-03-02 01:07:09.445 +03:00 [INF] HTTP GET /api/v1/origins-destinations responded 200 in 159.0091 ms
+2026-03-02 01:07:09.447 +03:00 [INF] AxleConfigurationController.GetAll: Returning 30 configurations for isStandard=null, includeInactive=false
+2026-03-02 01:07:09.448 +03:00 [INF] HTTP GET /api/v1/cargo-types responded 200 in 272.0900 ms
+2026-03-02 01:07:09.450 +03:00 [INF] AxleConfigurationController.GetAll: Returning 30 configurations for isStandard=null, includeInactive=false
+2026-03-02 01:07:09.450 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:07:09.479 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=transporter ResourceId=null Endpoint=/api/v1/transporters Method=GET Status=200 Success=true Timestamp="2026-03-01T22:07:09.4367821Z"
+2026-03-02 01:07:09.486 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=AxleConfiguration ResourceId=null Endpoint=/api/v1/AxleConfiguration Method=GET Status=200 Success=true Timestamp="2026-03-01T22:07:09.1949565Z"
+2026-03-02 01:07:09.486 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=AxleConfiguration ResourceId=null Endpoint=/api/v1/AxleConfiguration Method=GET Status=200 Success=true Timestamp="2026-03-01T22:07:09.2130307Z"
+2026-03-02 01:07:09.492 +03:00 [INF] HTTP GET /api/v1/transporters/search responded 200 in 78.0856 ms
+2026-03-02 01:07:09.586 +03:00 [INF] HTTP GET /api/v1/AxleConfiguration responded 200 in 392.7332 ms
+2026-03-02 01:07:09.586 +03:00 [INF] HTTP GET /api/v1/AxleConfiguration responded 200 in 424.0759 ms
+2026-03-02 01:07:09.597 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=scale-test ResourceId=null Endpoint=/api/v1/scale-tests Method=GET Status=200 Success=true Timestamp="2026-03-01T22:07:09.4640645Z"
+2026-03-02 01:07:09.610 +03:00 [INF] HTTP GET /api/v1/scale-tests/my-station/status responded 200 in 162.8424 ms
+2026-03-02 01:07:09.832 +03:00 [INF] HTTP OPTIONS /api/v1/AxleWeightReferences/by-configuration/e253e661-9be6-42be-994f-bfac928f2d5c responded 204 in 0.0560 ms
+2026-03-02 01:07:09.851 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:07:10.008 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=AxleWeightReference ResourceId="e253e661-9be6-42be-994f-bfac928f2d5c" Endpoint=/api/v1/AxleWeightReferences Method=GET Status=200 Success=true Timestamp="2026-03-01T22:07:09.8574407Z"
+2026-03-02 01:07:10.061 +03:00 [INF] HTTP GET /api/v1/AxleWeightReferences/by-configuration/e253e661-9be6-42be-994f-bfac928f2d5c responded 200 in 215.0764 ms
+2026-03-02 01:08:17.175 +03:00 [INF] HTTP OPTIONS /api/v1/scale-tests responded 204 in 0.0599 ms
+2026-03-02 01:08:17.382 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:08:17.746 +03:00 [INF] Scale test created: "6bd5028c-029c-481a-884f-e18c1ffee6fc" for Station "ef26c390-1365-425e-bcff-e81968763ac7", Bound A, Result: pass
+2026-03-02 01:08:17.835 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=scale-test ResourceId=null Endpoint=/api/v1/scale-tests Method=POST Status=201 Success=true Timestamp="2026-03-01T22:08:17.3907854Z"
+2026-03-02 01:08:17.856 +03:00 [INF] HTTP POST /api/v1/scale-tests responded 201 in 665.0325 ms
+2026-03-02 01:08:17.879 +03:00 [INF] HTTP OPTIONS /api/v1/scale-tests/my-station/status responded 204 in 0.0977 ms
+2026-03-02 01:08:17.909 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:08:17.926 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=scale-test ResourceId=null Endpoint=/api/v1/scale-tests Method=GET Status=200 Success=true Timestamp="2026-03-01T22:08:17.9166913Z"
+2026-03-02 01:08:17.945 +03:00 [INF] HTTP GET /api/v1/scale-tests/my-station/status responded 200 in 41.5655 ms
+2026-03-02 01:08:26.076 +03:00 [INF] HTTP OPTIONS /api/v1/Vehicle/reg/KDS385 responded 204 in 0.0577 ms
+2026-03-02 01:08:26.093 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:08:26.212 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=Vehicle ResourceId=null Endpoint=/api/v1/Vehicle Method=GET Status=404 Success=false Timestamp="2026-03-01T22:08:26.1010612Z"
+2026-03-02 01:08:26.227 +03:00 [INF] HTTP GET /api/v1/Vehicle/reg/KDS385 responded 404 in 138.3846 ms
+2026-03-02 01:08:27.082 +03:00 [INF] HTTP OPTIONS /api/v1/Vehicle/reg/KDS385X responded 204 in 0.0496 ms
+2026-03-02 01:08:27.098 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:08:27.106 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=Vehicle ResourceId=null Endpoint=/api/v1/Vehicle Method=GET Status=404 Success=false Timestamp="2026-03-01T22:08:27.1037008Z"
+2026-03-02 01:08:27.125 +03:00 [INF] HTTP GET /api/v1/Vehicle/reg/KDS385X responded 404 in 31.2029 ms
+2026-03-02 01:08:40.094 +03:00 [INF] HTTP OPTIONS /api/v1/Vehicle responded 204 in 0.2720 ms
+2026-03-02 01:08:40.110 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:08:40.116 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: vehicle.create
+2026-03-02 01:08:40.359 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=Vehicle ResourceId=null Endpoint=/api/v1/Vehicle Method=POST Status=201 Success=true Timestamp="2026-03-01T22:08:40.1215261Z"
+2026-03-02 01:08:40.375 +03:00 [INF] HTTP POST /api/v1/Vehicle responded 201 in 268.8400 ms
+2026-03-02 01:08:40.394 +03:00 [INF] HTTP OPTIONS /api/v1/Vehicle/reg/KDS385X responded 204 in 0.0407 ms
+2026-03-02 01:08:40.400 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0383 ms
+2026-03-02 01:08:40.414 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:08:40.419 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:08:40.427 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.create
+2026-03-02 01:08:40.453 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:08:40.479 +03:00 [INF] Found existing vehicle KDS385X with ID "b00865bf-6f20-484d-9eec-4e2e34cdf291"
+2026-03-02 01:08:40.591 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=Vehicle ResourceId=null Endpoint=/api/v1/Vehicle Method=GET Status=200 Success=true Timestamp="2026-03-01T22:08:40.4179490Z"
+2026-03-02 01:08:40.603 +03:00 [INF] HTTP GET /api/v1/Vehicle/reg/KDS385X responded 200 in 194.2636 ms
+2026-03-02 01:08:40.746 +03:00 [INF] Generated document number: NRB-MOBILE-01A-20260301-0001-KDS385X for type weight_ticket, org "239bcb14-82dd-4846-becf-b49dbf4a7bdb", station "ef26c390-1365-425e-bcff-e81968763ac7"
+2026-03-02 01:08:40.759 +03:00 [INF] Weighing transaction initiated: NRB-MOBILE-01A-20260301-0001-KDS385X, Station: "ef26c390-1365-425e-bcff-e81968763ac7", Vehicle: "b00865bf-6f20-484d-9eec-4e2e34cdf291", Bound: A, ScaleTest: "6bd5028c-029c-481a-884f-e18c1ffee6fc"
+2026-03-02 01:08:41.347 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=POST Status=201 Success=true Timestamp="2026-03-01T22:08:40.4369638Z"
+2026-03-02 01:08:41.439 +03:00 [INF] HTTP POST /api/v1/weighing-transactions responded 201 in 1025.5370 ms
+2026-03-02 01:08:41.459 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0331 ms
+2026-03-02 01:08:41.475 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:08:41.479 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:08:41.483 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:08:41.516 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:08:41.4830005Z"
+2026-03-02 01:08:41.527 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 57.5408 ms
+2026-03-02 01:09:15.358 +03:00 [INF] HTTP OPTIONS /api/v1/vehicle-makes responded 204 in 0.0499 ms
+2026-03-02 01:09:15.377 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:09:15.528 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=vehicle-make ResourceId=null Endpoint=/api/v1/vehicle-makes Method=POST Status=201 Success=true Timestamp="2026-03-01T22:09:15.3850068Z"
+2026-03-02 01:09:15.544 +03:00 [INF] HTTP POST /api/v1/vehicle-makes responded 201 in 175.3987 ms
+2026-03-02 01:09:15.963 +03:00 [INF] HTTP OPTIONS /api/v1/vehicle-makes/active responded 204 in 0.0357 ms
+2026-03-02 01:09:15.993 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:09:16.008 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=vehicle-make ResourceId=null Endpoint=/api/v1/vehicle-makes Method=GET Status=200 Success=true Timestamp="2026-03-01T22:09:16.0034207Z"
+2026-03-02 01:09:16.030 +03:00 [INF] HTTP GET /api/v1/vehicle-makes/active responded 200 in 39.7587 ms
+2026-03-02 01:10:00.575 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 01:10:00.604 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 01:10:57.298 +03:00 [INF] HTTP OPTIONS /api/v1/drivers responded 204 in 0.0245 ms
+2026-03-02 01:10:57.313 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:10:57.565 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=POST Status=201 Success=true Timestamp="2026-03-01T22:10:57.3214815Z"
+2026-03-02 01:10:57.579 +03:00 [INF] HTTP POST /api/v1/drivers responded 201 in 270.1680 ms
+2026-03-02 01:10:57.836 +03:00 [INF] HTTP OPTIONS /api/v1/drivers/search responded 204 in 0.0574 ms
+2026-03-02 01:10:57.853 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:10:57.862 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=driver ResourceId=null Endpoint=/api/v1/drivers Method=GET Status=200 Success=true Timestamp="2026-03-01T22:10:57.8602463Z"
+2026-03-02 01:10:57.879 +03:00 [INF] HTTP GET /api/v1/drivers/search responded 200 in 30.1895 ms
+2026-03-02 01:10:58.793 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 204 in 0.0574 ms
+2026-03-02 01:10:58.819 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:10:58.828 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.update
+2026-03-02 01:10:58.848 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:10:59.156 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=UPDATE ResourceType=weighing-transaction ResourceId="04143955-25b9-48b3-889f-c2e00da0b5f5" Endpoint=/api/v1/weighing-transactions Method=PUT Status=200 Success=true Timestamp="2026-03-01T22:10:58.8371947Z"
+2026-03-02 01:10:59.182 +03:00 [INF] HTTP PUT /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 200 in 375.5311 ms
+2026-03-02 01:10:59.218 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0535 ms
+2026-03-02 01:10:59.266 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:10:59.277 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:10:59.283 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:10:59.300 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:10:59.2834063Z"
+2026-03-02 01:10:59.313 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 59.9223 ms
+2026-03-02 01:14:02.333 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 204 in 0.0344 ms
+2026-03-02 01:14:02.483 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:14:02.489 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.update
+2026-03-02 01:14:02.493 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:14:02.550 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=UPDATE ResourceType=weighing-transaction ResourceId="04143955-25b9-48b3-889f-c2e00da0b5f5" Endpoint=/api/v1/weighing-transactions Method=PUT Status=200 Success=true Timestamp="2026-03-01T22:14:02.4929137Z"
+2026-03-02 01:14:02.565 +03:00 [INF] HTTP PUT /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 200 in 214.6256 ms
+2026-03-02 01:14:02.582 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0591 ms
+2026-03-02 01:14:02.595 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:14:02.598 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:14:02.603 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:14:02.620 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:14:02.6032088Z"
+2026-03-02 01:14:02.632 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 40.7068 ms
+2026-03-02 01:14:09.358 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 204 in 0.0303 ms
+2026-03-02 01:14:09.377 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:14:09.382 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.update
+2026-03-02 01:14:09.385 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:14:09.408 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=UPDATE ResourceType=weighing-transaction ResourceId="04143955-25b9-48b3-889f-c2e00da0b5f5" Endpoint=/api/v1/weighing-transactions Method=PUT Status=200 Success=true Timestamp="2026-03-01T22:14:09.3853921Z"
+2026-03-02 01:14:09.422 +03:00 [INF] HTTP PUT /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 200 in 49.4710 ms
+2026-03-02 01:14:09.532 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0293 ms
+2026-03-02 01:14:09.551 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:14:09.557 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:14:09.560 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:14:09.577 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:14:09.5607090Z"
+2026-03-02 01:14:09.686 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 140.5735 ms
+2026-03-02 01:14:14.410 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 204 in 0.0436 ms
+2026-03-02 01:14:14.428 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:14:14.435 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.update
+2026-03-02 01:14:14.439 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:14:14.464 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=UPDATE ResourceType=weighing-transaction ResourceId="04143955-25b9-48b3-889f-c2e00da0b5f5" Endpoint=/api/v1/weighing-transactions Method=PUT Status=200 Success=true Timestamp="2026-03-01T22:14:14.4393590Z"
+2026-03-02 01:14:14.478 +03:00 [INF] HTTP PUT /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 200 in 55.4625 ms
+2026-03-02 01:14:14.729 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0238 ms
+2026-03-02 01:14:14.761 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:14:14.768 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:14:14.774 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:14:14.787 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:14:14.7738220Z"
+2026-03-02 01:14:14.805 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 63.4626 ms
+2026-03-02 01:14:17.426 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:14:17.429 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.update
+2026-03-02 01:14:17.432 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:14:17.452 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=UPDATE ResourceType=weighing-transaction ResourceId="04143955-25b9-48b3-889f-c2e00da0b5f5" Endpoint=/api/v1/weighing-transactions Method=PUT Status=200 Success=true Timestamp="2026-03-01T22:14:17.4328094Z"
+2026-03-02 01:14:17.467 +03:00 [INF] HTTP PUT /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 200 in 44.2648 ms
+2026-03-02 01:14:17.673 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:14:17.679 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:14:17.684 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:14:17.698 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:14:17.6839378Z"
+2026-03-02 01:14:17.712 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 42.6423 ms
+2026-03-02 01:14:25.707 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5/capture-weights responded 204 in 0.0233 ms
+2026-03-02 01:14:25.720 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:14:25.724 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.create
+2026-03-02 01:14:25.752 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:14:25.910 +03:00 [INF] Found standard axle config 2A for 2 axles (GVW: 18000kg)
+2026-03-02 01:14:25.938 +03:00 [INF] Updated CaptureStatus from 'pending' to 'captured' for transaction "04143955-25b9-48b3-889f-c2e00da0b5f5"
+2026-03-02 01:14:27.660 +03:00 [INF] Auto-created case register CASE-2026-00001 for overloaded weighing "04143955-25b9-48b3-889f-c2e00da0b5f5"
+2026-03-02 01:14:27.966 +03:00 [INF] Created yard entry "4eb76e8e-7f48-4d5e-b740-2c5e320cfcc9" for weighing "04143955-25b9-48b3-889f-c2e00da0b5f5"
+2026-03-02 01:14:27.978 +03:00 [INF] Auto-created yard entry for vehicle KDS385X at station "ef26c390-1365-425e-bcff-e81968763ac7"
+2026-03-02 01:14:28.013 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=weighing-transaction ResourceId="04143955-25b9-48b3-889f-c2e00da0b5f5" Endpoint=/api/v1/weighing-transactions Method=POST Status=200 Success=true Timestamp="2026-03-01T22:14:25.7319598Z"
+2026-03-02 01:14:28.041 +03:00 [INF] HTTP POST /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5/capture-weights responded 200 in 2325.5113 ms
+2026-03-02 01:14:33.376 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.1027 ms
+2026-03-02 01:14:33.407 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:14:33.418 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:14:33.421 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:14:33.438 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:14:33.4217172Z"
+2026-03-02 01:14:33.447 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 47.0003 ms
+2026-03-02 01:15:01.049 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 01:15:01.071 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 01:15:31.517 +03:00 [INF] HTTP OPTIONS /api/v1/yard-entries responded 204 in 0.0402 ms
+2026-03-02 01:15:31.539 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:15:31.545 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: yard.create
+2026-03-02 01:15:31.581 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=yard-entrie ResourceId=null Endpoint=/api/v1/yard-entries Method=POST Status=500 Success=false Timestamp="2026-03-01T22:15:31.5492088Z"
+2026-03-02 01:15:31.669 +03:00 [ERR] Unhandled exception occurred: System.InvalidOperationException: A yard entry already exists for this weighing transaction
+   at TruLoad.Backend.Services.Implementations.Yard.YardService.CreateAsync(CreateYardEntryRequest request, Guid userId, CancellationToken ct) in D:\Projects\Codevertex\TruLoad\truload-backend\Services\Implementations\Yard\YardService.cs:line 118
+   at TruLoad.Backend.Controllers.Yard.YardController.Create(CreateYardEntryRequest request, CancellationToken ct) in D:\Projects\Codevertex\TruLoad\truload-backend\Controllers\Yard\YardController.cs:line 164
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Program.<>c.<<<Main>$>b__0_18>d.MoveNext() in D:\Projects\Codevertex\TruLoad\truload-backend\Program.cs:line 660
+--- End of stack trace from previous location ---
+   at TruLoad.Backend.Middleware.AuditMiddleware.InvokeAsync(HttpContext context, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\AuditMiddleware.cs:line 55
+   at TruLoad.Backend.Middleware.AuditMiddleware.InvokeAsync(HttpContext context, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\AuditMiddleware.cs:line 71
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at TruLoad.Backend.Middleware.TenantContextMiddleware.InvokeAsync(HttpContext context, TenantContext tenantContext, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\TenantContext.cs:line 99
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.RateLimiting.RateLimitingMiddleware.InvokeInternal(HttpContext context, EnableRateLimitingAttribute enableRateLimitingAttribute)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+System.InvalidOperationException: A yard entry already exists for this weighing transaction
+   at TruLoad.Backend.Services.Implementations.Yard.YardService.CreateAsync(CreateYardEntryRequest request, Guid userId, CancellationToken ct) in D:\Projects\Codevertex\TruLoad\truload-backend\Services\Implementations\Yard\YardService.cs:line 118
+   at TruLoad.Backend.Controllers.Yard.YardController.Create(CreateYardEntryRequest request, CancellationToken ct) in D:\Projects\Codevertex\TruLoad\truload-backend\Controllers\Yard\YardController.cs:line 164
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Program.<>c.<<<Main>$>b__0_18>d.MoveNext() in D:\Projects\Codevertex\TruLoad\truload-backend\Program.cs:line 660
+--- End of stack trace from previous location ---
+   at TruLoad.Backend.Middleware.AuditMiddleware.InvokeAsync(HttpContext context, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\AuditMiddleware.cs:line 55
+   at TruLoad.Backend.Middleware.AuditMiddleware.InvokeAsync(HttpContext context, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\AuditMiddleware.cs:line 71
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at TruLoad.Backend.Middleware.TenantContextMiddleware.InvokeAsync(HttpContext context, TenantContext tenantContext, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\TenantContext.cs:line 99
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.RateLimiting.RateLimitingMiddleware.InvokeInternal(HttpContext context, EnableRateLimitingAttribute enableRateLimitingAttribute)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2026-03-02 01:15:31.712 +03:00 [ERR] An exception was thrown attempting to execute the error handler.
+System.ObjectDisposedException: Cannot access a closed Stream.
+   at System.IO.MemoryStream.Write(Byte[] buffer, Int32 offset, Int32 count)
+   at System.IO.MemoryStream.WriteAsync(ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+--- End of stack trace from previous location ---
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at System.Text.Json.Serialization.Metadata.JsonTypeInfo`1.SerializeAsync(PipeWriter pipeWriter, T rootValue, Int32 flushThreshold, CancellationToken cancellationToken, Object rootValueBoxed)
+   at System.Text.Json.Serialization.Metadata.JsonTypeInfo`1.SerializeAsync(PipeWriter pipeWriter, T rootValue, Int32 flushThreshold, CancellationToken cancellationToken, Object rootValueBoxed)
+   at System.Text.Json.Serialization.Metadata.JsonTypeInfo`1.SerializeAsync(PipeWriter pipeWriter, T rootValue, Int32 flushThreshold, CancellationToken cancellationToken, Object rootValueBoxed)
+   at Microsoft.AspNetCore.Http.HttpResponseJsonExtensions.WriteAsJsonAsyncSlow[TValue](PipeWriter body, TValue value, JsonSerializerOptions options, CancellationToken cancellationToken)
+   at Program.<>c__DisplayClass0_0.<<<Main>$>b__30>d.MoveNext() in D:\Projects\Codevertex\TruLoad\truload-backend\Program.cs:line 624
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.HandleException(HttpContext context, ExceptionDispatchInfo edi)
+2026-03-02 01:15:31.730 +03:00 [ERR] An unhandled exception has occurred while executing the request.
+System.InvalidOperationException: A yard entry already exists for this weighing transaction
+   at TruLoad.Backend.Services.Implementations.Yard.YardService.CreateAsync(CreateYardEntryRequest request, Guid userId, CancellationToken ct) in D:\Projects\Codevertex\TruLoad\truload-backend\Services\Implementations\Yard\YardService.cs:line 118
+   at TruLoad.Backend.Controllers.Yard.YardController.Create(CreateYardEntryRequest request, CancellationToken ct) in D:\Projects\Codevertex\TruLoad\truload-backend\Controllers\Yard\YardController.cs:line 164
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Program.<>c.<<<Main>$>b__0_18>d.MoveNext() in D:\Projects\Codevertex\TruLoad\truload-backend\Program.cs:line 660
+--- End of stack trace from previous location ---
+   at TruLoad.Backend.Middleware.AuditMiddleware.InvokeAsync(HttpContext context, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\AuditMiddleware.cs:line 55
+   at TruLoad.Backend.Middleware.AuditMiddleware.InvokeAsync(HttpContext context, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\AuditMiddleware.cs:line 71
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at TruLoad.Backend.Middleware.TenantContextMiddleware.InvokeAsync(HttpContext context, TenantContext tenantContext, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\TenantContext.cs:line 99
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.RateLimiting.RateLimitingMiddleware.InvokeInternal(HttpContext context, EnableRateLimitingAttribute enableRateLimitingAttribute)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2026-03-02 01:15:31.786 +03:00 [ERR] HTTP POST /api/v1/yard-entries responded 500 in 251.8012 ms
+System.InvalidOperationException: A yard entry already exists for this weighing transaction
+   at TruLoad.Backend.Services.Implementations.Yard.YardService.CreateAsync(CreateYardEntryRequest request, Guid userId, CancellationToken ct) in D:\Projects\Codevertex\TruLoad\truload-backend\Services\Implementations\Yard\YardService.cs:line 118
+   at TruLoad.Backend.Controllers.Yard.YardController.Create(CreateYardEntryRequest request, CancellationToken ct) in D:\Projects\Codevertex\TruLoad\truload-backend\Controllers\Yard\YardController.cs:line 164
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Program.<>c.<<<Main>$>b__0_18>d.MoveNext() in D:\Projects\Codevertex\TruLoad\truload-backend\Program.cs:line 660
+--- End of stack trace from previous location ---
+   at TruLoad.Backend.Middleware.AuditMiddleware.InvokeAsync(HttpContext context, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\AuditMiddleware.cs:line 55
+   at TruLoad.Backend.Middleware.AuditMiddleware.InvokeAsync(HttpContext context, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\AuditMiddleware.cs:line 71
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at TruLoad.Backend.Middleware.TenantContextMiddleware.InvokeAsync(HttpContext context, TenantContext tenantContext, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\TenantContext.cs:line 99
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.RateLimiting.RateLimitingMiddleware.InvokeInternal(HttpContext context, EnableRateLimitingAttribute enableRateLimitingAttribute)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.HandleException(HttpContext context, ExceptionDispatchInfo edi)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.HandleException(HttpContext context, ExceptionDispatchInfo edi)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+2026-03-02 01:15:31.810 +03:00 [ERR] An unhandled exception has occurred while executing the request.
+System.InvalidOperationException: A yard entry already exists for this weighing transaction
+   at TruLoad.Backend.Services.Implementations.Yard.YardService.CreateAsync(CreateYardEntryRequest request, Guid userId, CancellationToken ct) in D:\Projects\Codevertex\TruLoad\truload-backend\Services\Implementations\Yard\YardService.cs:line 118
+   at TruLoad.Backend.Controllers.Yard.YardController.Create(CreateYardEntryRequest request, CancellationToken ct) in D:\Projects\Codevertex\TruLoad\truload-backend\Controllers\Yard\YardController.cs:line 164
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Program.<>c.<<<Main>$>b__0_18>d.MoveNext() in D:\Projects\Codevertex\TruLoad\truload-backend\Program.cs:line 660
+--- End of stack trace from previous location ---
+   at TruLoad.Backend.Middleware.AuditMiddleware.InvokeAsync(HttpContext context, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\AuditMiddleware.cs:line 55
+   at TruLoad.Backend.Middleware.AuditMiddleware.InvokeAsync(HttpContext context, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\AuditMiddleware.cs:line 71
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at TruLoad.Backend.Middleware.TenantContextMiddleware.InvokeAsync(HttpContext context, TenantContext tenantContext, TruLoadDbContext dbContext) in D:\Projects\Codevertex\TruLoad\truload-backend\Middleware\TenantContext.cs:line 99
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.RateLimiting.RateLimitingMiddleware.InvokeInternal(HttpContext context, EnableRateLimitingAttribute enableRateLimitingAttribute)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.HandleException(HttpContext context, ExceptionDispatchInfo edi)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.HandleException(HttpContext context, ExceptionDispatchInfo edi)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Microsoft.AspNetCore.ResponseCompression.ResponseCompressionMiddleware.InvokeCore(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddlewareImpl.Invoke(HttpContext context)
+2026-03-02 01:17:33.502 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 204 in 0.1015 ms
+2026-03-02 01:17:33.514 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/by-weighing/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 204 in 0.0504 ms
+2026-03-02 01:17:33.520 +03:00 [INF] HTTP OPTIONS /api/v1/case/special-releases/pending responded 204 in 0.5890 ms
+2026-03-02 01:17:33.522 +03:00 [INF] HTTP OPTIONS /api/v1/case/release-types responded 204 in 0.0315 ms
+2026-03-02 01:17:33.575 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:17:33.598 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:17:33.613 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:17:33.618 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:17:33.6173152Z"
+2026-03-02 01:17:33.618 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:17:33.643 +03:00 [INF] HTTP GET /api/v1/case/release-types responded 404 in 35.4454 ms
+2026-03-02 01:17:33.670 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId="04143955-25b9-48b3-889f-c2e00da0b5f5" Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:17:33.6021952Z"
+2026-03-02 01:17:33.692 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 200 in 154.0906 ms
+2026-03-02 01:17:33.752 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:17:33.788 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:17:33.812 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="04143955-25b9-48b3-889f-c2e00da0b5f5" Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:17:33.7554803Z"
+2026-03-02 01:17:33.826 +03:00 [INF] HTTP GET /api/v1/case/cases/by-weighing/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 200 in 257.8997 ms
+2026-03-02 01:17:33.882 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:17:33.7918958Z"
+2026-03-02 01:17:33.894 +03:00 [INF] HTTP GET /api/v1/case/special-releases/pending responded 200 in 285.4182 ms
+2026-03-02 01:17:33.961 +03:00 [INF] HTTP OPTIONS /api/v1/case/special-releases/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 204 in 0.1526 ms
+2026-03-02 01:17:33.981 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:17:34.037 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:17:33.9870368Z"
+2026-03-02 01:17:34.049 +03:00 [INF] HTTP GET /api/v1/case/special-releases/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 200 in 72.7734 ms
+2026-03-02 01:17:34.699 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:17:34.703 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:17:34.7033883Z"
+2026-03-02 01:17:34.713 +03:00 [INF] HTTP GET /api/v1/case/release-types responded 404 in 22.4919 ms
+2026-03-02 01:17:36.745 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:17:36.753 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:17:36.7533005Z"
+2026-03-02 01:17:36.786 +03:00 [INF] HTTP GET /api/v1/case/release-types responded 404 in 48.3565 ms
+2026-03-02 01:18:49.930 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 204 in 0.0358 ms
+2026-03-02 01:18:49.935 +03:00 [INF] HTTP OPTIONS /api/v1/case/special-releases/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 204 in 0.0281 ms
+2026-03-02 01:18:49.939 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0231 ms
+2026-03-02 01:18:49.939 +03:00 [INF] HTTP OPTIONS /api/v1/case/release-types responded 204 in 0.0169 ms
+2026-03-02 01:18:49.939 +03:00 [INF] HTTP OPTIONS /api/v1/case/taxonomy/disposition-types responded 204 in 0.0191 ms
+2026-03-02 01:18:49.957 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:18:49.961 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:18:49.969 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:18:49.969 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:18:49.974 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-02 01:18:49.974 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:18:49.9669503Z"
+2026-03-02 01:18:49.975 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:18:49.977 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:18:49.9779001Z"
+2026-03-02 01:18:49.996 +03:00 [INF] HTTP GET /api/v1/case/special-releases/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 200 in 39.9340 ms
+2026-03-02 01:18:50.012 +03:00 [INF] HTTP GET /api/v1/case/release-types responded 404 in 46.0164 ms
+2026-03-02 01:18:50.024 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-01T22:18:49.9829763Z"
+2026-03-02 01:18:50.028 +03:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-03-02 01:18:50.031 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:18:49.9983966Z"
+2026-03-02 01:18:50.035 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 73.4440 ms
+2026-03-02 01:18:50.044 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/disposition-types responded 200 in 73.2289 ms
+2026-03-02 01:18:50.157 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:18:49.9636848Z"
+2026-03-02 01:18:50.172 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 200 in 220.0985 ms
+2026-03-02 01:18:50.248 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments responded 204 in 0.1126 ms
+2026-03-02 01:18:50.249 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0295 ms
+2026-03-02 01:18:50.251 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments/current responded 204 in 0.0384 ms
+2026-03-02 01:18:50.269 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:18:50.278 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:18:50.292 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:18:50.293 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:18:50.303 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-02 01:18:50.327 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:18:50.352 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-01T22:18:50.3401959Z"
+2026-03-02 01:18:50.380 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 106.8059 ms
+2026-03-02 01:18:50.461 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=404 Success=false Timestamp="2026-03-01T22:18:50.3549867Z"
+2026-03-02 01:18:50.484 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments/current responded 404 in 196.0865 ms
+2026-03-02 01:18:50.488 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=200 Success=true Timestamp="2026-03-01T22:18:50.3111785Z"
+2026-03-02 01:18:50.522 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments responded 200 in 258.5256 ms
+2026-03-02 01:18:51.069 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:18:51.079 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:18:51.0794669Z"
+2026-03-02 01:18:51.102 +03:00 [INF] HTTP GET /api/v1/case/release-types responded 404 in 42.7319 ms
+2026-03-02 01:18:51.519 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:18:51.529 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:18:51.546 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=404 Success=false Timestamp="2026-03-01T22:18:51.5368207Z"
+2026-03-02 01:18:51.565 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments/current responded 404 in 52.7505 ms
+2026-03-02 01:18:53.132 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:18:53.144 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:18:53.1445863Z"
+2026-03-02 01:18:53.191 +03:00 [INF] HTTP GET /api/v1/case/release-types responded 404 in 64.2614 ms
+2026-03-02 01:18:53.603 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:18:53.609 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:18:53.644 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=404 Success=false Timestamp="2026-03-01T22:18:53.6367585Z"
+2026-03-02 01:18:53.756 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments/current responded 404 in 155.5686 ms
+2026-03-02 01:19:07.664 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/parties responded 204 in 0.0310 ms
+2026-03-02 01:19:07.682 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:07.691 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:19:07.867 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=200 Success=true Timestamp="2026-03-01T22:19:07.6968609Z"
+2026-03-02 01:19:07.890 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/parties responded 200 in 211.5009 ms
+2026-03-02 01:19:08.776 +03:00 [INF] HTTP OPTIONS /api/v1/case/subfiles/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 204 in 0.0266 ms
+2026-03-02 01:19:08.776 +03:00 [INF] HTTP OPTIONS /api/v1/case/subfiles/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/completion responded 204 in 0.0142 ms
+2026-03-02 01:19:08.776 +03:00 [INF] HTTP OPTIONS /api/v1/case/taxonomy/subfile-types responded 204 in 0.0279 ms
+2026-03-02 01:19:08.792 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:08.805 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:08.807 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:08.811 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:19:08.816 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:19:08.829 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:19:08.7965598Z"
+2026-03-02 01:19:08.841 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/subfile-types responded 200 in 53.3953 ms
+2026-03-02 01:19:08.891 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:19:08.8229179Z"
+2026-03-02 01:19:08.903 +03:00 [INF] HTTP GET /api/v1/case/subfiles/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 200 in 105.7302 ms
+2026-03-02 01:19:08.910 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:19:08.8197574Z"
+2026-03-02 01:19:08.934 +03:00 [INF] HTTP GET /api/v1/case/subfiles/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/completion responded 200 in 136.5584 ms
+2026-03-02 01:19:09.595 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 204 in 0.0177 ms
+2026-03-02 01:19:09.596 +03:00 [INF] HTTP OPTIONS /api/v1/case/courts responded 204 in 0.0176 ms
+2026-03-02 01:19:09.597 +03:00 [INF] HTTP OPTIONS /api/v1/case/hearing-types responded 204 in 0.0123 ms
+2026-03-02 01:19:09.597 +03:00 [INF] HTTP OPTIONS /api/v1/case/hearing-outcomes responded 204 in 0.0131 ms
+2026-03-02 01:19:09.620 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:09.628 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:09.642 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:09.662 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:09.6617199Z"
+2026-03-02 01:19:09.662 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:09.673 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:09.6734755Z"
+2026-03-02 01:19:09.682 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:09.6822991Z"
+2026-03-02 01:19:09.709 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 404 in 95.6759 ms
+2026-03-02 01:19:09.714 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:09.7138553Z"
+2026-03-02 01:19:09.730 +03:00 [INF] HTTP GET /api/v1/case/courts responded 404 in 107.8196 ms
+2026-03-02 01:19:09.743 +03:00 [INF] HTTP GET /api/v1/case/hearing-types responded 404 in 108.6557 ms
+2026-03-02 01:19:09.765 +03:00 [INF] HTTP GET /api/v1/case/hearing-outcomes responded 404 in 112.7071 ms
+2026-03-02 01:19:10.780 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:10.792 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:10.7921511Z"
+2026-03-02 01:19:10.796 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:10.819 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 404 in 43.6179 ms
+2026-03-02 01:19:10.823 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:10.8230366Z"
+2026-03-02 01:19:10.832 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:10.833 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:10.864 +03:00 [INF] HTTP GET /api/v1/case/courts responded 404 in 73.6405 ms
+2026-03-02 01:19:10.871 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:10.8715000Z"
+2026-03-02 01:19:10.879 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:10.8789913Z"
+2026-03-02 01:19:10.912 +03:00 [INF] HTTP GET /api/v1/case/hearing-outcomes responded 404 in 86.3155 ms
+2026-03-02 01:19:10.931 +03:00 [INF] HTTP GET /api/v1/case/hearing-types responded 404 in 105.9826 ms
+2026-03-02 01:19:12.869 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:12.881 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:12.8810894Z"
+2026-03-02 01:19:12.922 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 404 in 63.1305 ms
+2026-03-02 01:19:12.922 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:12.930 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:12.9308780Z"
+2026-03-02 01:19:12.961 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:12.969 +03:00 [INF] HTTP GET /api/v1/case/courts responded 404 in 51.1711 ms
+2026-03-02 01:19:12.976 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:12.9763303Z"
+2026-03-02 01:19:13.001 +03:00 [INF] HTTP GET /api/v1/case/hearing-outcomes responded 404 in 45.6416 ms
+2026-03-02 01:19:13.007 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:13.036 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:13.0367713Z"
+2026-03-02 01:19:13.056 +03:00 [INF] HTTP GET /api/v1/case/hearing-types responded 404 in 53.4195 ms
+2026-03-02 01:19:13.927 +03:00 [INF] HTTP OPTIONS /api/v1/case/warrants/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 204 in 0.0434 ms
+2026-03-02 01:19:13.968 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:13.975 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:19:14.101 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:19:13.9854149Z"
+2026-03-02 01:19:14.122 +03:00 [INF] HTTP GET /api/v1/case/warrants/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 200 in 161.9222 ms
+2026-03-02 01:19:15.051 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/prosecution responded 204 in 0.0384 ms
+2026-03-02 01:19:15.051 +03:00 [INF] HTTP OPTIONS /api/v1/weighings/04143955-25b9-48b3-889f-c2e00da0b5f5/calculate-charges responded 204 in 0.0255 ms
+2026-03-02 01:19:15.078 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:15.094 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: prosecution.read
+2026-03-02 01:19:15.241 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:15.1074486Z"
+2026-03-02 01:19:15.265 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/prosecution responded 404 in 193.1264 ms
+2026-03-02 01:19:16.079 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/documents responded 204 in 0.0277 ms
+2026-03-02 01:19:16.079 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/documents/summary responded 204 in 0.0153 ms
+2026-03-02 01:19:18.506 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/closure-checklist responded 204 in 0.0681 ms
+2026-03-02 01:19:18.507 +03:00 [INF] HTTP OPTIONS /api/v1/case/taxonomy/closure-types responded 204 in 0.0578 ms
+2026-03-02 01:19:33.617 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 204 in 0.0353 ms
+2026-03-02 01:19:33.619 +03:00 [INF] HTTP OPTIONS /api/v1/case/hearing-types responded 204 in 0.0392 ms
+2026-03-02 01:19:33.619 +03:00 [INF] HTTP OPTIONS /api/v1/case/courts responded 204 in 0.0230 ms
+2026-03-02 01:19:33.619 +03:00 [INF] HTTP OPTIONS /api/v1/case/hearing-outcomes responded 204 in 0.0206 ms
+2026-03-02 01:19:33.701 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 429 in 49.0066 ms
+2026-03-02 01:19:33.719 +03:00 [INF] HTTP GET /api/v1/case/hearing-types responded 429 in 2.1118 ms
+2026-03-02 01:19:33.742 +03:00 [INF] HTTP GET /api/v1/case/courts responded 429 in 1.0395 ms
+2026-03-02 01:19:33.765 +03:00 [INF] HTTP GET /api/v1/case/hearing-outcomes responded 429 in 0.8893 ms
+2026-03-02 01:19:34.726 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 429 in 0.5159 ms
+2026-03-02 01:19:34.757 +03:00 [INF] HTTP GET /api/v1/case/hearing-types responded 429 in 0.6235 ms
+2026-03-02 01:19:34.785 +03:00 [INF] HTTP GET /api/v1/case/courts responded 429 in 0.7343 ms
+2026-03-02 01:19:34.807 +03:00 [INF] HTTP GET /api/v1/case/hearing-outcomes responded 429 in 0.9981 ms
+2026-03-02 01:19:36.755 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 429 in 0.5982 ms
+2026-03-02 01:19:36.794 +03:00 [INF] HTTP GET /api/v1/case/hearing-types responded 429 in 0.9864 ms
+2026-03-02 01:19:36.821 +03:00 [INF] HTTP GET /api/v1/case/courts responded 429 in 0.9879 ms
+2026-03-02 01:19:36.845 +03:00 [INF] HTTP GET /api/v1/case/hearing-outcomes responded 429 in 0.7831 ms
+2026-03-02 01:19:37.810 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 429 in 1.3345 ms
+2026-03-02 01:19:37.836 +03:00 [INF] HTTP GET /api/v1/case/hearing-types responded 429 in 1.5762 ms
+2026-03-02 01:19:37.868 +03:00 [INF] HTTP GET /api/v1/case/courts responded 429 in 0.3314 ms
+2026-03-02 01:19:37.887 +03:00 [INF] HTTP GET /api/v1/case/hearing-outcomes responded 429 in 0.3724 ms
+2026-03-02 01:19:38.849 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 204 in 0.0625 ms
+2026-03-02 01:19:38.867 +03:00 [INF] HTTP OPTIONS /api/v1/case/hearing-types responded 204 in 0.0395 ms
+2026-03-02 01:19:38.881 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 429 in 1.0617 ms
+2026-03-02 01:19:38.900 +03:00 [INF] HTTP OPTIONS /api/v1/case/courts responded 204 in 0.0546 ms
+2026-03-02 01:19:38.922 +03:00 [INF] HTTP GET /api/v1/case/hearing-types responded 429 in 0.9038 ms
+2026-03-02 01:19:38.922 +03:00 [INF] HTTP OPTIONS /api/v1/case/hearing-outcomes responded 204 in 0.0521 ms
+2026-03-02 01:19:38.955 +03:00 [INF] HTTP GET /api/v1/case/courts responded 429 in 0.5979 ms
+2026-03-02 01:19:38.977 +03:00 [INF] HTTP GET /api/v1/case/hearing-outcomes responded 429 in 0.9406 ms
+2026-03-02 01:19:40.929 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 429 in 0.3797 ms
+2026-03-02 01:19:40.962 +03:00 [INF] HTTP GET /api/v1/case/hearing-types responded 429 in 0.3171 ms
+2026-03-02 01:19:41.009 +03:00 [INF] HTTP GET /api/v1/case/courts responded 429 in 0.4078 ms
+2026-03-02 01:19:41.017 +03:00 [INF] HTTP GET /api/v1/case/hearing-outcomes responded 429 in 0.4308 ms
+2026-03-02 01:19:42.953 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 429 in 1.2720 ms
+2026-03-02 01:19:42.982 +03:00 [INF] HTTP GET /api/v1/case/hearing-types responded 429 in 0.4971 ms
+2026-03-02 01:19:43.028 +03:00 [INF] HTTP GET /api/v1/case/courts responded 429 in 0.5888 ms
+2026-03-02 01:19:43.039 +03:00 [INF] HTTP GET /api/v1/case/hearing-outcomes responded 429 in 1.1682 ms
+2026-03-02 01:19:43.851 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/statistics responded 204 in 0.0286 ms
+2026-03-02 01:19:43.854 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/search responded 204 in 0.0349 ms
+2026-03-02 01:19:43.855 +03:00 [INF] HTTP OPTIONS /api/v1/case/taxonomy/violation-types responded 204 in 0.0176 ms
+2026-03-02 01:19:43.855 +03:00 [INF] HTTP OPTIONS /api/v1/case/taxonomy/case-statuses responded 204 in 0.0111 ms
+2026-03-02 01:19:43.867 +03:00 [INF] HTTP GET /api/v1/case/cases/statistics responded 429 in 0.4442 ms
+2026-03-02 01:19:43.900 +03:00 [INF] HTTP POST /api/v1/case/cases/search responded 429 in 0.4418 ms
+2026-03-02 01:19:43.927 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/violation-types responded 429 in 0.4000 ms
+2026-03-02 01:19:43.935 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/case-statuses responded 429 in 0.3097 ms
+2026-03-02 01:19:43.977 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 204 in 0.0226 ms
+2026-03-02 01:19:43.996 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 429 in 0.4346 ms
+2026-03-02 01:19:44.003 +03:00 [INF] HTTP OPTIONS /api/v1/case/hearing-types responded 204 in 0.0225 ms
+2026-03-02 01:19:44.013 +03:00 [INF] HTTP GET /api/v1/case/hearing-types responded 429 in 0.3490 ms
+2026-03-02 01:19:44.043 +03:00 [INF] HTTP OPTIONS /api/v1/case/courts responded 204 in 0.0232 ms
+2026-03-02 01:19:44.052 +03:00 [INF] HTTP GET /api/v1/case/courts responded 429 in 0.3351 ms
+2026-03-02 01:19:44.062 +03:00 [INF] HTTP OPTIONS /api/v1/case/hearing-outcomes responded 204 in 0.0217 ms
+2026-03-02 01:19:44.073 +03:00 [INF] HTTP GET /api/v1/case/hearing-outcomes responded 429 in 0.4773 ms
+2026-03-02 01:19:44.919 +03:00 [INF] HTTP GET /api/v1/case/cases/statistics responded 429 in 0.6070 ms
+2026-03-02 01:19:44.941 +03:00 [INF] HTTP POST /api/v1/case/cases/search responded 429 in 0.5384 ms
+2026-03-02 01:19:44.948 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/violation-types responded 429 in 0.3542 ms
+2026-03-02 01:19:44.956 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/case-statuses responded 429 in 0.3839 ms
+2026-03-02 01:19:45.051 +03:00 [INF] HTTP POST /api/v1/weighings/04143955-25b9-48b3-889f-c2e00da0b5f5/calculate-charges responded 200 in 29970.0326 ms
+2026-03-02 01:19:46.028 +03:00 [INF] HTTP GET /api/v1/case/hearing-types responded 429 in 0.5363 ms
+2026-03-02 01:19:46.074 +03:00 [INF] HTTP GET /api/v1/case/courts responded 429 in 0.8686 ms
+2026-03-02 01:19:46.078 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/documents responded 200 in 29984.7933 ms
+2026-03-02 01:19:46.079 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/documents/summary responded 200 in 29970.0829 ms
+2026-03-02 01:19:46.962 +03:00 [INF] HTTP POST /api/v1/case/cases/search responded 429 in 0.4425 ms
+2026-03-02 01:19:46.980 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/violation-types responded 429 in 0.5785 ms
+2026-03-02 01:19:46.996 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/case-statuses responded 429 in 0.4952 ms
+2026-03-02 01:19:47.999 +03:00 [INF] HTTP POST /api/v1/case/cases/search responded 429 in 1.1580 ms
+2026-03-02 01:19:48.022 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/violation-types responded 429 in 0.5841 ms
+2026-03-02 01:19:48.036 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/case-statuses responded 429 in 0.6851 ms
+2026-03-02 01:19:48.474 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/closure-checklist responded 200 in 29941.2571 ms
+2026-03-02 01:19:48.475 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/closure-types responded 200 in 29932.1281 ms
+2026-03-02 01:19:49.040 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/search responded 204 in 0.0613 ms
+2026-03-02 01:19:49.060 +03:00 [INF] HTTP OPTIONS /api/v1/case/taxonomy/violation-types responded 204 in 0.2427 ms
+2026-03-02 01:19:49.073 +03:00 [INF] HTTP OPTIONS /api/v1/case/taxonomy/case-statuses responded 204 in 0.0630 ms
+2026-03-02 01:19:49.112 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/case-statuses responded 429 in 0.5820 ms
+2026-03-02 01:19:50.011 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:50.012 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:50.045 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:50.0452398Z"
+2026-03-02 01:19:50.059 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:19:50.0308891Z"
+2026-03-02 01:19:50.084 +03:00 [INF] HTTP GET /api/v1/case/hearing-outcomes responded 404 in 3985.4136 ms
+2026-03-02 01:19:50.113 +03:00 [INF] HTTP GET /api/v1/case/cases/statistics responded 200 in 3165.7456 ms
+2026-03-02 01:19:50.224 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:50.239 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:50.243 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:50.2433657Z"
+2026-03-02 01:19:50.252 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:19:50.2298121Z"
+2026-03-02 01:19:50.252 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/hearings responded 404 in 4238.3356 ms
+2026-03-02 01:19:50.262 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/violation-types responded 200 in 1166.2532 ms
+2026-03-02 01:19:50.263 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:50.390 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=POST Status=200 Success=true Timestamp="2026-03-01T22:19:50.2713339Z"
+2026-03-02 01:19:50.407 +03:00 [INF] HTTP POST /api/v1/case/cases/search responded 200 in 1334.9139 ms
+2026-03-02 01:19:51.145 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:51.192 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:19:51.1573650Z"
+2026-03-02 01:19:51.219 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/case-statuses responded 200 in 78.5988 ms
+2026-03-02 01:19:53.931 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments responded 204 in 0.0342 ms
+2026-03-02 01:19:53.935 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments/current responded 204 in 0.0294 ms
+2026-03-02 01:19:53.936 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 204 in 0.0283 ms
+2026-03-02 01:19:53.936 +03:00 [INF] HTTP OPTIONS /api/v1/case/special-releases/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 204 in 0.0267 ms
+2026-03-02 01:19:53.941 +03:00 [INF] HTTP OPTIONS /api/v1/case/release-types responded 204 in 0.0204 ms
+2026-03-02 01:19:53.959 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:53.962 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:53.963 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:19:53.965 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:53.969 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:53.969 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:53.969 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:19:53.985 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:53.9858265Z"
+2026-03-02 01:19:53.990 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:19:53.9828124Z"
+2026-03-02 01:19:54.002 +03:00 [INF] HTTP GET /api/v1/case/release-types responded 404 in 37.8917 ms
+2026-03-02 01:19:54.002 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:53.9889199Z"
+2026-03-02 01:19:54.003 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=200 Success=true Timestamp="2026-03-01T22:19:53.9737091Z"
+2026-03-02 01:19:54.004 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:19:53.9791753Z"
+2026-03-02 01:19:54.036 +03:00 [INF] HTTP GET /api/v1/case/special-releases/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 200 in 72.3881 ms
+2026-03-02 01:19:54.043 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments/current responded 404 in 87.3353 ms
+2026-03-02 01:19:54.052 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments responded 200 in 96.2274 ms
+2026-03-02 01:19:54.056 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 200 in 98.8524 ms
+2026-03-02 01:19:55.058 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:55.066 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:55.0663420Z"
+2026-03-02 01:19:55.080 +03:00 [INF] HTTP GET /api/v1/case/release-types responded 404 in 29.8590 ms
+2026-03-02 01:19:55.090 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:55.104 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:19:55.124 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:55.1150119Z"
+2026-03-02 01:19:55.156 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments/current responded 404 in 69.2125 ms
+2026-03-02 01:19:57.121 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:57.132 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:57.1327833Z"
+2026-03-02 01:19:57.157 +03:00 [INF] HTTP GET /api/v1/case/release-types responded 404 in 42.9134 ms
+2026-03-02 01:19:57.205 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:19:57.214 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:19:57.233 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=404 Success=false Timestamp="2026-03-01T22:19:57.2217495Z"
+2026-03-02 01:19:57.250 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments/current responded 404 in 49.1299 ms
+2026-03-02 01:20:01.388 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 01:20:01.416 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 01:20:25.545 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/escalate responded 204 in 0.0237 ms
+2026-03-02 01:20:25.562 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:20:25.568 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.escalate
+2026-03-02 01:20:25.671 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=POST Status=404 Success=false Timestamp="2026-03-01T22:20:25.5775935Z"
+2026-03-02 01:20:25.694 +03:00 [INF] HTTP POST /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/escalate responded 404 in 136.5752 ms
+2026-03-02 01:20:26.734 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:20:26.744 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.escalate
+2026-03-02 01:20:26.770 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=POST Status=404 Success=false Timestamp="2026-03-01T22:20:26.7492432Z"
+2026-03-02 01:20:26.795 +03:00 [INF] HTTP POST /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/escalate responded 404 in 64.7191 ms
+2026-03-02 01:20:33.481 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/prosecution responded 204 in 0.0440 ms
+2026-03-02 01:20:33.481 +03:00 [INF] HTTP OPTIONS /api/v1/weighings/04143955-25b9-48b3-889f-c2e00da0b5f5/calculate-charges responded 204 in 0.0798 ms
+2026-03-02 01:20:33.497 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:20:33.503 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: prosecution.read
+2026-03-02 01:20:33.512 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:20:33.525 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=404 Success=false Timestamp="2026-03-01T22:20:33.5109422Z"
+2026-03-02 01:20:33.572 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: prosecution.create
+2026-03-02 01:20:33.647 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/prosecution responded 404 in 152.9791 ms
+2026-03-02 01:20:34.034 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=weighing ResourceId="04143955-25b9-48b3-889f-c2e00da0b5f5" Endpoint=/api/v1/weighings Method=POST Status=200 Success=true Timestamp="2026-03-01T22:20:33.6478451Z"
+2026-03-02 01:20:34.083 +03:00 [INF] HTTP POST /api/v1/weighings/04143955-25b9-48b3-889f-c2e00da0b5f5/calculate-charges responded 200 in 578.3047 ms
+2026-03-02 01:20:39.606 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/prosecution responded 204 in 0.0379 ms
+2026-03-02 01:20:39.630 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:20:39.635 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: prosecution.create
+2026-03-02 01:20:39.736 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=POST Status=400 Success=false Timestamp="2026-03-01T22:20:39.6400435Z"
+2026-03-02 01:20:39.757 +03:00 [INF] HTTP POST /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/prosecution responded 400 in 133.5305 ms
+2026-03-02 01:20:40.788 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:20:40.799 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: prosecution.create
+2026-03-02 01:20:40.806 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=POST Status=400 Success=false Timestamp="2026-03-01T22:20:40.8055112Z"
+2026-03-02 01:20:40.826 +03:00 [INF] HTTP POST /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/prosecution responded 400 in 42.3974 ms
+2026-03-02 01:21:09.520 +03:00 [INF] HTTP OPTIONS /api/v1/weighings/04143955-25b9-48b3-889f-c2e00da0b5f5/calculate-charges responded 204 in 0.0299 ms
+2026-03-02 01:21:09.520 +03:00 [INF] HTTP OPTIONS /api/v1/weighings/04143955-25b9-48b3-889f-c2e00da0b5f5/calculate-charges responded 204 in 0.0202 ms
+2026-03-02 01:21:09.543 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:09.553 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: prosecution.create
+2026-03-02 01:21:09.549 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:09.563 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: prosecution.create
+2026-03-02 01:21:09.632 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=weighing ResourceId="04143955-25b9-48b3-889f-c2e00da0b5f5" Endpoint=/api/v1/weighings Method=POST Status=200 Success=true Timestamp="2026-03-01T22:21:09.5696139Z"
+2026-03-02 01:21:09.643 +03:00 [INF] HTTP POST /api/v1/weighings/04143955-25b9-48b3-889f-c2e00da0b5f5/calculate-charges responded 200 in 99.7541 ms
+2026-03-02 01:21:09.650 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=weighing ResourceId="04143955-25b9-48b3-889f-c2e00da0b5f5" Endpoint=/api/v1/weighings Method=POST Status=200 Success=true Timestamp="2026-03-01T22:21:09.5582388Z"
+2026-03-02 01:21:09.659 +03:00 [INF] HTTP POST /api/v1/weighings/04143955-25b9-48b3-889f-c2e00da0b5f5/calculate-charges responded 200 in 118.8062 ms
+2026-03-02 01:21:15.422 +03:00 [INF] HTTP OPTIONS /api/v1/weighings/04143955-25b9-48b3-889f-c2e00da0b5f5/calculate-charges responded 204 in 0.0284 ms
+2026-03-02 01:21:15.438 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:15.444 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: prosecution.create
+2026-03-02 01:21:15.538 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=weighing ResourceId="04143955-25b9-48b3-889f-c2e00da0b5f5" Endpoint=/api/v1/weighings Method=POST Status=200 Success=true Timestamp="2026-03-01T22:21:15.4536559Z"
+2026-03-02 01:21:15.583 +03:00 [INF] HTTP POST /api/v1/weighings/04143955-25b9-48b3-889f-c2e00da0b5f5/calculate-charges responded 200 in 149.1094 ms
+2026-03-02 01:21:24.028 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/search responded 204 in 0.0329 ms
+2026-03-02 01:21:24.052 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:24.067 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=POST Status=200 Success=true Timestamp="2026-03-01T22:21:24.0597854Z"
+2026-03-02 01:21:24.083 +03:00 [INF] HTTP POST /api/v1/case/cases/search responded 200 in 37.7326 ms
+2026-03-02 01:21:25.066 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments responded 204 in 0.0269 ms
+2026-03-02 01:21:25.067 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments/current responded 204 in 0.0258 ms
+2026-03-02 01:21:25.068 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 204 in 0.0394 ms
+2026-03-02 01:21:25.069 +03:00 [INF] HTTP OPTIONS /api/v1/case/special-releases/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 204 in 0.0364 ms
+2026-03-02 01:21:25.071 +03:00 [INF] HTTP OPTIONS /api/v1/case/release-types responded 204 in 0.0239 ms
+2026-03-02 01:21:25.086 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:25.089 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:25.094 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:21:25.095 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:25.095 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:25.097 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:21:25.100 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:25.104 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=404 Success=false Timestamp="2026-03-01T22:21:25.1009350Z"
+2026-03-02 01:21:25.110 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:21:25.1080678Z"
+2026-03-02 01:21:25.111 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:21:25.1040661Z"
+2026-03-02 01:21:25.114 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=200 Success=true Timestamp="2026-03-01T22:21:25.1109866Z"
+2026-03-02 01:21:25.115 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:21:25.1152780Z"
+2026-03-02 01:21:25.125 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments/current responded 404 in 40.0518 ms
+2026-03-02 01:21:25.132 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 200 in 41.6329 ms
+2026-03-02 01:21:25.141 +03:00 [INF] HTTP GET /api/v1/case/special-releases/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 200 in 48.4938 ms
+2026-03-02 01:21:25.148 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments responded 200 in 66.9480 ms
+2026-03-02 01:21:25.155 +03:00 [INF] HTTP GET /api/v1/case/release-types responded 404 in 58.6755 ms
+2026-03-02 01:21:26.188 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:26.197 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:21:26.202 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:26.217 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=404 Success=false Timestamp="2026-03-01T22:21:26.2086787Z"
+2026-03-02 01:21:26.219 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:21:26.2192386Z"
+2026-03-02 01:21:26.266 +03:00 [INF] HTTP GET /api/v1/case/release-types responded 404 in 70.2020 ms
+2026-03-02 01:21:26.277 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments/current responded 404 in 94.5735 ms
+2026-03-02 01:21:26.375 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 204 in 0.0239 ms
+2026-03-02 01:21:26.376 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/by-weighing/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 204 in 0.0214 ms
+2026-03-02 01:21:26.376 +03:00 [INF] HTTP OPTIONS /api/v1/case/special-releases/pending responded 204 in 0.0161 ms
+2026-03-02 01:21:26.393 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:26.396 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:26.398 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:21:26.401 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:26.406 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="04143955-25b9-48b3-889f-c2e00da0b5f5" Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:21:26.4036887Z"
+2026-03-02 01:21:26.407 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:21:26.415 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:21:26.4122463Z"
+2026-03-02 01:21:26.422 +03:00 [INF] HTTP GET /api/v1/case/cases/by-weighing/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 200 in 29.3361 ms
+2026-03-02 01:21:26.434 +03:00 [INF] HTTP GET /api/v1/case/special-releases/pending responded 200 in 35.8145 ms
+2026-03-02 01:21:26.443 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId="04143955-25b9-48b3-889f-c2e00da0b5f5" Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:21:26.4071203Z"
+2026-03-02 01:21:26.463 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/04143955-25b9-48b3-889f-c2e00da0b5f5 responded 200 in 72.9300 ms
+2026-03-02 01:21:28.400 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:21:28.412 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:21:28.4127746Z"
+2026-03-02 01:21:28.442 +03:00 [INF] HTTP GET /api/v1/case/release-types responded 404 in 50.3890 ms
+2026-03-02 01:22:28.065 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/search responded 204 in 0.0303 ms
+2026-03-02 01:22:28.096 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:22:28.130 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=POST Status=200 Success=true Timestamp="2026-03-01T22:22:28.1154482Z"
+2026-03-02 01:22:28.143 +03:00 [INF] HTTP POST /api/v1/case/cases/search responded 200 in 62.8404 ms
+2026-03-02 01:22:35.365 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments responded 204 in 0.0423 ms
+2026-03-02 01:22:35.367 +03:00 [INF] HTTP OPTIONS /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments/current responded 204 in 0.0333 ms
+2026-03-02 01:22:35.368 +03:00 [INF] HTTP OPTIONS /api/v1/case/special-releases/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 204 in 0.0324 ms
+2026-03-02 01:22:35.368 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 204 in 0.0267 ms
+2026-03-02 01:22:35.375 +03:00 [INF] HTTP OPTIONS /api/v1/case/release-types responded 204 in 0.0296 ms
+2026-03-02 01:22:35.387 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:22:35.391 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:22:35.394 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:22:35.397 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:22:35.400 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:22:35.399 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:22:35.408 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=200 Success=true Timestamp="2026-03-01T22:22:35.4027117Z"
+2026-03-02 01:22:35.405 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:22:35.411 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:22:35.4082461Z"
+2026-03-02 01:22:35.417 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=404 Success=false Timestamp="2026-03-01T22:22:35.4113805Z"
+2026-03-02 01:22:35.426 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:22:35.4264928Z"
+2026-03-02 01:22:35.431 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:22:35.4151163Z"
+2026-03-02 01:22:35.425 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments responded 200 in 42.3025 ms
+2026-03-02 01:22:35.438 +03:00 [INF] HTTP GET /api/v1/case/special-releases/by-case/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 200 in 45.3103 ms
+2026-03-02 01:22:35.445 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments/current responded 404 in 57.9115 ms
+2026-03-02 01:22:35.454 +03:00 [INF] HTTP GET /api/v1/case/release-types responded 404 in 55.3303 ms
+2026-03-02 01:22:35.459 +03:00 [INF] HTTP GET /api/v1/case/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581 responded 200 in 64.6750 ms
+2026-03-02 01:22:36.493 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:22:36.493 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:22:36.501 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=404 Success=false Timestamp="2026-03-01T22:22:36.5010595Z"
+2026-03-02 01:22:36.507 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: case.read
+2026-03-02 01:22:36.523 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId="b66eaf93-d6a7-4ce9-95be-53bf6fe8a581" Endpoint=/api/v1/cases Method=GET Status=404 Success=false Timestamp="2026-03-01T22:22:36.5152563Z"
+2026-03-02 01:22:36.527 +03:00 [INF] HTTP GET /api/v1/case/release-types responded 404 in 37.9872 ms
+2026-03-02 01:22:36.534 +03:00 [INF] HTTP GET /api/v1/cases/b66eaf93-d6a7-4ce9-95be-53bf6fe8a581/assignments/current responded 404 in 45.5395 ms
+2026-03-02 01:22:38.144 +03:00 [INF] HTTP OPTIONS /api/v1/scale-tests/station/ef26c390-1365-425e-bcff-e81968763ac7/range responded 204 in 0.0308 ms
+2026-03-02 01:22:38.144 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0211 ms
+2026-03-02 01:22:38.145 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0180 ms
+2026-03-02 01:22:38.163 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:22:38.166 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:22:38.171 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:22:38.173 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:22:38.177 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=scale-test ResourceId="ef26c390-1365-425e-bcff-e81968763ac7" Endpoint=/api/v1/scale-tests Method=GET Status=200 Success=true Timestamp="2026-03-01T22:22:38.1680243Z"
+2026-03-02 01:22:38.180 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:22:38.184 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:22:38.204 +03:00 [INF] HTTP GET /api/v1/scale-tests/station/ef26c390-1365-425e-bcff-e81968763ac7/range responded 200 in 45.7235 ms
+2026-03-02 01:22:38.215 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:22:38.240 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:22:38.1797781Z"
+2026-03-02 01:22:38.254 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 91.8855 ms
+2026-03-02 01:22:38.269 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:22:38.2150524Z"
+2026-03-02 01:22:38.284 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 116.4169 ms
+2026-03-02 01:22:40.532 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.1260 ms
+2026-03-02 01:22:40.532 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/statistics responded 204 in 0.0199 ms
+2026-03-02 01:22:40.556 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:22:40.561 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:22:40.567 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:22:40.572 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:22:40.578 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:22:40.582 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:22:40.604 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:22:40.5779788Z"
+2026-03-02 01:22:40.607 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:22:40.5826217Z"
+2026-03-02 01:22:40.620 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 68.2313 ms
+2026-03-02 01:22:40.631 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/statistics responded 200 in 74.9723 ms
+2026-03-02 01:25:01.947 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 01:25:01.964 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 01:25:12.845 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/search responded 204 in 0.0279 ms
+2026-03-02 01:25:12.868 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:25:12.892 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=POST Status=200 Success=true Timestamp="2026-03-01T22:25:12.8726629Z"
+2026-03-02 01:25:12.911 +03:00 [INF] HTTP POST /api/v1/case/cases/search responded 200 in 50.4669 ms
+2026-03-02 01:25:22.617 +03:00 [INF] HTTP OPTIONS /api/v1/scale-tests/station/ef26c390-1365-425e-bcff-e81968763ac7/range responded 204 in 0.0235 ms
+2026-03-02 01:25:22.649 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:25:22.658 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=scale-test ResourceId="ef26c390-1365-425e-bcff-e81968763ac7" Endpoint=/api/v1/scale-tests Method=GET Status=200 Success=true Timestamp="2026-03-01T22:25:22.6525416Z"
+2026-03-02 01:25:22.675 +03:00 [INF] HTTP GET /api/v1/scale-tests/station/ef26c390-1365-425e-bcff-e81968763ac7/range responded 200 in 28.9258 ms
+2026-03-02 01:25:27.979 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0225 ms
+2026-03-02 01:25:27.996 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:25:28.002 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:25:28.008 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:25:28.046 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:25:28.0084905Z"
+2026-03-02 01:25:28.065 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 72.3353 ms
+2026-03-02 01:26:36.266 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/search responded 204 in 0.0298 ms
+2026-03-02 01:26:36.286 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:26:36.300 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=POST Status=200 Success=true Timestamp="2026-03-01T22:26:36.2909854Z"
+2026-03-02 01:26:36.311 +03:00 [INF] HTTP POST /api/v1/case/cases/search responded 200 in 31.8114 ms
+2026-03-02 01:27:06.255 +03:00 [INF] HTTP OPTIONS /api/v1/prosecutions/statistics responded 204 in 0.0354 ms
+2026-03-02 01:27:06.260 +03:00 [INF] HTTP OPTIONS /api/v1/prosecutions/search responded 204 in 0.0329 ms
+2026-03-02 01:27:06.276 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:27:06.280 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: prosecution.read
+2026-03-02 01:27:06.281 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:27:06.289 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: prosecution.read
+2026-03-02 01:27:06.438 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=prosecution ResourceId=null Endpoint=/api/v1/prosecutions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:27:06.2840607Z"
+2026-03-02 01:27:06.451 +03:00 [INF] HTTP GET /api/v1/prosecutions/statistics responded 200 in 181.4701 ms
+2026-03-02 01:27:06.527 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=CREATE ResourceType=prosecution ResourceId=null Endpoint=/api/v1/prosecutions Method=POST Status=200 Success=true Timestamp="2026-03-01T22:27:06.2945622Z"
+2026-03-02 01:27:06.537 +03:00 [INF] HTTP POST /api/v1/prosecutions/search responded 200 in 259.7162 ms
+2026-03-02 01:27:18.450 +03:00 [INF] HTTP OPTIONS /api/v1/reports/catalog responded 204 in 0.0308 ms
+2026-03-02 01:27:18.459 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/statistics responded 204 in 0.0434 ms
+2026-03-02 01:27:18.462 +03:00 [INF] HTTP OPTIONS /api/v1/yard-entries/statistics responded 204 in 0.0456 ms
+2026-03-02 01:27:18.467 +03:00 [INF] HTTP OPTIONS /api/v1/vehicle-tags/statistics responded 204 in 0.0301 ms
+2026-03-02 01:27:18.467 +03:00 [INF] HTTP OPTIONS /api/v1/prosecutions/statistics responded 204 in 0.0165 ms
+2026-03-02 01:27:18.471 +03:00 [INF] HTTP OPTIONS /api/v1/invoices/statistics responded 204 in 0.0848 ms
+2026-03-02 01:27:18.472 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/statistics responded 204 in 0.0264 ms
+2026-03-02 01:27:18.477 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/statistics responded 204 in 0.0352 ms
+2026-03-02 01:27:18.483 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/compliance-trend responded 204 in 0.0290 ms
+2026-03-02 01:27:18.485 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/revenue-by-station responded 204 in 0.0345 ms
+2026-03-02 01:27:18.489 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/monthly-revenue responded 204 in 0.0370 ms
+2026-03-02 01:27:18.503 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:27:18.505 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:27:18.510 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: analytics.read
+2026-03-02 01:27:18.520 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:27:18.521 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:27:18.524 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: prosecution.read
+2026-03-02 01:27:18.530 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: tag.read
+2026-03-02 01:27:18.533 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:27:18.543 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: invoice.read
+2026-03-02 01:27:18.568 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=prosecution ResourceId=null Endpoint=/api/v1/prosecutions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:27:18.5394919Z"
+2026-03-02 01:27:18.581 +03:00 [INF] HTTP GET /api/v1/prosecutions/statistics responded 200 in 69.2531 ms
+2026-03-02 01:27:18.594 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=report ResourceId=null Endpoint=/api/v1/reports Method=GET Status=200 Success=true Timestamp="2026-03-01T22:27:18.5174951Z"
+2026-03-02 01:27:18.603 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:27:18.631 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:27:18.624 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/trend responded 204 in 0.0305 ms
+2026-03-02 01:27:18.636 +03:00 [INF] HTTP GET /api/v1/reports/catalog responded 200 in 145.2525 ms
+2026-03-02 01:27:18.637 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:27:18.658 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:27:18.6370359Z"
+2026-03-02 01:27:18.675 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:27:18.714 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 01:27:18.716 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/statistics responded 200 in 116.6314 ms
+2026-03-02 01:27:18.719 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 01:27:18.732 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:27:18.733 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=invoice ResourceId=null Endpoint=/api/v1/invoices Method=GET Status=200 Success=true Timestamp="2026-03-01T22:27:18.5496656Z"
+2026-03-02 01:27:18.736 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T22:27:18.7198203Z"
+2026-03-02 01:27:18.738 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: yard.read
+2026-03-02 01:27:18.746 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:27:18.752 +03:00 [INF] HTTP GET /api/v1/invoices/statistics responded 200 in 224.0820 ms
+2026-03-02 01:27:18.760 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/compliance-trend responded 200 in 89.9511 ms
+2026-03-02 01:27:18.764 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: analytics.read, receipt.read
+2026-03-02 01:27:18.771 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=yard-entrie ResourceId=null Endpoint=/api/v1/yard-entries Method=GET Status=200 Success=true Timestamp="2026-03-01T22:27:18.7606469Z"
+2026-03-02 01:27:18.776 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:27:18.783 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:27:18.785 +03:00 [INF] HTTP GET /api/v1/yard-entries/statistics responded 200 in 289.0577 ms
+2026-03-02 01:27:18.786 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: analytics.read, receipt.read
+2026-03-02 01:27:18.791 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:27:18.5075239Z"
+2026-03-02 01:27:18.792 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: analytics.read, receipt.read
+2026-03-02 01:27:18.793 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-01T22:27:18.7757423Z"
+2026-03-02 01:27:18.803 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:27:18.812 +03:00 [INF] HTTP GET /api/v1/case/cases/statistics responded 200 in 317.2129 ms
+2026-03-02 01:27:18.821 +03:00 [INF] HTTP GET /api/v1/receipts/revenue-by-station responded 200 in 80.6006 ms
+2026-03-02 01:27:18.825 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-01T22:27:18.8028549Z"
+2026-03-02 01:27:18.833 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=vehicle-tag ResourceId=null Endpoint=/api/v1/vehicle-tags Method=GET Status=200 Success=true Timestamp="2026-03-01T22:27:18.5356120Z"
+2026-03-02 01:27:18.839 +03:00 [INF] HTTP GET /api/v1/receipts/monthly-revenue responded 200 in 60.2833 ms
+2026-03-02 01:27:18.846 +03:00 [INF] HTTP GET /api/v1/vehicle-tags/statistics responded 200 in 332.1745 ms
+2026-03-02 01:27:18.881 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-01T22:27:18.7989313Z"
+2026-03-02 01:27:18.890 +03:00 [INF] HTTP GET /api/v1/receipts/statistics responded 200 in 118.4924 ms
+2026-03-02 01:27:18.912 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T22:27:18.8188679Z"
+2026-03-02 01:27:18.925 +03:00 [INF] HTTP GET /api/v1/case/cases/trend responded 200 in 125.3137 ms
+2026-03-02 01:30:02.377 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 01:30:02.398 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 01:35:02.508 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 01:35:02.521 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 01:35:06.916 +03:00 [INF] HTTP OPTIONS /api/v1/settings/category/Rate Limiting responded 204 in 0.0410 ms
+2026-03-02 01:35:07.044 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:35:07.047 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: system.security_policy
+2026-03-02 01:35:07.119 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=setting ResourceId=null Endpoint=/api/v1/settings Method=GET Status=200 Success=true Timestamp="2026-03-01T22:35:07.0494259Z"
+2026-03-02 01:35:07.141 +03:00 [INF] HTTP GET /api/v1/settings/category/Rate Limiting responded 200 in 206.4002 ms
+2026-03-02 01:35:20.615 +03:00 [INF] HTTP OPTIONS /api/v1/settings/category/Weighing responded 204 in 0.0310 ms
+2026-03-02 01:35:20.627 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:35:20.632 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: system.security_policy
+2026-03-02 01:35:20.639 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=setting ResourceId=null Endpoint=/api/v1/settings Method=GET Status=200 Success=true Timestamp="2026-03-01T22:35:20.6366237Z"
+2026-03-02 01:35:20.647 +03:00 [INF] HTTP GET /api/v1/settings/category/Weighing responded 200 in 23.8933 ms
+2026-03-02 01:36:23.848 +03:00 [INF] HTTP OPTIONS /api/v1/AxleConfiguration responded 204 in 0.0259 ms
+2026-03-02 01:36:23.861 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:36:23.973 +03:00 [INF] AxleConfigurationRepository.GetAllAsync: Found 30 configurations for isStandard=null, legalFramework=null, axleCount=null, includeInactive=true
+2026-03-02 01:36:23.984 +03:00 [INF] AxleConfigurationController.GetAll: Returning 30 configurations for isStandard=null, includeInactive=true
+2026-03-02 01:36:23.990 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=AxleConfiguration ResourceId=null Endpoint=/api/v1/AxleConfiguration Method=GET Status=200 Success=true Timestamp="2026-03-01T22:36:23.8662432Z"
+2026-03-02 01:36:24.003 +03:00 [INF] HTTP GET /api/v1/AxleConfiguration responded 200 in 145.9438 ms
+2026-03-02 01:36:38.619 +03:00 [INF] HTTP OPTIONS /api/v1/system/integrations responded 204 in 0.0371 ms
+2026-03-02 01:36:38.638 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 01:36:38.641 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: config.read
+2026-03-02 01:36:38.731 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=system ResourceId=null Endpoint=/api/v1/system Method=GET Status=200 Success=true Timestamp="2026-03-01T22:36:38.6470738Z"
+2026-03-02 01:36:38.741 +03:00 [INF] HTTP GET /api/v1/system/integrations responded 200 in 108.2100 ms
+2026-03-02 01:40:03.068 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 01:40:03.123 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 01:45:03.457 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 01:45:03.475 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 01:50:03.868 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 01:50:03.890 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 01:55:04.336 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 01:55:04.350 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 02:00:04.635 +03:00 [INF] [MaterializedViewRefreshJob] Starting scheduled MV refresh
+2026-03-02 02:00:04.642 +03:00 [INF] [MV] Starting refresh of all materialized views...
+2026-03-02 02:00:05.036 +03:00 [INF] Pesaflow OAuth token acquired, expires in 3599s, caching for 3539s
+2026-03-02 02:00:05.041 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 02:00:05.057 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 02:00:05.087 +03:00 [INF] [MV] All materialized views refreshed in 446ms
+2026-03-02 02:00:05.091 +03:00 [INF] [MaterializedViewRefreshJob] Scheduled MV refresh completed
+2026-03-02 02:05:05.121 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 02:05:05.134 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 02:10:05.825 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 02:10:05.851 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 02:15:06.249 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 02:15:06.276 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 02:20:06.749 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 02:20:06.764 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 02:25:07.181 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 02:25:07.199 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 02:25:17.848 +03:00 [INF] HTTP OPTIONS /api/v1/audit-logs responded 204 in 0.1469 ms
+2026-03-02 02:25:17.849 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles responded 204 in 0.1471 ms
+2026-03-02 02:25:17.850 +03:00 [INF] HTTP OPTIONS /api/v1/audit-logs/summary responded 204 in 0.0319 ms
+2026-03-02 02:25:17.854 +03:00 [INF] HTTP OPTIONS /api/v1/settings/password-policy responded 204 in 0.0365 ms
+2026-03-02 02:25:17.859 +03:00 [INF] HTTP OPTIONS /api/v1/auth/2fa/status responded 204 in 0.0334 ms
+2026-03-02 02:25:17.854 +03:00 [INF] HTTP OPTIONS /api/v1/settings/shifts responded 204 in 0.0454 ms
+2026-03-02 02:25:17.865 +03:00 [INF] HTTP OPTIONS /api/v1/system/backups/status responded 204 in 0.0427 ms
+2026-03-02 02:25:17.867 +03:00 [INF] HTTP OPTIONS /api/v1/system/backups responded 204 in 0.0341 ms
+2026-03-02 02:25:17.924 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:17.950 +03:00 [INF] HTTP GET /api/v1/auth/2fa/status responded 401 in 37.1950 ms
+2026-03-02 02:25:17.965 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:17.970 +03:00 [WRN] Unauthenticated user attempting to access protected resource
+2026-03-02 02:25:17.973 +03:00 [INF] HTTP OPTIONS /api/v1/auth/refresh responded 204 in 0.0255 ms
+2026-03-02 02:25:17.974 +03:00 [INF] HTTP GET /api/v1/system/backups/status responded 401 in 12.0195 ms
+2026-03-02 02:25:17.992 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:18.006 +03:00 [WRN] Unauthenticated user attempting to access protected resource
+2026-03-02 02:25:18.010 +03:00 [INF] HTTP GET /api/v1/system/backups responded 401 in 24.5254 ms
+2026-03-02 02:25:18.070 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:18.110 +03:00 [WRN] Unauthenticated user attempting to access protected resource
+2026-03-02 02:25:18.125 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:18.142 +03:00 [INF] HTTP GET /api/v1/audit-logs/summary responded 401 in 228.2510 ms
+2026-03-02 02:25:18.146 +03:00 [WRN] Unauthenticated user attempting to access protected resource
+2026-03-02 02:25:18.157 +03:00 [INF] HTTP GET /api/v1/settings/password-policy responded 401 in 275.8991 ms
+2026-03-02 02:25:18.167 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 147.0306 ms
+2026-03-02 02:25:18.178 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:18.183 +03:00 [WRN] Unauthenticated user attempting to access protected resource
+2026-03-02 02:25:18.185 +03:00 [INF] HTTP GET /api/v1/audit-logs responded 401 in 305.3214 ms
+2026-03-02 02:25:18.186 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:18.193 +03:00 [WRN] Unauthenticated user attempting to access protected resource
+2026-03-02 02:25:18.194 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 401 in 311.9506 ms
+2026-03-02 02:25:18.202 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 3.3856 ms
+2026-03-02 02:25:18.230 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:18.232 +03:00 [WRN] Unauthenticated user attempting to access protected resource
+2026-03-02 02:25:18.233 +03:00 [INF] HTTP GET /api/v1/settings/shifts responded 401 in 318.7122 ms
+2026-03-02 02:25:18.248 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 2.7110 ms
+2026-03-02 02:25:19.199 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:19.204 +03:00 [INF] HTTP GET /api/v1/auth/2fa/status responded 401 in 8.7148 ms
+2026-03-02 02:25:19.231 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:19.231 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 3.7781 ms
+2026-03-02 02:25:19.235 +03:00 [WRN] Unauthenticated user attempting to access protected resource
+2026-03-02 02:25:19.242 +03:00 [INF] HTTP GET /api/v1/audit-logs responded 401 in 19.2965 ms
+2026-03-02 02:25:19.262 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:19.262 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 3.0887 ms
+2026-03-02 02:25:19.266 +03:00 [WRN] Unauthenticated user attempting to access protected resource
+2026-03-02 02:25:19.271 +03:00 [INF] HTTP GET /api/v1/settings/shifts responded 401 in 11.6082 ms
+2026-03-02 02:25:19.283 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 2.7286 ms
+2026-03-02 02:25:21.269 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:21.278 +03:00 [INF] HTTP GET /api/v1/auth/2fa/status responded 401 in 16.3163 ms
+2026-03-02 02:25:21.296 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:21.304 +03:00 [WRN] Unauthenticated user attempting to access protected resource
+2026-03-02 02:25:21.307 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:21.308 +03:00 [INF] HTTP GET /api/v1/audit-logs responded 401 in 17.8346 ms
+2026-03-02 02:25:21.310 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 6.5637 ms
+2026-03-02 02:25:21.313 +03:00 [WRN] Unauthenticated user attempting to access protected resource
+2026-03-02 02:25:21.324 +03:00 [INF] HTTP GET /api/v1/settings/shifts responded 401 in 20.9056 ms
+2026-03-02 02:25:21.381 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 3.0644 ms
+2026-03-02 02:25:24.355 +03:00 [INF] HTTP OPTIONS /api/v1/auth/2fa/setup responded 204 in 0.0805 ms
+2026-03-02 02:25:24.388 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:24.402 +03:00 [INF] HTTP POST /api/v1/auth/2fa/setup responded 401 in 24.2921 ms
+2026-03-02 02:25:24.448 +03:00 [INF] HTTP OPTIONS /api/v1/auth/refresh responded 204 in 0.0236 ms
+2026-03-02 02:25:24.461 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 3.7080 ms
+2026-03-02 02:25:25.483 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:25.494 +03:00 [INF] HTTP POST /api/v1/auth/2fa/setup responded 401 in 18.7730 ms
+2026-03-02 02:25:25.530 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 7.2262 ms
+2026-03-02 02:25:55.508 +03:00 [INF] HTTP OPTIONS /api/v1/auth/profile responded 204 in 0.0318 ms
+2026-03-02 02:25:55.522 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:25:55.525 +03:00 [INF] HTTP GET /api/v1/auth/profile responded 401 in 8.6248 ms
+2026-03-02 02:26:10.058 +03:00 [INF] HTTP OPTIONS /api/v1/auth/profile responded 204 in 0.0364 ms
+2026-03-02 02:26:10.070 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:26:10.074 +03:00 [INF] HTTP GET /api/v1/auth/profile responded 401 in 6.7962 ms
+2026-03-02 02:26:14.521 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.0419 ms
+2026-03-02 02:26:14.983 +03:00 [INF] User gadmin@masterspace.co.ke logged in successfully
+2026-03-02 02:26:15.067 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 532.6798 ms
+2026-03-02 02:26:20.876 +03:00 [INF] HTTP OPTIONS /api/v1/Stations responded 204 in 0.0843 ms
+2026-03-02 02:26:20.906 +03:00 [INF] HTTP OPTIONS /api/v1/exchange-rates/current responded 204 in 0.0670 ms
+2026-03-02 02:26:20.919 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/statistics responded 204 in 0.1138 ms
+2026-03-02 02:26:20.935 +03:00 [INF] HTTP OPTIONS /api/v1/yard-entries/statistics responded 204 in 0.1693 ms
+2026-03-02 02:26:20.972 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.1242 ms
+2026-03-02 02:26:20.975 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/compliance-trend responded 204 in 0.0450 ms
+2026-03-02 02:26:20.989 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:26:20.943 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/statistics responded 204 in 0.0996 ms
+2026-03-02 02:26:21.017 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:26:20.996 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:26:21.045 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: station.read
+2026-03-02 02:26:21.062 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 02:26:21.034 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:26:21.079 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: config.read
+2026-03-02 02:26:21.085 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 02:26:21.086 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:26:21.087 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/revenue-by-station responded 204 in 0.0292 ms
+2026-03-02 02:26:21.102 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 02:26:21.103 +03:00 [INF] HTTP OPTIONS /api/v1/stations/performance responded 204 in 0.0514 ms
+2026-03-02 02:26:21.105 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: yard.read
+2026-03-02 02:26:21.110 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:26:21.143 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=exchange-rate ResourceId=null Endpoint=/api/v1/exchange-rates Method=GET Status=200 Success=true Timestamp="2026-03-01T23:26:21.1219281Z"
+2026-03-02 02:26:21.140 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-02 02:26:21.148 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users/by-station responded 204 in 0.0347 ms
+2026-03-02 02:26:21.151 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-02 02:26:21.153 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=Station ResourceId=null Endpoint=/api/v1/Stations Method=GET Status=200 Success=true Timestamp="2026-03-01T23:26:21.0827232Z"
+2026-03-02 02:26:21.171 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 02:26:21.172 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T23:26:21.1014789Z"
+2026-03-02 02:26:21.183 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=yard-entrie ResourceId=null Endpoint=/api/v1/yard-entries Method=GET Status=200 Success=true Timestamp="2026-03-01T23:26:21.1631020Z"
+2026-03-02 02:26:21.186 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-01T23:26:21.1672551Z"
+2026-03-02 02:26:21.193 +03:00 [INF] HTTP GET /api/v1/exchange-rates/current responded 200 in 205.8031 ms
+2026-03-02 02:26:21.198 +03:00 [INF] HTTP GET /api/v1/Stations responded 200 in 230.0474 ms
+2026-03-02 02:26:21.211 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/statistics responded 200 in 201.6129 ms
+2026-03-02 02:26:21.215 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-01T23:26:21.1715806Z"
+2026-03-02 02:26:21.215 +03:00 [INF] HTTP GET /api/v1/yard-entries/statistics responded 200 in 188.4183 ms
+2026-03-02 02:26:21.222 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 119.5708 ms
+2026-03-02 02:26:21.234 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:26:21.243 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:26:21.246 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:26:21.249 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/compliance-trend responded 200 in 168.3057 ms
+2026-03-02 02:26:21.260 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:26:21.266 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: analytics.read, receipt.read
+2026-03-02 02:26:21.269 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: station.read
+2026-03-02 02:26:21.282 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-02 02:26:21.290 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-02 02:26:21.294 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-01T23:26:21.2862623Z"
+2026-03-02 02:26:21.297 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-01T23:26:21.2626287Z"
+2026-03-02 02:26:21.301 +03:00 [INF] HTTP GET /api/v1/user-management/users/by-station responded 200 in 45.5597 ms
+2026-03-02 02:26:21.301 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-01T23:26:21.2788778Z"
+2026-03-02 02:26:21.309 +03:00 [INF] HTTP GET /api/v1/case/cases/statistics responded 200 in 79.5157 ms
+2026-03-02 02:26:21.310 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=station ResourceId=null Endpoint=/api/v1/stations Method=GET Status=200 Success=true Timestamp="2026-03-01T23:26:21.2899190Z"
+2026-03-02 02:26:21.319 +03:00 [INF] HTTP GET /api/v1/receipts/revenue-by-station responded 200 in 84.8795 ms
+2026-03-02 02:26:21.328 +03:00 [INF] HTTP GET /api/v1/stations/performance responded 200 in 86.3493 ms
+2026-03-02 02:26:21.641 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:26:21.647 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-02 02:26:21.670 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-01T23:26:21.6590109Z"
+2026-03-02 02:26:21.694 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 57.5183 ms
+2026-03-02 02:26:24.482 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0534 ms
+2026-03-02 02:26:24.525 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 02:26:24.539 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-02 02:26:24.560 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-01T23:26:24.5548106Z"
+2026-03-02 02:26:24.581 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 63.6367 ms
+2026-03-02 02:30:07.612 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 02:30:07.627 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 02:35:08.144 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 02:35:08.166 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 02:40:08.603 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 02:40:08.619 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 02:43:38.949 +03:00 [INF] Server truload-titus:176892:9f55528e caught stopping signal...
+2026-03-02 02:43:38.992 +03:00 [INF] Server truload-titus:176892:9f55528e All dispatchers stopped
+2026-03-02 02:43:39.011 +03:00 [INF] Server truload-titus:176892:9f55528e successfully reported itself as stopped in 5.979 ms
+2026-03-02 02:43:39.014 +03:00 [INF] Server truload-titus:176892:9f55528e has been stopped in total 50.4112 ms
+2026-03-02 03:07:42.450 +03:00 [INF] Checking pending migrations...
+2026-03-02 03:07:45.096 +03:00 [INF] ✓ Database is up to date (no pending migrations)
+2026-03-02 03:07:45.450 +03:00 [INF] ✓ Database seeding already completed (Version 1 on "2026-03-01T18:47:27.4997550Z")
+2026-03-02 03:07:45.560 +03:00 [INF] IntegrationConfig for ecitizen_pesaflow already exists, skipping seed
+2026-03-02 03:07:45.574 +03:00 [INF] IntegrationConfig for kenha already exists, skipping seed
+2026-03-02 03:07:45.591 +03:00 [INF] IntegrationConfig for ntsa already exists, skipping seed
+2026-03-02 03:07:45.598 +03:00 [INF] ✓ Integration config seeding completed
+2026-03-02 03:07:45.602 +03:00 [INF] [MV] Starting refresh of all materialized views...
+2026-03-02 03:07:45.995 +03:00 [INF] [MV] All materialized views refreshed in 393ms
+2026-03-02 03:07:45.997 +03:00 [INF] ✓ Materialized views refreshed on startup
+2026-03-02 03:07:46.162 +03:00 [INF] ✓ Rate limit settings loaded from database
+2026-03-02 03:07:46.478 +03:00 [INF] Start installing Hangfire SQL objects...
+2026-03-02 03:07:46.495 +03:00 [INF] Hangfire SQL objects installed.
+2026-03-02 03:07:46.755 +03:00 [INF] Starting TruLoad Backend API
+2026-03-02 03:07:46.879 +03:00 [INF] Starting Hangfire Server using job storage: 'PostgreSQL Server: Host: localhost, DB: truload, Schema: hangfire'
+2026-03-02 03:07:46.881 +03:00 [INF] Using the following options for PostgreSQL job storage:
+2026-03-02 03:07:46.883 +03:00 [INF]     Queue poll interval: 00:00:15.
+2026-03-02 03:07:46.884 +03:00 [INF]     Invisibility timeout: 00:30:00.
+2026-03-02 03:07:46.885 +03:00 [INF]     Use sliding invisibility timeout: False.
+2026-03-02 03:07:46.886 +03:00 [INF] Using the following options for Hangfire Server:
+    Worker count: 5
+    Listening queues: 'critical', 'default', 'payments'
+    Shutdown timeout: 00:00:15
+    Schedule polling interval: 00:00:15
+2026-03-02 03:07:46.919 +03:00 [INF] Server truload-titus:174424:5e21fbaa successfully announced in 15.8425 ms
+2026-03-02 03:07:46.928 +03:00 [INF] Server truload-titus:174424:5e21fbaa is starting the registered dispatchers: ServerWatchdog, ServerJobCancellationWatcher, ExpirationManager, CountersAggregator, Worker, DelayedJobScheduler, RecurringJobScheduler...
+2026-03-02 03:07:46.935 +03:00 [INF] Server truload-titus:174424:5e21fbaa all the dispatchers started
+2026-03-02 03:07:47.351 +03:00 [INF] Exchange rate sync job started
+2026-03-02 03:07:47.355 +03:00 [INF] [MaterializedViewRefreshJob] Starting scheduled MV refresh
+2026-03-02 03:07:47.358 +03:00 [INF] [MV] Starting refresh of all materialized views...
+2026-03-02 03:07:47.669 +03:00 [INF] [MV] All materialized views refreshed in 311ms
+2026-03-02 03:07:47.671 +03:00 [INF] [MaterializedViewRefreshJob] Scheduled MV refresh completed
+2026-03-02 03:07:47.683 +03:00 [WRN] No active exchange rate API settings found, skipping fetch
+2026-03-02 03:07:47.684 +03:00 [INF] Exchange rate sync job completed
+2026-03-02 03:07:49.003 +03:00 [INF] Pesaflow OAuth token acquired, expires in 3599s, caching for 3539s
+2026-03-02 03:07:49.010 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 03:07:49.204 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 03:08:47.642 +03:00 [INF] HTTP OPTIONS /api/v1/auth/profile responded 204 in 7.1345 ms
+2026-03-02 03:08:51.667 +03:00 [WRN] Station "eda7f75c-785e-4448-8321-f1a2f3ed65a7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-02 03:08:52.434 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=auth ResourceId=null Endpoint=/api/v1/auth Method=GET Status=200 Success=true Timestamp="2026-03-02T00:08:51.6981762Z"
+2026-03-02 03:08:52.969 +03:00 [INF] HTTP GET /api/v1/auth/profile responded 200 in 5243.1649 ms
+2026-03-02 03:10:02.558 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 03:10:02.571 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 03:11:54.453 +03:00 [INF] Server truload-titus:174424:5e21fbaa caught stopping signal...
+2026-03-02 03:11:54.460 +03:00 [INF] Server truload-titus:174424:5e21fbaa All dispatchers stopped
+2026-03-02 03:11:54.470 +03:00 [INF] Server truload-titus:174424:5e21fbaa successfully reported itself as stopped in 3.2527 ms
+2026-03-02 03:11:54.472 +03:00 [INF] Server truload-titus:174424:5e21fbaa has been stopped in total 17.2094 ms
+2026-03-02 03:13:54.680 +03:00 [INF] Checking pending migrations...
+2026-03-02 03:13:57.648 +03:00 [INF] ✓ Database is up to date (no pending migrations)
+2026-03-02 03:13:58.079 +03:00 [INF] ✓ Database seeding already completed (Version 1 on "2026-03-01T18:47:27.4997550Z")
+2026-03-02 03:13:58.202 +03:00 [INF] IntegrationConfig for ecitizen_pesaflow already exists, skipping seed
+2026-03-02 03:13:58.216 +03:00 [INF] IntegrationConfig for kenha already exists, skipping seed
+2026-03-02 03:13:58.229 +03:00 [INF] IntegrationConfig for ntsa already exists, skipping seed
+2026-03-02 03:13:58.233 +03:00 [INF] ✓ Integration config seeding completed
+2026-03-02 03:13:58.236 +03:00 [INF] [MV] Starting refresh of all materialized views...
+2026-03-02 03:13:58.503 +03:00 [INF] [MV] All materialized views refreshed in 267ms
+2026-03-02 03:13:58.505 +03:00 [INF] ✓ Materialized views refreshed on startup
+2026-03-02 03:13:58.613 +03:00 [INF] ✓ Rate limit settings loaded from database
+2026-03-02 03:13:59.027 +03:00 [INF] Start installing Hangfire SQL objects...
+2026-03-02 03:13:59.043 +03:00 [INF] Hangfire SQL objects installed.
+2026-03-02 03:13:59.399 +03:00 [INF] Starting TruLoad Backend API
+2026-03-02 03:13:59.547 +03:00 [INF] Starting Hangfire Server using job storage: 'PostgreSQL Server: Host: localhost, DB: truload, Schema: hangfire'
+2026-03-02 03:13:59.550 +03:00 [INF] Using the following options for PostgreSQL job storage:
+2026-03-02 03:13:59.554 +03:00 [INF]     Queue poll interval: 00:00:15.
+2026-03-02 03:13:59.557 +03:00 [INF]     Invisibility timeout: 00:30:00.
+2026-03-02 03:13:59.559 +03:00 [INF]     Use sliding invisibility timeout: False.
+2026-03-02 03:13:59.561 +03:00 [INF] Using the following options for Hangfire Server:
+    Worker count: 5
+    Listening queues: 'critical', 'default', 'payments'
+    Shutdown timeout: 00:00:15
+    Schedule polling interval: 00:00:15
+2026-03-02 03:13:59.595 +03:00 [INF] Server truload-titus:164584:55e49561 successfully announced in 12.3117 ms
+2026-03-02 03:13:59.604 +03:00 [INF] Server truload-titus:164584:55e49561 is starting the registered dispatchers: ServerWatchdog, ServerJobCancellationWatcher, ExpirationManager, CountersAggregator, Worker, DelayedJobScheduler, RecurringJobScheduler...
+2026-03-02 03:13:59.616 +03:00 [INF] Server truload-titus:164584:55e49561 all the dispatchers started
+2026-03-02 03:15:19.979 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 03:15:20.985 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 03:16:17.164 +03:00 [INF] Server truload-titus:164584:55e49561 caught stopping signal...
+2026-03-02 03:16:17.172 +03:00 [INF] Server truload-titus:164584:55e49561 All dispatchers stopped
+2026-03-02 03:16:17.184 +03:00 [INF] Server truload-titus:164584:55e49561 successfully reported itself as stopped in 3.0842 ms
+2026-03-02 03:16:17.185 +03:00 [INF] Server truload-titus:164584:55e49561 has been stopped in total 18.2595 ms
+2026-03-02 03:48:47.848 +03:00 [INF] Checking pending migrations...
+2026-03-02 03:48:50.912 +03:00 [INF] ✓ Database is up to date (no pending migrations)
+2026-03-02 03:48:51.336 +03:00 [INF] ✓ Database seeding already completed (Version 1 on "2026-03-01T18:47:27.4997550Z")
+2026-03-02 03:48:51.459 +03:00 [INF] IntegrationConfig for ecitizen_pesaflow already exists, skipping seed
+2026-03-02 03:48:51.479 +03:00 [INF] IntegrationConfig for kenha already exists, skipping seed
+2026-03-02 03:48:51.563 +03:00 [INF] IntegrationConfig for ntsa already exists, skipping seed
+2026-03-02 03:48:51.569 +03:00 [INF] ✓ Integration config seeding completed
+2026-03-02 03:48:51.578 +03:00 [INF] [MV] Starting refresh of all materialized views...
+2026-03-02 03:48:52.331 +03:00 [INF] [MV] All materialized views refreshed in 754ms
+2026-03-02 03:48:52.335 +03:00 [INF] ✓ Materialized views refreshed on startup
+2026-03-02 03:48:52.645 +03:00 [INF] ✓ Rate limit settings loaded from database
+2026-03-02 03:48:53.377 +03:00 [INF] Start installing Hangfire SQL objects...
+2026-03-02 03:48:53.399 +03:00 [INF] Hangfire SQL objects installed.
+2026-03-02 03:48:53.762 +03:00 [INF] Starting TruLoad Backend API
+2026-03-02 03:48:53.931 +03:00 [INF] Starting Hangfire Server using job storage: 'PostgreSQL Server: Host: localhost, DB: truload, Schema: hangfire'
+2026-03-02 03:48:53.935 +03:00 [INF] Using the following options for PostgreSQL job storage:
+2026-03-02 03:48:53.938 +03:00 [INF]     Queue poll interval: 00:00:15.
+2026-03-02 03:48:53.939 +03:00 [INF]     Invisibility timeout: 00:30:00.
+2026-03-02 03:48:53.941 +03:00 [INF]     Use sliding invisibility timeout: False.
+2026-03-02 03:48:53.943 +03:00 [INF] Using the following options for Hangfire Server:
+    Worker count: 5
+    Listening queues: 'critical', 'default', 'payments'
+    Shutdown timeout: 00:00:15
+    Schedule polling interval: 00:00:15
+2026-03-02 03:48:53.981 +03:00 [INF] Server truload-titus:155220:581816aa successfully announced in 15.9767 ms
+2026-03-02 03:48:53.989 +03:00 [INF] Server truload-titus:155220:581816aa is starting the registered dispatchers: ServerWatchdog, ServerJobCancellationWatcher, ExpirationManager, CountersAggregator, Worker, DelayedJobScheduler, RecurringJobScheduler...
+2026-03-02 03:48:53.998 +03:00 [INF] Server truload-titus:155220:581816aa all the dispatchers started
+2026-03-02 03:48:54.903 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-02 03:48:55.027 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-02 03:49:49.346 +03:00 [INF] Server truload-titus:155220:581816aa caught stopping signal...
+2026-03-02 03:49:49.370 +03:00 [INF] Server truload-titus:155220:581816aa All dispatchers stopped
+2026-03-02 03:49:49.394 +03:00 [INF] Server truload-titus:155220:581816aa successfully reported itself as stopped in 4.8404 ms
+2026-03-02 03:49:49.399 +03:00 [INF] Server truload-titus:155220:581816aa has been stopped in total 44.5683 ms

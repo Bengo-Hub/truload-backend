@@ -554,20 +554,50 @@ public class WeighingController : ControllerBase
             var from = (dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30)).Date;
             var to = (dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow).Date;
 
+            var todayUtc = DateTime.UtcNow.Date;
             var rows = await _context.MvDailyWeighingStats
                 .AsNoTracking()
                 .Where(m => m.WeighingDate >= from && m.WeighingDate <= to)
                 .Where(m => !effectiveStationId.HasValue || m.StationId == effectiveStationId)
+                .Where(m => m.WeighingDate < todayUtc) // Exclude today - use live data below
                 .ToListAsync(ct);
 
-            var totalWeighings = rows.Sum(m => m.TotalWeighings);
-            var legalCount = rows.Sum(m => m.CompliantCount);
-            var overloadedCount = rows.Sum(m => m.NonCompliantCount);
+            // Live fallback for today: MV may not be refreshed yet
+            int todayWeighings = 0, todayLegal = 0, todayOverloaded = 0, todayWarning = 0;
+            decimal todayFees = 0, todayAvgOverload = 0;
+            if (to >= todayUtc)
+            {
+                var todayQuery = _context.WeighingTransactions
+                    .AsNoTracking()
+                    .Where(wt => wt.WeighedAt >= todayUtc && wt.WeighedAt <= to && wt.DeletedAt == null)
+                    .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId);
+                todayWeighings = await todayQuery.CountAsync(ct);
+                todayLegal = await todayQuery.CountAsync(wt => wt.ControlStatus == "Compliant" || wt.ControlStatus == "LEGAL", ct);
+                todayOverloaded = await todayQuery.CountAsync(wt => wt.ControlStatus == "Overloaded" || wt.ControlStatus == "OVERLOAD", ct);
+                todayWarning = todayWeighings - todayLegal - todayOverloaded;
+                var todayRows = await todayQuery
+                    .Select(wt => new { wt.TotalFeeUsd, wt.OverloadKg })
+                    .ToListAsync(ct);
+                todayFees = todayRows.Sum(r => r.TotalFeeUsd);
+                var overloadedToday = todayRows.Where(r => r.OverloadKg > 0).ToList();
+                todayAvgOverload = overloadedToday.Any()
+                    ? Math.Round((decimal)overloadedToday.Average(r => (double)r.OverloadKg), 0)
+                    : 0;
+            }
+
+            var totalWeighings = rows.Sum(m => m.TotalWeighings) + todayWeighings;
+            var legalCount = rows.Sum(m => m.CompliantCount) + todayLegal;
+            var overloadedCount = rows.Sum(m => m.NonCompliantCount) + todayOverloaded;
             var warningCount = totalWeighings - legalCount - overloadedCount;
             var complianceRate = totalWeighings > 0 ? Math.Round((decimal)legalCount / totalWeighings * 100, 1) : 0;
-            var totalFeesKes = rows.Sum(m => m.TotalFeesCollected ?? 0);
-            var avgOverloadKg = rows.Any()
-                ? Math.Round((decimal)rows.Average(m => (double)(m.AvgOverload ?? 0)), 0)
+            var totalFeesKes = rows.Sum(m => m.TotalFeesCollected ?? 0) + todayFees;
+            var mvOverloadedCount = (int)rows.Sum(m => m.NonCompliantCount);
+            var mvWeightedOverload = rows
+                .Where(m => m.NonCompliantCount > 0 && m.AvgOverload.HasValue)
+                .Sum(m => (decimal)(m.AvgOverload!.Value * m.NonCompliantCount));
+            var totalOverloadedForAvg = mvOverloadedCount + todayOverloaded;
+            var avgOverloadKg = totalOverloadedForAvg > 0
+                ? Math.Round((mvWeightedOverload + todayAvgOverload * todayOverloaded) / totalOverloadedForAvg, 0)
                 : 0m;
 
             return Ok(new WeighingStatisticsDto
@@ -619,9 +649,9 @@ public class WeighingController : ControllerBase
                 .Select(g => new
                 {
                     Date = g.Key,
-                    Compliant = g.Count(t => t.ControlStatus == "LEGAL"),
-                    Overloaded = g.Count(t => t.ControlStatus == "OVERLOAD"),
-                    Warning = g.Count(t => t.ControlStatus == "WARNING")
+                    Compliant = g.Count(t => t.ControlStatus == "Compliant" || t.ControlStatus == "LEGAL"),
+                    Overloaded = g.Count(t => t.ControlStatus == "Overloaded" || t.ControlStatus == "OVERLOAD"),
+                    Warning = g.Count(t => t.ControlStatus == "Warning" || t.ControlStatus == "WARNING")
                 })
                 .ToListAsync(ct);
 

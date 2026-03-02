@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.Common;
+using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Models.Weighing;
 
 namespace TruLoad.Backend.Models.CaseManagement;
@@ -91,13 +92,15 @@ public class CaseRegister : TenantAwareEntity
     public Guid? ActId { get; set; }
 
     /// <summary>
-    /// NTAC number served to Driver
+    /// NTAC number served to Driver for this case. Case-specific; one driver can have many NTACs across cases (one-to-many).
+    /// Mandatory only when escalating to case manager; optional for prosecution/court cases.
     /// </summary>
     [MaxLength(50)]
     public string? DriverNtacNo { get; set; }
 
     /// <summary>
-    /// NTAC number served to Transporter
+    /// NTAC number served to Transporter/Owner for this case. Case-specific; one owner can have many NTACs across cases (one-to-many).
+    /// Mandatory only when escalating to case manager; optional for prosecution/court cases.
     /// </summary>
     [MaxLength(50)]
     public string? TransporterNtacNo { get; set; }
@@ -140,9 +143,15 @@ public class CaseRegister : TenantAwareEntity
     public Guid? ProsecutorId { get; set; }
 
     /// <summary>
-    /// Complainant officer (Witness 1)
+    /// Complainant officer (Witness 1) – relevant for court/prosecution cases.
     /// </summary>
     public Guid? ComplainantOfficerId { get; set; }
+
+    /// <summary>
+    /// Station where the vehicle is detained (may differ from creating station).
+    /// Used for court and prosecution cases.
+    /// </summary>
+    public Guid? DetentionStationId { get; set; }
 
     /// <summary>
     /// Investigating officer (Required ONLY for Court Escalation)
@@ -188,6 +197,10 @@ public class CaseRegister : TenantAwareEntity
     public virtual DispositionType? DispositionType { get; set; }
     public virtual CaseStatus CaseStatus { get; set; } = null!;
     public virtual CaseManager? CaseManager { get; set; }
+    /// <summary>Complainant officer (for court/prosecution cases).</summary>
+    public virtual ApplicationUser? ComplainantOfficer { get; set; }
+    /// <summary>Station where vehicle is detained.</summary>
+    public virtual Station? DetentionStation { get; set; }
     public virtual ICollection<CaseSubfile> Subfiles { get; set; } = new List<CaseSubfile>();
     public virtual ICollection<SpecialRelease> SpecialReleases { get; set; } = new List<SpecialRelease>();
     public virtual ICollection<ArrestWarrant> ArrestWarrants { get; set; } = new List<ArrestWarrant>();
