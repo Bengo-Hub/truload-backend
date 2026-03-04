@@ -88,6 +88,7 @@ public static class SettingKeys
     public const string PasswordRequireSpecial = "security.password_require_special";
     public const string PasswordLockoutThreshold = "security.password_lockout_threshold";
     public const string PasswordLockoutMinutes = "security.password_lockout_minutes";
+    public const string PasswordExpiryDays = "security.password_expiry_days";
 
     // Security - Two-Factor Authentication
     public const string TwoFactorEnabled = "security.two_factor_enabled";
@@ -153,10 +154,13 @@ public static class SettingKeys
     public const string NotificationServiceUrl = "notification.service_url";
     public const string NotificationDefaultChannel = "notification.default_channel";
 
-    // Prosecution defaults (courts, complainant, district)
+    // Prosecution defaults (courts, complainant, location hierarchy, road)
     public const string ProsecutionDefaultCourtId = "prosecution.default_court_id";
     public const string ProsecutionDefaultComplainantOfficerId = "prosecution.default_complainant_officer_id";
     public const string ProsecutionDefaultDistrict = "prosecution.default_district";
+    public const string ProsecutionDefaultCountyId = "prosecution.default_county_id";
+    public const string ProsecutionDefaultSubCountyId = "prosecution.default_subcounty_id";
+    public const string ProsecutionDefaultRoadId = "prosecution.default_road_id";
 
     // Categories
     public const string CategorySecurity = "Security";

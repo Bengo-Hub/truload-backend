@@ -42,6 +42,8 @@ public class RolesController : ControllerBase
         {
             return NotFound(new { message = "Role not found" });
         }
+        if (!User.IsInRole("Superuser") && role.IsSystemRole)
+            return NotFound(new { message = "Role not found" });
 
         return Ok(MapToDto(role));
     }
@@ -53,6 +55,9 @@ public class RolesController : ControllerBase
         [FromQuery] bool includeInactive = false)
     {
         var query = _roleManager.Roles.AsQueryable();
+
+        if (!User.IsInRole("Superuser"))
+            query = query.Where(r => !r.IsSystemRole);
         
         if (!includeInactive)
         {
@@ -218,6 +223,15 @@ public class RolesController : ControllerBase
             return BadRequest(new { message = "At least one permission ID must be provided" });
         }
 
+        if (!User.IsInRole("Superuser"))
+        {
+            var allPerms = await _permissionService.GetAllPermissionsAsync();
+            var systemSensitiveIds = allPerms.Where(p => p.IsSystemSensitive).Select(p => p.Id).ToHashSet();
+            var attempted = request.PermissionIds.Where(pid => systemSensitiveIds.Contains(pid)).ToList();
+            if (attempted.Any())
+                return BadRequest(new { message = "You cannot assign system-sensitive permissions." });
+        }
+
         try
         {
             await _permissionService.AssignPermissionsToRoleAsync(id, request.PermissionIds);
@@ -309,6 +323,7 @@ public class RolesController : ControllerBase
             Code = role.Code,
             Description = role.Description,
             IsActive = role.IsActive,
+            IsSystemRole = role.IsSystemRole,
             CreatedAt = role.CreatedAt,
             UpdatedAt = role.UpdatedAt
         };

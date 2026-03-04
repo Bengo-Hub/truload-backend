@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Data.Repositories.Weighing;
@@ -32,6 +33,7 @@ public class DriverController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [HasPermission("driver.read")]
     public async Task<IActionResult> GetById(Guid id)
     {
         var driver = await _driverRepository.GetByIdAsync(id);
@@ -40,6 +42,7 @@ public class DriverController : ControllerBase
     }
 
     [HttpGet("search")]
+    [HasPermission("driver.read")]
     public async Task<IActionResult> Search([FromQuery] string? query)
     {
         var drivers = await _driverRepository.SearchAsync(query ?? string.Empty);
@@ -47,6 +50,7 @@ public class DriverController : ControllerBase
     }
 
     [HttpGet("id_number/{idNumber}")]
+    [HasPermission("driver.read")]
     public async Task<IActionResult> GetByIdNumber(string idNumber)
     {
         var driver = await _driverRepository.GetByIdNumberAsync(idNumber);
@@ -55,6 +59,7 @@ public class DriverController : ControllerBase
     }
 
     [HttpGet("license/{licenseNo}")]
+    [HasPermission("driver.read")]
     public async Task<IActionResult> GetByLicense(string licenseNo)
     {
         var driver = await _driverRepository.GetByLicenseAsync(licenseNo);
@@ -63,6 +68,7 @@ public class DriverController : ControllerBase
     }
 
     [HttpPost]
+    [HasPermission("driver.create")]
     public async Task<IActionResult> Create([FromBody] Driver driver)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -105,6 +111,7 @@ public class DriverController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [HasPermission("driver.update")]
     public async Task<IActionResult> Update(Guid id, [FromBody] Driver driver)
     {
         if (id != driver.Id) return BadRequest();

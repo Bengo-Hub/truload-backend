@@ -39,7 +39,9 @@ public class WeighingRepository : IWeighingRepository
             .Include(t => t.Origin)
             .Include(t => t.Destination)
             .Include(t => t.Cargo)
+            .Include(t => t.Road)
             .Include(t => t.ScaleTest)
+            .Include(t => t.Act)
             .FirstOrDefaultAsync(t => t.Id == id);
     }
 

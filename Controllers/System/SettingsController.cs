@@ -14,7 +14,7 @@ namespace TruLoad.Backend.Controllers.System;
 /// </summary>
 [ApiController]
 [Route("api/v1/settings")]
-[Authorize]
+[Authorize(Roles = "Superuser")]
 public class SettingsController : ControllerBase
 {
     private readonly ISettingsService _settingsService;

@@ -6,6 +6,7 @@ using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Prosecution;
 using TruLoad.Backend.Middleware;
+using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Services.Interfaces.Prosecution;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 
@@ -34,6 +35,32 @@ public class ProsecutionController : ControllerBase
         _pdfService = pdfService;
         _tenantContext = tenantContext;
         _context = context;
+    }
+
+    /// <summary>
+    /// Get prosecution default settings (court, complainant, county, subcounty, road) for pre-filling create prosecution / case register forms.
+    /// </summary>
+    [HttpGet("api/v1/prosecutions/defaults")]
+    [HasPermission("prosecution.read")]
+    public async Task<IActionResult> GetDefaults(CancellationToken ct)
+    {
+        var settings = await _context.Set<ApplicationSettings>()
+            .AsNoTracking()
+            .Where(s => s.Category == SettingKeys.CategoryProsecution && s.DeletedAt == null)
+            .ToListAsync(ct);
+
+        string? Get(string key) => settings.FirstOrDefault(s => s.SettingKey == key)?.SettingValue;
+
+        var defaults = new
+        {
+            defaultCourtId = Get(SettingKeys.ProsecutionDefaultCourtId),
+            defaultComplainantOfficerId = Get(SettingKeys.ProsecutionDefaultComplainantOfficerId),
+            defaultCountyId = Get(SettingKeys.ProsecutionDefaultCountyId),
+            defaultSubcountyId = Get(SettingKeys.ProsecutionDefaultSubCountyId),
+            defaultRoadId = Get(SettingKeys.ProsecutionDefaultRoadId),
+            defaultDistrict = Get(SettingKeys.ProsecutionDefaultDistrict),
+        };
+        return Ok(defaults);
     }
 
     /// <summary>

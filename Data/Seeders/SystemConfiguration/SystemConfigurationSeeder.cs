@@ -143,6 +143,21 @@ public class SystemConfigurationSeeder
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.PasswordExpiryDays,
+                SettingValue = "0",
+                SettingType = "Integer",
+                Category = SettingKeys.CategorySecurity,
+                DisplayName = "Password Expiry (days)",
+                Description = "Number of days after which password expires; 0 = no expiry. User must change password before next login.",
+                DefaultValue = "0",
+                IsEditable = true,
+                SortOrder = 8,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
 
             // Two-Factor Authentication Settings
             new ApplicationSettings
@@ -860,11 +875,56 @@ public class SystemConfigurationSeeder
                 SettingValue = "",
                 SettingType = "String",
                 Category = SettingKeys.CategoryProsecution,
-                DisplayName = "Default District",
-                Description = "Default district for prosecution cases (e.g. court district name).",
+                DisplayName = "Default District (legacy text)",
+                Description = "Legacy default district name; prefer Default Subcounty.",
                 DefaultValue = "",
                 IsEditable = true,
                 SortOrder = 3,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.ProsecutionDefaultCountyId,
+                SettingValue = "",
+                SettingType = "String",
+                Category = SettingKeys.CategoryProsecution,
+                DisplayName = "Default County",
+                Description = "Default county for prosecution cases (county ID). Used when creating prosecution from case register.",
+                DefaultValue = "",
+                IsEditable = true,
+                SortOrder = 4,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.ProsecutionDefaultSubCountyId,
+                SettingValue = "",
+                SettingType = "String",
+                Category = SettingKeys.CategoryProsecution,
+                DisplayName = "Default Subcounty",
+                Description = "Default subcounty/district for prosecution cases (subcounty ID). Used when creating prosecution from case register.",
+                DefaultValue = "",
+                IsEditable = true,
+                SortOrder = 5,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.ProsecutionDefaultRoadId,
+                SettingValue = "",
+                SettingType = "String",
+                Category = SettingKeys.CategoryProsecution,
+                DisplayName = "Default Road",
+                Description = "Default road for prosecution cases (road ID). Used when creating prosecution from case register.",
+                DefaultValue = "",
+                IsEditable = true,
+                SortOrder = 6,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             }

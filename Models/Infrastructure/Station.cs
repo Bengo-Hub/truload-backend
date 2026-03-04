@@ -28,6 +28,12 @@ public class Station : TenantAwareEntity
     /// </summary>
     public bool IsDefault { get; set; } = false;
 
+    /// <summary>
+    /// Indicates if this is the HQ (headquarters) station for the organisation.
+    /// Users assigned to HQ can log in to any station and access data across stations when no station filter is set.
+    /// </summary>
+    public bool IsHq { get; set; } = false;
+
     public string? Location { get; set; } // Address/location description
 
     /// <summary>

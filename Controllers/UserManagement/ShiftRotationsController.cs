@@ -106,7 +106,7 @@ public class ShiftRotationsController : ControllerBase
             return BadRequest($"Invalid RunUnit. Must be one of: {string.Join(", ", validUnits)}");
         }
 
-        var validBreakUnits = new[] { "Day", "Week", "Month" };
+        var validBreakUnits = new[] { "Day", "Days", "Week", "Weeks", "Month", "Months" };
         if (!validBreakUnits.Contains(request.BreakUnit))
         {
             return BadRequest($"Invalid BreakUnit. Must be one of: {string.Join(", ", validBreakUnits)}");
@@ -210,7 +210,7 @@ public class ShiftRotationsController : ControllerBase
             // Validate break_unit if changed
             if (!string.IsNullOrWhiteSpace(request.BreakUnit))
             {
-                var validBreakUnits = new[] { "Day", "Week", "Month" };
+                var validBreakUnits = new[] { "Day", "Days", "Week", "Weeks", "Month", "Months" };
                 if (!validBreakUnits.Contains(request.BreakUnit))
                 {
                     return BadRequest($"Invalid BreakUnit. Must be one of: {string.Join(", ", validBreakUnits)}");

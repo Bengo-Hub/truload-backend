@@ -47,7 +47,10 @@ public class PermissionsController : ControllerBase
         {
             _logger.LogInformation("Fetching all permissions");
             var permissions = await _permissionService.GetAllPermissionsAsync(cancellationToken);
-            var dtos = permissions.ToDto().ToList();
+            var list = permissions.ToList();
+            if (!User.IsInRole("Superuser"))
+                list = list.Where(p => !p.IsSystemSensitive).ToList();
+            var dtos = list.Select(p => p.ToDto()).ToList();
             
             _logger.LogInformation("Retrieved {Count} permissions", dtos.Count);
             return Ok(dtos);
@@ -92,6 +95,8 @@ public class PermissionsController : ControllerBase
                     Title = "Permission not found",
                     Detail = $"No permission with ID {id} exists"
                 });
+            if (!User.IsInRole("Superuser") && permission.IsSystemSensitive)
+                return NotFound(new ProblemDetails { Title = "Permission not found" });
 
             return Ok(permission.ToDto());
         }
@@ -130,7 +135,10 @@ public class PermissionsController : ControllerBase
 
             _logger.LogInformation("Fetching permissions for category: {Category}", category);
             var permissions = await _permissionService.GetPermissionsByCategoryAsync(category, cancellationToken);
-            var dtos = permissions.ToDto().ToList();
+            var list = permissions.ToList();
+            if (!User.IsInRole("Superuser"))
+                list = list.Where(p => !p.IsSystemSensitive).ToList();
+            var dtos = list.Select(p => p.ToDto()).ToList();
 
             _logger.LogInformation("Retrieved {Count} permissions for category {Category}", dtos.Count, category);
             return Ok(dtos);
@@ -171,7 +179,10 @@ public class PermissionsController : ControllerBase
 
             _logger.LogInformation("Fetching permissions for role: {RoleId}", roleId);
             var permissions = await _permissionService.GetPermissionsForRoleAsync(roleId, cancellationToken);
-            var dtos = permissions.ToDto().ToList();
+            var list = permissions.ToList();
+            if (!User.IsInRole("Superuser"))
+                list = list.Where(p => !p.IsSystemSensitive).ToList();
+            var dtos = list.Select(p => p.ToDto()).ToList();
 
             _logger.LogInformation("Retrieved {Count} permissions for role {RoleId}", dtos.Count, roleId);
             return Ok(dtos);

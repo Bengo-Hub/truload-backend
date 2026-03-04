@@ -43,19 +43,31 @@ public class RoleSeeder
             var exists = await _roleManager.RoleExistsAsync(roleData.Name);
             if (!exists)
             {
+                var isSystemRole = roleData.Code == "SUPERUSER" || roleData.Code == "MIDDLEWARE_SERVICE";
                 var role = new ApplicationRole
                 {
                     Name = roleData.Name,
                     NormalizedName = roleData.Name.ToUpper(),
                     Code = roleData.Code,
                     Description = roleData.Description,
-                    IsActive = true
+                    IsActive = true,
+                    IsSystemRole = isSystemRole
                 };
 
                 var result = await _roleManager.CreateAsync(role);
                 if (!result.Succeeded)
                 {
                     throw new Exception($"Failed to create role {roleData.Name}: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                }
+            }
+            else
+            {
+                // Update existing roles to set IsSystemRole (for DBs created before this flag existed)
+                var role = await _roleManager.FindByNameAsync(roleData.Name);
+                if (role != null && (roleData.Code == "SUPERUSER" || roleData.Code == "MIDDLEWARE_SERVICE") && !role.IsSystemRole)
+                {
+                    role.IsSystemRole = true;
+                    await _roleManager.UpdateAsync(role);
                 }
             }
         }

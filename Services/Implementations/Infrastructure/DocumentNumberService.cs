@@ -21,6 +21,10 @@ public class DocumentNumberService : IDocumentNumberService
         _logger = logger;
     }
 
+    /// <summary>
+    /// Generates the next document number. Document numbering is driven by document_conventions and document_sequences:
+    /// convention (prefix, padding, separator, reset frequency) and sequence (current counter per org/station/type).
+    /// </summary>
     public async Task<string> GenerateNumberAsync(
         Guid organizationId,
         Guid? stationId,
@@ -30,7 +34,7 @@ public class DocumentNumberService : IDocumentNumberService
     {
         const int maxRetries = 3;
 
-        // Get convention for this document type
+        // Get convention for this document type (enforces document sequence config)
         var convention = await _context.DocumentConventions
             .AsNoTracking()
             .FirstOrDefaultAsync(c =>

@@ -126,3 +126,14 @@ public record SetDefaultActRequest
     [Required]
     public Guid ActId { get; init; }
 }
+
+/// <summary>
+/// Request to update a tolerance setting (partial update).
+/// </summary>
+public record UpdateToleranceSettingRequest
+{
+    public decimal? TolerancePercentage { get; init; }
+    public int? ToleranceKg { get; init; }
+    public string? Description { get; init; }
+    public bool? IsActive { get; init; }
+}

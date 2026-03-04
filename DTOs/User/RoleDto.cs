@@ -9,6 +9,8 @@ public class RoleDto
     public string Code { get; set; } = string.Empty;
     public string? Description { get; set; }
     public bool IsActive { get; set; }
+    /// <summary>When true, only superusers can view/assign this role.</summary>
+    public bool IsSystemRole { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

@@ -3286,6 +3286,10 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
+                    b.Property<bool>("IsSystemRole")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_system_role");
+
                     b.Property<string>("Name")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
@@ -3357,6 +3361,10 @@ namespace TruLoad.Backend.Migrations
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_login_at");
+
+                    b.Property<DateTime?>("LastPasswordChangeAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_password_change_at");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean")
@@ -4371,12 +4379,26 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("EnabledModulesJson")
+                        .HasColumnType("text")
+                        .HasColumnName("enabled_modules_json");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<bool>("IsDefault")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("LoginPageImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("login_page_image_url");
+
+                    b.Property<string>("LogoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("logo_url");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -4389,6 +4411,26 @@ namespace TruLoad.Backend.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("org_type");
+
+                    b.Property<string>("PlatformLogoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("platform_logo_url");
+
+                    b.Property<string>("PrimaryColor")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("primary_color");
+
+                    b.Property<string>("SecondaryColor")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("secondary_color");
+
+                    b.Property<string>("TenantType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tenant_type");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -4507,6 +4549,10 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsSystemSensitive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_system_sensitive");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -4918,6 +4964,10 @@ namespace TruLoad.Backend.Migrations
 
                     b.Property<bool>("IsDefault")
                         .HasColumnType("boolean");
+
+                    b.Property<bool>("IsHq")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_hq");
 
                     b.Property<decimal?>("Latitude")
                         .HasColumnType("decimal(10,8)")
@@ -8292,6 +8342,20 @@ namespace TruLoad.Backend.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_sync");
 
+                    b.Property<string>("LocationCounty")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal?>("LocationLat")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("LocationLng")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("LocationTown")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<Guid?>("OriginId")
                         .HasColumnType("uuid");
 
@@ -8311,6 +8375,9 @@ namespace TruLoad.Backend.Migrations
 
                     b.Property<int>("ReweighLimit")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("RoadId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("ScaleTestId")
                         .HasColumnType("uuid");
@@ -8400,6 +8467,8 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("OriginId");
 
                     b.HasIndex("OriginalWeighingId");
+
+                    b.HasIndex("RoadId");
 
                     b.HasIndex("ScaleTestId");
 
@@ -10322,6 +10391,10 @@ namespace TruLoad.Backend.Migrations
                         .WithMany()
                         .HasForeignKey("OriginId");
 
+                    b.HasOne("TruLoad.Backend.Models.Roads", "Road")
+                        .WithMany()
+                        .HasForeignKey("RoadId");
+
                     b.HasOne("TruLoad.Backend.Models.Infrastructure.ScaleTest", "ScaleTest")
                         .WithMany()
                         .HasForeignKey("ScaleTestId");
@@ -10367,6 +10440,8 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("Origin");
 
                     b.Navigation("OriginalWeighing");
+
+                    b.Navigation("Road");
 
                     b.Navigation("ScaleTest");
 

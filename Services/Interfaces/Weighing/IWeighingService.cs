@@ -20,6 +20,7 @@ public interface IWeighingService
     /// <param name="driverId">Optional driver ID</param>
     /// <param name="transporterId">Optional transporter ID</param>
     /// <param name="weighingType">Weighing type (static, wim, axle)</param>
+    /// <param name="actId">Optional Act ID (Traffic Act, EAC). When null, default act from settings is used.</param>
     /// <returns>The created weighing transaction</returns>
     /// <exception cref="InvalidOperationException">Thrown if no valid scale test exists for today</exception>
     Task<WeighingTransaction> InitiateWeighingAsync(
@@ -31,7 +32,8 @@ public interface IWeighingService
         Guid? scaleTestId = null,
         Guid? driverId = null,
         Guid? transporterId = null,
-        string weighingType = "static");
+        string weighingType = "static",
+        Guid? actId = null);
 
     Task<WeighingTransaction> InitiateReweighAsync(Guid originalTransactionId, string? ticketNumber, Guid userId,
         string? reliefTruckRegNumber = null, int? reliefTruckEmptyWeightKg = null);

@@ -44,6 +44,9 @@ public static class UserManagementModuleDbContextConfiguration
             entity.Property(e => e.LastLoginAt)
                 .HasColumnName("last_login_at");
 
+            entity.Property(e => e.LastPasswordChangeAt)
+                .HasColumnName("last_password_change_at");
+
             entity.Property(e => e.CreatedAt)
                 .HasColumnName("created_at");
 
@@ -107,6 +110,9 @@ public static class UserManagementModuleDbContextConfiguration
 
             entity.Property(e => e.IsActive)
                 .HasColumnName("is_active");
+
+            entity.Property(e => e.IsSystemRole)
+                .HasColumnName("is_system_role");
 
             entity.Property(e => e.CreatedAt)
                 .HasColumnName("created_at");
@@ -180,12 +186,39 @@ public static class UserManagementModuleDbContextConfiguration
                 .HasColumnName("org_type")
                 .HasMaxLength(50);
 
+            entity.Property(e => e.TenantType)
+                .HasColumnName("tenant_type")
+                .HasMaxLength(50);
+
+            entity.Property(e => e.EnabledModulesJson)
+                .HasColumnName("enabled_modules_json");
+
             entity.Property(e => e.ContactEmail)
                 .HasColumnName("contact_email")
                 .HasMaxLength(255);
 
             entity.Property(e => e.ContactPhone)
                 .HasColumnName("contact_phone")
+                .HasMaxLength(20);
+
+            entity.Property(e => e.LogoUrl)
+                .HasColumnName("logo_url")
+                .HasMaxLength(500);
+
+            entity.Property(e => e.PlatformLogoUrl)
+                .HasColumnName("platform_logo_url")
+                .HasMaxLength(500);
+
+            entity.Property(e => e.LoginPageImageUrl)
+                .HasColumnName("login_page_image_url")
+                .HasMaxLength(500);
+
+            entity.Property(e => e.PrimaryColor)
+                .HasColumnName("primary_color")
+                .HasMaxLength(20);
+
+            entity.Property(e => e.SecondaryColor)
+                .HasColumnName("secondary_color")
                 .HasMaxLength(20);
 
             entity.Property(e => e.IsActive)
@@ -259,6 +292,9 @@ public static class UserManagementModuleDbContextConfiguration
             entity.Property(e => e.IsActive)
                 .HasColumnName("is_active")
                 .HasDefaultValue(true);
+
+            entity.Property(e => e.IsSystemSensitive)
+                .HasColumnName("is_system_sensitive");
 
             entity.Property(e => e.CreatedAt)
                 .HasColumnName("created_at")
@@ -551,6 +587,9 @@ public static class UserManagementModuleDbContextConfiguration
             entity.Property(e => e.BoundBCode)
                 .HasColumnName("bound_b_code")
                 .HasMaxLength(50);
+
+            entity.Property(e => e.IsHq)
+                .HasColumnName("is_hq");
 
             entity.Property(e => e.IsActive)
                 .HasColumnName("is_active");

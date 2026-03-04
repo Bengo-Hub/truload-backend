@@ -35,6 +35,11 @@ public class ApplicationUser : IdentityUser<Guid>
     public DateTime? LastLoginAt { get; set; }
 
     /// <summary>
+    /// Last time the user changed their password. Used for password expiry enforcement.
+    /// </summary>
+    public DateTime? LastPasswordChangeAt { get; set; }
+
+    /// <summary>
     /// Record creation timestamp
     /// </summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

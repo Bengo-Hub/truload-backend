@@ -163,6 +163,14 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+// Media upload (branding logos/images). Production: set Media__StoragePath to tuload-backend-media mount (e.g. /mnt/tuload-backend-media).
+builder.Services.Configure<MediaUploadOptions>(options =>
+{
+    builder.Configuration.GetSection(MediaUploadOptions.SectionName).Bind(options);
+    var envPath = Environment.GetEnvironmentVariable("MEDIA_STORAGE_PATH");
+    if (!string.IsNullOrWhiteSpace(envPath)) options.StoragePath = envPath.Trim();
+});
+
 // Database (PostgreSQL)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -492,7 +500,7 @@ try
 
 
         // Check if initial seeding has already been completed
-        var seedingVersion = 4; // Increment this when you need to re-seed
+        var seedingVersion = 7; // Increment this when you need to re-seed
         var seedingName = "InitialSeed";
 
         var existingSeed = await dbContext.DatabaseSeedingHistory
@@ -577,6 +585,31 @@ catch (Exception ex)
 
 // Response Compression - MUST be first for all downstream responses
 app.UseTruLoadResponseCompression();
+
+// Ensure media directory exists and is writable (avoid permission errors on first upload).
+var mediaOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<MediaUploadOptions>>().Value;
+var mediaPath = mediaOptions.StoragePath;
+if (!Path.IsPathRooted(mediaPath)) mediaPath = Path.Combine(app.Environment.ContentRootPath, mediaPath);
+try
+{
+    if (!Directory.Exists(mediaPath)) Directory.CreateDirectory(mediaPath);
+    var testFile = Path.Combine(mediaPath, ".write-test");
+    global::System.IO.File.WriteAllText(testFile, "");
+    global::System.IO.File.Delete(testFile);
+    Log.Information("Media directory ready: {MediaPath}", mediaPath);
+}
+catch (Exception ex)
+{
+    Log.Warning(ex, "Media directory not writable at {MediaPath}. Uploads will fail until permissions are fixed (see docs/MEDIA_STORAGE.md).", mediaPath);
+}
+if (Directory.Exists(mediaPath))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(mediaPath),
+        RequestPath = "/media"
+    });
+}
 
 // Swagger (all environments for now; restrict to dev/staging later)
 app.UseSwagger();
@@ -706,7 +739,7 @@ Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.Backup
 Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.MaterializedViewRefreshJob>(
     "mv-refresh",
     job => job.ExecuteAsync(default),
-    "0 * * * *", // Hourly
+    "*/30 * * * *", // Every 30 minutes
     new Hangfire.RecurringJobOptions
     {
         TimeZone = TimeZoneInfo.Utc,

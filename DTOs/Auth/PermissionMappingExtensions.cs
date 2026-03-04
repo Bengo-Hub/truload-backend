@@ -23,6 +23,7 @@ public static class PermissionMappingExtensions
             Category = permission.Category,
             Description = permission.Description,
             IsActive = permission.IsActive,
+            IsSystemSensitive = permission.IsSystemSensitive,
             CreatedAt = permission.CreatedAt
         };
     }

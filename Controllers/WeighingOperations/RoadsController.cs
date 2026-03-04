@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.Infrastructure;
 
@@ -15,6 +16,24 @@ public class RoadsController : ControllerBase
     public RoadsController(IRoadsRepository repository)
     {
         _repository = repository;
+    }
+
+    /// <summary>
+    /// Get roads with pagination. Default page size 50.
+    /// </summary>
+    [HttpGet("paged")]
+    [ProducesResponseType(typeof(PagedResponse<Roads>), 200)]
+    public async Task<IActionResult> GetPaged(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 50,
+        [FromQuery] bool includeInactive = false,
+        [FromQuery] string? search = null,
+        CancellationToken cancellationToken = default)
+    {
+        pageSize = Math.Clamp(pageSize, 1, 1000);
+        pageNumber = Math.Max(1, pageNumber);
+        var (items, totalCount) = await _repository.GetPagedAsync(pageNumber, pageSize, includeInactive, search, cancellationToken);
+        return Ok(PagedResponse<Roads>.Create(items, totalCount, pageNumber, pageSize));
     }
 
     [HttpGet]

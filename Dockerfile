@@ -50,6 +50,10 @@ COPY --from=publish /app/publish .
 
 # Create non-root user for runtime (security)
 RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
+
+# Ensure media and backup directories exist and are writable by appuser (uid 1001).
+# In production, mount PVCs over these paths and set fsGroup/runAsUser so the process can write.
+RUN mkdir -p /app/wwwroot/media /app/backups && chown -R appuser:appuser /app/wwwroot/media /app/backups
 USER appuser
 
 EXPOSE 4000

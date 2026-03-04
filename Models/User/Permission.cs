@@ -40,6 +40,11 @@ public class Permission
         public bool IsActive { get; set; } = true;
 
         /// <summary>
+        /// When true, this permission is system-sensitive (e.g. user.delete, system.manage_roles). Only superusers can view/assign it.
+        /// </summary>
+        public bool IsSystemSensitive { get; set; } = false;
+
+        /// <summary>
         /// Timestamp when the permission was created.
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

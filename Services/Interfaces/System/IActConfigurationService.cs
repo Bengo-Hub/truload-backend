@@ -62,4 +62,9 @@ public interface IActConfigurationService
     /// Invalidates all cached act configuration data.
     /// </summary>
     void InvalidateCache();
+
+    /// <summary>
+    /// Updates a tolerance setting by id. Invalidates tolerance cache.
+    /// </summary>
+    Task<ToleranceSettingDto?> UpdateToleranceSettingAsync(Guid id, UpdateToleranceSettingRequest request, CancellationToken ct = default);
 }

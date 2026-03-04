@@ -41,6 +41,11 @@ public class PermissionDto
     public bool IsActive { get; set; }
 
     /// <summary>
+    /// When true, only superusers can view/assign this permission.
+    /// </summary>
+    public bool IsSystemSensitive { get; set; }
+
+    /// <summary>
     /// Timestamp when the permission was created.
     /// </summary>
     public DateTime CreatedAt { get; set; }

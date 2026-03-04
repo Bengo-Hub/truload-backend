@@ -25,7 +25,7 @@ public class JwtService : IJwtService
         _logger = logger;
     }
 
-    public string GenerateAccessToken(ApplicationUser user, IEnumerable<string> roles, IEnumerable<string> permissions)
+    public string GenerateAccessToken(ApplicationUser user, IEnumerable<string> roles, IEnumerable<string> permissions, bool isHqUser = false)
     {
         var secretKey = _configuration["Jwt:SecretKey"]
             ?? throw new InvalidOperationException("JWT SecretKey not configured");
@@ -72,6 +72,9 @@ public class JwtService : IJwtService
 
         if (user.StationId.HasValue)
             claims.Add(new Claim("station_id", user.StationId.Value.ToString()));
+
+        if (isHqUser)
+            claims.Add(new Claim("is_hq_user", "true"));
 
         if (user.DepartmentId.HasValue)
             claims.Add(new Claim("department_id", user.DepartmentId.Value.ToString()));
@@ -243,6 +246,74 @@ public class JwtService : IJwtService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Invalid 2FA challenge token");
+            return null;
+        }
+    }
+
+    public string GenerateChangeExpiredPasswordToken(Guid userId)
+    {
+        var secretKey = _configuration["Jwt:SecretKey"]
+            ?? throw new InvalidOperationException("JWT SecretKey not configured");
+        var issuer = _configuration["Jwt:Issuer"] ?? "https://truload-backend";
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new("purpose", "change_expired_password")
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: issuer,
+            audience: "truload-auth",
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(15),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public Guid? ValidateChangeExpiredPasswordToken(string token)
+    {
+        try
+        {
+            var secretKey = _configuration["Jwt:SecretKey"]
+                ?? throw new InvalidOperationException("JWT SecretKey not configured");
+            var issuer = _configuration["Jwt:Issuer"] ?? "https://truload-backend";
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+
+            var validationParams = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = issuer,
+                ValidateAudience = true,
+                ValidAudience = "truload-auth",
+                ValidateLifetime = true,
+                IssuerSigningKey = key,
+                ClockSkew = TimeSpan.FromSeconds(30)
+            };
+
+            var handler = new JwtSecurityTokenHandler();
+            var principal = handler.ValidateToken(token, validationParams, out _);
+
+            var purposeClaim = principal.FindFirst("purpose");
+            if (purposeClaim?.Value != "change_expired_password")
+                return null;
+
+            var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
+                return userId;
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Invalid change-expired-password token");
             return null;
         }
     }

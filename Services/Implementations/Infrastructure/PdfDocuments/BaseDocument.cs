@@ -62,11 +62,11 @@ public abstract class BaseDocument
         {
             col.Item().Row(row =>
             {
-                // Left logo - increased size
+                // Left logo - same fixed box as right for uniform size (right logo is the standard)
                 row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (primaryLogo != null)
-                        logoCol.Item().Height(LogoHeight).Image(primaryLogo, ImageScaling.FitArea);
+                        logoCol.Item().Width(LogoWidth).Height(LogoHeight).Image(primaryLogo, ImageScaling.FitArea);
                 });
 
                 // Center title block
@@ -88,11 +88,11 @@ public abstract class BaseDocument
                         center.Item().AlignCenter().Text(subtitle).FontSize(9);
                 });
 
-                // Right logo - increased size
+                // Right logo - standard size (both logos use same Width x Height for consistent design)
                 row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (secondaryLogo != null)
-                        logoCol.Item().Height(LogoHeight).Image(secondaryLogo, ImageScaling.FitArea);
+                        logoCol.Item().Width(LogoWidth).Height(LogoHeight).Image(secondaryLogo, ImageScaling.FitArea);
                 });
             });
 
@@ -136,16 +136,17 @@ public abstract class BaseDocument
         {
             col.Item().Row(row =>
             {
+                // Left logo - same fixed box as right for uniform size
                 row.ConstantItem(SmallLogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (leftLogo != null)
-                        logoCol.Item().Height(SmallLogoHeight).Image(leftLogo, ImageScaling.FitArea);
+                        logoCol.Item().Width(SmallLogoWidth).Height(SmallLogoHeight).Image(leftLogo, ImageScaling.FitArea);
                 });
 
                 row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(center =>
                 {
                     if (centerLogo != null)
-                        center.Item().AlignCenter().Height(40).Image(centerLogo, ImageScaling.FitArea);
+                        center.Item().AlignCenter().Width(SmallLogoWidth).Height(SmallLogoHeight).Image(centerLogo, ImageScaling.FitArea);
 
                     center.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
                         .FontSize(10).SemiBold();
@@ -155,10 +156,11 @@ public abstract class BaseDocument
                         center.Item().AlignCenter().Text(subtitle).FontSize(8);
                 });
 
+                // Right logo - same size as left for consistent design
                 row.ConstantItem(SmallLogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (rightLogo != null)
-                        logoCol.Item().Height(SmallLogoHeight).Image(rightLogo, ImageScaling.FitArea);
+                        logoCol.Item().Width(SmallLogoWidth).Height(SmallLogoHeight).Image(rightLogo, ImageScaling.FitArea);
                 });
             });
 

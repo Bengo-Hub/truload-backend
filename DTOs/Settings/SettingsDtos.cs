@@ -53,6 +53,8 @@ public record PasswordPolicyDto
     public bool RequireSpecial { get; init; } = false;
     public int LockoutThreshold { get; init; } = 5;
     public int LockoutMinutes { get; init; } = 15;
+    /// <summary>Number of days after which password expires (0 = no expiry).</summary>
+    public int PasswordExpiryDays { get; init; } = 0;
 }
 
 /// <summary>
@@ -73,6 +75,9 @@ public record UpdatePasswordPolicyRequest
 
     [Range(0, 1440)]
     public int LockoutMinutes { get; init; } = 15;
+
+    [Range(0, 365)]
+    public int PasswordExpiryDays { get; init; } = 0;
 }
 
 /// <summary>

@@ -25,6 +25,11 @@ public class ApplicationRole : IdentityRole<Guid>
     public bool IsActive { get; set; } = true;
 
     /// <summary>
+    /// When true, this role is a system role (e.g. Superuser, Middleware Service). Only superusers can view/assign these roles and see users with these roles.
+    /// </summary>
+    public bool IsSystemRole { get; set; } = false;
+
+    /// <summary>
     /// Record creation timestamp
     /// </summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

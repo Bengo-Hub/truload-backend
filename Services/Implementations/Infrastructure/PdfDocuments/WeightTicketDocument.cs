@@ -147,6 +147,9 @@ public class WeightTicketDocument : BaseDocument
                 ComposeInfoCell(table, "Weighing Type", _transaction.WeighingType?.ToUpperInvariant() ?? "N/A");
                 ComposeInfoCell(table, "Bound", _transaction.Bound ?? "N/A");
                 ComposeInfoCell(table, "Station Code", _transaction.Station?.Code ?? "N/A");
+                ComposeInfoCell(table, "Location (Road)", _transaction.Road != null ? $"{_transaction.Road.Code} – {_transaction.Road.Name}" : (_transaction.LocationTown ?? "N/A"));
+                ComposeInfoCell(table, "Town/City", _transaction.LocationTown ?? "N/A");
+                ComposeInfoCell(table, "County", _transaction.LocationCounty ?? "N/A");
             });
         });
     }
@@ -164,6 +167,12 @@ public class WeightTicketDocument : BaseDocument
             .Select(a => a.AxleConfiguration?.AxleCode)
             .FirstOrDefault(ac => !string.IsNullOrEmpty(ac));
         return fromAxle ?? "N/A";
+    }
+
+    private string FeeColumnHeader()
+    {
+        var currency = _transaction.Act?.ChargingCurrency ?? "KES";
+        return $"Fee ({currency})";
     }
 
     private static void ComposeInfoCell(TableDescriptor table, string label, string value, bool bold = false)
@@ -211,7 +220,7 @@ public class WeightTicketDocument : BaseDocument
                     header.Cell().Element(HeaderStyle).Text("Overload");
                     header.Cell().Element(HeaderStyle).Text("Result");
                     header.Cell().Element(HeaderStyle).Text("PDF");
-                    header.Cell().Element(HeaderStyle).Text("Fee (USD)");
+                    header.Cell().Element(HeaderStyle).Text(FeeColumnHeader());
 
                     static IContainer HeaderStyle(IContainer c) =>
                         c.DefaultTextStyle(x => x.SemiBold().FontSize(7).FontColor("#1F2937"))
@@ -309,7 +318,8 @@ public class WeightTicketDocument : BaseDocument
                         c.Item().Row(r =>
                         {
                             r.ConstantItem(140).Text("Total Fee:").FontSize(10).SemiBold();
-                            r.RelativeItem().Text($"USD {_transaction.TotalFeeUsd:N2}").FontSize(10).Bold();
+                            var currency = _transaction.Act?.ChargingCurrency ?? "KES";
+                            r.RelativeItem().Text($"{currency} {_transaction.TotalFeeUsd:N2}").FontSize(10).Bold();
                         });
                     }
                     if (_transaction.ToleranceApplied)

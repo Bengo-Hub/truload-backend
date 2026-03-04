@@ -105,7 +105,8 @@ public class WeighingService : IWeighingService
         Guid? scaleTestId = null,
         Guid? driverId = null,
         Guid? transporterId = null,
-        string weighingType = "static")
+        string weighingType = "static",
+        Guid? actId = null)
     {
         // Validate scale test requirement
         var hasValidScaleTest = await _scaleTestRepository.HasPassedDailyCalibrationalAsync(stationId, bound);
@@ -149,6 +150,7 @@ public class WeighingService : IWeighingService
             WeighingType = weighingType,
             Bound = bound,
             ScaleTestId = validScaleTestId,
+            ActId = actId,
             ControlStatus = "Pending",
             CaptureStatus = "pending",
             CaptureSource = "frontend",
@@ -451,6 +453,8 @@ public class WeighingService : IWeighingService
             transaction.ControlStatus = "Compliant";
             transaction.IsCompliant = true;
             transaction.IsSentToYard = false;
+            // Mark tolerance applied when within regulatory tolerance (overload > 0 but within limit)
+            transaction.ToleranceApplied = transaction.OverloadKg > 0;
         }
         else
         {
@@ -464,6 +468,7 @@ public class WeighingService : IWeighingService
             {
                 transaction.ControlStatus = "Warning";
                 transaction.IsSentToYard = false; // Auto-release
+                transaction.ToleranceApplied = true; // Operational tolerance applied
             }
             else
             {

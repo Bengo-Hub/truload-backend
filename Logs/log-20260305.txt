@@ -1,0 +1,1159 @@
+2026-03-05 00:00:14.870 +03:00 [INF] [MaterializedViewRefreshJob] Starting scheduled MV refresh
+2026-03-05 00:00:14.876 +03:00 [INF] [MV] Starting refresh of all materialized views...
+2026-03-05 00:00:15.234 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-05 00:00:15.258 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-05 00:00:15.280 +03:00 [INF] [MV] All materialized views refreshed in 404ms
+2026-03-05 00:00:15.283 +03:00 [INF] [MaterializedViewRefreshJob] Scheduled MV refresh completed
+2026-03-05 00:01:02.100 +03:00 [INF] Server truload-titus:199460:da9c0bd2 caught stopping signal...
+2026-03-05 00:01:02.358 +03:00 [INF] Server truload-titus:199460:da9c0bd2 All dispatchers stopped
+2026-03-05 00:01:02.391 +03:00 [INF] Server truload-titus:199460:da9c0bd2 successfully reported itself as stopped in 3.8019 ms
+2026-03-05 00:01:02.411 +03:00 [INF] Server truload-titus:199460:da9c0bd2 has been stopped in total 144.6041 ms
+2026-03-05 00:03:04.033 +03:00 [INF] Checking pending migrations...
+2026-03-05 00:03:06.511 +03:00 [INF] ✓ Database is up to date (no pending migrations)
+2026-03-05 00:03:06.867 +03:00 [INF] ✓ Database seeding already completed (Version 7 on "2026-03-04T20:54:54.4917480Z")
+2026-03-05 00:03:06.953 +03:00 [INF] IntegrationConfig for ecitizen_pesaflow already exists, skipping seed
+2026-03-05 00:03:06.966 +03:00 [INF] IntegrationConfig for kenha already exists, skipping seed
+2026-03-05 00:03:06.980 +03:00 [INF] IntegrationConfig for ntsa already exists, skipping seed
+2026-03-05 00:03:06.982 +03:00 [INF] ✓ Integration config seeding completed
+2026-03-05 00:03:06.985 +03:00 [INF] [MV] Starting refresh of all materialized views...
+2026-03-05 00:03:07.252 +03:00 [INF] [MV] All materialized views refreshed in 267ms
+2026-03-05 00:03:07.254 +03:00 [INF] ✓ Materialized views refreshed on startup
+2026-03-05 00:03:07.363 +03:00 [INF] ✓ Rate limit settings loaded from database
+2026-03-05 00:03:07.374 +03:00 [INF] Media directory ready: D:\Projects\Codevertex\TruLoad\truload-backend\wwwroot/media
+2026-03-05 00:03:07.757 +03:00 [INF] Start installing Hangfire SQL objects...
+2026-03-05 00:03:07.776 +03:00 [INF] Hangfire SQL objects installed.
+2026-03-05 00:03:08.043 +03:00 [INF] Starting TruLoad Backend API
+2026-03-05 00:03:08.139 +03:00 [INF] Starting Hangfire Server using job storage: 'PostgreSQL Server: Host: localhost, DB: truload, Schema: hangfire'
+2026-03-05 00:03:08.142 +03:00 [INF] Using the following options for PostgreSQL job storage:
+2026-03-05 00:03:08.145 +03:00 [INF]     Queue poll interval: 00:00:15.
+2026-03-05 00:03:08.147 +03:00 [INF]     Invisibility timeout: 00:30:00.
+2026-03-05 00:03:08.148 +03:00 [INF]     Use sliding invisibility timeout: False.
+2026-03-05 00:03:08.150 +03:00 [INF] Using the following options for Hangfire Server:
+    Worker count: 5
+    Listening queues: 'critical', 'default', 'payments'
+    Shutdown timeout: 00:00:15
+    Schedule polling interval: 00:00:15
+2026-03-05 00:03:08.181 +03:00 [INF] Server truload-titus:221480:8499fc73 successfully announced in 13.4047 ms
+2026-03-05 00:03:08.188 +03:00 [INF] Server truload-titus:221480:8499fc73 is starting the registered dispatchers: ServerWatchdog, ServerJobCancellationWatcher, ExpirationManager, CountersAggregator, Worker, DelayedJobScheduler, RecurringJobScheduler...
+2026-03-05 00:03:08.195 +03:00 [INF] Server truload-titus:221480:8499fc73 all the dispatchers started
+2026-03-05 00:05:09.301 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-05 00:05:09.551 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-05 00:05:33.077 +03:00 [INF] HTTP OPTIONS /api/v1/auth/profile responded 204 in 5.9308 ms
+2026-03-05 00:05:33.077 +03:00 [INF] HTTP OPTIONS /api/v1/Stations responded 204 in 5.9454 ms
+2026-03-05 00:05:33.077 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 5.9119 ms
+2026-03-05 00:05:37.396 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: station.read
+2026-03-05 00:05:37.415 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:05:37.590 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 4353.2977 ms
+2026-03-05 00:05:37.622 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 35.7327 ms
+2026-03-05 00:05:37.631 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 7.7909 ms
+2026-03-05 00:05:37.696 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=Station ResourceId=null Endpoint=/api/v1/Stations Method=GET Status=200 Success=true Timestamp="2026-03-04T21:05:37.3992724Z"
+2026-03-05 00:05:38.018 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=auth ResourceId=null Endpoint=/api/v1/auth Method=GET Status=200 Success=true Timestamp="2026-03-04T21:05:37.4289332Z"
+2026-03-05 00:05:38.147 +03:00 [INF] HTTP GET /api/v1/Stations responded 200 in 4913.0720 ms
+2026-03-05 00:05:38.147 +03:00 [INF] HTTP GET /api/v1/auth/profile responded 200 in 4953.8379 ms
+2026-03-05 00:05:43.100 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.1467 ms
+2026-03-05 00:05:43.694 +03:00 [INF] User bmeitekini@kura.go.ke logged in successfully
+2026-03-05 00:05:43.787 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 669.3203 ms
+2026-03-05 00:06:11.368 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.1981 ms
+2026-03-05 00:06:11.604 +03:00 [INF] User bmeitekini@kura.go.ke logged in successfully
+2026-03-05 00:06:11.623 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 231.4400 ms
+2026-03-05 00:06:49.285 +03:00 [INF] HTTP OPTIONS /api/v1/auth/profile responded 204 in 0.2015 ms
+2026-03-05 00:06:49.289 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.5901 ms
+2026-03-05 00:06:49.368 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:06:49.369 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:06:49.382 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 67.8527 ms
+2026-03-05 00:06:49.412 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=auth ResourceId=null Endpoint=/api/v1/auth Method=GET Status=200 Success=true Timestamp="2026-03-04T21:06:49.3890403Z"
+2026-03-05 00:06:49.435 +03:00 [INF] HTTP GET /api/v1/auth/profile responded 200 in 108.6407 ms
+2026-03-05 00:06:52.807 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.3215 ms
+2026-03-05 00:06:52.984 +03:00 [INF] HTTP POST /api/v1/auth/login responded 403 in 167.8145 ms
+2026-03-05 00:08:04.241 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.1045 ms
+2026-03-05 00:08:04.241 +03:00 [INF] HTTP OPTIONS /api/v1/auth/profile responded 204 in 0.1414 ms
+2026-03-05 00:08:06.196 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.1145 ms
+2026-03-05 00:08:06.431 +03:00 [INF] User bmeitekini@kura.go.ke logged in successfully
+2026-03-05 00:08:06.456 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 247.5184 ms
+2026-03-05 00:10:09.156 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-05 00:10:09.226 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-05 00:15:09.389 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-05 00:15:09.395 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-05 00:15:11.383 +03:00 [INF] Server truload-titus:221480:8499fc73 caught stopping signal...
+2026-03-05 00:15:11.407 +03:00 [INF] Server truload-titus:221480:8499fc73 All dispatchers stopped
+2026-03-05 00:15:11.420 +03:00 [INF] Server truload-titus:221480:8499fc73 successfully reported itself as stopped in 1.8846 ms
+2026-03-05 00:15:11.424 +03:00 [INF] Server truload-titus:221480:8499fc73 has been stopped in total 31.2906 ms
+2026-03-05 00:16:17.711 +03:00 [INF] Checking pending migrations...
+2026-03-05 00:16:19.842 +03:00 [INF] ✓ Database is up to date (no pending migrations)
+2026-03-05 00:16:20.237 +03:00 [INF] ✓ Database seeding already completed (Version 7 on "2026-03-04T20:54:54.4917480Z")
+2026-03-05 00:16:20.318 +03:00 [INF] IntegrationConfig for ecitizen_pesaflow already exists, skipping seed
+2026-03-05 00:16:20.330 +03:00 [INF] IntegrationConfig for kenha already exists, skipping seed
+2026-03-05 00:16:20.340 +03:00 [INF] IntegrationConfig for ntsa already exists, skipping seed
+2026-03-05 00:16:20.343 +03:00 [INF] ✓ Integration config seeding completed
+2026-03-05 00:16:20.346 +03:00 [INF] [MV] Starting refresh of all materialized views...
+2026-03-05 00:16:20.545 +03:00 [INF] [MV] All materialized views refreshed in 198ms
+2026-03-05 00:16:20.546 +03:00 [INF] ✓ Materialized views refreshed on startup
+2026-03-05 00:16:20.628 +03:00 [INF] ✓ Rate limit settings loaded from database
+2026-03-05 00:16:20.635 +03:00 [INF] Media directory ready: D:\Projects\Codevertex\TruLoad\truload-backend\wwwroot/media
+2026-03-05 00:16:20.982 +03:00 [INF] Start installing Hangfire SQL objects...
+2026-03-05 00:16:21.000 +03:00 [INF] Hangfire SQL objects installed.
+2026-03-05 00:16:21.274 +03:00 [INF] Starting TruLoad Backend API
+2026-03-05 00:16:21.363 +03:00 [INF] Starting Hangfire Server using job storage: 'PostgreSQL Server: Host: localhost, DB: truload, Schema: hangfire'
+2026-03-05 00:16:21.365 +03:00 [INF] Using the following options for PostgreSQL job storage:
+2026-03-05 00:16:21.366 +03:00 [INF]     Queue poll interval: 00:00:15.
+2026-03-05 00:16:21.367 +03:00 [INF]     Invisibility timeout: 00:30:00.
+2026-03-05 00:16:21.368 +03:00 [INF]     Use sliding invisibility timeout: False.
+2026-03-05 00:16:21.368 +03:00 [INF] Using the following options for Hangfire Server:
+    Worker count: 5
+    Listening queues: 'critical', 'default', 'payments'
+    Shutdown timeout: 00:00:15
+    Schedule polling interval: 00:00:15
+2026-03-05 00:16:21.405 +03:00 [INF] Server truload-titus:148628:ee159b2a successfully announced in 19.9826 ms
+2026-03-05 00:16:21.411 +03:00 [INF] Server truload-titus:148628:ee159b2a is starting the registered dispatchers: ServerWatchdog, ServerJobCancellationWatcher, ExpirationManager, CountersAggregator, Worker, DelayedJobScheduler, RecurringJobScheduler...
+2026-03-05 00:16:21.417 +03:00 [INF] Server truload-titus:148628:ee159b2a all the dispatchers started
+2026-03-05 00:16:44.283 +03:00 [INF] HTTP OPTIONS /api/v1/auth/profile responded 204 in 5.0627 ms
+2026-03-05 00:16:44.440 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.6854 ms
+2026-03-05 00:16:47.423 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:16:47.528 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:16:47.825 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 3353.7382 ms
+2026-03-05 00:16:48.891 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=auth ResourceId=null Endpoint=/api/v1/auth Method=GET Status=200 Success=true Timestamp="2026-03-04T21:16:47.5429640Z"
+2026-03-05 00:16:49.294 +03:00 [INF] HTTP GET /api/v1/auth/profile responded 200 in 4956.6000 ms
+2026-03-05 00:16:50.966 +03:00 [INF] HTTP OPTIONS /api/v1/auth/profile responded 204 in 0.1498 ms
+2026-03-05 00:16:51.007 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:16:51.049 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=auth ResourceId=null Endpoint=/api/v1/auth Method=GET Status=200 Success=true Timestamp="2026-03-04T21:16:51.0199457Z"
+2026-03-05 00:16:51.066 +03:00 [INF] HTTP GET /api/v1/auth/profile responded 200 in 86.6939 ms
+2026-03-05 00:16:51.561 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.1041 ms
+2026-03-05 00:16:51.581 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:16:51.599 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 28.6062 ms
+2026-03-05 00:17:00.753 +03:00 [INF] HTTP OPTIONS /api/v1/auth/profile responded 204 in 0.0932 ms
+2026-03-05 00:17:00.770 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:17:00.837 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=auth ResourceId=null Endpoint=/api/v1/auth Method=GET Status=200 Success=true Timestamp="2026-03-04T21:17:00.7832635Z"
+2026-03-05 00:17:00.849 +03:00 [INF] HTTP GET /api/v1/auth/profile responded 200 in 85.7216 ms
+2026-03-05 00:18:10.727 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.0881 ms
+2026-03-05 00:18:11.216 +03:00 [INF] User bmeitekini@kura.go.ke logged in successfully
+2026-03-05 00:18:11.323 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 582.0064 ms
+2026-03-05 00:18:25.527 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations responded 204 in 0.5482 ms
+2026-03-05 00:18:25.540 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations responded 204 in 0.1024 ms
+2026-03-05 00:18:25.553 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:25.595 +03:00 [INF] HTTP GET /api/v1/public/organizations responded 200 in 48.4659 ms
+2026-03-05 00:18:25.602 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:25.608 +03:00 [INF] HTTP GET /api/v1/public/organizations responded 200 in 9.5057 ms
+2026-03-05 00:18:25.623 +03:00 [INF] HTTP OPTIONS /api/v1/public/stations responded 204 in 0.0637 ms
+2026-03-05 00:18:25.630 +03:00 [INF] HTTP OPTIONS /api/v1/public/stations responded 204 in 0.0709 ms
+2026-03-05 00:18:25.643 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:25.689 +03:00 [INF] HTTP GET /api/v1/public/stations responded 200 in 55.4151 ms
+2026-03-05 00:18:25.695 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:25.702 +03:00 [INF] HTTP GET /api/v1/public/stations responded 200 in 10.7422 ms
+2026-03-05 00:18:40.402 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.3099 ms
+2026-03-05 00:18:40.405 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.1035 ms
+2026-03-05 00:18:40.431 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:40.441 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 16.8637 ms
+2026-03-05 00:18:40.448 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:40.456 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 12.4751 ms
+2026-03-05 00:18:50.603 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.1869 ms
+2026-03-05 00:18:50.812 +03:00 [INF] User bmeitekini@kura.go.ke logged in successfully
+2026-03-05 00:18:50.840 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 228.8280 ms
+2026-03-05 00:18:53.641 +03:00 [INF] HTTP OPTIONS /api/v1/Stations responded 204 in 0.0711 ms
+2026-03-05 00:18:53.647 +03:00 [INF] HTTP OPTIONS /api/v1/exchange-rates/current responded 204 in 0.0626 ms
+2026-03-05 00:18:53.656 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/statistics responded 204 in 0.1062 ms
+2026-03-05 00:18:53.661 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/statistics responded 204 in 0.0909 ms
+2026-03-05 00:18:53.661 +03:00 [INF] HTTP OPTIONS /api/v1/yard-entries/statistics responded 204 in 0.0616 ms
+2026-03-05 00:18:53.666 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0777 ms
+2026-03-05 00:18:53.667 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/revenue-by-station responded 204 in 0.0972 ms
+2026-03-05 00:18:53.670 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/compliance-trend responded 204 in 0.3415 ms
+2026-03-05 00:18:53.670 +03:00 [INF] HTTP OPTIONS /api/v1/stations/performance responded 204 in 0.0386 ms
+2026-03-05 00:18:53.676 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users/by-station responded 204 in 0.0853 ms
+2026-03-05 00:18:53.681 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.1878 ms
+2026-03-05 00:18:53.703 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:53.704 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:53.706 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:53.708 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:53.734 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of weighing.read = true
+2026-03-05 00:18:53.734 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of station.read = true
+2026-03-05 00:18:53.734 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of config.read = true
+2026-03-05 00:18:53.738 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: station.read
+2026-03-05 00:18:53.742 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: weighing.read
+2026-03-05 00:18:53.746 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: config.read
+2026-03-05 00:18:53.777 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:18:53.781 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:18:53.918 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=exchange-rate ResourceId=null Endpoint=/api/v1/exchange-rates Method=GET Status=200 Success=true Timestamp="2026-03-04T21:18:53.7816916Z"
+2026-03-05 00:18:53.920 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=Station ResourceId=null Endpoint=/api/v1/Stations Method=GET Status=200 Success=true Timestamp="2026-03-04T21:18:53.7495803Z"
+2026-03-05 00:18:53.939 +03:00 [INF] HTTP GET /api/v1/exchange-rates/current responded 200 in 239.7910 ms
+2026-03-05 00:18:53.944 +03:00 [INF] HTTP GET /api/v1/Stations responded 200 in 247.8813 ms
+2026-03-05 00:18:53.959 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:53.970 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ANY of analytics.read, receipt.read = true
+2026-03-05 00:18:53.974 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: analytics.read, receipt.read
+2026-03-05 00:18:54.002 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:54.015 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:54.038 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of yard.read = true
+2026-03-05 00:18:54.040 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:18:54.046 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: yard.read
+2026-03-05 00:18:54.050 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:18:54.169 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:54.190 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:18:53.7516752Z"
+2026-03-05 00:18:54.230 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-04T21:18:53.9829766Z"
+2026-03-05 00:18:54.243 +03:00 [WRN] The query uses the 'First'/'FirstOrDefault' operator without 'OrderBy' and filter operators. This may lead to unpredictable results.
+2026-03-05 00:18:54.251 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of weighing.read = true
+2026-03-05 00:18:54.256 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: weighing.read
+2026-03-05 00:18:54.267 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-04T21:18:53.7269255Z"
+2026-03-05 00:18:54.268 +03:00 [INF] HTTP GET /api/v1/receipts/revenue-by-station responded 200 in 315.9644 ms
+2026-03-05 00:18:54.275 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/statistics responded 200 in 576.5349 ms
+2026-03-05 00:18:54.290 +03:00 [INF] HTTP GET /api/v1/case/cases/statistics responded 200 in 587.2802 ms
+2026-03-05 00:18:54.293 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=yard-entrie ResourceId=null Endpoint=/api/v1/yard-entries Method=GET Status=200 Success=true Timestamp="2026-03-04T21:18:54.0534560Z"
+2026-03-05 00:18:54.307 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:18:54.308 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:54.311 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:54.318 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of station.read = true
+2026-03-05 00:18:54.323 +03:00 [INF] HTTP GET /api/v1/yard-entries/statistics responded 200 in 621.2783 ms
+2026-03-05 00:18:54.324 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:18:54.324 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:54.327 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: station.read
+2026-03-05 00:18:54.340 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:18:54.350 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 36.7546 ms
+2026-03-05 00:18:54.365 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:18:54.373 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:18:54.2757198Z"
+2026-03-05 00:18:54.388 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/compliance-trend responded 200 in 433.1402 ms
+2026-03-05 00:18:54.407 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:18:54.3553791Z"
+2026-03-05 00:18:54.419 +03:00 [INF] HTTP GET /api/v1/user-management/users/by-station responded 200 in 118.9344 ms
+2026-03-05 00:18:54.419 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:18:54.0565818Z"
+2026-03-05 00:18:54.429 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=station ResourceId=null Endpoint=/api/v1/stations Method=GET Status=200 Success=true Timestamp="2026-03-04T21:18:54.3514503Z"
+2026-03-05 00:18:54.436 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 736.7514 ms
+2026-03-05 00:18:54.441 +03:00 [INF] HTTP GET /api/v1/stations/performance responded 200 in 145.0513 ms
+2026-03-05 00:18:54.669 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:54.672 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:18:54.678 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:18:54.699 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:18:54.6811913Z"
+2026-03-05 00:18:54.708 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 44.1581 ms
+2026-03-05 00:18:55.580 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0886 ms
+2026-03-05 00:18:55.594 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:18:55.597 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:18:55.600 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:18:55.647 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:18:55.6038505Z"
+2026-03-05 00:18:55.654 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 65.6954 ms
+2026-03-05 00:19:27.964 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0780 ms
+2026-03-05 00:19:27.968 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles responded 204 in 0.2274 ms
+2026-03-05 00:19:27.972 +03:00 [INF] HTTP OPTIONS /api/v1/Organizations responded 204 in 0.1432 ms
+2026-03-05 00:19:27.975 +03:00 [INF] HTTP OPTIONS /api/v1/Departments responded 204 in 0.0533 ms
+2026-03-05 00:19:28.014 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:19:28.025 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:19:28.035 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:19:28.037 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:19:28.037 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:19:28.041 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:19:28.054 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = true
+2026-03-05 00:19:28.064 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = true
+2026-03-05 00:19:28.113 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: system.manage_organizations
+2026-03-05 00:19:28.107 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: system.manage_roles
+2026-03-05 00:19:28.099 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = true
+2026-03-05 00:19:28.152 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: system.manage_departments
+2026-03-05 00:19:28.212 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=Organization ResourceId=null Endpoint=/api/v1/Organizations Method=GET Status=200 Success=true Timestamp="2026-03-04T21:19:28.1186129Z"
+2026-03-05 00:19:28.222 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:19:28.1466038Z"
+2026-03-05 00:19:28.236 +03:00 [INF] HTTP GET /api/v1/Organizations responded 200 in 220.9770 ms
+2026-03-05 00:19:28.249 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:19:28.0409963Z"
+2026-03-05 00:19:28.255 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 200 in 239.5219 ms
+2026-03-05 00:19:28.258 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=Department ResourceId=null Endpoint=/api/v1/Departments Method=GET Status=200 Success=true Timestamp="2026-03-04T21:19:28.1573198Z"
+2026-03-05 00:19:28.274 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 276.9130 ms
+2026-03-05 00:19:28.295 +03:00 [INF] HTTP GET /api/v1/Departments responded 200 in 271.3936 ms
+2026-03-05 00:20:02.920 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users/bf02311d-91a5-4d80-891d-8e808239d6b0 responded 204 in 0.0594 ms
+2026-03-05 00:20:02.944 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:20:02.949 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.update = true
+2026-03-05 00:20:02.953 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.update
+2026-03-05 00:20:03.075 +03:00 [INF] User updated: "bf02311d-91a5-4d80-891d-8e808239d6b0"
+2026-03-05 00:20:03.118 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=UPDATE ResourceType=user-management ResourceId="bf02311d-91a5-4d80-891d-8e808239d6b0" Endpoint=/api/v1/user-management Method=PUT Status=200 Success=true Timestamp="2026-03-04T21:20:02.9567127Z"
+2026-03-05 00:20:03.133 +03:00 [INF] HTTP PUT /api/v1/user-management/users/bf02311d-91a5-4d80-891d-8e808239d6b0 responded 200 in 197.0170 ms
+2026-03-05 00:20:03.147 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0409 ms
+2026-03-05 00:20:03.161 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:20:03.166 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:20:03.170 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:20:03.185 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:20:03.1743091Z"
+2026-03-05 00:20:03.200 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 42.7763 ms
+2026-03-05 00:20:07.313 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-05 00:20:07.413 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-05 00:20:11.026 +03:00 [INF] HTTP OPTIONS /api/v1/auth/logout responded 204 in 0.0813 ms
+2026-03-05 00:20:11.051 +03:00 [INF] HTTP POST /api/v1/auth/logout responded 401 in 11.3864 ms
+2026-03-05 00:20:11.086 +03:00 [INF] HTTP OPTIONS /api/v1/auth/refresh responded 204 in 0.0483 ms
+2026-03-05 00:20:11.169 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 68.6897 ms
+2026-03-05 00:20:11.545 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 9.4625 ms
+2026-03-05 00:20:11.557 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 7.5920 ms
+2026-03-05 00:20:21.934 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 4.3899 ms
+2026-03-05 00:23:22.020 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 334.7407 ms
+2026-03-05 00:24:24.328 +03:00 [INF] HTTP GET /api/v1/auth/profile responded 401 in 248.6420 ms
+2026-03-05 00:24:24.505 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 106.2850 ms
+2026-03-05 00:24:33.477 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 1.3643 ms
+2026-03-05 00:24:33.938 +03:00 [INF] User bmeitekini@kura.go.ke logged in successfully
+2026-03-05 00:24:33.996 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 503.4639 ms
+2026-03-05 00:24:34.600 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations responded 204 in 0.1463 ms
+2026-03-05 00:24:34.603 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations responded 204 in 0.0513 ms
+2026-03-05 00:24:34.866 +03:00 [INF] HTTP GET /api/v1/public/organizations responded 200 in 43.5429 ms
+2026-03-05 00:24:34.885 +03:00 [INF] HTTP GET /api/v1/public/organizations responded 200 in 14.2938 ms
+2026-03-05 00:24:34.894 +03:00 [INF] HTTP OPTIONS /api/v1/public/stations responded 204 in 0.0570 ms
+2026-03-05 00:24:34.902 +03:00 [INF] HTTP OPTIONS /api/v1/public/stations responded 204 in 0.4216 ms
+2026-03-05 00:24:34.931 +03:00 [INF] HTTP GET /api/v1/public/stations responded 200 in 23.2699 ms
+2026-03-05 00:24:34.945 +03:00 [INF] HTTP GET /api/v1/public/stations responded 200 in 10.3594 ms
+2026-03-05 00:24:52.254 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.0878 ms
+2026-03-05 00:24:52.260 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.1219 ms
+2026-03-05 00:24:52.295 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 20.0268 ms
+2026-03-05 00:24:52.306 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 8.7023 ms
+2026-03-05 00:25:02.515 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.0429 ms
+2026-03-05 00:25:02.837 +03:00 [INF] User bmeitekini@kura.go.ke logged in successfully
+2026-03-05 00:25:02.896 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 367.6961 ms
+2026-03-05 00:25:07.541 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-05 00:25:07.611 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-05 00:25:11.105 +03:00 [INF] HTTP OPTIONS /api/v1/Stations responded 204 in 0.0398 ms
+2026-03-05 00:25:11.109 +03:00 [INF] HTTP OPTIONS /api/v1/exchange-rates/current responded 204 in 0.0326 ms
+2026-03-05 00:25:11.113 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/statistics responded 204 in 0.0319 ms
+2026-03-05 00:25:11.117 +03:00 [INF] HTTP OPTIONS /api/v1/yard-entries/statistics responded 204 in 0.0297 ms
+2026-03-05 00:25:11.117 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/statistics responded 204 in 0.0103 ms
+2026-03-05 00:25:11.117 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0159 ms
+2026-03-05 00:25:11.124 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/revenue-by-station responded 204 in 0.0360 ms
+2026-03-05 00:25:11.121 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/compliance-trend responded 204 in 0.0319 ms
+2026-03-05 00:25:11.137 +03:00 [INF] HTTP OPTIONS /api/v1/stations/performance responded 204 in 0.0314 ms
+2026-03-05 00:25:11.138 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users/by-station responded 204 in 0.0345 ms
+2026-03-05 00:25:11.138 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of station.read = true
+2026-03-05 00:25:11.146 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:25:11.146 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of config.read = true
+2026-03-05 00:25:11.144 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.0292 ms
+2026-03-05 00:25:11.159 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of yard.read = true
+2026-03-05 00:25:11.157 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of weighing.read = true
+2026-03-05 00:25:11.208 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: station.read
+2026-03-05 00:25:11.210 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:25:11.213 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: config.read
+2026-03-05 00:25:11.224 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: weighing.read
+2026-03-05 00:25:11.219 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: yard.read
+2026-03-05 00:25:11.219 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:11.1745014Z"
+2026-03-05 00:25:11.228 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:25:11.237 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:25:11.247 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=exchange-rate ResourceId=null Endpoint=/api/v1/exchange-rates Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:11.2330662Z"
+2026-03-05 00:25:11.251 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:11.2304373Z"
+2026-03-05 00:25:11.258 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=Station ResourceId=null Endpoint=/api/v1/Stations Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:11.2278648Z"
+2026-03-05 00:25:11.258 +03:00 [INF] HTTP GET /api/v1/case/cases/statistics responded 200 in 93.9245 ms
+2026-03-05 00:25:11.266 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=yard-entrie ResourceId=null Endpoint=/api/v1/yard-entries Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:11.2394015Z"
+2026-03-05 00:25:11.267 +03:00 [INF] HTTP GET /api/v1/exchange-rates/current responded 200 in 125.6003 ms
+2026-03-05 00:25:11.277 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 135.0006 ms
+2026-03-05 00:25:11.283 +03:00 [INF] HTTP GET /api/v1/Stations responded 200 in 152.9986 ms
+2026-03-05 00:25:11.294 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:11.2365854Z"
+2026-03-05 00:25:11.295 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ANY of analytics.read, receipt.read = true
+2026-03-05 00:25:11.297 +03:00 [INF] HTTP GET /api/v1/yard-entries/statistics responded 200 in 141.8924 ms
+2026-03-05 00:25:11.310 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 9.1454 ms
+2026-03-05 00:25:11.330 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of weighing.read = true
+2026-03-05 00:25:11.333 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of station.read = true
+2026-03-05 00:25:11.333 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/statistics responded 200 in 187.6696 ms
+2026-03-05 00:25:11.334 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: analytics.read, receipt.read
+2026-03-05 00:25:11.344 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:25:11.361 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:25:11.349 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: station.read
+2026-03-05 00:25:11.347 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: weighing.read
+2026-03-05 00:25:11.365 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:25:11.369 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:25:11.373 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:25:11.376 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:25:11.387 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:11.3806510Z"
+2026-03-05 00:25:11.397 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:11.3607348Z"
+2026-03-05 00:25:11.408 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:11.3760902Z"
+2026-03-05 00:25:11.409 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:11.3899072Z"
+2026-03-05 00:25:11.409 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=station ResourceId=null Endpoint=/api/v1/stations Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:11.3734822Z"
+2026-03-05 00:25:11.414 +03:00 [INF] HTTP GET /api/v1/user-management/users/by-station responded 200 in 73.4925 ms
+2026-03-05 00:25:11.423 +03:00 [INF] HTTP GET /api/v1/receipts/revenue-by-station responded 200 in 132.2060 ms
+2026-03-05 00:25:11.437 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/compliance-trend responded 200 in 127.9309 ms
+2026-03-05 00:25:11.443 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 86.4189 ms
+2026-03-05 00:25:11.449 +03:00 [INF] HTTP GET /api/v1/stations/performance responded 200 in 136.8212 ms
+2026-03-05 00:25:11.531 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0342 ms
+2026-03-05 00:25:11.548 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:25:11.552 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:25:11.566 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:11.5566548Z"
+2026-03-05 00:25:11.577 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 32.0191 ms
+2026-03-05 00:25:30.612 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0338 ms
+2026-03-05 00:25:30.613 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles responded 204 in 0.0277 ms
+2026-03-05 00:25:30.613 +03:00 [INF] HTTP OPTIONS /api/v1/Organizations responded 204 in 0.0153 ms
+2026-03-05 00:25:30.615 +03:00 [INF] HTTP OPTIONS /api/v1/Departments responded 204 in 0.0281 ms
+2026-03-05 00:25:30.630 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:25:30.632 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = true
+2026-03-05 00:25:30.635 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:25:30.638 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: system.manage_departments
+2026-03-05 00:25:30.642 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = true
+2026-03-05 00:25:30.646 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: system.manage_organizations
+2026-03-05 00:25:30.643 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = true
+2026-03-05 00:25:30.648 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=Department ResourceId=null Endpoint=/api/v1/Departments Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:30.6439822Z"
+2026-03-05 00:25:30.651 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:30.6417431Z"
+2026-03-05 00:25:30.651 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=Organization ResourceId=null Endpoint=/api/v1/Organizations Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:30.6494847Z"
+2026-03-05 00:25:30.652 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: system.manage_roles
+2026-03-05 00:25:30.666 +03:00 [INF] HTTP GET /api/v1/Departments responded 200 in 36.8704 ms
+2026-03-05 00:25:30.670 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 44.8017 ms
+2026-03-05 00:25:30.675 +03:00 [INF] HTTP GET /api/v1/Organizations responded 200 in 35.5962 ms
+2026-03-05 00:25:30.677 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:30.6752258Z"
+2026-03-05 00:25:30.694 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 200 in 54.6036 ms
+2026-03-05 00:25:47.025 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users/bf02311d-91a5-4d80-891d-8e808239d6b0/roles responded 204 in 0.0733 ms
+2026-03-05 00:25:47.064 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.assign_roles = true
+2026-03-05 00:25:47.079 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.assign_roles
+2026-03-05 00:25:47.480 +03:00 [INF] Roles assigned to user: "bf02311d-91a5-4d80-891d-8e808239d6b0"
+2026-03-05 00:25:47.495 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=CREATE ResourceType=user-management ResourceId="bf02311d-91a5-4d80-891d-8e808239d6b0" Endpoint=/api/v1/user-management Method=POST Status=200 Success=true Timestamp="2026-03-04T21:25:47.0913345Z"
+2026-03-05 00:25:47.531 +03:00 [INF] HTTP POST /api/v1/user-management/users/bf02311d-91a5-4d80-891d-8e808239d6b0/roles responded 200 in 475.6479 ms
+2026-03-05 00:25:47.559 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0378 ms
+2026-03-05 00:25:47.579 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:25:47.591 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:25:47.612 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:47.5986453Z"
+2026-03-05 00:25:47.624 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 53.4304 ms
+2026-03-05 00:25:50.721 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users/bf02311d-91a5-4d80-891d-8e808239d6b0 responded 204 in 0.0342 ms
+2026-03-05 00:25:50.734 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.update = true
+2026-03-05 00:25:50.743 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.update
+2026-03-05 00:25:50.768 +03:00 [INF] User updated: "bf02311d-91a5-4d80-891d-8e808239d6b0"
+2026-03-05 00:25:50.780 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=UPDATE ResourceType=user-management ResourceId="bf02311d-91a5-4d80-891d-8e808239d6b0" Endpoint=/api/v1/user-management Method=PUT Status=200 Success=true Timestamp="2026-03-04T21:25:50.7489110Z"
+2026-03-05 00:25:50.793 +03:00 [INF] HTTP PUT /api/v1/user-management/users/bf02311d-91a5-4d80-891d-8e808239d6b0 responded 200 in 61.1774 ms
+2026-03-05 00:25:50.807 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:25:50.809 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:25:50.819 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:25:50.8120568Z"
+2026-03-05 00:25:50.827 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 22.8696 ms
+2026-03-05 00:25:57.911 +03:00 [INF] HTTP OPTIONS /api/v1/auth/logout responded 204 in 0.0363 ms
+2026-03-05 00:25:57.928 +03:00 [INF] HTTP POST /api/v1/auth/logout responded 401 in 2.6982 ms
+2026-03-05 00:25:57.983 +03:00 [INF] HTTP OPTIONS /api/v1/auth/refresh responded 204 in 0.0949 ms
+2026-03-05 00:25:58.010 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 14.4383 ms
+2026-03-05 00:25:58.412 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 10.5851 ms
+2026-03-05 00:25:58.422 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 4.8941 ms
+2026-03-05 00:27:05.055 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.0425 ms
+2026-03-05 00:27:05.532 +03:00 [INF] User bmeitekini@kura.go.ke logged in successfully
+2026-03-05 00:27:05.551 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 481.7395 ms
+2026-03-05 00:27:06.103 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations responded 204 in 0.0297 ms
+2026-03-05 00:27:06.108 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations responded 204 in 0.0300 ms
+2026-03-05 00:27:06.120 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:27:06.130 +03:00 [INF] HTTP GET /api/v1/public/organizations responded 200 in 14.6780 ms
+2026-03-05 00:27:06.136 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:27:06.142 +03:00 [INF] HTTP GET /api/v1/public/organizations responded 200 in 9.5037 ms
+2026-03-05 00:27:06.146 +03:00 [INF] HTTP OPTIONS /api/v1/public/stations responded 204 in 0.0258 ms
+2026-03-05 00:27:06.152 +03:00 [INF] HTTP OPTIONS /api/v1/public/stations responded 204 in 0.0291 ms
+2026-03-05 00:27:06.160 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:27:06.166 +03:00 [INF] HTTP GET /api/v1/public/stations responded 200 in 10.1128 ms
+2026-03-05 00:27:06.172 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:27:06.179 +03:00 [INF] HTTP GET /api/v1/public/stations responded 200 in 10.4183 ms
+2026-03-05 00:27:13.778 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.0255 ms
+2026-03-05 00:27:13.778 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.0218 ms
+2026-03-05 00:27:13.874 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:27:13.943 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 79.6436 ms
+2026-03-05 00:27:13.949 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:27:13.956 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 11.4818 ms
+2026-03-05 00:27:16.236 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.0226 ms
+2026-03-05 00:27:16.377 +03:00 [WRN] User bmeitekini@kura.go.ke (station-linked) attempted login to station KURA-HQ.
+2026-03-05 00:27:16.387 +03:00 [INF] HTTP POST /api/v1/auth/login responded 403 in 143.8861 ms
+2026-03-05 00:27:21.609 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.0280 ms
+2026-03-05 00:27:21.765 +03:00 [WRN] User bmeitekini@kura.go.ke (station-linked) attempted login to station KURA-HQ.
+2026-03-05 00:27:21.768 +03:00 [INF] HTTP POST /api/v1/auth/login responded 403 in 138.8529 ms
+2026-03-05 00:27:26.702 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.1365 ms
+2026-03-05 00:27:26.871 +03:00 [WRN] User bmeitekini@kura.go.ke (station-linked) attempted login to station KURA-HQ.
+2026-03-05 00:27:26.875 +03:00 [INF] HTTP POST /api/v1/auth/login responded 403 in 160.3257 ms
+2026-03-05 00:27:39.077 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations responded 204 in 0.0373 ms
+2026-03-05 00:27:39.084 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations responded 204 in 0.0291 ms
+2026-03-05 00:27:39.103 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:27:39.109 +03:00 [INF] HTTP GET /api/v1/public/organizations responded 200 in 12.6999 ms
+2026-03-05 00:27:39.117 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:27:39.126 +03:00 [INF] HTTP OPTIONS /api/v1/public/stations responded 204 in 0.0314 ms
+2026-03-05 00:27:39.129 +03:00 [INF] HTTP GET /api/v1/public/organizations responded 200 in 18.5901 ms
+2026-03-05 00:27:39.140 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:27:39.147 +03:00 [INF] HTTP GET /api/v1/public/stations responded 200 in 11.0782 ms
+2026-03-05 00:27:39.152 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:27:39.169 +03:00 [INF] HTTP GET /api/v1/public/stations responded 200 in 20.1446 ms
+2026-03-05 00:27:42.654 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.0316 ms
+2026-03-05 00:27:42.657 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.0259 ms
+2026-03-05 00:27:42.680 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:27:42.688 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 17.6319 ms
+2026-03-05 00:27:42.693 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:27:42.704 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 13.2711 ms
+2026-03-05 00:27:50.578 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.0406 ms
+2026-03-05 00:27:50.890 +03:00 [INF] User bmeitekini@kura.go.ke logged in successfully
+2026-03-05 00:27:50.902 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 303.8429 ms
+2026-03-05 00:28:32.170 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/statistics responded 204 in 0.0399 ms
+2026-03-05 00:28:32.171 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/statistics responded 204 in 0.0372 ms
+2026-03-05 00:28:32.173 +03:00 [INF] HTTP OPTIONS /api/v1/yard-entries/statistics responded 204 in 0.0324 ms
+2026-03-05 00:28:32.175 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/compliance-trend responded 204 in 0.0269 ms
+2026-03-05 00:28:32.175 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/revenue-by-station responded 204 in 0.0236 ms
+2026-03-05 00:28:32.177 +03:00 [INF] HTTP OPTIONS /api/v1/stations/performance responded 204 in 0.0326 ms
+2026-03-05 00:28:32.186 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:28:32.192 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:28:32.199 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of weighing.read = true
+2026-03-05 00:28:32.196 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:28:32.200 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:28:32.207 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: weighing.read
+2026-03-05 00:28:32.210 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of yard.read = true
+2026-03-05 00:28:32.213 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of weighing.read = true
+2026-03-05 00:28:32.217 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: weighing.read
+2026-03-05 00:28:32.222 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: yard.read
+2026-03-05 00:28:32.227 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:28:32.237 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:28:32.250 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-04T21:28:32.2017055Z"
+2026-03-05 00:28:32.317 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:28:32.2264919Z"
+2026-03-05 00:28:32.349 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:28:32.399 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:28:32.452 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=yard-entrie ResourceId=null Endpoint=/api/v1/yard-entries Method=GET Status=200 Success=true Timestamp="2026-03-04T21:28:32.2315462Z"
+2026-03-05 00:28:32.457 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of station.read = true
+2026-03-05 00:28:32.460 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ANY of analytics.read, receipt.read = true
+2026-03-05 00:28:32.457 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/statistics responded 200 in 275.5843 ms
+2026-03-05 00:28:32.477 +03:00 [INF] HTTP GET /api/v1/yard-entries/statistics responded 200 in 283.8363 ms
+2026-03-05 00:28:32.510 +03:00 [INF] HTTP GET /api/v1/case/cases/statistics responded 200 in 321.8136 ms
+2026-03-05 00:28:32.548 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: station.read
+2026-03-05 00:28:32.574 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: analytics.read, receipt.read
+2026-03-05 00:28:32.612 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:28:32.2369784Z"
+2026-03-05 00:28:32.632 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:28:32.660 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/compliance-trend responded 200 in 463.8924 ms
+2026-03-05 00:28:32.664 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-04T21:28:32.6346951Z"
+2026-03-05 00:28:32.682 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=station ResourceId=null Endpoint=/api/v1/stations Method=GET Status=200 Success=true Timestamp="2026-03-04T21:28:32.6318204Z"
+2026-03-05 00:28:32.701 +03:00 [INF] HTTP GET /api/v1/receipts/revenue-by-station responded 200 in 500.4510 ms
+2026-03-05 00:28:32.714 +03:00 [INF] HTTP GET /api/v1/stations/performance responded 200 in 511.0500 ms
+2026-03-05 00:30:07.874 +03:00 [INF] [MaterializedViewRefreshJob] Starting scheduled MV refresh
+2026-03-05 00:30:07.885 +03:00 [INF] [MV] Starting refresh of all materialized views...
+2026-03-05 00:30:07.925 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-05 00:30:07.970 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-05 00:30:08.423 +03:00 [INF] [MV] All materialized views refreshed in 538ms
+2026-03-05 00:30:08.427 +03:00 [INF] [MaterializedViewRefreshJob] Scheduled MV refresh completed
+2026-03-05 00:30:42.750 +03:00 [INF] HTTP OPTIONS /api/v1/auth/profile responded 204 in 11.6048 ms
+2026-03-05 00:30:43.051 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:30:43.500 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=auth ResourceId=null Endpoint=/api/v1/auth Method=GET Status=200 Success=true Timestamp="2026-03-04T21:30:43.0934788Z"
+2026-03-05 00:30:43.599 +03:00 [INF] HTTP GET /api/v1/auth/profile responded 200 in 811.6368 ms
+2026-03-05 00:30:43.614 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.0452 ms
+2026-03-05 00:30:43.631 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.0424 ms
+2026-03-05 00:30:43.640 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:30:43.685 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 51.6067 ms
+2026-03-05 00:30:43.703 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:30:43.739 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 50.4559 ms
+2026-03-05 00:30:46.348 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.6375 ms
+2026-03-05 00:30:46.661 +03:00 [INF] User bmeitekini@kura.go.ke logged in successfully
+2026-03-05 00:30:46.705 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 339.6217 ms
+2026-03-05 00:31:02.470 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations responded 204 in 0.0757 ms
+2026-03-05 00:31:02.471 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations responded 204 in 0.0078 ms
+2026-03-05 00:31:02.512 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:02.538 +03:00 [INF] HTTP GET /api/v1/public/organizations responded 200 in 36.4483 ms
+2026-03-05 00:31:02.549 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:02.558 +03:00 [INF] HTTP GET /api/v1/public/organizations responded 200 in 16.7015 ms
+2026-03-05 00:31:02.584 +03:00 [INF] HTTP OPTIONS /api/v1/public/stations responded 204 in 0.0358 ms
+2026-03-05 00:31:02.587 +03:00 [INF] HTTP OPTIONS /api/v1/public/stations responded 204 in 0.0309 ms
+2026-03-05 00:31:02.601 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:02.618 +03:00 [INF] HTTP GET /api/v1/public/stations responded 200 in 21.7718 ms
+2026-03-05 00:31:02.626 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:02.633 +03:00 [INF] HTTP GET /api/v1/public/stations responded 200 in 10.1821 ms
+2026-03-05 00:31:17.621 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.0453 ms
+2026-03-05 00:31:17.624 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.0974 ms
+2026-03-05 00:31:17.655 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:17.691 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 44.7036 ms
+2026-03-05 00:31:17.707 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:17.736 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 40.3707 ms
+2026-03-05 00:31:19.775 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.0311 ms
+2026-03-05 00:31:19.973 +03:00 [INF] User bmeitekini@kura.go.ke logged in successfully
+2026-03-05 00:31:19.992 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 205.6313 ms
+2026-03-05 00:31:21.365 +03:00 [INF] HTTP OPTIONS /api/v1/Stations responded 204 in 0.0371 ms
+2026-03-05 00:31:21.374 +03:00 [INF] HTTP OPTIONS /api/v1/exchange-rates/current responded 204 in 0.0347 ms
+2026-03-05 00:31:21.380 +03:00 [INF] HTTP OPTIONS /api/v1/yard-entries/statistics responded 204 in 0.0295 ms
+2026-03-05 00:31:21.381 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/statistics responded 204 in 0.0340 ms
+2026-03-05 00:31:21.384 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0326 ms
+2026-03-05 00:31:21.379 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/statistics responded 204 in 0.0381 ms
+2026-03-05 00:31:21.391 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/compliance-trend responded 204 in 0.1254 ms
+2026-03-05 00:31:21.391 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:21.396 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/revenue-by-station responded 204 in 0.1575 ms
+2026-03-05 00:31:21.400 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:21.405 +03:00 [INF] HTTP OPTIONS /api/v1/stations/performance responded 204 in 0.0545 ms
+2026-03-05 00:31:21.408 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:21.410 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users/by-station responded 204 in 0.0425 ms
+2026-03-05 00:31:21.420 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:21.423 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:21.427 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 42.6653 ms
+2026-03-05 00:31:21.416 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:21.469 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:21.474 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of config.read = true
+2026-03-05 00:31:21.487 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of station.read = true
+2026-03-05 00:31:21.483 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:31:21.501 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: config.read
+2026-03-05 00:31:21.506 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of weighing.read = true
+2026-03-05 00:31:21.492 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of yard.read = true
+2026-03-05 00:31:21.511 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: station.read
+2026-03-05 00:31:21.522 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:31:21.533 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: weighing.read
+2026-03-05 00:31:21.542 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: yard.read
+2026-03-05 00:31:21.548 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=exchange-rate ResourceId=null Endpoint=/api/v1/exchange-rates Method=GET Status=200 Success=true Timestamp="2026-03-04T21:31:21.5243396Z"
+2026-03-05 00:31:21.552 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:31:21.554 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-04T21:31:21.4743754Z"
+2026-03-05 00:31:21.566 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=Station ResourceId=null Endpoint=/api/v1/Stations Method=GET Status=200 Success=true Timestamp="2026-03-04T21:31:21.5206086Z"
+2026-03-05 00:31:21.568 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:31:21.590 +03:00 [INF] HTTP GET /api/v1/exchange-rates/current responded 200 in 186.2366 ms
+2026-03-05 00:31:21.605 +03:00 [INF] HTTP GET /api/v1/case/cases/statistics responded 200 in 189.2204 ms
+2026-03-05 00:31:21.596 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=yard-entrie ResourceId=null Endpoint=/api/v1/yard-entries Method=GET Status=200 Success=true Timestamp="2026-03-04T21:31:21.5717542Z"
+2026-03-05 00:31:21.620 +03:00 [INF] HTTP GET /api/v1/Stations responded 200 in 225.4731 ms
+2026-03-05 00:31:21.627 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:31:21.5864504Z"
+2026-03-05 00:31:21.634 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:21.640 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:31:21.5680348Z"
+2026-03-05 00:31:21.641 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:21.645 +03:00 [INF] HTTP GET /api/v1/yard-entries/statistics responded 200 in 234.5861 ms
+2026-03-05 00:31:21.687 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:21.693 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 275.6922 ms
+2026-03-05 00:31:21.694 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of weighing.read = true
+2026-03-05 00:31:21.706 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/compliance-trend responded 200 in 245.6752 ms
+2026-03-05 00:31:21.707 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:31:21.741 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:31:21.729 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: weighing.read
+2026-03-05 00:31:21.724 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:21.721 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ANY of analytics.read, receipt.read = true
+2026-03-05 00:31:21.753 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:31:21.758 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:31:21.7491193Z"
+2026-03-05 00:31:21.770 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of station.read = true
+2026-03-05 00:31:21.785 +03:00 [INF] HTTP GET /api/v1/user-management/users/by-station responded 200 in 148.0233 ms
+2026-03-05 00:31:21.790 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: station.read
+2026-03-05 00:31:21.765 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: analytics.read, receipt.read
+2026-03-05 00:31:21.808 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:31:21.826 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:31:21.7527785Z"
+2026-03-05 00:31:21.834 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-04T21:31:21.8119927Z"
+2026-03-05 00:31:21.835 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=station ResourceId=null Endpoint=/api/v1/stations Method=GET Status=200 Success=true Timestamp="2026-03-04T21:31:21.8084841Z"
+2026-03-05 00:31:21.842 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/statistics responded 200 in 214.8301 ms
+2026-03-05 00:31:21.856 +03:00 [INF] HTTP GET /api/v1/receipts/revenue-by-station responded 200 in 199.1313 ms
+2026-03-05 00:31:21.869 +03:00 [INF] HTTP GET /api/v1/stations/performance responded 200 in 148.7605 ms
+2026-03-05 00:31:21.892 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:21.907 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:31:21.918 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:31:21.940 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:31:21.9241851Z"
+2026-03-05 00:31:21.974 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 87.0194 ms
+2026-03-05 00:31:23.271 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0464 ms
+2026-03-05 00:31:23.347 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:31:23.353 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:31:23.360 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:31:23.384 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:31:23.3692554Z"
+2026-03-05 00:31:23.404 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 62.4020 ms
+2026-03-05 00:31:31.534 +03:00 [INF] HTTP OPTIONS /api/v1/auth/logout responded 204 in 0.0300 ms
+2026-03-05 00:31:31.550 +03:00 [INF] HTTP POST /api/v1/auth/logout responded 401 in 6.7890 ms
+2026-03-05 00:31:31.579 +03:00 [INF] HTTP OPTIONS /api/v1/auth/refresh responded 204 in 0.0310 ms
+2026-03-05 00:31:31.601 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 13.4400 ms
+2026-03-05 00:31:32.104 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 8.6146 ms
+2026-03-05 00:31:32.119 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 8.8844 ms
+2026-03-05 00:31:51.800 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.0316 ms
+2026-03-05 00:31:52.034 +03:00 [INF] User bmeitekini@kura.go.ke logged in successfully
+2026-03-05 00:31:52.057 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 248.7579 ms
+2026-03-05 00:32:14.375 +03:00 [INF] HTTP OPTIONS /api/v1/Stations/my-station responded 204 in 0.0323 ms
+2026-03-05 00:32:14.377 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0298 ms
+2026-03-05 00:32:14.378 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0267 ms
+2026-03-05 00:32:14.624 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:14.643 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of station.read = true
+2026-03-05 00:32:14.653 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: station.read
+2026-03-05 00:32:14.671 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:14.677 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of weighing.read = true
+2026-03-05 00:32:14.683 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: weighing.read
+2026-03-05 00:32:14.722 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:14.723 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:32:14.727 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of weighing.read = true
+2026-03-05 00:32:14.735 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: weighing.read
+2026-03-05 00:32:14.760 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=Station ResourceId=null Endpoint=/api/v1/Stations Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:14.6571696Z"
+2026-03-05 00:32:14.776 +03:00 [INF] HTTP GET /api/v1/Stations/my-station responded 200 in 385.6284 ms
+2026-03-05 00:32:14.798 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:32:14.799 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:32:14.854 +03:00 [INF] HTTP OPTIONS /api/v1/scale-tests/station/ef26c390-1365-425e-bcff-e81968763ac7/range responded 204 in 0.0415 ms
+2026-03-05 00:32:14.856 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0309 ms
+2026-03-05 00:32:14.856 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions responded 204 in 0.0229 ms
+2026-03-05 00:32:14.873 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:14.875 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:14.882 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of weighing.read = true
+2026-03-05 00:32:14.884 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:14.887 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: weighing.read
+2026-03-05 00:32:14.891 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of weighing.read = true
+2026-03-05 00:32:14.894 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:32:14.899 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: weighing.read
+2026-03-05 00:32:14.904 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:32:14.997 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=scale-test ResourceId="ef26c390-1365-425e-bcff-e81968763ac7" Endpoint=/api/v1/scale-tests Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:14.8780998Z"
+2026-03-05 00:32:15.029 +03:00 [INF] HTTP GET /api/v1/scale-tests/station/ef26c390-1365-425e-bcff-e81968763ac7/range responded 200 in 160.9134 ms
+2026-03-05 00:32:15.274 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:14.9043532Z"
+2026-03-05 00:32:15.274 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:14.7391717Z"
+2026-03-05 00:32:15.284 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 407.5318 ms
+2026-03-05 00:32:15.292 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 862.6309 ms
+2026-03-05 00:32:15.314 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:14.8942517Z"
+2026-03-05 00:32:15.313 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:14.6876367Z"
+2026-03-05 00:32:15.328 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 456.9873 ms
+2026-03-05 00:32:15.334 +03:00 [INF] HTTP GET /api/v1/weighing-transactions responded 200 in 936.8002 ms
+2026-03-05 00:32:27.040 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/statistics responded 204 in 0.0323 ms
+2026-03-05 00:32:27.042 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/search responded 204 in 0.0331 ms
+2026-03-05 00:32:27.042 +03:00 [INF] HTTP OPTIONS /api/v1/case/taxonomy/case-statuses responded 204 in 0.0363 ms
+2026-03-05 00:32:27.042 +03:00 [INF] HTTP OPTIONS /api/v1/case/taxonomy/violation-types responded 204 in 0.0359 ms
+2026-03-05 00:32:27.062 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:27.063 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:27.072 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:27.073 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:27.119 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:27.0707246Z"
+2026-03-05 00:32:27.128 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:27.0768724Z"
+2026-03-05 00:32:27.128 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:27.0804118Z"
+2026-03-05 00:32:27.129 +03:00 [INF] HTTP GET /api/v1/case/cases/statistics responded 200 in 70.4891 ms
+2026-03-05 00:32:27.139 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/case-statuses responded 200 in 69.8880 ms
+2026-03-05 00:32:27.149 +03:00 [INF] HTTP GET /api/v1/case/taxonomy/violation-types responded 200 in 79.8339 ms
+2026-03-05 00:32:27.310 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=CREATE ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=POST Status=200 Success=true Timestamp="2026-03-04T21:32:27.0668713Z"
+2026-03-05 00:32:27.356 +03:00 [INF] HTTP POST /api/v1/case/cases/search responded 200 in 299.1765 ms
+2026-03-05 00:32:35.517 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/search responded 204 in 0.0354 ms
+2026-03-05 00:32:35.534 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:35.626 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=CREATE ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=POST Status=200 Success=true Timestamp="2026-03-04T21:32:35.5409001Z"
+2026-03-05 00:32:35.636 +03:00 [INF] HTTP POST /api/v1/case/cases/search responded 200 in 109.2863 ms
+2026-03-05 00:32:43.002 +03:00 [INF] HTTP OPTIONS /api/v1/reports/catalog responded 204 in 0.0800 ms
+2026-03-05 00:32:43.002 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/statistics responded 204 in 0.0224 ms
+2026-03-05 00:32:43.003 +03:00 [INF] HTTP OPTIONS /api/v1/prosecutions/statistics responded 204 in 0.0244 ms
+2026-03-05 00:32:43.003 +03:00 [INF] HTTP OPTIONS /api/v1/vehicle-tags/statistics responded 204 in 0.0259 ms
+2026-03-05 00:32:43.004 +03:00 [INF] HTTP OPTIONS /api/v1/invoices/statistics responded 204 in 0.0182 ms
+2026-03-05 00:32:43.007 +03:00 [INF] HTTP OPTIONS /api/v1/yard-entries/statistics responded 204 in 0.0324 ms
+2026-03-05 00:32:43.053 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/statistics responded 204 in 0.0323 ms
+2026-03-05 00:32:43.068 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:43.079 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/statistics responded 204 in 0.0320 ms
+2026-03-05 00:32:43.092 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:43.104 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/compliance-trend responded 204 in 0.0307 ms
+2026-03-05 00:32:43.116 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:43.117 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/revenue-by-station responded 204 in 0.0502 ms
+2026-03-05 00:32:43.121 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/monthly-revenue responded 204 in 0.0336 ms
+2026-03-05 00:32:43.129 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:43.137 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:43.155 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:43.1381556Z"
+2026-03-05 00:32:43.170 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/trend responded 204 in 0.1083 ms
+2026-03-05 00:32:43.178 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of analytics.read = true
+2026-03-05 00:32:43.183 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:43.206 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of prosecution.read = true
+2026-03-05 00:32:43.229 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of tag.read = true
+2026-03-05 00:32:43.235 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of invoice.read = true
+2026-03-05 00:32:43.286 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: prosecution.read
+2026-03-05 00:32:43.258 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: analytics.read
+2026-03-05 00:32:43.262 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ANY of analytics.read, receipt.read = true
+2026-03-05 00:32:43.251 +03:00 [INF] HTTP GET /api/v1/case/cases/statistics responded 200 in 164.6384 ms
+2026-03-05 00:32:43.292 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: tag.read
+2026-03-05 00:32:43.297 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: invoice.read
+2026-03-05 00:32:43.319 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: analytics.read, receipt.read
+2026-03-05 00:32:43.320 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:43.450 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of weighing.read = true
+2026-03-05 00:32:43.483 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=report ResourceId=null Endpoint=/api/v1/reports Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:43.3075531Z"
+2026-03-05 00:32:43.553 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: weighing.read
+2026-03-05 00:32:43.567 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=vehicle-tag ResourceId=null Endpoint=/api/v1/vehicle-tags Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:43.3797324Z"
+2026-03-05 00:32:43.610 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=prosecution ResourceId=null Endpoint=/api/v1/prosecutions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:43.3292194Z"
+2026-03-05 00:32:43.627 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=invoice ResourceId=null Endpoint=/api/v1/invoices Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:43.3946758Z"
+2026-03-05 00:32:43.652 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:43.4182998Z"
+2026-03-05 00:32:43.654 +03:00 [INF] HTTP GET /api/v1/reports/catalog responded 200 in 595.4591 ms
+2026-03-05 00:32:43.655 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:32:43.674 +03:00 [INF] HTTP GET /api/v1/vehicle-tags/statistics responded 200 in 551.6875 ms
+2026-03-05 00:32:43.689 +03:00 [INF] HTTP GET /api/v1/prosecutions/statistics responded 200 in 579.2977 ms
+2026-03-05 00:32:43.698 +03:00 [INF] HTTP GET /api/v1/invoices/statistics responded 200 in 567.7567 ms
+2026-03-05 00:32:43.706 +03:00 [INF] HTTP GET /api/v1/receipts/statistics responded 200 in 529.8853 ms
+2026-03-05 00:32:43.723 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:43.734 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:43.739 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:43.6550757Z"
+2026-03-05 00:32:43.740 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:43.744 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of yard.read = true
+2026-03-05 00:32:43.745 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:43.746 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:32:43.750 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of weighing.read = true
+2026-03-05 00:32:43.761 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/statistics responded 200 in 447.9316 ms
+2026-03-05 00:32:43.766 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ANY of analytics.read, receipt.read = true
+2026-03-05 00:32:43.784 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: weighing.read
+2026-03-05 00:32:43.775 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ANY of analytics.read, receipt.read = true
+2026-03-05 00:32:43.771 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: yard.read
+2026-03-05 00:32:43.799 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: analytics.read, receipt.read
+2026-03-05 00:32:43.810 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:32:43.821 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: analytics.read, receipt.read
+2026-03-05 00:32:43.837 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=yard-entrie ResourceId=null Endpoint=/api/v1/yard-entries Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:43.8258713Z"
+2026-03-05 00:32:43.861 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:43.8103825Z"
+2026-03-05 00:32:43.926 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:43.9209307Z"
+2026-03-05 00:32:43.935 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:43.8819143Z"
+2026-03-05 00:32:43.959 +03:00 [INF] HTTP GET /api/v1/yard-entries/statistics responded 200 in 245.0177 ms
+2026-03-05 00:32:43.968 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-04T21:32:43.7797087Z"
+2026-03-05 00:32:43.995 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/compliance-trend responded 200 in 267.3187 ms
+2026-03-05 00:32:44.015 +03:00 [INF] HTTP GET /api/v1/receipts/revenue-by-station responded 200 in 279.3902 ms
+2026-03-05 00:32:44.024 +03:00 [INF] HTTP GET /api/v1/receipts/monthly-revenue responded 200 in 283.4796 ms
+2026-03-05 00:32:44.051 +03:00 [INF] HTTP GET /api/v1/case/cases/trend responded 200 in 308.6956 ms
+2026-03-05 00:33:02.647 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0278 ms
+2026-03-05 00:33:02.651 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles responded 204 in 0.0362 ms
+2026-03-05 00:33:02.651 +03:00 [INF] HTTP OPTIONS /api/v1/Organizations responded 204 in 0.0241 ms
+2026-03-05 00:33:02.651 +03:00 [INF] HTTP OPTIONS /api/v1/Departments responded 204 in 0.0136 ms
+2026-03-05 00:33:02.673 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:02.677 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:02.678 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:02.678 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of user.read = true
+2026-03-05 00:33:02.683 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:33:02.685 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:02.690 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: user.read
+2026-03-05 00:33:02.687 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = false
+2026-03-05 00:33:02.697 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = false
+2026-03-05 00:33:02.702 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:33:02.709 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_organizations, Type: "All"
+2026-03-05 00:33:02.713 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_departments, Type: "All"
+2026-03-05 00:33:02.743 +03:00 [INF] HTTP GET /api/v1/Departments responded 403 in 62.2941 ms
+2026-03-05 00:33:02.743 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 70.4323 ms
+2026-03-05 00:33:02.744 +03:00 [INF] HTTP GET /api/v1/Organizations responded 403 in 71.1600 ms
+2026-03-05 00:33:02.755 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:33:02.7048749Z"
+2026-03-05 00:33:02.778 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 111.6424 ms
+2026-03-05 00:33:03.779 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:03.779 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:03.782 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:03.796 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:33:03.790 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = false
+2026-03-05 00:33:03.804 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = false
+2026-03-05 00:33:03.811 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:33:03.817 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_organizations, Type: "All"
+2026-03-05 00:33:03.821 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_departments, Type: "All"
+2026-03-05 00:33:03.825 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 51.2500 ms
+2026-03-05 00:33:03.835 +03:00 [INF] HTTP GET /api/v1/Organizations responded 403 in 60.0658 ms
+2026-03-05 00:33:03.839 +03:00 [INF] HTTP GET /api/v1/Departments responded 403 in 64.9566 ms
+2026-03-05 00:33:05.861 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:05.869 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:33:05.878 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:33:05.880 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:05.885 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:05.888 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 31.8320 ms
+2026-03-05 00:33:05.896 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = false
+2026-03-05 00:33:05.903 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = false
+2026-03-05 00:33:05.913 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_departments, Type: "All"
+2026-03-05 00:33:05.919 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_organizations, Type: "All"
+2026-03-05 00:33:05.923 +03:00 [INF] HTTP GET /api/v1/Departments responded 403 in 49.9972 ms
+2026-03-05 00:33:05.930 +03:00 [INF] HTTP GET /api/v1/Organizations responded 403 in 56.8547 ms
+2026-03-05 00:33:11.730 +03:00 [INF] HTTP OPTIONS /api/v1/health responded 204 in 0.0468 ms
+2026-03-05 00:33:11.732 +03:00 [INF] HTTP OPTIONS /api/v1/scale-tests/station/ef26c390-1365-425e-bcff-e81968763ac7/status responded 204 in 0.0350 ms
+2026-03-05 00:33:11.746 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:11.752 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:11.767 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=health ResourceId=null Endpoint=/api/v1/health Method=GET Status=200 Success=true Timestamp="2026-03-04T21:33:11.7507065Z"
+2026-03-05 00:33:11.779 +03:00 [INF] HTTP GET /api/v1/health responded 200 in 35.9476 ms
+2026-03-05 00:33:11.943 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=scale-test ResourceId="ef26c390-1365-425e-bcff-e81968763ac7" Endpoint=/api/v1/scale-tests Method=GET Status=200 Success=true Timestamp="2026-03-04T21:33:11.7569490Z"
+2026-03-05 00:33:12.002 +03:00 [INF] HTTP GET /api/v1/scale-tests/station/ef26c390-1365-425e-bcff-e81968763ac7/status responded 200 in 253.9121 ms
+2026-03-05 00:33:14.156 +03:00 [INF] HTTP OPTIONS /api/v1/AnnualCalibration/active responded 204 in 0.0357 ms
+2026-03-05 00:33:14.156 +03:00 [INF] HTTP OPTIONS /api/v1/SystemSettings/api responded 204 in 0.0323 ms
+2026-03-05 00:33:14.177 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:14.184 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:14.189 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=AnnualCalibration ResourceId=null Endpoint=/api/v1/AnnualCalibration Method=GET Status=404 Success=false Timestamp="2026-03-04T21:33:14.1873245Z"
+2026-03-05 00:33:14.191 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=SystemSetting ResourceId=null Endpoint=/api/v1/SystemSettings Method=GET Status=404 Success=false Timestamp="2026-03-04T21:33:14.1915399Z"
+2026-03-05 00:33:14.202 +03:00 [INF] HTTP GET /api/v1/AnnualCalibration/active responded 404 in 32.0301 ms
+2026-03-05 00:33:14.210 +03:00 [INF] HTTP GET /api/v1/SystemSettings/api responded 404 in 31.0471 ms
+2026-03-05 00:33:15.233 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:15.239 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=SystemSetting ResourceId=null Endpoint=/api/v1/SystemSettings Method=GET Status=404 Success=false Timestamp="2026-03-04T21:33:15.2395125Z"
+2026-03-05 00:33:15.253 +03:00 [INF] HTTP GET /api/v1/SystemSettings/api responded 404 in 23.9399 ms
+2026-03-05 00:33:17.288 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:17.298 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=SystemSetting ResourceId=null Endpoint=/api/v1/SystemSettings Method=GET Status=404 Success=false Timestamp="2026-03-04T21:33:17.2978822Z"
+2026-03-05 00:33:17.316 +03:00 [INF] HTTP GET /api/v1/SystemSettings/api responded 404 in 34.7422 ms
+2026-03-05 00:33:23.153 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles responded 204 in 0.0336 ms
+2026-03-05 00:33:23.155 +03:00 [INF] HTTP OPTIONS /api/v1/Organizations responded 204 in 0.0324 ms
+2026-03-05 00:33:23.157 +03:00 [INF] HTTP OPTIONS /api/v1/Departments responded 204 in 0.0307 ms
+2026-03-05 00:33:23.172 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:23.174 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:23.175 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:33:23.178 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = false
+2026-03-05 00:33:23.182 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:33:23.185 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_organizations, Type: "All"
+2026-03-05 00:33:23.189 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 24.3973 ms
+2026-03-05 00:33:23.193 +03:00 [INF] HTTP GET /api/v1/Organizations responded 403 in 22.5581 ms
+2026-03-05 00:33:43.074 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:43.074 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:43.075 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:43.077 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:33:43.080 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = false
+2026-03-05 00:33:43.083 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = false
+2026-03-05 00:33:43.085 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:33:43.088 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_organizations, Type: "All"
+2026-03-05 00:33:43.091 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_departments, Type: "All"
+2026-03-05 00:33:43.093 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 18871.6006 ms
+2026-03-05 00:33:43.097 +03:00 [INF] HTTP GET /api/v1/Organizations responded 403 in 18874.9960 ms
+2026-03-05 00:33:43.100 +03:00 [INF] HTTP GET /api/v1/Departments responded 403 in 19924.9683 ms
+2026-03-05 00:33:54.232 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles responded 204 in 0.0294 ms
+2026-03-05 00:33:54.249 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:54.252 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:33:54.256 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:33:54.261 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 17.1633 ms
+2026-03-05 00:33:59.099 +03:00 [INF] HTTP OPTIONS /api/v1/permissions responded 204 in 0.0280 ms
+2026-03-05 00:33:59.100 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles responded 204 in 0.0157 ms
+2026-03-05 00:33:59.113 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:59.113 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:33:59.117 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:33:59.120 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of config.read = true
+2026-03-05 00:33:59.127 +03:00 [INF] User bf02311d-91a5-4d80-891d-8e808239d6b0 authorized for permissions: config.read
+2026-03-05 00:33:59.124 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:33:59.132 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 21.6126 ms
+2026-03-05 00:33:59.162 +03:00 [INF] Fetching all permissions
+2026-03-05 00:33:59.267 +03:00 [INF] Retrieved 113 permissions
+2026-03-05 00:33:59.282 +03:00 [INF] AUDIT: User="bf02311d-91a5-4d80-891d-8e808239d6b0" Action=READ ResourceType=permission ResourceId=null Endpoint=/api/v1/permissions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:33:59.1295909Z"
+2026-03-05 00:33:59.297 +03:00 [INF] HTTP GET /api/v1/permissions responded 200 in 185.9501 ms
+2026-03-05 00:34:00.161 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:00.165 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:34:00.169 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:34:00.173 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 15.0330 ms
+2026-03-05 00:34:01.090 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles responded 204 in 0.0377 ms
+2026-03-05 00:34:01.104 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:01.109 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:34:01.113 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:34:01.120 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 19.9143 ms
+2026-03-05 00:34:02.142 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:02.145 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:34:02.149 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:34:02.154 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 14.5355 ms
+2026-03-05 00:34:04.187 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:04.191 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:34:04.210 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:34:04.214 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 38.1336 ms
+2026-03-05 00:34:05.581 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles responded 204 in 0.0269 ms
+2026-03-05 00:34:05.593 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:05.597 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:34:05.601 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:34:05.605 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 16.2433 ms
+2026-03-05 00:34:06.637 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:06.641 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:34:06.645 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:34:06.649 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 15.3432 ms
+2026-03-05 00:34:08.673 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:08.677 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:34:08.681 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:34:08.685 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 14.8242 ms
+2026-03-05 00:34:11.786 +03:00 [INF] HTTP OPTIONS /api/v1/Organizations responded 204 in 0.0282 ms
+2026-03-05 00:34:11.802 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:11.805 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = false
+2026-03-05 00:34:11.809 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_organizations, Type: "All"
+2026-03-05 00:34:11.860 +03:00 [INF] HTTP GET /api/v1/Organizations responded 403 in 60.5617 ms
+2026-03-05 00:34:12.901 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:12.904 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = false
+2026-03-05 00:34:12.908 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_organizations, Type: "All"
+2026-03-05 00:34:12.918 +03:00 [INF] HTTP GET /api/v1/Organizations responded 403 in 19.6245 ms
+2026-03-05 00:34:14.947 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:14.951 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = false
+2026-03-05 00:34:14.955 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_organizations, Type: "All"
+2026-03-05 00:34:14.959 +03:00 [INF] HTTP GET /api/v1/Organizations responded 403 in 15.5454 ms
+2026-03-05 00:34:25.014 +03:00 [INF] HTTP OPTIONS /api/v1/Departments responded 204 in 0.0311 ms
+2026-03-05 00:34:25.027 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:25.032 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = false
+2026-03-05 00:34:25.037 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_departments, Type: "All"
+2026-03-05 00:34:25.043 +03:00 [INF] HTTP GET /api/v1/Departments responded 403 in 19.8988 ms
+2026-03-05 00:34:26.073 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:26.081 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = false
+2026-03-05 00:34:26.088 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_departments, Type: "All"
+2026-03-05 00:34:26.097 +03:00 [INF] HTTP GET /api/v1/Departments responded 403 in 28.3274 ms
+2026-03-05 00:34:28.119 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:28.124 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = false
+2026-03-05 00:34:28.129 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_departments, Type: "All"
+2026-03-05 00:34:28.133 +03:00 [INF] HTTP GET /api/v1/Departments responded 403 in 17.3774 ms
+2026-03-05 00:34:29.268 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles responded 204 in 0.0231 ms
+2026-03-05 00:34:29.284 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:29.288 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:34:29.291 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:34:29.295 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 14.8763 ms
+2026-03-05 00:34:30.272 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles responded 204 in 0.0308 ms
+2026-03-05 00:34:30.283 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:30.287 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:34:30.289 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:34:30.293 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 12.4594 ms
+2026-03-05 00:34:31.318 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:31.321 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:34:31.328 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:34:31.333 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 17.7030 ms
+2026-03-05 00:34:32.421 +03:00 [INF] HTTP OPTIONS /api/v1/Organizations responded 204 in 0.0445 ms
+2026-03-05 00:34:32.422 +03:00 [INF] HTTP OPTIONS /api/v1/Departments responded 204 in 0.0381 ms
+2026-03-05 00:34:32.434 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:32.437 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:32.438 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = false
+2026-03-05 00:34:32.443 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = false
+2026-03-05 00:34:32.448 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_organizations, Type: "All"
+2026-03-05 00:34:32.453 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_departments, Type: "All"
+2026-03-05 00:34:32.461 +03:00 [INF] HTTP GET /api/v1/Organizations responded 403 in 31.0963 ms
+2026-03-05 00:34:32.464 +03:00 [INF] HTTP GET /api/v1/Departments responded 403 in 29.8731 ms
+2026-03-05 00:34:33.352 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:33.362 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:34:33.378 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:34:33.384 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 38.3018 ms
+2026-03-05 00:34:33.482 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:33.486 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = false
+2026-03-05 00:34:33.490 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_organizations, Type: "All"
+2026-03-05 00:34:33.494 +03:00 [INF] HTTP GET /api/v1/Organizations responded 403 in 14.8642 ms
+2026-03-05 00:34:33.497 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:33.502 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = false
+2026-03-05 00:34:33.505 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_departments, Type: "All"
+2026-03-05 00:34:33.509 +03:00 [INF] HTTP GET /api/v1/Departments responded 403 in 14.9416 ms
+2026-03-05 00:34:35.522 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:35.533 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = false
+2026-03-05 00:34:35.541 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_organizations, Type: "All"
+2026-03-05 00:34:35.549 +03:00 [INF] HTTP GET /api/v1/Organizations responded 403 in 32.8955 ms
+2026-03-05 00:34:35.563 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:35.574 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = false
+2026-03-05 00:34:35.583 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_departments, Type: "All"
+2026-03-05 00:34:35.590 +03:00 [INF] HTTP GET /api/v1/Departments responded 403 in 33.7301 ms
+2026-03-05 00:34:56.784 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles responded 204 in 0.1894 ms
+2026-03-05 00:34:56.919 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:56.926 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:34:56.932 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:34:56.937 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 93.5438 ms
+2026-03-05 00:34:57.983 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:57.992 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:34:57.998 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:34:58.007 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 45.8122 ms
+2026-03-05 00:34:59.166 +03:00 [INF] HTTP OPTIONS /api/v1/Organizations responded 204 in 0.0313 ms
+2026-03-05 00:34:59.167 +03:00 [INF] HTTP OPTIONS /api/v1/Departments responded 204 in 0.0357 ms
+2026-03-05 00:34:59.181 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:59.184 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = false
+2026-03-05 00:34:59.188 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_organizations, Type: "All"
+2026-03-05 00:34:59.191 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:34:59.192 +03:00 [INF] HTTP GET /api/v1/Organizations responded 403 in 13.7194 ms
+2026-03-05 00:34:59.195 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = false
+2026-03-05 00:34:59.203 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_departments, Type: "All"
+2026-03-05 00:34:59.207 +03:00 [INF] HTTP GET /api/v1/Departments responded 403 in 20.4892 ms
+2026-03-05 00:35:00.037 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles responded 204 in 0.0273 ms
+2026-03-05 00:35:00.049 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:35:00.053 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_roles = false
+2026-03-05 00:35:00.058 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_roles, Type: "All"
+2026-03-05 00:35:00.061 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 403 in 16.0222 ms
+2026-03-05 00:35:00.258 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:35:00.258 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:35:00.261 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = false
+2026-03-05 00:35:00.263 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = false
+2026-03-05 00:35:00.267 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_organizations, Type: "All"
+2026-03-05 00:35:00.265 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_departments, Type: "All"
+2026-03-05 00:35:00.270 +03:00 [INF] HTTP GET /api/v1/Organizations responded 403 in 14.9138 ms
+2026-03-05 00:35:00.272 +03:00 [INF] HTTP GET /api/v1/Departments responded 403 in 16.5266 ms
+2026-03-05 00:35:02.291 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:35:02.292 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:35:02.297 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_organizations = false
+2026-03-05 00:35:02.302 +03:00 [INF] Permission check for user bf02311d-91a5-4d80-891d-8e808239d6b0: ALL of system.manage_departments = false
+2026-03-05 00:35:02.306 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_organizations, Type: "All"
+2026-03-05 00:35:02.311 +03:00 [WRN] User bf02311d-91a5-4d80-891d-8e808239d6b0 denied access. Required permissions: system.manage_departments, Type: "All"
+2026-03-05 00:35:02.315 +03:00 [INF] HTTP GET /api/v1/Organizations responded 403 in 26.4194 ms
+2026-03-05 00:35:02.319 +03:00 [INF] HTTP GET /api/v1/Departments responded 403 in 30.7391 ms
+2026-03-05 00:35:03.845 +03:00 [INF] HTTP OPTIONS /api/v1/auth/logout responded 204 in 0.0293 ms
+2026-03-05 00:35:03.869 +03:00 [INF] HTTP POST /api/v1/auth/logout responded 401 in 12.7189 ms
+2026-03-05 00:35:03.886 +03:00 [INF] HTTP OPTIONS /api/v1/auth/refresh responded 204 in 0.0294 ms
+2026-03-05 00:35:03.947 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 49.4090 ms
+2026-03-05 00:35:08.608 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-05 00:35:08.631 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync
+2026-03-05 00:35:17.036 +03:00 [INF] HTTP GET /api/v1/auth/profile responded 401 in 5.4112 ms
+2026-03-05 00:35:17.037 +03:00 [WRN] Unauthenticated user attempting to access protected resource
+2026-03-05 00:35:17.048 +03:00 [INF] HTTP GET /api/v1/Stations responded 401 in 16.6346 ms
+2026-03-05 00:35:17.063 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 31.0992 ms
+2026-03-05 00:35:17.212 +03:00 [INF] HTTP OPTIONS /api/v1/auth/refresh responded 204 in 0.0256 ms
+2026-03-05 00:35:17.223 +03:00 [INF] HTTP POST /api/v1/auth/refresh responded 400 in 3.5880 ms
+2026-03-05 00:35:17.759 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 8.9643 ms
+2026-03-05 00:35:17.768 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 7.4853 ms
+2026-03-05 00:35:22.291 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.0287 ms
+2026-03-05 00:35:22.679 +03:00 [INF] User bmeitekini@kura.go.ke logged in successfully
+2026-03-05 00:35:22.757 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 458.3705 ms
+2026-03-05 00:35:28.332 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations responded 204 in 0.0464 ms
+2026-03-05 00:35:28.339 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations responded 204 in 0.0663 ms
+2026-03-05 00:35:28.354 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:35:28.373 +03:00 [INF] HTTP GET /api/v1/public/organizations responded 200 in 25.0737 ms
+2026-03-05 00:35:28.387 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:35:28.401 +03:00 [INF] HTTP OPTIONS /api/v1/public/stations responded 204 in 0.0412 ms
+2026-03-05 00:35:28.420 +03:00 [INF] HTTP GET /api/v1/public/organizations responded 200 in 43.2392 ms
+2026-03-05 00:35:28.430 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:35:28.450 +03:00 [INF] HTTP GET /api/v1/public/stations responded 200 in 24.5653 ms
+2026-03-05 00:35:28.457 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:35:28.469 +03:00 [INF] HTTP GET /api/v1/public/stations responded 200 in 15.8487 ms
+2026-03-05 00:35:46.183 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.0555 ms
+2026-03-05 00:35:46.187 +03:00 [INF] HTTP OPTIONS /api/v1/public/organizations/by-code/kura responded 204 in 0.0322 ms
+2026-03-05 00:35:46.512 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:35:46.593 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 87.5313 ms
+2026-03-05 00:35:46.615 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:35:46.768 +03:00 [INF] HTTP GET /api/v1/public/organizations/by-code/kura responded 200 in 161.2975 ms
+2026-03-05 00:36:03.280 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.0452 ms
+2026-03-05 00:36:04.048 +03:00 [INF] User gadmin@masterspace.co.ke logged in successfully
+2026-03-05 00:36:04.124 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 821.6205 ms
+2026-03-05 00:36:29.358 +03:00 [INF] HTTP OPTIONS /api/v1/auth/login responded 204 in 0.1034 ms
+2026-03-05 00:36:34.295 +03:00 [INF] User gadmin@masterspace.co.ke logged in successfully
+2026-03-05 00:36:35.163 +03:00 [INF] HTTP POST /api/v1/auth/login responded 200 in 3958.4264 ms
+2026-03-05 00:36:53.848 +03:00 [INF] HTTP OPTIONS /api/v1/Stations responded 204 in 0.0513 ms
+2026-03-05 00:36:53.849 +03:00 [INF] HTTP OPTIONS /api/v1/exchange-rates/current responded 204 in 0.0212 ms
+2026-03-05 00:36:53.860 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/statistics responded 204 in 0.0478 ms
+2026-03-05 00:36:53.861 +03:00 [INF] HTTP OPTIONS /api/v1/yard-entries/statistics responded 204 in 0.0089 ms
+2026-03-05 00:36:53.861 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0148 ms
+2026-03-05 00:36:53.860 +03:00 [INF] HTTP OPTIONS /api/v1/case/cases/statistics responded 204 in 0.0699 ms
+2026-03-05 00:36:53.865 +03:00 [INF] HTTP OPTIONS /api/v1/weighing-transactions/compliance-trend responded 204 in 0.0289 ms
+2026-03-05 00:36:53.869 +03:00 [INF] HTTP OPTIONS /api/v1/receipts/revenue-by-station responded 204 in 0.0312 ms
+2026-03-05 00:36:53.875 +03:00 [INF] HTTP OPTIONS /api/v1/stations/performance responded 204 in 0.0368 ms
+2026-03-05 00:36:53.876 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users/by-station responded 204 in 0.0201 ms
+2026-03-05 00:36:53.885 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:36:53.885 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:36:53.896 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:36:53.899 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: config.read
+2026-03-05 00:36:53.899 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:36:53.899 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:36:53.899 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:36:53.903 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-05 00:36:53.913 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: weighing.read
+2026-03-05 00:36:53.918 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: station.read
+2026-03-05 00:36:53.923 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=exchange-rate ResourceId=null Endpoint=/api/v1/exchange-rates Method=GET Status=200 Success=true Timestamp="2026-03-04T21:36:53.9106820Z"
+2026-03-05 00:36:53.908 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: yard.read
+2026-03-05 00:36:53.931 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:36:53.926 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:36:53.934 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:36:53.950 +03:00 [INF] HTTP GET /api/v1/exchange-rates/current responded 200 in 69.8893 ms
+2026-03-05 00:36:53.957 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=case ResourceId=null Endpoint=/api/v1/case Method=GET Status=200 Success=true Timestamp="2026-03-04T21:36:53.9156385Z"
+2026-03-05 00:36:53.966 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=Station ResourceId=null Endpoint=/api/v1/Stations Method=GET Status=200 Success=true Timestamp="2026-03-04T21:36:53.9310106Z"
+2026-03-05 00:36:53.967 +03:00 [INF] HTTP GET /api/v1/case/cases/statistics responded 200 in 72.3473 ms
+2026-03-05 00:36:53.972 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:36:53.979 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=yard-entrie ResourceId=null Endpoint=/api/v1/yard-entries Method=GET Status=200 Success=true Timestamp="2026-03-04T21:36:53.9370020Z"
+2026-03-05 00:36:53.983 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:36:53.987 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-05 00:36:53.990 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:36:53.9340053Z"
+2026-03-05 00:36:53.994 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: station.read
+2026-03-05 00:36:53.987 +03:00 [INF] HTTP GET /api/v1/Stations responded 200 in 111.6631 ms
+2026-03-05 00:36:53.995 +03:00 [INF] HTTP GET /api/v1/yard-entries/statistics responded 200 in 106.3093 ms
+2026-03-05 00:36:54.007 +03:00 [INF] Local blob storage initialized with base path: wwwroot/case-files
+2026-03-05 00:36:54.008 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/compliance-trend responded 200 in 113.1722 ms
+2026-03-05 00:36:54.010 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=weighing-transaction ResourceId=null Endpoint=/api/v1/weighing-transactions Method=GET Status=200 Success=true Timestamp="2026-03-04T21:36:53.9248734Z"
+2026-03-05 00:36:54.019 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:36:54.023 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:36:54.033 +03:00 [INF] HTTP GET /api/v1/weighing-transactions/statistics responded 200 in 148.3277 ms
+2026-03-05 00:36:54.036 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-05 00:36:54.039 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: analytics.read, receipt.read
+2026-03-05 00:36:54.044 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=station ResourceId=null Endpoint=/api/v1/stations Method=GET Status=200 Success=true Timestamp="2026-03-04T21:36:54.0076601Z"
+2026-03-05 00:36:54.054 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:36:54.0464616Z"
+2026-03-05 00:36:54.063 +03:00 [INF] HTTP GET /api/v1/stations/performance responded 200 in 83.3122 ms
+2026-03-05 00:36:54.068 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=receipt ResourceId=null Endpoint=/api/v1/receipts Method=GET Status=200 Success=true Timestamp="2026-03-04T21:36:54.0510424Z"
+2026-03-05 00:36:54.073 +03:00 [INF] HTTP GET /api/v1/user-management/users/by-station responded 200 in 53.2762 ms
+2026-03-05 00:36:54.090 +03:00 [INF] HTTP GET /api/v1/receipts/revenue-by-station responded 200 in 73.7503 ms
+2026-03-05 00:36:54.173 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:36:53.9972309Z"
+2026-03-05 00:36:54.182 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 216.8889 ms
+2026-03-05 00:36:54.275 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:36:54.279 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-05 00:36:54.299 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:36:54.2837950Z"
+2026-03-05 00:36:54.311 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 41.8688 ms
+2026-03-05 00:36:56.786 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.0397 ms
+2026-03-05 00:36:56.801 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:36:56.807 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-05 00:36:56.859 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:36:56.8124244Z"
+2026-03-05 00:36:56.870 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 72.9567 ms
+2026-03-05 00:37:34.875 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/users responded 204 in 0.1269 ms
+2026-03-05 00:37:34.876 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles responded 204 in 0.0260 ms
+2026-03-05 00:37:34.876 +03:00 [INF] HTTP OPTIONS /api/v1/Organizations responded 204 in 0.0250 ms
+2026-03-05 00:37:34.892 +03:00 [INF] HTTP OPTIONS /api/v1/Departments responded 204 in 0.0363 ms
+2026-03-05 00:37:35.733 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:37:35.785 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:37:35.913 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:37:35.972 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.read
+2026-03-05 00:37:36.023 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:37:36.052 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: system.manage_organizations
+2026-03-05 00:37:36.071 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: system.manage_roles
+2026-03-05 00:37:36.147 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: system.manage_departments
+2026-03-05 00:37:36.186 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=Organization ResourceId=null Endpoint=/api/v1/Organizations Method=GET Status=200 Success=true Timestamp="2026-03-04T21:37:36.1542516Z"
+2026-03-05 00:37:36.221 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=Department ResourceId=null Endpoint=/api/v1/Departments Method=GET Status=200 Success=true Timestamp="2026-03-04T21:37:36.1918898Z"
+2026-03-05 00:37:36.221 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:37:36.1811882Z"
+2026-03-05 00:37:36.298 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId=null Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:37:36.1258791Z"
+2026-03-05 00:37:36.301 +03:00 [INF] HTTP GET /api/v1/Organizations responded 200 in 1079.4986 ms
+2026-03-05 00:37:36.304 +03:00 [INF] HTTP GET /api/v1/Departments responded 200 in 969.6906 ms
+2026-03-05 00:37:36.319 +03:00 [INF] HTTP GET /api/v1/user-management/roles responded 200 in 1154.9406 ms
+2026-03-05 00:37:36.332 +03:00 [INF] HTTP GET /api/v1/user-management/users responded 200 in 1231.9239 ms
+2026-03-05 00:37:48.781 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles/019caaba-150c-7ba1-bb84-ef4477c686fe/permissions responded 204 in 0.0423 ms
+2026-03-05 00:37:48.782 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles/019caaba-150e-79cf-86a4-0214f4cf1512/permissions responded 204 in 0.0191 ms
+2026-03-05 00:37:48.782 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles/019caaba-1509-7f3d-8b5c-8663274497f0/permissions responded 204 in 0.0387 ms
+2026-03-05 00:37:48.782 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles/019caaba-1506-748d-b8c2-6f39100d8d18/permissions responded 204 in 0.0249 ms
+2026-03-05 00:37:48.783 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles/019caaba-146e-7dac-a565-b4ce919ae0ec/permissions responded 204 in 0.0227 ms
+2026-03-05 00:37:48.784 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles/019caaba-14ff-761f-95c5-da1167c8837f/permissions responded 204 in 0.0339 ms
+2026-03-05 00:37:48.801 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles/019caaba-14fa-7bd8-bfd6-4a8f838b0b3d/permissions responded 204 in 0.0678 ms
+2026-03-05 00:37:48.820 +03:00 [INF] HTTP OPTIONS /api/v1/user-management/roles/019caaba-1503-70b0-aa8d-4dbff81c5257/permissions responded 204 in 0.3289 ms
+2026-03-05 00:37:48.836 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:37:48.836 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:37:48.836 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:37:48.841 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:37:48.857 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.manage_permissions
+2026-03-05 00:37:48.860 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.manage_permissions
+2026-03-05 00:37:48.866 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.manage_permissions
+2026-03-05 00:37:48.869 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:37:48.870 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.manage_permissions
+2026-03-05 00:37:48.874 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:37:48.875 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.manage_permissions
+2026-03-05 00:37:48.902 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.manage_permissions
+2026-03-05 00:37:49.205 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId="019caaba-14ff-761f-95c5-da1167c8837f" Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:37:48.9149941Z"
+2026-03-05 00:37:49.207 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId="019caaba-14fa-7bd8-bfd6-4a8f838b0b3d" Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:37:48.9075801Z"
+2026-03-05 00:37:49.257 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId="019caaba-1506-748d-b8c2-6f39100d8d18" Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:37:48.8946434Z"
+2026-03-05 00:37:49.257 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId="019caaba-1509-7f3d-8b5c-8663274497f0" Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:37:48.8899338Z"
+2026-03-05 00:37:49.272 +03:00 [INF] HTTP GET /api/v1/user-management/roles/019caaba-14ff-761f-95c5-da1167c8837f/permissions responded 200 in 406.6486 ms
+2026-03-05 00:37:49.286 +03:00 [INF] HTTP GET /api/v1/user-management/roles/019caaba-14fa-7bd8-bfd6-4a8f838b0b3d/permissions responded 200 in 421.5257 ms
+2026-03-05 00:37:49.294 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId="019caaba-150c-7ba1-bb84-ef4477c686fe" Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:37:48.8801084Z"
+2026-03-05 00:37:49.303 +03:00 [INF] HTTP GET /api/v1/user-management/roles/019caaba-1506-748d-b8c2-6f39100d8d18/permissions responded 200 in 465.4084 ms
+2026-03-05 00:37:49.310 +03:00 [INF] HTTP GET /api/v1/user-management/roles/019caaba-1509-7f3d-8b5c-8663274497f0/permissions responded 200 in 478.5643 ms
+2026-03-05 00:37:49.336 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:37:49.352 +03:00 [WRN] Station "ef26c390-1365-425e-bcff-e81968763ac7" does not belong to Organization "239bcb14-82dd-4846-becf-b49dbf4a7bdb", clearing station
+2026-03-05 00:37:49.352 +03:00 [INF] HTTP GET /api/v1/user-management/roles/019caaba-150c-7ba1-bb84-ef4477c686fe/permissions responded 200 in 524.9260 ms
+2026-03-05 00:37:49.352 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId="019caaba-150e-79cf-86a4-0214f4cf1512" Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:37:48.8842826Z"
+2026-03-05 00:37:49.368 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.manage_permissions
+2026-03-05 00:37:49.373 +03:00 [INF] Superuser 019caaba-1808-70a8-8328-71baa828065b bypassed permission check for: user.manage_permissions
+2026-03-05 00:37:49.389 +03:00 [INF] HTTP GET /api/v1/user-management/roles/019caaba-150e-79cf-86a4-0214f4cf1512/permissions responded 200 in 563.0428 ms
+2026-03-05 00:37:49.393 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId="019caaba-146e-7dac-a565-b4ce919ae0ec" Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:37:49.3894950Z"
+2026-03-05 00:37:49.402 +03:00 [INF] AUDIT: User="019caaba-1808-70a8-8328-71baa828065b" Action=READ ResourceType=user-management ResourceId="019caaba-1503-70b0-aa8d-4dbff81c5257" Endpoint=/api/v1/user-management Method=GET Status=200 Success=true Timestamp="2026-03-04T21:37:49.3921460Z"
+2026-03-05 00:37:49.409 +03:00 [INF] HTTP GET /api/v1/user-management/roles/019caaba-146e-7dac-a565-b4ce919ae0ec/permissions responded 200 in 86.5256 ms
+2026-03-05 00:37:49.448 +03:00 [INF] HTTP GET /api/v1/user-management/roles/019caaba-1503-70b0-aa8d-4dbff81c5257/permissions responded 200 in 110.7360 ms
+2026-03-05 00:40:18.552 +03:00 [INF] Pesaflow OAuth token acquired, expires in 3599s, caching for 3539s
+2026-03-05 00:40:18.733 +03:00 [INF] [PesaflowInvoiceSyncJob] Starting invoice sync job
+2026-03-05 00:40:18.963 +03:00 [INF] [PesaflowInvoiceSyncJob] No pending invoices to sync

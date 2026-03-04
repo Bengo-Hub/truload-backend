@@ -246,6 +246,53 @@ public class ActConfigurationService : IActConfigurationService
         return tolerances;
     }
 
+    public async Task<ToleranceSettingDto?> UpdateToleranceSettingAsync(Guid id, UpdateToleranceSettingRequest request, CancellationToken ct = default)
+    {
+        var entity = await _context.ToleranceSettings
+            .Where(t => t.Id == id)
+            .FirstOrDefaultAsync(ct);
+
+        if (entity == null) return null;
+
+        if (request.TolerancePercentage.HasValue)
+            entity.TolerancePercentage = request.TolerancePercentage.Value;
+        if (request.ToleranceKg.HasValue)
+            entity.ToleranceKg = request.ToleranceKg.Value;
+        if (request.Description != null)
+            entity.Description = request.Description;
+        if (request.IsActive.HasValue)
+            entity.IsActive = request.IsActive.Value;
+
+        entity.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync(ct);
+
+        // Invalidate tolerance caches for this framework and BOTH
+        var frameworks = new[] { entity.LegalFramework, BrandingConstants.LegalFramework.Both };
+        foreach (var fw in frameworks.Distinct())
+        {
+            _cache.Remove($"{CacheKeyPrefix}Tolerances_{fw}");
+        }
+        foreach (var act in await _context.ActDefinitions.Where(a => a.IsActive && a.DeletedAt == null).Select(a => a.Id).ToListAsync(ct))
+            _cache.Remove($"{CacheKeyPrefix}FullConfig_{act}");
+
+        _logger.LogInformation("Tolerance setting {Id} updated", id);
+
+        return new ToleranceSettingDto
+        {
+            Id = entity.Id,
+            Code = entity.Code,
+            Name = entity.Name,
+            LegalFramework = entity.LegalFramework,
+            TolerancePercentage = entity.TolerancePercentage,
+            ToleranceKg = entity.ToleranceKg,
+            AppliesTo = entity.AppliesTo,
+            Description = entity.Description,
+            EffectiveFrom = entity.EffectiveFrom,
+            EffectiveTo = entity.EffectiveTo,
+            IsActive = entity.IsActive
+        };
+    }
+
     public async Task<List<DemeritPointScheduleDto>> GetDemeritPointSchedulesAsync(string legalFramework, CancellationToken ct = default)
     {
         var cacheKey = $"{CacheKeyPrefix}DemeritPoints_{legalFramework}";

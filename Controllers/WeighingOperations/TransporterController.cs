@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
 
@@ -56,6 +57,7 @@ public class TransporterController : ControllerBase
     /// <param name="includeInactive">Include inactive transporters</param>
     /// <returns>List of transporters</returns>
     [HttpGet]
+    [HasPermission("transporter.read")]
     [ProducesResponseType(typeof(List<Transporter>), 200)]
     public async Task<IActionResult> GetAll([FromQuery] bool includeInactive = false)
     {
@@ -68,6 +70,7 @@ public class TransporterController : ControllerBase
     /// </summary>
     /// <returns>List of active transporters</returns>
     [HttpGet("active")]
+    [HasPermission("transporter.read")]
     [ProducesResponseType(typeof(List<Transporter>), 200)]
     public async Task<IActionResult> GetAllActive()
     {
@@ -81,6 +84,7 @@ public class TransporterController : ControllerBase
     /// <param name="query">Search query</param>
     /// <returns>Matching transporters (max 50)</returns>
     [HttpGet("search")]
+    [HasPermission("transporter.read")]
     [ProducesResponseType(typeof(List<Transporter>), 200)]
     public async Task<IActionResult> Search([FromQuery] string query = "")
     {
@@ -94,6 +98,7 @@ public class TransporterController : ControllerBase
     /// <param name="id">Transporter ID</param>
     /// <returns>Transporter details with vehicles</returns>
     [HttpGet("{id}")]
+    [HasPermission("transporter.read")]
     [ProducesResponseType(typeof(Transporter), 200)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> GetById(Guid id)
@@ -111,6 +116,7 @@ public class TransporterController : ControllerBase
     /// <param name="code">Transporter code</param>
     /// <returns>Transporter details</returns>
     [HttpGet("code/{code}")]
+    [HasPermission("transporter.read")]
     [ProducesResponseType(typeof(Transporter), 200)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> GetByCode(string code)

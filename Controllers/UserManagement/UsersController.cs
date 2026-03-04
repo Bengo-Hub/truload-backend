@@ -42,13 +42,28 @@ public class UsersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserDto>> GetById(Guid id)
     {
-        var user = await _userManager.FindByIdAsync(id.ToString());
+        var user = await _context.Users
+            .Include(u => u.Station)
+            .Include(u => u.Organization)
+            .Include(u => u.Department)
+            .FirstOrDefaultAsync(u => u.Id == id);
         if (user == null || user.DeletedAt != null)
         {
             return NotFound(new { message = "User not found" });
         }
 
         var roles = await _userManager.GetRolesAsync(user);
+        if (!User.IsInRole("Superuser"))
+        {
+            var systemRoleIds = await _roleManager.Roles.Where(r => r.IsSystemRole).Select(r => r.Id).ToListAsync();
+            var userRoleIds = await _context.Set<IdentityUserRole<Guid>>()
+                .Where(ur => ur.UserId == user.Id)
+                .Select(ur => ur.RoleId)
+                .ToListAsync();
+            if (userRoleIds.Any(rid => systemRoleIds.Contains(rid)))
+                return NotFound(new { message = "User not found" });
+        }
+
         return Ok(await MapToDto(user, roles));
     }
 
@@ -68,9 +83,16 @@ public class UsersController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { message = "Password is required" });
 
-        // 2. Validate roles exist before doing anything else
+        // 2. Validate roles exist and non-superusers cannot assign system roles
         if (request.RoleNames != null && request.RoleNames.Any())
         {
+            if (!User.IsInRole("Superuser"))
+            {
+                var systemRoles = await _roleManager.Roles.Where(r => r.IsSystemRole).Select(r => r.Name).ToListAsync();
+                var attemptedSystem = request.RoleNames.Where(n => systemRoles.Contains(n!, StringComparer.OrdinalIgnoreCase)).ToList();
+                if (attemptedSystem.Any())
+                    return BadRequest(new { message = "You cannot assign system roles to users." });
+            }
             foreach (var roleName in request.RoleNames)
             {
                 if (!await _roleManager.RoleExistsAsync(roleName))
@@ -107,6 +129,12 @@ public class UsersController : ControllerBase
                 {
                     var defaultStation = await _context.Stations.FirstOrDefaultAsync(s => s.IsDefault);
                     finalStationId = defaultStation?.Id;
+                }
+
+                // Tenant users must have a station assigned (platform/superuser creating without org may omit)
+                if (finalOrgId.HasValue && finalOrgId.Value != Guid.Empty && (!finalStationId.HasValue || finalStationId.Value == Guid.Empty))
+                {
+                    return BadRequest(new { message = "Station is required when creating a tenant user." });
                 }
 
                 var user = new ApplicationUser
@@ -147,7 +175,12 @@ public class UsersController : ControllerBase
                 _logger.LogInformation("User created: {UserId}, Email: {Email}", user.Id, user.Email);
 
                 var roles = await _userManager.GetRolesAsync(user);
-                return CreatedAtAction(nameof(GetById), new { id = user.Id }, await MapToDto(user, roles));
+                var withIncludes = await _context.Users
+                    .Include(u => u.Station)
+                    .Include(u => u.Organization)
+                    .Include(u => u.Department)
+                    .FirstOrDefaultAsync(u => u.Id == user.Id);
+                return CreatedAtAction(nameof(GetById), new { id = user.Id }, await MapToDto(withIncludes ?? user, roles));
             }
             catch (Exception ex)
             {
@@ -167,7 +200,11 @@ public class UsersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserDto>> GetByEmail(string email)
     {
-        var user = await _userManager.FindByEmailAsync(email);
+        var user = await _context.Users
+            .Include(u => u.Station)
+            .Include(u => u.Organization)
+            .Include(u => u.Department)
+            .FirstOrDefaultAsync(u => u.Email == email);
         if (user == null || user.DeletedAt != null)
         {
             return NotFound(new { message = "User not found" });
@@ -199,8 +236,23 @@ public class UsersController : ControllerBase
         var skip = (pageNumber - 1) * pageSize;
 
         var query = _userManager.Users
+            .Include(u => u.Station)
+            .Include(u => u.Organization)
+            .Include(u => u.Department)
             .Where(u => u.DeletedAt == null)
             .AsQueryable();
+
+        // Non-superusers must not see users who have a system role (Superuser, Middleware Service)
+        if (!User.IsInRole("Superuser"))
+        {
+            var systemRoleIds = await _roleManager.Roles.Where(r => r.IsSystemRole).Select(r => r.Id).ToListAsync();
+            var userIdsWithSystemRole = await _context.Set<IdentityUserRole<Guid>>()
+                .Where(ur => systemRoleIds.Contains(ur.RoleId))
+                .Select(ur => ur.UserId)
+                .Distinct()
+                .ToListAsync();
+            query = query.Where(u => !userIdsWithSystemRole.Contains(u.Id));
+        }
 
         // Text search across name, email, phone
         if (!string.IsNullOrWhiteSpace(search))
@@ -365,8 +417,14 @@ public class UsersController : ControllerBase
 
         _logger.LogInformation("User updated: {UserId}", user.Id);
 
+        // Reload with includes so MapToDto has Station/Organization/Department names
+        var reloaded = await _context.Users
+            .Include(u => u.Station)
+            .Include(u => u.Organization)
+            .Include(u => u.Department)
+            .FirstOrDefaultAsync(u => u.Id == user.Id);
         var roles = await _userManager.GetRolesAsync(user);
-        return Ok(await MapToDto(user, roles));
+        return Ok(await MapToDto(reloaded ?? user, roles));
     }
 
     /// <summary>
@@ -426,6 +484,15 @@ public class UsersController : ControllerBase
         if (!roleNamesToAssign.Any())
         {
             return BadRequest(new { message = "No valid roles provided" });
+        }
+
+        // Non-superusers cannot assign system roles
+        if (!User.IsInRole("Superuser"))
+        {
+            var systemRoles = await _roleManager.Roles.Where(r => r.IsSystemRole).Select(r => r.Name).ToListAsync();
+            var attemptedSystem = roleNamesToAssign.Where(n => systemRoles.Contains(n, StringComparer.OrdinalIgnoreCase)).ToList();
+            if (attemptedSystem.Any())
+                return BadRequest(new { message = "You cannot assign system roles." });
         }
 
         // Validate all roles exist
@@ -625,8 +692,11 @@ public class UsersController : ControllerBase
             FullName = user.FullName,
             PhoneNumber = user.PhoneNumber,
             OrganizationId = user.OrganizationId,
+            OrganizationName = user.Organization?.Name,
             StationId = user.StationId,
+            StationName = user.Station?.Name,
             DepartmentId = user.DepartmentId,
+            DepartmentName = user.Department?.Name,
             Roles = roles.ToList(),
             LastLoginAt = user.LastLoginAt,
             CreatedAt = user.CreatedAt,

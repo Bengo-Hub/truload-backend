@@ -7,7 +7,7 @@ public interface IJwtService
     /// <summary>
     /// Generate JWT access token for authenticated user
     /// </summary>
-    string GenerateAccessToken(ApplicationUser user, IEnumerable<string> roles, IEnumerable<string> permissions);
+    string GenerateAccessToken(ApplicationUser user, IEnumerable<string> roles, IEnumerable<string> permissions, bool isHqUser = false);
 
     /// <summary>
     /// Generate a cryptographically random refresh token string
@@ -38,6 +38,16 @@ public interface IJwtService
     /// Validate a 2FA challenge token and extract user ID
     /// </summary>
     Guid? ValidateTwoFactorChallengeToken(string token);
+
+    /// <summary>
+    /// Generate a short-lived JWT for change-expired-password flow (15 min expiry, purpose=change_expired_password)
+    /// </summary>
+    string GenerateChangeExpiredPasswordToken(Guid userId);
+
+    /// <summary>
+    /// Validate change-expired-password token and extract user ID
+    /// </summary>
+    Guid? ValidateChangeExpiredPasswordToken(string token);
 
     /// <summary>
     /// Get user ID from access token (without full validation)

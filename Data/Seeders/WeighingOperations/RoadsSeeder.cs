@@ -165,6 +165,38 @@ public class RoadsSeeder
                 DistrictId = null,
                 TotalLengthKm = 15.2m,
                 IsActive = true
+            },
+
+            // Urban / Traffic Act roads (Nairobi and common weighing locations)
+            new Roads
+            {
+                Id = Guid.NewGuid(),
+                Code = "A109",
+                Name = "Langata Road",
+                RoadClass = "A",
+                DistrictId = null,
+                TotalLengthKm = 12.5m,
+                IsActive = true
+            },
+            new Roads
+            {
+                Id = Guid.NewGuid(),
+                Code = "C101",
+                Name = "Uhuru Highway",
+                RoadClass = "C",
+                DistrictId = null,
+                TotalLengthKm = 8.2m,
+                IsActive = true
+            },
+            new Roads
+            {
+                Id = Guid.NewGuid(),
+                Code = "C102",
+                Name = "Waiyaki Way",
+                RoadClass = "C",
+                DistrictId = null,
+                TotalLengthKm = 15.3m,
+                IsActive = true
             }
         };
 

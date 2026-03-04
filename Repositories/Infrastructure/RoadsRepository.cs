@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using TruLoad.Backend.Models;
 using TruLoad.Backend.Data;
+using TruLoad.Backend.Models;
 
 namespace TruLoad.Backend.Repositories.Infrastructure;
 
@@ -11,6 +11,29 @@ public class RoadsRepository : IRoadsRepository
     public RoadsRepository(TruLoadDbContext context)
     {
         _context = context;
+    }
+
+    public async Task<(List<Roads> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, bool includeInactive = false, string? search = null, CancellationToken cancellationToken = default)
+    {
+        var query = _context.Roads.Where(r => r.DeletedAt == null);
+        if (!includeInactive)
+            query = query.Where(r => r.IsActive);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(r =>
+                (r.Code != null && r.Code.ToLower().Contains(term)) ||
+                (r.Name != null && r.Name.ToLower().Contains(term)) ||
+                (r.RoadClass != null && r.RoadClass.ToLower().Contains(term)));
+        }
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderBy(r => r.RoadClass)
+            .ThenBy(r => r.Name)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+        return (items, totalCount);
     }
 
     public async Task<List<Roads>> GetAllActiveAsync(CancellationToken cancellationToken = default)

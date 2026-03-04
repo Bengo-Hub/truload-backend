@@ -111,6 +111,110 @@ public class WeighingController : ControllerBase
     }
 
     /// <summary>
+    /// Gets axle violation distribution by axle type (Steering, SingleDrive, Tandem, Tridem, etc.).
+    /// Must be declared before [HttpGet("{id}")] so the path is not matched as an id.
+    /// </summary>
+    [HttpGet("axle-type-violations")]
+    [Authorize(Policy = "Permission:weighing.read")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(List<OverloadDistributionDto>), 200)]
+    public async Task<IActionResult> GetAxleTypeViolations(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] Guid? stationId,
+        CancellationToken ct)
+    {
+        try
+        {
+            var query = from wa in _context.WeighingAxles.AsNoTracking()
+                        join wt in _context.WeighingTransactions.AsNoTracking() on wa.WeighingId equals wt.Id
+                        where (wa.MeasuredWeightKg - wa.PermissibleWeightKg) > 0
+                        select new { wa, wt };
+
+            if (dateFrom.HasValue)
+                query = query.Where(x => x.wt.WeighedAt >= dateFrom.Value);
+            if (dateTo.HasValue)
+                query = query.Where(x => x.wt.WeighedAt <= dateTo.Value.AddDays(1));
+            if (stationId.HasValue)
+                query = query.Where(x => x.wt.StationId == stationId.Value);
+
+            var grouped = await query
+                .GroupBy(x => string.IsNullOrEmpty(x.wa.AxleType) ? "Other" : x.wa.AxleType)
+                .Select(g => new OverloadDistributionDto
+                {
+                    Name = g.Key,
+                    Count = g.Count(),
+                    Percentage = 0
+                })
+                .OrderByDescending(x => x.Count)
+                .ToListAsync(ct);
+
+            var total = grouped.Sum(x => x.Count);
+            foreach (var item in grouped)
+                item.Percentage = total > 0 ? Math.Round((decimal)item.Count * 100 / total, 2) : 0;
+
+            return Ok(grouped);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting axle type violations");
+            return StatusCode(500, "An error occurred while getting axle type violations.");
+        }
+    }
+
+    /// <summary>
+    /// Gets axle violation distribution by axle type. Alias for analytics; respects dateFrom, dateTo, stationId.
+    /// Must be declared before [HttpGet("{id}")] so the path is not matched as an id.
+    /// </summary>
+    [HttpGet("axle-violations")]
+    [Authorize(Policy = "Permission:weighing.read")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(List<OverloadDistributionDto>), 200)]
+    public async Task<IActionResult> GetAxleViolations(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] Guid? stationId,
+        CancellationToken ct)
+    {
+        try
+        {
+            var query = from wa in _context.WeighingAxles.AsNoTracking()
+                        join wt in _context.WeighingTransactions.AsNoTracking() on wa.WeighingId equals wt.Id
+                        where (wa.MeasuredWeightKg - wa.PermissibleWeightKg) > 0
+                        select new { wa, wt };
+
+            if (dateFrom.HasValue)
+                query = query.Where(x => x.wt.WeighedAt >= dateFrom.Value);
+            if (dateTo.HasValue)
+                query = query.Where(x => x.wt.WeighedAt <= dateTo.Value.AddDays(1));
+            if (stationId.HasValue)
+                query = query.Where(x => x.wt.StationId == stationId.Value);
+
+            var grouped = await query
+                .GroupBy(x => string.IsNullOrEmpty(x.wa.AxleType) ? "Other" : x.wa.AxleType)
+                .Select(g => new OverloadDistributionDto
+                {
+                    Name = g.Key,
+                    Count = g.Count(),
+                    Percentage = 0
+                })
+                .OrderByDescending(x => x.Count)
+                .ToListAsync(ct);
+
+            var total = grouped.Sum(x => x.Count);
+            foreach (var item in grouped)
+                item.Percentage = total > 0 ? Math.Round((decimal)item.Count * 100 / total, 2) : 0;
+
+            return Ok(grouped);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting axle violations");
+            return StatusCode(500, "An error occurred while getting axle violations.");
+        }
+    }
+
+    /// <summary>
     /// Gets a weighing transaction by ID.
     /// </summary>
     /// <param name="id">Transaction ID</param>
@@ -213,7 +317,8 @@ public class WeighingController : ControllerBase
                 request.ScaleTestId,
                 request.DriverId,
                 request.TransporterId,
-                request.WeighingType ?? "static");
+                request.WeighingType ?? "static",
+                request.ActId);
 
             // Tag checks are informational — run after transaction is safely created
             var kenhaTag = await CheckKeNHATagAsync(vehicleRegNo);
@@ -267,15 +372,38 @@ public class WeighingController : ControllerBase
                 return NotFound($"Weighing transaction {id} not found");
             }
 
-            // Update only provided fields
+            // Update only provided fields (include all metadata for weight ticket / compliance)
             if (!string.IsNullOrEmpty(request.VehicleRegNumber))
                 transaction.VehicleRegNumber = request.VehicleRegNumber;
-            
+
             if (request.DriverId.HasValue)
                 transaction.DriverId = request.DriverId;
-            
+
             if (request.TransporterId.HasValue)
                 transaction.TransporterId = request.TransporterId;
+
+            if (request.ActId.HasValue)
+                transaction.ActId = request.ActId;
+
+            if (request.OriginId.HasValue)
+                transaction.OriginId = request.OriginId;
+
+            if (request.DestinationId.HasValue)
+                transaction.DestinationId = request.DestinationId;
+
+            if (request.CargoId.HasValue)
+                transaction.CargoId = request.CargoId;
+
+            if (request.RoadId.HasValue)
+                transaction.RoadId = request.RoadId;
+            if (request.LocationTown != null)
+                transaction.LocationTown = request.LocationTown;
+            if (request.LocationCounty != null)
+                transaction.LocationCounty = request.LocationCounty;
+            if (request.LocationLat.HasValue)
+                transaction.LocationLat = request.LocationLat;
+            if (request.LocationLng.HasValue)
+                transaction.LocationLng = request.LocationLng;
 
             await _weighingService.UpdateTransactionAsync(transaction);
 
@@ -828,42 +956,6 @@ public class WeighingController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Gets axle violation distribution.
-    /// </summary>
-    [HttpGet("axle-violations")]
-    [Authorize(Policy = "Permission:weighing.read")]
-    [Produces("application/json")]
-    [ProducesResponseType(typeof(List<OverloadDistributionDto>), 200)]
-    public async Task<IActionResult> GetAxleViolations(
-        [FromQuery] DateTime? dateFrom,
-        [FromQuery] DateTime? dateTo,
-        [FromQuery] Guid? stationId,
-        CancellationToken ct)
-    {
-        try
-        {
-            // mv_axle_group_violations is aggregated across all history (no date/station filter)
-            var violations = await _context.MvAxleGroupViolations
-                .AsNoTracking()
-                .OrderByDescending(v => v.ViolationRatePct)
-                .Select(v => new OverloadDistributionDto
-                {
-                    Name = v.AxleGrouping,
-                    Count = (int)v.Violations,
-                    Percentage = v.ViolationRatePct
-                })
-                .ToListAsync(ct);
-
-            return Ok(violations);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting axle violations");
-            return StatusCode(500, "An error occurred while getting axle violations.");
-        }
-    }
-
     // ============================================================================
     // KeNHA Tag Verification
     // ============================================================================
@@ -1011,6 +1103,14 @@ public class WeighingController : ControllerBase
             DestinationLocation = transaction.Destination?.Name,
             CargoType = transaction.Cargo?.Name,
             CargoDescription = transaction.Cargo?.Category,
+
+            RoadId = transaction.RoadId,
+            RoadName = transaction.Road?.Name,
+            RoadCode = transaction.Road?.Code,
+            LocationTown = transaction.LocationTown,
+            LocationCounty = transaction.LocationCounty,
+            LocationLat = transaction.LocationLat,
+            LocationLng = transaction.LocationLng,
 
             WeighingAxles = axles.Select(a => new WeighingAxleDto
             {

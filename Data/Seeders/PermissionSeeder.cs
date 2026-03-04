@@ -167,6 +167,15 @@ public static class PermissionSeeder
     };
 
     /// <summary>
+    /// Permission codes that are system-sensitive; only superusers can view/assign them.
+    /// </summary>
+    private static readonly HashSet<string> SystemSensitiveCodes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "user.delete", "user.update", "user.assign_roles", "user.manage_permissions",
+        "system.admin", "system.manage_roles", "system.manage_organizations", "system.security_policy"
+    };
+
+    /// <summary>
     /// Seed permissions into database if they don't exist.
     /// Idempotent - safe to run multiple times. Adds any missing permissions.
     /// </summary>
@@ -193,6 +202,7 @@ public static class PermissionSeeder
                 Category = category,
                 Description = description,
                 IsActive = true,
+                IsSystemSensitive = SystemSensitiveCodes.Contains(code),
                 CreatedAt = DateTime.UtcNow
             });
         }
@@ -202,5 +212,14 @@ public static class PermissionSeeder
             context.Permissions.AddRange(permissionsToAdd);
             await context.SaveChangesAsync();
         }
+
+        // Mark existing permissions as system-sensitive where applicable (idempotent)
+        var toUpdate = await context.Permissions
+            .Where(p => SystemSensitiveCodes.Contains(p.Code) && !p.IsSystemSensitive)
+            .ToListAsync();
+        foreach (var p in toUpdate)
+            p.IsSystemSensitive = true;
+        if (toUpdate.Count > 0)
+            await context.SaveChangesAsync();
     }
 }

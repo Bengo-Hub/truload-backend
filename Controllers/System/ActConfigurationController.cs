@@ -151,6 +151,21 @@ public class ActConfigurationController : ControllerBase
     }
 
     /// <summary>
+    /// Update a tolerance setting (percentage, kg, description, isActive).
+    /// </summary>
+    [HttpPatch("tolerances/{id:guid}")]
+    [HasPermission("config.update")]
+    [ProducesResponseType(typeof(ToleranceSettingDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ToleranceSettingDto>> UpdateToleranceSetting(Guid id, [FromBody] UpdateToleranceSettingRequest request, CancellationToken ct)
+    {
+        var updated = await _actConfigService.UpdateToleranceSettingAsync(id, request, ct);
+        if (updated == null)
+            return NotFound(new { message = $"Tolerance setting with ID '{id}' not found" });
+        return Ok(updated);
+    }
+
+    /// <summary>
     /// Get demerit point schedules filtered by legal framework.
     /// </summary>
     [HttpGet("demerit-points")]

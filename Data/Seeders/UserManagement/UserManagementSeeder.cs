@@ -153,8 +153,49 @@ public class UserManagementSeeder
 
     private async Task SeedStationsAsync()
     {
-        var kura = await _context.Organizations.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Code == "KURA");
+        var orgs = await _context.Organizations.IgnoreQueryFilters().Where(o => o.IsActive).ToListAsync();
+        if (orgs.Count == 0) return;
 
+        foreach (var org in orgs)
+        {
+            // Ensure one HQ station per organisation (Code must be globally unique, so use {OrgCode}-HQ)
+            var hqCode = $"{org.Code}-HQ";
+            var existingHq = await _context.Stations
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(s => s.OrganizationId == org.Id && s.IsHq);
+            if (existingHq == null)
+            {
+                var byCode = await _context.Stations.IgnoreQueryFilters().FirstOrDefaultAsync(s => s.Code == hqCode);
+                if (byCode == null)
+                {
+                    await _context.Stations.AddAsync(new Station
+                    {
+                        Id = Guid.NewGuid(),
+                        Code = hqCode,
+                        Name = $"{org.Name} Headquarters",
+                        StationType = "weigh_bridge",
+                        Location = org.Address,
+                        OrganizationId = org.Id,
+                        IsDefault = false,
+                        IsHq = true,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                    Console.WriteLine($"✓ Seeded HQ station for {org.Name} ({org.Code})");
+                }
+            }
+            else if (!existingHq.IsHq)
+            {
+                existingHq.IsHq = true;
+                existingHq.UpdatedAt = DateTime.UtcNow;
+                Console.WriteLine($"✓ Updated station {existingHq.Code} as HQ for {org.Name}");
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        var kura = await _context.Organizations.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Code == "KURA");
         if (kura == null) return;
 
         var stations = new List<Station>();
@@ -178,6 +219,7 @@ public class UserManagementSeeder
                     BoundBCode = "B",
                     OrganizationId = kura.Id,
                     IsDefault = true,
+                    IsHq = false,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow

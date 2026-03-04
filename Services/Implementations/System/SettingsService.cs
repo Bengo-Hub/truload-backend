@@ -186,6 +186,7 @@ public class SettingsService : ISettingsService
             RequireSpecial = await GetSettingValueAsync(SettingKeys.PasswordRequireSpecial, false, ct),
             LockoutThreshold = await GetSettingValueAsync(SettingKeys.PasswordLockoutThreshold, 5, ct),
             LockoutMinutes = await GetSettingValueAsync(SettingKeys.PasswordLockoutMinutes, 15, ct),
+            PasswordExpiryDays = await GetSettingValueAsync(SettingKeys.PasswordExpiryDays, 0, ct),
         };
     }
 
@@ -203,6 +204,7 @@ public class SettingsService : ISettingsService
             new() { SettingKey = SettingKeys.PasswordRequireSpecial, SettingValue = request.RequireSpecial.ToString() },
             new() { SettingKey = SettingKeys.PasswordLockoutThreshold, SettingValue = request.LockoutThreshold.ToString() },
             new() { SettingKey = SettingKeys.PasswordLockoutMinutes, SettingValue = request.LockoutMinutes.ToString() },
+            new() { SettingKey = SettingKeys.PasswordExpiryDays, SettingValue = request.PasswordExpiryDays.ToString() },
         };
 
         await UpdateSettingsBatchAsync(updates, userId, ct);

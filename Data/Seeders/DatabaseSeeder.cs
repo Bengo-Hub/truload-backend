@@ -9,6 +9,7 @@ using TruLoad.Backend.Data.Seeders.WeighingOperations;
 using TruLoad.Backend.Data.Seeders.SystemConfiguration;
 using TruLoad.Backend.Data.Seeders.CaseManagement;
 using TruLoad.Backend.Data.Seeders.Yard;
+using TruLoad.Backend.Data.Seeders.Infrastructure;
 
 namespace TruLoad.Data.Seeders;
 
@@ -59,6 +60,11 @@ public static class DatabaseSeeder
             logger.LogInformation("Seeding annual calibration baseline...");
             var annualCalibrationSeeder = new TruLoad.Backend.Data.Seeders.Technical.AnnualCalibrationSeeder(context);
             await annualCalibrationSeeder.SeedAsync();
+
+            // Seed geographic data (Kenya counties and districts/subcounties) for prosecution and location hierarchy
+            logger.LogInformation("Seeding Kenya counties and districts...");
+            var kenyaGeographicSeeder = new KenyaCountiesDistrictsSeeder(context);
+            await kenyaGeographicSeeder.SeedAsync();
 
             // Seed reference data (cargo types, origins/destinations, roads)
             logger.LogInformation("Seeding reference data...");

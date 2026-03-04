@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Data.Repositories.Weighing;
 
@@ -20,6 +21,7 @@ public class VehicleController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [HasPermission("vehicle.read")]
     public async Task<IActionResult> GetById(Guid id)
     {
         var vehicle = await _vehicleRepository.GetByIdAsync(id);
@@ -28,6 +30,7 @@ public class VehicleController : ControllerBase
     }
 
     [HttpGet("search")]
+    [HasPermission("vehicle.read")]
     public async Task<IActionResult> Search([FromQuery] string query)
     {
         var vehicles = await _vehicleRepository.SearchAsync(query);
@@ -35,6 +38,7 @@ public class VehicleController : ControllerBase
     }
 
     [HttpGet("reg/{regNo}")]
+    [HasPermission("vehicle.read")]
     public async Task<IActionResult> GetByRegNo(string regNo)
     {
         var vehicle = await _vehicleRepository.GetByRegNoAsync(regNo);

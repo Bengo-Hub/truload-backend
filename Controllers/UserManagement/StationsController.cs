@@ -272,6 +272,7 @@ public class StationsController : ControllerBase
             BoundACode = station.BoundACode,
             BoundBCode = station.BoundBCode,
             IsActive = station.IsActive,
+            IsHq = station.IsHq,
             CreatedAt = station.CreatedAt,
             UpdatedAt = station.UpdatedAt
         };

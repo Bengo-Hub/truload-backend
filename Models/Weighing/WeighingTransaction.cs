@@ -4,6 +4,7 @@ using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Models.Common;
 using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Models.Infrastructure;
+using TruLoad.Backend.Models;
 
 namespace TruLoad.Backend.Models.Weighing;
 
@@ -158,6 +159,33 @@ public class WeighingTransaction : TenantAwareEntity
     public Guid? CargoId { get; set; }
 
     /// <summary>
+    /// Road/location where weighing took place (e.g. A109, Langata Road).
+    /// </summary>
+    public Guid? RoadId { get; set; }
+
+    /// <summary>
+    /// Town or city at weighing location (from geolocation or manual).
+    /// </summary>
+    [MaxLength(100)]
+    public string? LocationTown { get; set; }
+
+    /// <summary>
+    /// County at weighing location.
+    /// </summary>
+    [MaxLength(100)]
+    public string? LocationCounty { get; set; }
+
+    /// <summary>
+    /// Latitude at weighing location (from geolocation).
+    /// </summary>
+    public decimal? LocationLat { get; set; }
+
+    /// <summary>
+    /// Longitude at weighing location (from geolocation).
+    /// </summary>
+    public decimal? LocationLng { get; set; }
+
+    /// <summary>
     /// Foreign Key to the Scale Test performed before this weighing session.
     /// Required per regulations - scale must be tested daily per station/bound before weighing.
     /// </summary>
@@ -221,6 +249,7 @@ public class WeighingTransaction : TenantAwareEntity
     public OriginsDestinations? Origin { get; set; }
     public OriginsDestinations? Destination { get; set; }
     public CargoTypes? Cargo { get; set; }
+    public Roads? Road { get; set; }
     public ScaleTest? ScaleTest { get; set; }
 
     // One-to-Many relationship with Axle Weights

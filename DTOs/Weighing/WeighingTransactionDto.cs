@@ -59,6 +59,15 @@ public class WeighingTransactionDto
     public string? CargoType { get; set; }
     public string? CargoDescription { get; set; }
 
+    // Weighing location (road, town, county, coordinates)
+    public Guid? RoadId { get; set; }
+    public string? RoadName { get; set; }
+    public string? RoadCode { get; set; }
+    public string? LocationTown { get; set; }
+    public string? LocationCounty { get; set; }
+    public decimal? LocationLat { get; set; }
+    public decimal? LocationLng { get; set; }
+
     // Weighing mode
     public string? WeighingType { get; set; }
     public string? Bound { get; set; }
@@ -186,18 +195,54 @@ public class CreateWeighingRequest
     /// </summary>
     [StringLength(20)]
     public string? WeighingType { get; set; }
+
+    /// <summary>
+    /// Applicable Act (e.g. Traffic Act, EAC). When null, backend uses default act from settings.
+    /// </summary>
+    public Guid? ActId { get; set; }
+
+    public Guid? OriginId { get; set; }
+    public Guid? DestinationId { get; set; }
+    public Guid? CargoId { get; set; }
+
+    /// <summary>
+    /// Road where weighing took place; Town/City, County and coordinates from geolocation or manual.
+    /// </summary>
+    public Guid? RoadId { get; set; }
+    [StringLength(100)]
+    public string? LocationTown { get; set; }
+    [StringLength(100)]
+    public string? LocationCounty { get; set; }
+    public decimal? LocationLat { get; set; }
+    public decimal? LocationLng { get; set; }
 }
 
 /// <summary>
 /// Request DTO for updating a weighing transaction.
+/// Include all vehicle/transport metadata so weight ticket and compliance use complete data.
 /// </summary>
 public class UpdateWeighingRequest
 {
     [StringLength(50)]
     public string? VehicleRegNumber { get; set; }
-    
+
     public Guid? DriverId { get; set; }
     public Guid? TransporterId { get; set; }
+
+    /// <summary>Applicable Act (e.g. Traffic Act, EAC). When null, backend uses default act.</summary>
+    public Guid? ActId { get; set; }
+
+    public Guid? OriginId { get; set; }
+    public Guid? DestinationId { get; set; }
+    public Guid? CargoId { get; set; }
+
+    public Guid? RoadId { get; set; }
+    [StringLength(100)]
+    public string? LocationTown { get; set; }
+    [StringLength(100)]
+    public string? LocationCounty { get; set; }
+    public decimal? LocationLat { get; set; }
+    public decimal? LocationLng { get; set; }
 }
 
 /// <summary>

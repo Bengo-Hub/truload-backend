@@ -1,7 +1,10 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using TruLoad.Backend.Constants;
 using TruLoad.Backend.DTOs.Auth;
+using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Services.Interfaces;
 using TruLoad.Backend.Services.Interfaces.Auth;
@@ -27,6 +30,7 @@ public class AuthController : ControllerBase
     private readonly ISettingsService _settingsService;
     private readonly IUserShiftRepository _userShiftRepository;
     private readonly IOrganizationRepository _organizationRepository;
+    private readonly IStationRepository _stationRepository;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthController> _logger;
 
@@ -40,6 +44,7 @@ public class AuthController : ControllerBase
         ISettingsService settingsService,
         IUserShiftRepository userShiftRepository,
         IOrganizationRepository organizationRepository,
+        IStationRepository stationRepository,
         IConfiguration configuration,
         ILogger<AuthController> logger)
     {
@@ -52,6 +57,7 @@ public class AuthController : ControllerBase
         _settingsService = settingsService;
         _userShiftRepository = userShiftRepository;
         _organizationRepository = organizationRepository;
+        _stationRepository = stationRepository;
         _configuration = configuration;
         _logger = logger;
     }
@@ -97,6 +103,9 @@ public class AuthController : ControllerBase
             }
             return BadRequest(ModelState);
         }
+
+        user.LastPasswordChangeAt = DateTime.UtcNow;
+        await _userManager.UpdateAsync(user);
 
         _logger.LogInformation("User {Email} registered successfully", request.Email);
 
@@ -147,6 +156,66 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Invalid email or password" });
         }
 
+        var roles = await _userManager.GetRolesAsync(user);
+        var isSuperUser = roles.Contains("SUPERUSER", StringComparer.OrdinalIgnoreCase);
+
+        // Superusers can log in to any org/station (platform admin); skip tenant org/station validation
+        if (!isSuperUser && !string.IsNullOrWhiteSpace(request.OrganizationCode))
+        {
+            var codeTrimmed = request.OrganizationCode.Trim();
+            var org = await _organizationRepository.GetByCodeAsync(codeTrimmed)
+                ?? await _organizationRepository.GetByCodeAsync(codeTrimmed.ToUpperInvariant())
+                ?? await _organizationRepository.GetByCodeAsync(codeTrimmed.ToLowerInvariant());
+            if (org == null)
+            {
+                return StatusCode(403, new { message = "Invalid organisation." });
+            }
+            if (user.OrganizationId != org.Id)
+            {
+                _logger.LogWarning("User {Email} attempted login for organisation {OrgCode} but belongs to different org.", request.Email, request.OrganizationCode);
+                return StatusCode(403, new { message = "You are not assigned to this organisation." });
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.StationCode))
+            {
+                var stations = await _stationRepository.GetByOrganizationIdAsync(org.Id);
+                var selectedStation = stations.FirstOrDefault(s => string.Equals(s.Code, request.StationCode.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (selectedStation == null)
+                {
+                    return StatusCode(403, new { message = "Invalid station for this organisation." });
+                }
+                if (user.StationId.HasValue)
+                {
+                    var userStation = await _stationRepository.GetByIdAsync(user.StationId.Value);
+                    var isHqUser = userStation?.IsHq ?? false;
+                    if (!isHqUser && user.StationId.Value != selectedStation.Id)
+                    {
+                        _logger.LogWarning("User {Email} (station-linked) attempted login to station {StationCode}.", request.Email, request.StationCode);
+                        return StatusCode(403, new { message = "You can only log in to your assigned station." });
+                    }
+                }
+            }
+        }
+
+        // Enforce password expiry: block login until user changes password
+        var passwordPolicy = await _settingsService.GetPasswordPolicyAsync();
+        if (passwordPolicy.PasswordExpiryDays > 0)
+        {
+            var lastChange = user.LastPasswordChangeAt ?? user.CreatedAt;
+            var expiryDate = lastChange.AddDays(passwordPolicy.PasswordExpiryDays);
+            if (DateTime.UtcNow > expiryDate)
+            {
+                var changeToken = _jwtService.GenerateChangeExpiredPasswordToken(user.Id);
+                _logger.LogInformation("Login blocked for {Email}: password expired. User must change password.", request.Email);
+                return Unauthorized(new
+                {
+                    message = "Your password has expired. Please set a new password to continue.",
+                    passwordExpired = true,
+                    changePasswordToken = changeToken
+                });
+            }
+        }
+
         // Check if 2FA is enabled for this user
         var is2FAEnabled = await _userManager.GetTwoFactorEnabledAsync(user);
         if (is2FAEnabled)
@@ -161,15 +230,32 @@ public class AuthController : ControllerBase
             });
         }
 
+        // If organization requires 2FA for shift login and user is not excluded, allow login but signal that 2FA must be enabled (frontend will force profile 2FA setup)
+        var shiftSettings = await _settingsService.GetShiftSettingsAsync();
+        var require2FASetup = false;
+        if (shiftSettings.Require2FA && !is2FAEnabled)
+        {
+            var userRoles = await _userManager.GetRolesAsync(user);
+            var excludedRoles = (shiftSettings.ExcludedRoles ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var isExcluded = userRoles.Any(r => excludedRoles.Contains(r, StringComparer.OrdinalIgnoreCase));
+            if (!isExcluded)
+            {
+                _logger.LogInformation("User {Email} must enable 2FA (policy). Returning requires2FASetup so frontend can force profile setup.", request.Email);
+                require2FASetup = true;
+            }
+        }
+
         // Complete login (shared logic for normal login and post-2FA verification)
-        return await CompleteLoginAsync(user);
+        return await CompleteLoginAsync(user, require2FASetup);
     }
 
     /// <summary>
     /// Shared login completion logic: shift check, token generation, response.
     /// Used by both Login() and the 2FA verify endpoint.
+    /// When require2FASetup is true, response includes requires2FASetup so frontend can force user to enable 2FA from profile.
     /// </summary>
-    private async Task<IActionResult> CompleteLoginAsync(ApplicationUser user)
+    private async Task<IActionResult> CompleteLoginAsync(ApplicationUser user, bool require2FASetup = false)
     {
         var roles = await _userManager.GetRolesAsync(user);
 
@@ -209,8 +295,16 @@ public class AuthController : ControllerBase
         }
         var uniquePermissions = allPermissions.Distinct().ToList();
 
-        // Generate JWT access token
-        var accessToken = _jwtService.GenerateAccessToken(user, roles, uniquePermissions);
+        // HQ users: assigned station is HQ; they can access all stations (no station filter unless they select one)
+        var isHqUser = false;
+        if (user.StationId.HasValue)
+        {
+            var userStation = await _stationRepository.GetByIdAsync(user.StationId.Value);
+            isHqUser = userStation?.IsHq ?? false;
+        }
+
+        // Generate JWT access token (include isHqUser so middleware does not apply station filter when HQ user does not send X-Station-ID)
+        var accessToken = _jwtService.GenerateAccessToken(user, roles, uniquePermissions, isHqUser);
 
         // Store refresh token server-side (hashed)
         var refreshToken = await _jwtService.StoreRefreshTokenAsync(user.Id);
@@ -222,7 +316,15 @@ public class AuthController : ControllerBase
 
         var isSuperUser = roles.Contains("SUPERUSER", StringComparer.OrdinalIgnoreCase);
 
-        return Ok(new
+        // Resolve organization code for frontend routing (e.g. redirect to /{orgSlug}/auth)
+        string? organizationCode = null;
+        if (user.OrganizationId.HasValue)
+        {
+            var org = await _organizationRepository.GetByIdAsync(user.OrganizationId.Value);
+            organizationCode = org?.Code;
+        }
+
+        var response = new
         {
             accessToken,
             refreshToken,
@@ -236,10 +338,14 @@ public class AuthController : ControllerBase
                 permissions = uniquePermissions,
                 isSuperUser,
                 organizationId = user.OrganizationId ?? (await _organizationRepository.GetByCodeAsync("KURA"))?.Id,
+                organizationCode,
                 stationId = user.StationId,
+                isHqUser,
                 departmentId = user.DepartmentId
-            }
-        });
+            },
+            requires2FASetup = require2FASetup ? true : (bool?)null
+        };
+        return Ok(response);
     }
 
     /// <summary>
@@ -334,7 +440,13 @@ public class AuthController : ControllerBase
             }
         }
         var uniquePermissions = allPermissions.Distinct().ToList();
-        var newAccessToken = _jwtService.GenerateAccessToken(user, roles, uniquePermissions);
+        var isHqUser = false;
+        if (user.StationId.HasValue)
+        {
+            var userStation = await _stationRepository.GetByIdAsync(user.StationId.Value);
+            isHqUser = userStation?.IsHq ?? false;
+        }
+        var newAccessToken = _jwtService.GenerateAccessToken(user, roles, uniquePermissions, isHqUser);
 
         return Ok(new
         {
@@ -384,7 +496,7 @@ public class AuthController : ControllerBase
 
         // Build reset URL for frontend
         var frontendUrl = _configuration["FrontendUrl"] ?? "https://truload.masterspace.co.ke";
-        var resetUrl = $"{frontendUrl}/reset-password?email={Uri.EscapeDataString(user.Email!)}&token={Uri.EscapeDataString(token)}";
+        var resetUrl = $"{frontendUrl}/auth/reset-password?email={Uri.EscapeDataString(user.Email!)}&token={Uri.EscapeDataString(token)}";
 
         // Send password reset email via notifications-service
         var emailSent = await _notificationService.SendEmailAsync(
@@ -439,9 +551,67 @@ public class AuthController : ControllerBase
             return BadRequest(ModelState);
         }
 
+        user.LastPasswordChangeAt = DateTime.UtcNow;
+        await _userManager.UpdateAsync(user);
+
         _logger.LogInformation("Password reset successfully for {Email}", request.Email);
 
         return Ok(new { message = "Password reset successfully" });
+    }
+
+    /// <summary>
+    /// Change expired password (public). Called when login returns passwordExpired and changePasswordToken.
+    /// User must set a new password meeting policy before they can log in again.
+    /// </summary>
+    [HttpPost("change-expired-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ChangeExpiredPassword([FromBody] ChangeExpiredPasswordRequest request)
+    {
+        if (string.IsNullOrEmpty(request.ChangePasswordToken) || string.IsNullOrEmpty(request.NewPassword))
+        {
+            return BadRequest(new { message = "Token and new password are required" });
+        }
+
+        var userId = _jwtService.ValidateChangeExpiredPasswordToken(request.ChangePasswordToken);
+        if (!userId.HasValue)
+        {
+            return Unauthorized(new { message = "Invalid or expired token. Please try logging in again to get a new link." });
+        }
+
+        var user = await _userManager.FindByIdAsync(userId.Value.ToString());
+        if (user == null)
+        {
+            return NotFound(new { message = "User not found" });
+        }
+
+        var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await _userManager.ResetPasswordAsync(user, resetToken, request.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
+            return BadRequest(ModelState);
+        }
+
+        user.LastPasswordChangeAt = DateTime.UtcNow;
+        await _userManager.UpdateAsync(user);
+
+        _logger.LogInformation("Expired password changed for user {UserId}", user.Id);
+        return Ok(new { message = "Password changed successfully. You can now log in." });
+    }
+
+    /// <summary>
+    /// Get password policy (public). For use on login, register, forgot-password, reset-password and change-expired-password pages.
+    /// </summary>
+    [HttpGet("password-policy")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPasswordPolicyPublic(CancellationToken ct)
+    {
+        var policy = await _settingsService.GetPasswordPolicyAsync(ct);
+        return Ok(policy);
     }
 
     /// <summary>
@@ -478,6 +648,9 @@ public class AuthController : ControllerBase
             }
             return BadRequest(ModelState);
         }
+
+        user.LastPasswordChangeAt = DateTime.UtcNow;
+        await _userManager.UpdateAsync(user);
 
         _logger.LogInformation("Password changed successfully for user {UserId}", userId);
 
@@ -519,7 +692,28 @@ public class AuthController : ControllerBase
         var uniquePermissions = allPermissions.Distinct().ToList();
 
         // Check if user has SUPERUSER role (bypasses all permission checks on frontend)
-        var isSuperUser = roles.Contains("SUPERUSER", StringComparer.OrdinalIgnoreCase);
+        var isSuperUser = roles.Contains("Superuser", StringComparer.OrdinalIgnoreCase);
+
+        string? organizationCode = null;
+        string? tenantType = null;
+        List<string>? enabledModules = null;
+        if (user.OrganizationId.HasValue)
+        {
+            var org = await _organizationRepository.GetByIdAsync(user.OrganizationId.Value);
+            if (org != null)
+            {
+                organizationCode = org.Code;
+                tenantType = org.TenantType;
+                enabledModules = ResolveEnabledModulesForOrg(org);
+            }
+        }
+
+        var isHqUser = false;
+        if (user.StationId.HasValue)
+        {
+            var userStation = await _stationRepository.GetByIdAsync(user.StationId.Value);
+            isHqUser = userStation?.IsHq ?? false;
+        }
 
         return Ok(new
         {
@@ -529,13 +723,34 @@ public class AuthController : ControllerBase
             phoneNumber = user.PhoneNumber,
             roles = roles,
             permissions = uniquePermissions,
-            isSuperUser, // Flag for frontend RBAC bypass
+            isSuperUser,
             organizationId = user.OrganizationId,
+            organizationCode,
+            tenantType,
+            enabledModules,
             stationId = user.StationId,
+            isHqUser,
             departmentId = user.DepartmentId,
             lastLoginAt = user.LastLoginAt,
             createdAt = user.CreatedAt
         });
+    }
+
+    private static List<string> ResolveEnabledModulesForOrg(Organization org)
+    {
+        if (!string.IsNullOrWhiteSpace(org.EnabledModulesJson))
+        {
+            try
+            {
+                var list = JsonSerializer.Deserialize<List<string>>(org.EnabledModulesJson);
+                if (list != null && list.Count > 0)
+                    return list;
+            }
+            catch { /* use defaults */ }
+        }
+        if (string.Equals(org.TenantType, TenantModules.TenantTypeCommercialWeighing, StringComparison.OrdinalIgnoreCase))
+            return TenantModules.DefaultCommercialWeighingModules.ToList();
+        return TenantModules.AllModules.ToList();
     }
 
     /// <summary>

@@ -15,6 +15,8 @@ public class StationDto
     public string? BoundACode { get; set; }
     public string? BoundBCode { get; set; }
     public bool IsActive { get; set; }
+    /// <summary>True when this station is the organisation HQ (users assigned here can access all stations).</summary>
+    public bool IsHq { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

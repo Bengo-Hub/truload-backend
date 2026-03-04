@@ -7,6 +7,7 @@ namespace TruLoad.Backend.Repositories.Infrastructure;
 /// </summary>
 public interface IRoadsRepository
 {
+    Task<(List<Roads> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, bool includeInactive = false, string? search = null, CancellationToken cancellationToken = default);
     Task<List<Roads>> GetAllActiveAsync(CancellationToken cancellationToken = default);
     Task<List<Roads>> GetAllAsync(bool includeInactive = false, CancellationToken cancellationToken = default);
     Task<Roads?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);

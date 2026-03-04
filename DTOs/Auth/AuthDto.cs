@@ -66,6 +66,12 @@ public class LoginResponseUser
     public Guid? StationId { get; set; }
 
     /// <summary>
+    /// True when the user's assigned station is an HQ station; such users can log in to any station
+    /// and access data across stations (no station filter unless they explicitly select one).
+    /// </summary>
+    public bool IsHqUser { get; set; }
+
+    /// <summary>
     /// Department ID assigned to user.
     /// </summary>
     public Guid? DepartmentId { get; set; }

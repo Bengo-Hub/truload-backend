@@ -126,6 +126,10 @@ public class TenantContextMiddleware
         if (userStationId == tenantContext.StationId.Value)
             return Task.FromResult(true);
 
+        // HQ users can access any station (drill-down)
+        if (context.User.FindFirst("is_hq_user")?.Value == "true")
+            return Task.FromResult(true);
+
         // Privileged roles can access any station
         var roles = context.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
         if (roles.Contains("Superuser") || roles.Contains("System Admin"))
@@ -179,15 +183,20 @@ public class TenantContextMiddleware
             }
         }
 
+        // Do not fall back to station from claims when user is HQ (is_hq_user): they see all stations unless X-Station-ID is sent for drill-down
         if (!stationId.HasValue)
         {
-            var stationIdClaim = context.User.FindFirst("station_id") ??
-                                context.User.FindFirst("outlet_id");
-
-            if (stationIdClaim != null && Guid.TryParse(stationIdClaim.Value, out var claimStationId))
+            var isHqUser = context.User.FindFirst("is_hq_user")?.Value == "true";
+            if (!isHqUser)
             {
-                stationId = claimStationId;
-                _logger.LogDebug("Resolved StationId from claims: {StationId}", stationId);
+                var stationIdClaim = context.User.FindFirst("station_id") ??
+                                    context.User.FindFirst("outlet_id");
+
+                if (stationIdClaim != null && Guid.TryParse(stationIdClaim.Value, out var claimStationId))
+                {
+                    stationId = claimStationId;
+                    _logger.LogDebug("Resolved StationId from claims: {StationId}", stationId);
+                }
             }
         }
 
