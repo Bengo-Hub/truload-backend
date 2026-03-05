@@ -54,3 +54,4 @@ KubeSecrets/*.bak
 # Temporary files
 *.tmp
 *.temp
+/Logs
