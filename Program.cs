@@ -709,7 +709,7 @@ app.MapHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
 Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.PesaflowInvoiceSyncJob>(
     "pesaflow-invoice-sync",
     job => job.ExecuteAsync(default),
-    "*/5 * * * *", // Every 5 minutes
+    "*/15 * * * *", // Every 15 minutes
     new Hangfire.RecurringJobOptions
     {
         TimeZone = TimeZoneInfo.Utc,
