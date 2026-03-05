@@ -157,7 +157,6 @@ public static class SettingKeys
     // Prosecution defaults (courts, complainant, location hierarchy, road)
     public const string ProsecutionDefaultCourtId = "prosecution.default_court_id";
     public const string ProsecutionDefaultComplainantOfficerId = "prosecution.default_complainant_officer_id";
-    public const string ProsecutionDefaultDistrict = "prosecution.default_district";
     public const string ProsecutionDefaultCountyId = "prosecution.default_county_id";
     public const string ProsecutionDefaultSubCountyId = "prosecution.default_subcounty_id";
     public const string ProsecutionDefaultRoadId = "prosecution.default_road_id";

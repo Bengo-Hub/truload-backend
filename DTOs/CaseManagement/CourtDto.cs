@@ -12,6 +12,8 @@ public class CourtDto
     public string Name { get; set; } = string.Empty;
     public string? Location { get; set; }
     public string CourtType { get; set; } = "magistrate";
+    public Guid? CountyId { get; set; }
+    public Guid? DistrictId { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -26,6 +28,8 @@ public class CreateCourtRequest
     public string Name { get; set; } = string.Empty;
     public string? Location { get; set; }
     public string CourtType { get; set; } = "magistrate";
+    public Guid? CountyId { get; set; }
+    public Guid? DistrictId { get; set; }
 }
 
 /// <summary>
@@ -36,6 +40,8 @@ public class UpdateCourtRequest
     public string? Name { get; set; }
     public string? Location { get; set; }
     public string? CourtType { get; set; }
+    public Guid? CountyId { get; set; }
+    public Guid? DistrictId { get; set; }
     public bool? IsActive { get; set; }
 }
 
@@ -47,5 +53,7 @@ public class CourtSearchCriteria : PagedRequest
     public string? Code { get; set; }
     public string? Name { get; set; }
     public string? CourtType { get; set; }
+    public Guid? CountyId { get; set; }
+    public Guid? DistrictId { get; set; }
     public bool? IsActive { get; set; }
 }

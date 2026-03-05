@@ -213,9 +213,6 @@ namespace TruLoad.Backend.Data.Configurations.Infrastructure
                     .HasColumnName("road_class")
                     .HasMaxLength(10);
 
-                entity.Property(e => e.DistrictId)
-                    .HasColumnName("district_id");
-
                 entity.Property(e => e.TotalLengthKm)
                     .HasColumnName("total_length_km")
                     .HasColumnType("decimal(10,2)");
@@ -235,18 +232,30 @@ namespace TruLoad.Backend.Data.Configurations.Infrastructure
                 entity.Property(e => e.DeletedAt)
                     .HasColumnName("deleted_at");
 
-                // Foreign keys (optional - only if Districts entity exists)
-                // entity.HasOne(e => e.District)
-                //     .WithMany()
-                //     .HasForeignKey(e => e.DistrictId)
-                //     .OnDelete(DeleteBehavior.SetNull);
-
-                // Indexes
                 entity.HasIndex(e => e.Code).IsUnique();
                 entity.HasIndex(e => e.Name);
                 entity.HasIndex(e => e.RoadClass);
-                entity.HasIndex(e => e.DistrictId);
                 entity.HasIndex(e => e.IsActive);
+            });
+
+            modelBuilder.Entity<RoadCounty>(entity =>
+            {
+                entity.ToTable("road_counties");
+                entity.HasKey(e => new { e.RoadId, e.CountyId });
+                entity.HasIndex(e => e.RoadId);
+                entity.HasIndex(e => e.CountyId);
+                entity.HasOne(e => e.Road).WithMany(r => r.RoadCounties).HasForeignKey(e => e.RoadId).OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.County).WithMany().HasForeignKey(e => e.CountyId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<RoadDistrict>(entity =>
+            {
+                entity.ToTable("road_districts");
+                entity.HasKey(e => new { e.RoadId, e.DistrictId });
+                entity.HasIndex(e => e.RoadId);
+                entity.HasIndex(e => e.DistrictId);
+                entity.HasOne(e => e.Road).WithMany(r => r.RoadDistricts).HasForeignKey(e => e.RoadId).OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.District).WithMany().HasForeignKey(e => e.DistrictId).OnDelete(DeleteBehavior.Restrict);
             });
 
             // VehicleMake entity configuration

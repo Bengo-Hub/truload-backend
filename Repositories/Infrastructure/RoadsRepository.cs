@@ -76,9 +76,23 @@ public class RoadsRepository : IRoadsRepository
 
     public async Task<List<Roads>> GetByDistrictAsync(Guid districtId, CancellationToken cancellationToken = default)
     {
-        return await _context.Roads
-            .Where(r => r.DistrictId == districtId && r.IsActive && r.DeletedAt == null)
+        return await _context.RoadDistricts
+            .Where(rd => rd.DistrictId == districtId)
+            .Select(rd => rd.Road)
+            .Where(r => r.IsActive && r.DeletedAt == null)
             .OrderBy(r => r.Name)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<Roads>> GetByCountyAsync(Guid countyId, CancellationToken cancellationToken = default)
+    {
+        return await _context.RoadCounties
+            .Where(rc => rc.CountyId == countyId)
+            .Select(rc => rc.Road)
+            .Where(r => r.IsActive && r.DeletedAt == null)
+            .OrderBy(r => r.Name)
+            .Distinct()
             .ToListAsync(cancellationToken);
     }
 

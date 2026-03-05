@@ -92,6 +92,14 @@ public class RoadsController : ControllerBase
         return Ok(roads);
     }
 
+    [HttpGet("county/{countyId}")]
+    [ProducesResponseType(typeof(List<Roads>), 200)]
+    public async Task<IActionResult> GetByCounty(Guid countyId)
+    {
+        var roads = await _repository.GetByCountyAsync(countyId);
+        return Ok(roads);
+    }
+
     [HttpPost]
     [Authorize(Policy = "Permission:config.manage_taxonomy")]
     [ProducesResponseType(typeof(Roads), 201)]

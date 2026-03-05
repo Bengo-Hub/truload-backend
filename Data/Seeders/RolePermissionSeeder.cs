@@ -65,7 +65,8 @@ public static class RolePermissionSeeder
                 "driver.create", "driver.read", "driver.update",
                 "system.admin", "system.manage_roles", "system.manage_organizations", "system.manage_stations",
                 "system.manage_departments", "system.audit_logs", "system.cache_management",
-                "system.integration_management", "system.backup_restore", "system.security_policy"
+                "system.integration_management", "system.backup_restore", "system.security_policy",
+                "technical.read", "technical.calibration", "technical.scale_test", "technical.audit"
             }
         },
         {
@@ -102,7 +103,8 @@ public static class RolePermissionSeeder
                 "driver.create", "driver.read", "driver.update",
                 "system.manage_roles", "system.manage_organizations", "system.manage_stations",
                 "system.manage_departments", "system.audit_logs", "system.cache_management",
-                "system.integration_management", "system.backup_restore", "system.security_policy"
+                "system.integration_management", "system.backup_restore", "system.security_policy",
+                "technical.read", "technical.calibration", "technical.scale_test", "technical.audit"
             }
         },
         {
@@ -120,6 +122,7 @@ public static class RolePermissionSeeder
                 "station.manage_devices", "station.manage_io", "station.configure_defaults", "station.export",
                 "station.audit",
                 "config.read", "config.manage_axle",
+                "technical.read", "technical.calibration", "technical.scale_test", "technical.audit",
                 "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit",
                 "invoice.create", "invoice.read", "invoice.read_own", "invoice.update",
                 "receipt.create", "receipt.read", "receipt.read_own",
@@ -154,6 +157,7 @@ public static class RolePermissionSeeder
                 // Weighing operations plus basic yard/tag for workflow
                 "weighing.create", "weighing.read_own", "weighing.scale_test", "weighing.audit",
                 "weighing.send_to_yard", "weighing.export",
+                "technical.read", "technical.scale_test",
                 "yard.create", "yard.read_own",
                 "tag.create", "tag.read_own",
                 "vehicle.create", "vehicle.read", "vehicle.update",

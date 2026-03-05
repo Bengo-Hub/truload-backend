@@ -130,6 +130,8 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     public DbSet<VehicleMake> VehicleMakes { get; set; } = null!;
     public DbSet<VehicleModel> VehicleModels { get; set; } = null!;
     public DbSet<Roads> Roads { get; set; } = null!;
+    public DbSet<RoadCounty> RoadCounties { get; set; } = null!;
+    public DbSet<RoadDistrict> RoadDistricts { get; set; } = null!;
     public DbSet<Counties> Counties { get; set; } = null!;
     public DbSet<Districts> Districts { get; set; } = null!;
     public DbSet<Subcounty> Subcounties { get; set; } = null!;

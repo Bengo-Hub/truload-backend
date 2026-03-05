@@ -58,7 +58,6 @@ public class ProsecutionController : ControllerBase
             defaultCountyId = Get(SettingKeys.ProsecutionDefaultCountyId),
             defaultSubcountyId = Get(SettingKeys.ProsecutionDefaultSubCountyId),
             defaultRoadId = Get(SettingKeys.ProsecutionDefaultRoadId),
-            defaultDistrict = Get(SettingKeys.ProsecutionDefaultDistrict),
         };
         return Ok(defaults);
     }

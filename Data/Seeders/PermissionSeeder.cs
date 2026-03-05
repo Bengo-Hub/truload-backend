@@ -5,7 +5,7 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Data.Seeders;
 
 /// <summary>
-/// Seeds 121 default permissions across 14 categories into the database.
+/// Seeds default permissions across categories (weighing, yard, tag, case, prosecution, user, station, config, analytics, financial, vehicle, transporter, driver, system, technical) into the database.
 /// Run once during application initialization.
 /// </summary>
 public static class PermissionSeeder
@@ -163,7 +163,13 @@ public static class PermissionSeeder
         ("system.cache_management", "Cache Management", "System", "Manage system cache"),
         ("system.integration_management", "Integration Management", "System", "Manage third-party integrations"),
         ("system.backup_restore", "Backup & Restore", "System", "Manage system backups and restoration"),
-        ("system.security_policy", "Security Policy", "System", "Manage security policies and configurations")
+        ("system.security_policy", "Security Policy", "System", "Manage security policies and configurations"),
+
+        // Technical Category (calibration, scale tests, devices - 4 permissions)
+        ("technical.read", "Read Technical", "Technical", "View technical settings, calibration and device status"),
+        ("technical.calibration", "Calibration", "Technical", "Manage calibration and scale test configuration"),
+        ("technical.scale_test", "Scale Test", "Technical", "Perform and view scale tests"),
+        ("technical.audit", "Audit Technical", "Technical", "View technical audit logs")
     };
 
     /// <summary>

@@ -76,6 +76,11 @@ public static class DatabaseSeeder
             
             var roadsSeeder = new RoadsSeeder(context);
             await roadsSeeder.SeedAsync();
+
+            // Link roads to counties/districts (many-to-many) and seed courts per county
+            logger.LogInformation("Seeding road–county/district links and courts...");
+            var kenyaRoadsCourtsSeeder = new KenyaRoadsCourtsSeeder(context);
+            await kenyaRoadsCourtsSeeder.SeedAsync();
             
             // Seed fee bands for EAC and Traffic Act
             logger.LogInformation("Seeding fee bands...");

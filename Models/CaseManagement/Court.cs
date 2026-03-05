@@ -28,6 +28,16 @@ public class Court : BaseEntity
     /// </summary>
     public string CourtType { get; set; } = "magistrate";
 
+    /// <summary>
+    /// County where the court is located (for filtering courts by region).
+    /// </summary>
+    public Guid? CountyId { get; set; }
+
+    /// <summary>
+    /// District/Subcounty where the court is located (for filtering by subcounty).
+    /// </summary>
+    public Guid? DistrictId { get; set; }
+
     // Navigation properties
     public ICollection<CaseRegister> CaseRegisters { get; set; } = new List<CaseRegister>();
     public ICollection<CourtHearing> CourtHearings { get; set; } = new List<CourtHearing>();

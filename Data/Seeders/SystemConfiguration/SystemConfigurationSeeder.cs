@@ -871,21 +871,6 @@ public class SystemConfigurationSeeder
             new ApplicationSettings
             {
                 Id = Guid.NewGuid(),
-                SettingKey = SettingKeys.ProsecutionDefaultDistrict,
-                SettingValue = "",
-                SettingType = "String",
-                Category = SettingKeys.CategoryProsecution,
-                DisplayName = "Default District (legacy text)",
-                Description = "Legacy default district name; prefer Default Subcounty.",
-                DefaultValue = "",
-                IsEditable = true,
-                SortOrder = 3,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            },
-            new ApplicationSettings
-            {
-                Id = Guid.NewGuid(),
                 SettingKey = SettingKeys.ProsecutionDefaultCountyId,
                 SettingValue = "",
                 SettingType = "String",
