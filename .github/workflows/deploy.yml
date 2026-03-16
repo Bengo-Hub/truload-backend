@@ -412,3 +412,24 @@ jobs:
           echo "⚠️ Skipping health check (deployment not found)"
         fi
         echo "::endgroup::"
+
+  release:
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    if: success()
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Need all tags for versioning
+
+      - name: Run release script
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GIT_USER: ${{ secrets.GIT_USER || 'TruLoad Bot' }}
+          GIT_EMAIL: ${{ secrets.GIT_EMAIL || 'dev@truload.io' }}
+        run: |
+          chmod +x scripts/release.sh
+          ./scripts/release.sh truload-backend

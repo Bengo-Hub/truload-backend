@@ -35,7 +35,8 @@ public class RoleSeeder
             new { Name = "Enforcement Officer", Code = "ENFORCEMENT_OFFICER", Description = "Enforcement officer with authority to manage cases and enforcement actions" },
             new { Name = "Inspector", Code = "INSPECTOR", Description = "Inspector with authority to view and analyze weighing and case data" },
             new { Name = "Auditor", Code = "AUDITOR", Description = "Auditor with authority to review and audit system operations and data integrity" },
-            new { Name = "Middleware Service", Code = "MIDDLEWARE_SERVICE", Description = "Service account for TruConnect middleware with limited permissions for autoweigh operations" }
+            new { Name = "Middleware Service", Code = "MIDDLEWARE_SERVICE", Description = "Service account for TruConnect middleware with limited permissions for autoweigh operations" },
+            new { Name = "Middleware Operator", Code = "MIDDLEWARE_OPERATOR", Description = "Operator with limited rights for managing TruConnect middleware settings and logs" }
         };
 
         foreach (var roleData in roles)

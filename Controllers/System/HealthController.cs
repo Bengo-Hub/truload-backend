@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using TruLoad.Backend.Services.Interfaces;
 
 namespace TruLoad.Backend.Controllers.System;
 
@@ -6,10 +7,12 @@ namespace TruLoad.Backend.Controllers.System;
 public class HealthController : ControllerBase
 {
     private readonly ILogger<HealthController> _logger;
+    private readonly IVersionService _versionService;
 
-    public HealthController(ILogger<HealthController> logger)
+    public HealthController(ILogger<HealthController> logger, IVersionService versionService)
     {
         _logger = logger;
+        _versionService = versionService;
     }
 
     /// <summary>
@@ -25,7 +28,7 @@ public class HealthController : ControllerBase
             status = "healthy",
             service = "TruLoad Backend API",
             timestamp = DateTime.UtcNow,
-            version = "v1.0.0"
+            version = _versionService.GetVersion()
         });
     }
 }

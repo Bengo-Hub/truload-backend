@@ -40,22 +40,26 @@ public class KenyaRoadsCourtsSeeder
         // Map road code -> county names (road passes through these counties). Based on KeNHA/geography.
         var roadToCountyNames = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
-            ["A1"] = new[] { "Nairobi City", "Machakos", "Kajiado", "Makueni", "Kitui", "Taita-Taveta", "Kilifi", "Mombasa" },
-            ["A2"] = new[] { "Nairobi City", "Kiambu", "Nakuru", "Kericho", "Kisumu" },
-            ["A3"] = new[] { "Nairobi City", "Kajiado" },
-            ["A104"] = new[] { "Nairobi City", "Kiambu" },
+            ["A1"] = new[] { "Nairobi City", "Mombasa", "Kwale", "Kilifi", "Tana River", "Lamu", "Taita-Taveta", "Garissa", "Wajir", "Mandera" },
+            ["A2"] = new[] { "Nairobi City", "Kiambu", "Murang'a", "Kirinyaga", "Nyeri", "Laikipia", "Isiolo", "Marsabit" },
+            ["A3"] = new[] { "Kiambu", "Machakos", "Kitui", "Tana River", "Garissa" },
+            ["A8"] = new[] { "Nairobi City", "Kiambu", "Nakuru", "Kericho", "Uasin Gishu", "Kakamega", "Bungoma", "Busia" },
+            ["A104"] = new[] { "Nairobi City", "Kajiado" },
+            ["A109"] = new[] { "Mombasa", "Kwale" },
             ["B1"] = new[] { "Mombasa", "Kilifi" },
-            ["B3"] = new[] { "Kisumu", "Busia" },
-            ["B5"] = new[] { "Nakuru", "Uasin Gishu" },
+            ["B3"] = new[] { "Nakuru", "Bomet", "Kericho", "Kisumu" },
+            ["B8"] = new[] { "Mombasa", "Kilifi", "Tana River", "Garissa" },
+            ["B5"] = new[] { "Nakuru", "Laikipia", "Nyeri" },
             ["C26"] = new[] { "Nairobi City", "Kiambu" },
-            ["C34"] = new[] { "Mombasa", "Kwale" },
-            ["D371"] = new[] { "Nairobi City", "Kajiado" },
-            ["D403"] = new[] { "Nakuru" },
-            ["E856"] = new[] { "Nairobi City" },
-            ["E920"] = new[] { "Mombasa" },
-            ["A109"] = new[] { "Nairobi City" },
             ["C101"] = new[] { "Nairobi City" },
             ["C102"] = new[] { "Nairobi City", "Kiambu" },
+            ["C13"] = new[] { "Kiambu", "Murang'a" },
+            ["D371"] = new[] { "Nairobi City", "Kajiado" },
+            ["D403"] = new[] { "Nakuru" },
+            ["E856"] = new[] { "Nairobi City", "Kiambu", "Machakos" },
+            ["E920"] = new[] { "Mombasa", "Kwale" },
+            ["E200"] = new[] { "Nairobi City", "Kiambu" },
+            ["S1"] = new[] { "Nairobi City", "Kiambu" },
         };
 
         var roadCounties = new List<RoadCounty>();
@@ -72,9 +76,13 @@ public class KenyaRoadsCourtsSeeder
                     continue;
 
                 roadCounties.Add(new RoadCounty { RoadId = road.Id, CountyId = county.Id });
+                
+                // Link to all districts in this county (Road passes through the whole county conceptually for filtering)
                 var countyDistricts = districts.Where(d => d.CountyId == county.Id).ToList();
                 foreach (var d in countyDistricts)
+                {
                     roadDistricts.Add(new RoadDistrict { RoadId = road.Id, DistrictId = d.Id });
+                }
             }
         }
 
@@ -97,27 +105,41 @@ public class KenyaRoadsCourtsSeeder
         var courts = new List<Court>();
         foreach (var county in counties)
         {
-            var countyDistricts = districts.Where(d => d.CountyId == county.Id).Take(3).ToList();
-            var firstDistrictId = countyDistricts.FirstOrDefault()?.Id;
-
-            var courtName = county.Name == "Nairobi City"
-                ? "Nairobi Law Courts (Milimani)"
-                : $"{county.Name} Magistrate's Court";
-            var code = county.Name == "Nairobi City" ? "NAI-MIL" : $"{county.Code}-MC";
-
-            courts.Add(new Court
+            // Seed multiple courts for major counties
+            var countyCourts = new List<string>();
+            if (county.Name == "Nairobi City")
             {
-                Id = Guid.NewGuid(),
-                Code = code,
-                Name = courtName,
-                Location = $"{county.Name}, Kenya",
-                CourtType = "magistrate",
-                CountyId = county.Id,
-                DistrictId = firstDistrictId,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            });
+                countyCourts.AddRange(new[] { "Milimani Law Courts", "Kibera Law Courts", "Makadara Law Courts" });
+            }
+            else if (county.Name == "Mombasa")
+            {
+                countyCourts.AddRange(new[] { "Mombasa Law Courts", "Shanzu Law Courts" });
+            }
+            else
+            {
+                countyCourts.Add($"{county.Name} Magistrate's Court");
+            }
+
+            var countyDistricts = districts.Where(d => d.CountyId == county.Id).ToList();
+            
+            for (int i = 0; i < countyCourts.Count; i++)
+            {
+                var districtId = countyDistricts.ElementAtOrDefault(i)?.Id ?? countyDistricts.FirstOrDefault()?.Id;
+                
+                courts.Add(new Court
+                {
+                    Id = Guid.NewGuid(),
+                    Code = $"{county.Code}-MC-{i+1:D2}",
+                    Name = countyCourts[i],
+                    Location = $"{county.Name}, Kenya",
+                    CourtType = "magistrate",
+                    CountyId = county.Id,
+                    DistrictId = districtId,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
         }
 
         _context.Courts.AddRange(courts);
