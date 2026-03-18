@@ -302,6 +302,9 @@ builder.Services.AddHealthChecks()
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddFluentValidationAutoValidation();
 
+// Version service (used by HealthController)
+builder.Services.AddSingleton<IVersionService, VersionService>();
+
 // Rate Limiting (Performance optimization - prevents API abuse)
 builder.Services.AddSingleton<RateLimitSettings>();
 builder.Services.AddTruLoadRateLimiting();
