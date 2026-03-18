@@ -34,7 +34,6 @@ public class UserSeeder
     {
         await SeedSuperUserAsync();
         await SeedMiddlewareServiceUserAsync();
-        await SeedMiddlewareOperatorUserAsync();
     }
 
     private async Task SeedSuperUserAsync()
@@ -197,58 +196,4 @@ public class UserSeeder
         }
     }
 
-    private async Task SeedMiddlewareOperatorUserAsync()
-    {
-        // Check if MIDDLEWARE_OPERATOR role exists
-        var operatorRole = await _roleManager.FindByNameAsync("Middleware Operator");
-
-        if (operatorRole == null)
-        {
-            Console.WriteLine("⚠ MIDDLEWARE_OPERATOR role not found, skipping operator user seed");
-            return;
-        }
-
-        // Get KURA organization
-        var kuraOrg = await _context.Organizations
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(o => o.Code == "KURA");
-
-        if (kuraOrg == null) return;
-
-        // Seed operator user: user@truconnect.com
-        var operatorEmail = "user@truconnect.com";
-        var existingUser = await _userManager.FindByEmailAsync(operatorEmail);
-
-        if (existingUser == null)
-        {
-            // Use specific password as requested: User@1234
-            var operatorUser = new ApplicationUser
-            {
-                Email = operatorEmail,
-                NormalizedEmail = operatorEmail.ToUpper(),
-                UserName = operatorEmail,
-                NormalizedUserName = operatorEmail.ToUpper(),
-                FullName = "TruConnect Operator",
-                OrganizationId = kuraOrg.Id,
-                EmailConfirmed = true,
-                PhoneNumberConfirmed = true,
-                TwoFactorEnabled = false,
-                LockoutEnabled = false
-            };
-
-            var result = await _userManager.CreateAsync(operatorUser, "User@1234");
-            if (!result.Succeeded)
-            {
-                throw new Exception($"Failed to create operator user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
-            }
-
-            var roleResult = await _userManager.AddToRoleAsync(operatorUser, "Middleware Operator");
-            if (!roleResult.Succeeded)
-            {
-                throw new Exception($"Failed to assign role to operator user: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
-            }
-
-            Console.WriteLine($"✓ Seeded middleware operator user: {operatorEmail} with MIDDLEWARE_OPERATOR role");
-        }
-    }
 }

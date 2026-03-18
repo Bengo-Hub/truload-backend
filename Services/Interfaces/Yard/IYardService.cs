@@ -42,7 +42,7 @@ public interface IYardService
     /// <summary>
     /// Get yard statistics (pending count, released today, etc.).
     /// </summary>
-    Task<YardStatisticsDto> GetStatisticsAsync(Guid? stationId, CancellationToken ct = default);
+    Task<YardStatisticsDto> GetStatisticsAsync(Guid? stationId, DateTime? dateFrom = null, DateTime? dateTo = null, CancellationToken ct = default);
 }
 
 /// <summary>

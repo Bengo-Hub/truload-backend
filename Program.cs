@@ -78,7 +78,11 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // ===== Services =====
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new TruLoad.Backend.Json.NullableDateTimeJsonConverter());
+    });
 builder.Services.AddMemoryCache();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -500,7 +504,7 @@ try
 
 
         // Check if initial seeding has already been completed
-        var seedingVersion = 8; // Increment this when you need to re-seed
+        var seedingVersion = 13; // Increment this when you need to re-seed
         var seedingName = "InitialSeed";
 
         var existingSeed = await dbContext.DatabaseSeedingHistory

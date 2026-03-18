@@ -117,6 +117,7 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
                 OverloadKg = overloadKg,
                 PavementDamageFactor = pdf,
                 Status = status,
+                OperationalToleranceKg = operationalToleranceKg,
                 FeeUsd = feeUsd,
                 DemeritPoints = demeritPoints,
                 Axles = groupAxles.Select(a => new AxleDetailDto
@@ -199,6 +200,7 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
             operationalToleranceKg);
 
         result.GroupResults = groupResults;
+        result.OperationalToleranceKg = operationalToleranceKg;
 
         // Calculate GVW compliance (0% tolerance)
         result.GvwMeasuredKg = transaction.WeighingAxles.Sum(a => a.MeasuredWeightKg);

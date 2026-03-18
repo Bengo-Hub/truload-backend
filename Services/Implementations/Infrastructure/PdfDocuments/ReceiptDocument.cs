@@ -30,12 +30,12 @@ public class ReceiptDocument : BaseDocument
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(1.5f, Unit.Centimetre);
+                page.Margin(1.0f, Unit.Centimetre);
                 page.PageColor(Colors.White);
                 page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Inter"));
 
                 page.Header().Element(ComposeHeader);
-                page.Content().PaddingVertical(8).Element(ComposeContent);
+                page.Content().PaddingVertical(6).Element(ComposeContent);
                 page.Footer().Element(ComposeOfficialFooter);
             });
         }).GeneratePdf();

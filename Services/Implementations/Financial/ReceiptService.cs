@@ -242,9 +242,15 @@ public class ReceiptService : IReceiptService
         return MapToDto(receipt);
     }
 
-    public async Task<ReceiptStatisticsDto> GetStatisticsAsync(CancellationToken ct = default)
+    public async Task<ReceiptStatisticsDto> GetStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, Guid? stationId = null, CancellationToken ct = default)
     {
         var receipts = _context.Receipts.Where(r => r.DeletedAt == null);
+        if (stationId.HasValue)
+            receipts = receipts.Where(r => r.StationId == stationId.Value);
+        if (dateFrom.HasValue)
+            receipts = receipts.Where(r => r.PaymentDate >= DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc));
+        if (dateTo.HasValue)
+            receipts = receipts.Where(r => r.PaymentDate <= DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc));
 
         var total = await receipts.CountAsync(ct);
 

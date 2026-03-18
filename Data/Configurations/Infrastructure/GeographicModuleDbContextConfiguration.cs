@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models.Infrastructure;
+using TruLoad.Backend.Models;
 
 namespace TruLoad.Backend.Data.Configurations.Infrastructure;
 
 /// <summary>
 /// Geographic Module DbContext Configuration
-/// Contains configurations for geographic entities: Counties, Districts, Subcounties
+/// Contains configurations for geographic entities: Counties, Subcounties
 /// </summary>
 public static class GeographicModuleDbContextConfiguration
 {
@@ -24,8 +25,8 @@ public static class GeographicModuleDbContextConfiguration
                 .HasColumnName("id")
                 .HasDefaultValueSql("gen_random_uuid()");
 
-            entity.Property(e => e.DistrictId)
-                .HasColumnName("district_id")
+            entity.Property(e => e.CountyId)
+                .HasColumnName("county_id")
                 .IsRequired();
 
             entity.Property(e => e.Code)
@@ -54,9 +55,9 @@ public static class GeographicModuleDbContextConfiguration
                 .HasColumnName("deleted_at");
 
             // Relationships
-            entity.HasOne(e => e.District)
+            entity.HasOne(e => e.County)
                 .WithMany()
-                .HasForeignKey(e => e.DistrictId)
+                .HasForeignKey(e => e.CountyId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Indexes
@@ -64,8 +65,8 @@ public static class GeographicModuleDbContextConfiguration
                 .IsUnique()
                 .HasDatabaseName("idx_subcounties_code");
 
-            entity.HasIndex(e => e.DistrictId)
-                .HasDatabaseName("idx_subcounties_district_id");
+            entity.HasIndex(e => e.CountyId)
+                .HasDatabaseName("idx_subcounties_county_id");
 
             entity.HasIndex(e => e.Name)
                 .HasDatabaseName("idx_subcounties_name");

@@ -14,7 +14,7 @@ public interface IInvoiceService
     Task<InvoiceDto> GenerateInvoiceAsync(Guid prosecutionCaseId, Guid userId, CancellationToken ct = default);
     Task<InvoiceDto> UpdateStatusAsync(Guid id, string status, Guid userId, CancellationToken ct = default);
     Task<InvoiceDto> VoidInvoiceAsync(Guid id, string reason, Guid userId, CancellationToken ct = default);
-    Task<InvoiceStatisticsDto> GetStatisticsAsync(CancellationToken ct = default);
+    Task<InvoiceStatisticsDto> GetStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, Guid? stationId = null, CancellationToken ct = default);
     Task<List<InvoiceAgingBucketDto>> GetAgingAsync(CancellationToken ct = default);
     Task<string> GenerateInvoiceNumberAsync(CancellationToken ct = default);
 }

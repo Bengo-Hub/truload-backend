@@ -21,10 +21,10 @@ public abstract class BaseDocument
     protected readonly string OfficialGreen = BrandingConstants.Colors.OfficialGreen;
 
     // Logo sizes - large enough for official documents
-    protected const float LogoWidth = 100;
-    protected const float LogoHeight = 80;
-    protected const float SmallLogoWidth = 65;
-    protected const float SmallLogoHeight = 55;
+    protected const float LogoWidth = 85;
+    protected const float LogoHeight = 65;
+    protected const float SmallLogoWidth = 55;
+    protected const float SmallLogoHeight = 45;
 
     public abstract byte[] Generate();
 
@@ -73,17 +73,17 @@ public abstract class BaseDocument
                 row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(center =>
                 {
                     center.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
-                        .FontSize(12).SemiBold();
+                        .FontSize(11).SemiBold();
 
                     // Organization name (e.g., "KENYA URBAN ROADS AUTHORITY")
                     if (!string.IsNullOrEmpty(organizationName))
                     {
                         center.Item().AlignCenter().Text(organizationName)
-                            .FontSize(10).SemiBold();
+                            .FontSize(9).SemiBold();
                     }
 
                     center.Item().AlignCenter().Text(documentTitle)
-                        .FontSize(15).Bold().FontColor(headerColor);
+                        .FontSize(14).Bold().FontColor(headerColor);
                     if (!string.IsNullOrEmpty(subtitle))
                         center.Item().AlignCenter().Text(subtitle).FontSize(9);
                 });
@@ -99,16 +99,16 @@ public abstract class BaseDocument
             // Reference number and date row
             if (!string.IsNullOrEmpty(referenceNumber) || !string.IsNullOrEmpty(dateText))
             {
-                col.Item().PaddingTop(3).Row(row =>
+                col.Item().PaddingTop(2).Row(row =>
                 {
                     if (!string.IsNullOrEmpty(referenceNumber))
-                        row.RelativeItem().Text(referenceNumber).FontSize(10).SemiBold();
+                        row.RelativeItem().Text(referenceNumber).FontSize(9).SemiBold();
                     if (!string.IsNullOrEmpty(dateText))
-                        row.RelativeItem().AlignRight().Text(dateText).FontSize(10);
+                        row.RelativeItem().AlignRight().Text(dateText).FontSize(9);
                 });
             }
 
-            col.Item().PaddingVertical(3).LineHorizontal(1).LineColor(Colors.Black);
+            col.Item().PaddingVertical(2).LineHorizontal(1).LineColor(Colors.Black);
         });
     }
 

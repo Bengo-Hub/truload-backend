@@ -30,12 +30,12 @@ public class InvoiceDocument : BaseDocument
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(2, Unit.Centimetre);
+                page.Margin(1.0f, Unit.Centimetre);
                 page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Inter"));
+                page.DefaultTextStyle(x => x.FontSize(9.5f).FontFamily("Inter"));
 
                 page.Header().Element(ComposeHeader);
-                page.Content().PaddingVertical(10).Element(ComposeContent);
+                page.Content().PaddingVertical(8).Element(ComposeContent);
                 page.Footer().Element(ComposeOfficialFooter);
             });
         }).GeneratePdf();
@@ -60,10 +60,10 @@ public class InvoiceDocument : BaseDocument
                 row.RelativeItem().PaddingHorizontal(5).Column(org =>
                 {
                     org.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
-                        .FontSize(11).SemiBold();
-                    org.Item().AlignCenter().Text(_organizationName).FontSize(14).SemiBold().FontColor(KuraBlue);
-                    org.Item().AlignCenter().Text(_organizationAddress).FontSize(9);
-                    org.Item().AlignCenter().Text("Tel: +254 20 XXXXXXX | Email: info@kura.go.ke").FontSize(8);
+                        .FontSize(10).SemiBold();
+                    org.Item().AlignCenter().Text(_organizationName).FontSize(13).SemiBold().FontColor(KuraBlue);
+                    org.Item().AlignCenter().Text(_organizationAddress).FontSize(8.5f);
+                    org.Item().AlignCenter().Text("Tel: +254 20 XXXXXXX | Email: info@kura.go.ke").FontSize(7.5f);
                 });
 
                 row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
@@ -74,9 +74,9 @@ public class InvoiceDocument : BaseDocument
             });
 
             // Invoice badge
-            col.Item().PaddingTop(8).AlignCenter()
-                .Background(KuraBlue).Padding(8)
-                .Text("INVOICE").FontSize(16).Bold().FontColor(Colors.White);
+            col.Item().PaddingTop(6).AlignCenter()
+                .Background(KuraBlue).Padding(6)
+                .Text("INVOICE").FontSize(15).Bold().FontColor(Colors.White);
 
             // Invoice details row
             col.Item().PaddingTop(10).Row(row =>

@@ -215,9 +215,14 @@ public class CaseRegisterController : ControllerBase
     /// Get case statistics
     /// </summary>
     [HttpGet("statistics")]
-    public async Task<IActionResult> GetStatistics()
+    public async Task<IActionResult> GetStatistics(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] Guid? stationId)
     {
-        var stats = await _caseRegisterService.GetCaseStatisticsAsync();
+        var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "case.read");
+        var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+        var stats = await _caseRegisterService.GetCaseStatisticsAsync(dateFrom, dateTo, effectiveStationId);
         return Ok(stats);
     }
 
@@ -227,14 +232,18 @@ public class CaseRegisterController : ControllerBase
     [HttpGet("disposition-breakdown")]
     public async Task<IActionResult> GetDispositionBreakdown(
         [FromQuery] DateTime? dateFrom,
-        [FromQuery] DateTime? dateTo)
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] Guid? stationId)
     {
         try
         {
+            var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "case.read");
+            var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
             var criteria = new CaseSearchCriteria
             {
                 CreatedFrom = dateFrom,
                 CreatedTo = dateTo,
+                StationId = effectiveStationId,
                 PageSize = 10000
             };
             var result = await _caseRegisterService.SearchCasesAsync(criteria);
@@ -259,17 +268,20 @@ public class CaseRegisterController : ControllerBase
     [HttpGet("trend")]
     public async Task<IActionResult> GetCaseTrend(
         [FromQuery] DateTime? dateFrom,
-        [FromQuery] DateTime? dateTo)
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] Guid? stationId)
     {
         try
         {
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
             var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
-
+            var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "case.read");
+            var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
             var criteria = new CaseSearchCriteria
             {
                 CreatedFrom = from,
                 CreatedTo = to,
+                StationId = effectiveStationId,
                 PageSize = 10000
             };
             var result = await _caseRegisterService.SearchCasesAsync(criteria);

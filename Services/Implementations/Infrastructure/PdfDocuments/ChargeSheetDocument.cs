@@ -29,12 +29,12 @@ public class ChargeSheetDocument : BaseDocument
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(2, Unit.Centimetre);
+                page.Margin(1.0f, Unit.Centimetre);
                 page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Inter"));
+                page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Inter"));
 
                 page.Header().Element(ComposeHeader);
-                page.Content().PaddingVertical(10).Element(ComposeContent);
+                page.Content().PaddingVertical(8).Element(ComposeContent);
                 page.Footer().Element(ComposeOfficialFooter);
             });
         }).GeneratePdf();
@@ -63,38 +63,38 @@ public class ChargeSheetDocument : BaseDocument
             col.Spacing(8);
 
             // Vehicle Information Section
-            col.Item().Text("1. VEHICLE INFORMATION").FontSize(11).SemiBold();
-            col.Item().PaddingLeft(15).Column(vehicle =>
+            col.Item().Text("1. VEHICLE INFORMATION").FontSize(9.5f).SemiBold();
+            col.Item().PaddingLeft(10).Column(vehicle =>
             {
-                vehicle.Spacing(4);
-                ComposeInfoRow(vehicle.Item(), "Registration No", _prosecution.Weighing?.VehicleRegNumber ?? "N/A", true);
+                vehicle.Spacing(2);
+                ComposeInfoRow(vehicle.Item(), "Reg No", _prosecution.Weighing?.VehicleRegNumber ?? "N/A", true);
                 ComposeInfoRow(vehicle.Item(), "Ticket No", _prosecution.Weighing?.TicketNumber ?? "N/A");
                 ComposeInfoRow(vehicle.Item(), "Weighed At", _prosecution.Weighing?.WeighedAt.ToString("dd/MM/yyyy HH:mm") ?? "N/A");
             });
 
             // Offense Details Section
-            col.Item().PaddingTop(5).Text("2. OFFENSE DETAILS").FontSize(11).SemiBold();
-            col.Item().PaddingLeft(15).Column(offense =>
+            col.Item().PaddingTop(4).Text("2. OFFENSE DETAILS").FontSize(9.5f).SemiBold();
+            col.Item().PaddingLeft(10).Column(offense =>
             {
-                offense.Spacing(4);
-                ComposeInfoRow(offense.Item(), "Date of Offense", _prosecution.Weighing?.WeighedAt.ToString("dd/MM/yyyy HH:mm") ?? "N/A");
+                offense.Spacing(2);
+                ComposeInfoRow(offense.Item(), "Offense Date", _prosecution.Weighing?.WeighedAt.ToString("dd/MM/yyyy HH:mm") ?? "N/A");
                 ComposeInfoRow(offense.Item(), "Legal Framework", _prosecution.Act?.Name ?? "Kenya Traffic Act Cap 403");
                 ComposeInfoRow(offense.Item(), "Charge Basis", _prosecution.BestChargeBasis == "gvw" ? "Gross Vehicle Weight" : "Axle Weight");
             });
 
             // Charge Statement
-            col.Item().PaddingTop(10).Border(1).BorderColor(Colors.Black).Padding(10).Column(charge =>
+            col.Item().PaddingTop(6).Border(1).BorderColor(Colors.Black).Padding(8).Column(charge =>
             {
-                charge.Item().Text("STATEMENT OF CHARGE").FontSize(11).SemiBold().FontColor(OfficialRed);
-                charge.Item().PaddingTop(5).Text(ComposeChargeStatement()).FontSize(10);
+                charge.Item().Text("STATEMENT OF CHARGE").FontSize(9.5f).SemiBold().FontColor(OfficialRed);
+                charge.Item().PaddingTop(3).Text(ComposeChargeStatement()).FontSize(9);
             });
 
             // Weighing Evidence Summary
-            col.Item().PaddingTop(10).Text("3. WEIGHING EVIDENCE SUMMARY").FontSize(11).SemiBold();
+            col.Item().PaddingTop(6).Text("3. WEIGHING EVIDENCE SUMMARY").FontSize(9.5f).SemiBold();
             col.Item().Element(ComposeWeighingEvidenceTable);
 
             // Charge Calculation Summary
-            col.Item().PaddingTop(10).Text("4. CHARGE CALCULATION").FontSize(11).SemiBold();
+            col.Item().PaddingTop(6).Text("4. CHARGE CALCULATION").FontSize(9.5f).SemiBold();
             col.Item().Element(ComposeChargeTable);
 
             // Officer Section

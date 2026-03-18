@@ -23,7 +23,6 @@ public class ApplicationSettings : BaseEntity
     /// <summary>
     /// Setting value stored as string. Complex values stored as JSON.
     /// </summary>
-    [Required]
     public string SettingValue { get; set; } = string.Empty;
 
     /// <summary>
@@ -108,6 +107,7 @@ public static class SettingKeys
     public const string BackupScheduleCron = "backup.schedule_cron";
     public const string BackupRetentionDays = "backup.retention_days";
     public const string BackupStoragePath = "backup.storage_path";
+    public const string BackupPgDumpPath = "backup.pg_dump_path";
 
     // Compliance
     public const string DefaultActCode = "compliance.default_act_code";
@@ -128,6 +128,7 @@ public static class SettingKeys
     // Weighing
     public const string WeighingMaxReweighCycles = "weighing.max_reweigh_cycles";
     public const string WeighingOperationalToleranceKg = "weighing.operational_tolerance_kg";
+    public const string WeighingScaleTestRequired = "weighing.scale_test_required";
 
     // Financial
     public const string FinancialDefaultForexRate = "financial.default_forex_rate";

@@ -198,9 +198,21 @@ public class InvoiceService : IInvoiceService
         return (await GetByIdAsync(id, ct))!;
     }
 
-    public async Task<InvoiceStatisticsDto> GetStatisticsAsync(CancellationToken ct = default)
+    public async Task<InvoiceStatisticsDto> GetStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, Guid? stationId = null, CancellationToken ct = default)
     {
         var invoices = _context.Invoices.Where(i => i.DeletedAt == null);
+        if (stationId.HasValue)
+            invoices = invoices.Where(i => i.StationId == stationId.Value);
+        if (dateFrom.HasValue)
+        {
+            var from = DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc);
+            invoices = invoices.Where(i => i.GeneratedAt >= from);
+        }
+        if (dateTo.HasValue)
+        {
+            var to = DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc);
+            invoices = invoices.Where(i => i.GeneratedAt <= to);
+        }
 
         var total = await invoices.CountAsync(ct);
         var pending = await invoices.CountAsync(i => i.Status == "pending", ct);
@@ -212,9 +224,14 @@ public class InvoiceService : IInvoiceService
             .Where(i => i.Status == "pending")
             .SumAsync(i => i.AmountDue, ct);
 
-        var totalAmountPaid = await _context.Receipts
-            .Where(r => r.DeletedAt == null)
-            .SumAsync(r => r.AmountPaid, ct);
+        var receiptsBase = _context.Receipts.Where(r => r.DeletedAt == null);
+        if (stationId.HasValue)
+            receiptsBase = receiptsBase.Where(r => r.StationId == stationId.Value);
+        if (dateFrom.HasValue)
+            receiptsBase = receiptsBase.Where(r => r.PaymentDate >= DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc));
+        if (dateTo.HasValue)
+            receiptsBase = receiptsBase.Where(r => r.PaymentDate <= DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc));
+        var totalAmountPaid = await receiptsBase.SumAsync(r => r.AmountPaid, ct);
 
         // Per-currency breakdown for pending invoices
         var pendingInvoices = invoices.Where(i => i.Status == "pending");
@@ -226,7 +243,7 @@ public class InvoiceService : IInvoiceService
             .SumAsync(i => i.AmountDue, ct);
 
         // Per-currency breakdown for receipts
-        var receipts = _context.Receipts.Where(r => r.DeletedAt == null);
+        var receipts = receiptsBase;
         var totalAmountPaidKes = await receipts
             .Where(r => r.Currency == "KES")
             .SumAsync(r => r.AmountPaid, ct);

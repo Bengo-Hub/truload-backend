@@ -47,7 +47,7 @@ public interface IProsecutionService
     /// <summary>
     /// Get prosecution statistics
     /// </summary>
-    Task<ProsecutionStatisticsDto> GetStatisticsAsync(CancellationToken ct = default);
+    Task<ProsecutionStatisticsDto> GetStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, Guid? stationId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Generate certificate number for prosecution

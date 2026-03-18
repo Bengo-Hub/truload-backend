@@ -65,8 +65,25 @@ public class VehicleController : ControllerBase
     public async Task<IActionResult> Update(Guid id, [FromBody] Vehicle vehicle)
     {
         if (id != vehicle.Id) return BadRequest();
-        
-        await _vehicleRepository.UpdateAsync(vehicle);
+
+        var existing = await _vehicleRepository.GetByIdAsync(id);
+        if (existing == null) return NotFound();
+
+        // Patch: apply only provided fields so partial payload (e.g. make + regNo + axleConfigurationId) does not clear other columns
+        if (!string.IsNullOrWhiteSpace(vehicle.RegNo)) existing.RegNo = vehicle.RegNo.Trim().ToUpper();
+        if (vehicle.Make != null) existing.Make = vehicle.Make;
+        if (vehicle.Model != null) existing.Model = vehicle.Model;
+        if (vehicle.VehicleType != null) existing.VehicleType = vehicle.VehicleType;
+        if (vehicle.AxleConfigurationId.HasValue) existing.AxleConfigurationId = vehicle.AxleConfigurationId;
+        if (vehicle.Color != null) existing.Color = vehicle.Color;
+        if (vehicle.YearOfManufacture.HasValue) existing.YearOfManufacture = vehicle.YearOfManufacture;
+        if (vehicle.ChassisNo != null) existing.ChassisNo = vehicle.ChassisNo;
+        if (vehicle.EngineNo != null) existing.EngineNo = vehicle.EngineNo;
+        if (vehicle.OwnerId.HasValue) existing.OwnerId = vehicle.OwnerId;
+        if (vehicle.TransporterId.HasValue) existing.TransporterId = vehicle.TransporterId;
+        if (vehicle.Description != null) existing.Description = vehicle.Description;
+
+        await _vehicleRepository.UpdateAsync(existing);
         return NoContent();
     }
 }

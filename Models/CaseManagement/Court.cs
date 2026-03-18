@@ -1,4 +1,5 @@
 using TruLoad.Backend.Models.Common;
+using TruLoad.Backend.Models.Infrastructure;
 
 namespace TruLoad.Backend.Models.CaseManagement;
 
@@ -34,11 +35,12 @@ public class Court : BaseEntity
     public Guid? CountyId { get; set; }
 
     /// <summary>
-    /// District/Subcounty where the court is located (for filtering by subcounty).
+    /// Subcounty where the court is located (for filtering by subcounty).
     /// </summary>
-    public Guid? DistrictId { get; set; }
+    public Guid? SubcountyId { get; set; }
 
     // Navigation properties
+    public Subcounty? Subcounty { get; set; }
     public ICollection<CaseRegister> CaseRegisters { get; set; } = new List<CaseRegister>();
     public ICollection<CourtHearing> CourtHearings { get; set; } = new List<CourtHearing>();
 }

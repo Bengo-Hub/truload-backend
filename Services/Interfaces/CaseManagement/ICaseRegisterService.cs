@@ -64,7 +64,7 @@ public interface ICaseRegisterService
     /// <summary>
     /// Get case statistics
     /// </summary>
-    Task<CaseStatisticsDto> GetCaseStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null);
+    Task<CaseStatisticsDto> GetCaseStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, Guid? stationId = null);
 
     /// <summary>
     /// Delete a case (soft delete)

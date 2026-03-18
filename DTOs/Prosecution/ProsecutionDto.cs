@@ -160,3 +160,15 @@ public class ProsecutionStatisticsDto
     public decimal CollectedFeesKes { get; set; }
     public decimal CollectedFeesUsd { get; set; }
 }
+
+/// <summary>
+/// Request DTO for updating prosecution default settings
+/// </summary>
+public class UpdateProsecutionDefaultsRequest
+{
+    public string? DefaultCourtId { get; set; }
+    public string? DefaultComplainantOfficerId { get; set; }
+    public string? DefaultCountyId { get; set; }
+    public string? DefaultSubcountyId { get; set; }
+    public string? DefaultRoadId { get; set; }
+}

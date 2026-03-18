@@ -8,6 +8,7 @@ public interface IPdfService
     // Weighing documents
     Task<byte[]> GenerateWeightTicketAsync(WeighingTransaction transaction);
     Task<byte[]> GenerateProhibitionOrderAsync(ProhibitionOrder order);
+    Task<byte[]> GeneratePermitAsync(Permit permit);
 
     // Case management documents
     Task<byte[]> GenerateLoadCorrectionMemoAsync(Guid caseRegisterId, WeighingTransaction originalWeighing, WeighingTransaction reweighing);

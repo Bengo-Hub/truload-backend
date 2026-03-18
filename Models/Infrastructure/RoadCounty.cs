@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace TruLoad.Backend.Models;
 
 /// <summary>
@@ -8,6 +10,7 @@ public class RoadCounty
     public Guid RoadId { get; set; }
     public Guid CountyId { get; set; }
 
-    public Roads Road { get; set; } = null!;
-    public Counties County { get; set; } = null!;
+    [JsonIgnore]
+    public Roads? Road { get; set; }
+    public Counties? County { get; set; }
 }

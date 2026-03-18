@@ -50,8 +50,8 @@ public static class ExtendedCaseEntitiesConfiguration
 
             entity.Property(e => e.CountyId)
                 .HasColumnName("county_id");
-            entity.Property(e => e.DistrictId)
-                .HasColumnName("district_id");
+            entity.Property(e => e.SubcountyId)
+                .HasColumnName("subcounty_id");
 
             entity.Property(e => e.IsActive)
                 .HasColumnName("is_active")
@@ -80,8 +80,8 @@ public static class ExtendedCaseEntitiesConfiguration
                 .HasDatabaseName("idx_courts_type");
             entity.HasIndex(e => e.CountyId)
                 .HasDatabaseName("idx_courts_county_id");
-            entity.HasIndex(e => e.DistrictId)
-                .HasDatabaseName("idx_courts_district_id");
+            entity.HasIndex(e => e.SubcountyId)
+                .HasDatabaseName("idx_courts_subcounty_id");
 
             // CHECK constraint
             entity.HasCheckConstraint("chk_court_type",

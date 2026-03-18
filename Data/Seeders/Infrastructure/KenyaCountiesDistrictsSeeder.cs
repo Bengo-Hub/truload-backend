@@ -1,12 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.Infrastructure;
 
 namespace TruLoad.Backend.Data.Seeders.Infrastructure;
 
 /// <summary>
-/// Seeds Kenyan counties (47) and districts/subcounties with correct FK relationships.
-/// District and Subcounty mean the same in Kenya; Districts table is used for subcounty level.
+/// Seeds Kenyan counties (47) and subcounties with correct FK relationships.
+/// When counties already exist (e.g. after District→Subcounty migration), seeds or repairs subcounties
+/// so that subcounties have valid CountyId referencing existing counties.
 /// </summary>
 public class KenyaCountiesDistrictsSeeder
 {
@@ -19,10 +21,55 @@ public class KenyaCountiesDistrictsSeeder
 
     public async Task SeedAsync()
     {
-        if (await _context.Counties.AnyAsync())
+        if (!await _context.Counties.AnyAsync())
+        {
+            await SeedCountiesAndSubcountiesAsync();
+            return;
+        }
+
+        var counties = await _context.Counties.Where(c => c.DeletedAt == null).OrderBy(c => c.Name).ToListAsync();
+        var countyIds = new HashSet<Guid>(counties.Select(c => c.Id));
+
+        var existingSubcounties = await _context.Subcounties.Where(s => s.DeletedAt == null).ToListAsync();
+        var subcountyCount = existingSubcounties.Count;
+
+        bool needReseed = subcountyCount == 0 ||
+            !existingSubcounties.Any(s => countyIds.Contains(s.CountyId));
+
+        if (!needReseed)
             return;
 
-        var counties = new List<Counties>();
+        if (subcountyCount > 0)
+        {
+            await _context.RoadSubcounties.ExecuteDeleteAsync();
+            await _context.Subcounties.ExecuteDeleteAsync();
+            await _context.SaveChangesAsync();
+        }
+
+        var subcounties = new List<Subcounty>();
+        foreach (var county in counties)
+        {
+            var names = GetSubcountiesForCounty(county.Name);
+            for (int i = 0; i < names.Length; i++)
+            {
+                subcounties.Add(new Subcounty
+                {
+                    Id = Guid.NewGuid(),
+                    CountyId = county.Id,
+                    Code = $"{county.Code}-{(i + 1):D2}",
+                    Name = names[i],
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+        }
+        _context.Subcounties.AddRange(subcounties);
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task SeedCountiesAndSubcountiesAsync()
+    {
         var countyNames = new[]
         {
             "Baringo", "Bomet", "Bungoma", "Busia", "Elgeyo-Marakwet", "Embu", "Garissa", "Homa Bay", "Isiolo", "Kajiado",
@@ -32,6 +79,7 @@ public class KenyaCountiesDistrictsSeeder
             "Tharaka-Nithi", "Trans Nzoia", "Turkana", "Uasin Gishu", "Vihiga", "Wajir", "West Pokot"
         };
 
+        var counties = new List<Counties>();
         for (int i = 0; i < countyNames.Length; i++)
         {
             var c = new Counties
@@ -48,28 +96,25 @@ public class KenyaCountiesDistrictsSeeder
         _context.Counties.AddRange(counties);
         await _context.SaveChangesAsync();
 
-        if (await _context.Districts.AnyAsync())
-            return;
-
-        var districts = new List<Districts>();
+        var subcounties = new List<Subcounty>();
         foreach (var county in counties)
         {
-            var subcounties = GetSubcountiesForCounty(county.Name);
-            for (int i = 0; i < subcounties.Length; i++)
+            var names = GetSubcountiesForCounty(county.Name);
+            for (int i = 0; i < names.Length; i++)
             {
-                districts.Add(new Districts
+                subcounties.Add(new Subcounty
                 {
                     Id = Guid.NewGuid(),
                     CountyId = county.Id,
                     Code = $"{county.Code}-{(i + 1):D2}",
-                    Name = subcounties[i],
+                    Name = names[i],
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 });
             }
         }
-        _context.Districts.AddRange(districts);
+        _context.Subcounties.AddRange(subcounties);
         await _context.SaveChangesAsync();
     }
 

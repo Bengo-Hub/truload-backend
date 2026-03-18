@@ -4,6 +4,7 @@ using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Reporting;
+using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments.Reports;
 
@@ -84,6 +85,10 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.WeighingType))
+            query = query.Where(w => w.WeighingType == filters.WeighingType);
+        if (!string.IsNullOrEmpty(filters.ControlStatus))
+            query = ApplyControlStatusFilter(query, filters.ControlStatus);
 
         var rows = await query
             .Include(w => w.Station)
@@ -172,6 +177,10 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.WeighingType))
+            query = query.Where(w => w.WeighingType == filters.WeighingType);
+        if (!string.IsNullOrEmpty(filters.ControlStatus))
+            query = ApplyControlStatusFilter(query, filters.ControlStatus);
 
         var transactions = await query
             .Include(w => w.Vehicle).ThenInclude(v => v!.AxleConfiguration)
@@ -265,6 +274,10 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.WeighingType))
+            query = query.Where(w => w.WeighingType == filters.WeighingType);
+        if (!string.IsNullOrEmpty(filters.ControlStatus))
+            query = ApplyControlStatusFilter(query, filters.ControlStatus);
 
         var dailyData = await query
             .GroupBy(w => w.WeighedAt.Date)
@@ -619,6 +632,10 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.WeighingType))
+            query = query.Where(w => w.WeighingType == filters.WeighingType);
+        if (!string.IsNullOrEmpty(filters.ControlStatus))
+            query = ApplyControlStatusFilter(query, filters.ControlStatus);
 
         var overloaded = await query
             .Include(w => w.Vehicle).ThenInclude(v => v!.AxleConfiguration)
@@ -1119,5 +1136,18 @@ public class WeighingReportGenerator : BaseReportGenerator
             ReportTitle = "Scale Test Log";
             ReportSubtitle = "Daily scale calibration tests and results";
         }
+    }
+
+    private static IQueryable<WeighingTransaction> ApplyControlStatusFilter(
+        IQueryable<WeighingTransaction> query, string controlStatus)
+    {
+        var normalized = controlStatus.Trim().ToUpperInvariant();
+        return normalized switch
+        {
+            "LEGAL" or "COMPLIANT" => query.Where(w => w.ControlStatus == "Compliant" || w.ControlStatus == "LEGAL"),
+            "OVERLOAD" or "OVERLOADED" => query.Where(w => w.ControlStatus == "Overloaded" || w.ControlStatus == "OVERLOAD"),
+            "WARNING" => query.Where(w => w.ControlStatus == "Warning" || w.ControlStatus == "WARNING"),
+            _ => query.Where(w => w.ControlStatus == controlStatus)
+        };
     }
 }

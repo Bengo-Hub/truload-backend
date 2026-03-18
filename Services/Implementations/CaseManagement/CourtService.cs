@@ -52,8 +52,8 @@ public class CourtService : ICourtService
 
         if (criteria.CountyId.HasValue)
             query = query.Where(c => c.CountyId == criteria.CountyId.Value);
-        if (criteria.DistrictId.HasValue)
-            query = query.Where(c => c.DistrictId == criteria.DistrictId.Value);
+        if (criteria.SubcountyId.HasValue)
+            query = query.Where(c => c.SubcountyId == criteria.SubcountyId.Value);
 
         if (criteria.IsActive.HasValue)
             query = query.Where(c => c.IsActive == criteria.IsActive.Value);
@@ -77,7 +77,7 @@ public class CourtService : ICourtService
             Location = request.Location,
             CourtType = request.CourtType,
             CountyId = request.CountyId,
-            DistrictId = request.DistrictId,
+            SubcountyId = request.SubcountyId,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -108,8 +108,8 @@ public class CourtService : ICourtService
 
         if (request.CountyId.HasValue)
             court.CountyId = request.CountyId;
-        if (request.DistrictId.HasValue)
-            court.DistrictId = request.DistrictId;
+        if (request.SubcountyId.HasValue)
+            court.SubcountyId = request.SubcountyId;
 
         if (request.IsActive.HasValue)
             court.IsActive = request.IsActive.Value;
@@ -144,7 +144,7 @@ public class CourtService : ICourtService
             Location = court.Location,
             CourtType = court.CourtType,
             CountyId = court.CountyId,
-            DistrictId = court.DistrictId,
+            SubcountyId = court.SubcountyId,
             IsActive = court.IsActive,
             CreatedAt = court.CreatedAt,
             UpdatedAt = court.UpdatedAt

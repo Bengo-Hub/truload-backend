@@ -53,6 +53,11 @@ public class AxleGroupResultDto
     public decimal PavementDamageFactor { get; set; }
 
     /// <summary>
+    /// Operational tolerance applied (kg)
+    /// </summary>
+    public int OperationalToleranceKg { get; set; }
+
+    /// <summary>
     /// Compliance status: LEGAL, WARNING, OVERLOAD
     /// </summary>
     public string Status { get; set; } = "LEGAL";
@@ -160,6 +165,11 @@ public class WeighingComplianceResultDto
     /// Whether vehicle should be sent to yard
     /// </summary>
     public bool ShouldSendToYard { get; set; }
+
+    /// <summary>
+    /// Operational tolerance applied for GVW (kg)
+    /// </summary>
+    public int OperationalToleranceKg { get; set; }
 
     /// <summary>
     /// Violation reasons (if any)

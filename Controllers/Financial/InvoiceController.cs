@@ -140,9 +140,15 @@ public class InvoiceController : ControllerBase
     /// </summary>
     [HttpGet("api/v1/invoices/statistics")]
     [HasPermission("invoice.read")]
-    public async Task<IActionResult> GetStatistics(CancellationToken ct)
+    public async Task<IActionResult> GetStatistics(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] Guid? stationId,
+        CancellationToken ct)
     {
-        var stats = await _invoiceService.GetStatisticsAsync(ct);
+        var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "invoice.read");
+        var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+        var stats = await _invoiceService.GetStatisticsAsync(dateFrom, dateTo, effectiveStationId, ct);
         return Ok(stats);
     }
 

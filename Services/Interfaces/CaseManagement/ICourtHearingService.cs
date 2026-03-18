@@ -61,5 +61,5 @@ public interface ICourtHearingService
     /// <summary>
     /// Get hearing statistics for dashboard
     /// </summary>
-    Task<Dictionary<string, int>> GetHearingStatisticsAsync(CancellationToken ct = default);
+    Task<Dictionary<string, int>> GetHearingStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, Guid? stationId = null, CancellationToken ct = default);
 }

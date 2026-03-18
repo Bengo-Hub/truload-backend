@@ -285,9 +285,22 @@ public class ProsecutionService : IProsecutionService
         return true;
     }
 
-    public async Task<ProsecutionStatisticsDto> GetStatisticsAsync(CancellationToken ct = default)
+    public async Task<ProsecutionStatisticsDto> GetStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, Guid? stationId = null, CancellationToken ct = default)
     {
         var cases = _context.ProsecutionCases.Where(p => p.DeletedAt == null);
+
+        if (stationId.HasValue)
+            cases = cases.Where(p => p.StationId == stationId.Value);
+        if (dateFrom.HasValue)
+        {
+            var from = DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc);
+            cases = cases.Where(p => p.CreatedAt >= from);
+        }
+        if (dateTo.HasValue)
+        {
+            var to = DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc);
+            cases = cases.Where(p => p.CreatedAt <= to);
+        }
 
         var total = await cases.CountAsync(ct);
         var pending = await cases.CountAsync(p => p.Status == "pending", ct);

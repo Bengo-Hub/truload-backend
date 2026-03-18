@@ -13,6 +13,6 @@ public interface IReceiptService
     Task<PagedResponse<ReceiptDto>> SearchAsync(ReceiptSearchCriteria criteria, CancellationToken ct = default);
     Task<ReceiptDto> RecordPaymentAsync(Guid invoiceId, RecordPaymentRequest request, Guid userId, CancellationToken ct = default);
     Task<ReceiptDto> VoidReceiptAsync(Guid id, string reason, Guid userId, CancellationToken ct = default);
-    Task<ReceiptStatisticsDto> GetStatisticsAsync(CancellationToken ct = default);
+    Task<ReceiptStatisticsDto> GetStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, Guid? stationId = null, CancellationToken ct = default);
     Task<string> GenerateReceiptNumberAsync(CancellationToken ct = default);
 }

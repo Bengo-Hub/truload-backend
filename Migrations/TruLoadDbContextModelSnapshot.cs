@@ -1265,10 +1265,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("disposition_type_id");
 
-                    b.Property<Guid?>("DistrictId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("district_id");
-
                     b.Property<Guid?>("DriverId")
                         .HasColumnType("uuid")
                         .HasColumnName("driver_id");
@@ -1828,10 +1824,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
-                    b.Property<Guid?>("DistrictId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("district_id");
-
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -1848,6 +1840,10 @@ namespace TruLoad.Backend.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("name");
+
+                    b.Property<Guid?>("SubcountyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subcounty_id");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
@@ -1867,11 +1863,11 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("CourtType")
                         .HasDatabaseName("idx_courts_type");
 
-                    b.HasIndex("DistrictId")
-                        .HasDatabaseName("idx_courts_district_id");
-
                     b.HasIndex("Name")
                         .HasDatabaseName("idx_courts_name");
+
+                    b.HasIndex("SubcountyId")
+                        .HasDatabaseName("idx_courts_subcounty_id");
 
                     b.ToTable("courts", null, t =>
                         {
@@ -2827,42 +2823,6 @@ namespace TruLoad.Backend.Migrations
                     b.ToTable("departments", (string)null);
                 });
 
-            modelBuilder.Entity("TruLoad.Backend.Models.Districts", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("CountyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CountyId");
-
-                    b.ToTable("Districts");
-                });
-
             modelBuilder.Entity("TruLoad.Backend.Models.Financial.ExchangeRate", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3700,6 +3660,23 @@ namespace TruLoad.Backend.Migrations
                     b.ToTable("hardware_health_logs");
                 });
 
+            modelBuilder.Entity("TruLoad.Backend.Models.Infrastructure.RoadSubcounty", b =>
+                {
+                    b.Property<Guid>("RoadId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SubcountyId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("RoadId", "SubcountyId");
+
+                    b.HasIndex("RoadId");
+
+                    b.HasIndex("SubcountyId");
+
+                    b.ToTable("road_subcounties", (string)null);
+                });
+
             modelBuilder.Entity("TruLoad.Backend.Models.Infrastructure.ScaleTest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3820,6 +3797,10 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("code");
 
+                    b.Property<Guid>("CountyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("county_id");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -3829,10 +3810,6 @@ namespace TruLoad.Backend.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
-
-                    b.Property<Guid>("DistrictId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("district_id");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -3858,8 +3835,8 @@ namespace TruLoad.Backend.Migrations
                         .IsUnique()
                         .HasDatabaseName("idx_subcounties_code");
 
-                    b.HasIndex("DistrictId")
-                        .HasDatabaseName("idx_subcounties_district_id");
+                    b.HasIndex("CountyId")
+                        .HasDatabaseName("idx_subcounties_county_id");
 
                     b.HasIndex("Name")
                         .HasDatabaseName("idx_subcounties_name");
@@ -4787,23 +4764,6 @@ namespace TruLoad.Backend.Migrations
                     b.ToTable("road_counties", (string)null);
                 });
 
-            modelBuilder.Entity("TruLoad.Backend.Models.RoadDistrict", b =>
-                {
-                    b.Property<Guid>("RoadId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("DistrictId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("RoadId", "DistrictId");
-
-                    b.HasIndex("DistrictId");
-
-                    b.HasIndex("RoadId");
-
-                    b.ToTable("road_districts", (string)null);
-                });
-
             modelBuilder.Entity("TruLoad.Backend.Models.Roads", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5044,6 +5004,9 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("station_type");
 
+                    b.Property<Guid?>("SubcountyId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("SupportsBidirectional")
                         .HasColumnType("boolean")
                         .HasColumnName("supports_bidirectional");
@@ -5063,6 +5026,8 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("OrganizationId");
 
                     b.HasIndex("RoadId");
+
+                    b.HasIndex("SubcountyId");
 
                     b.ToTable("stations", (string)null);
                 });
@@ -7844,6 +7809,11 @@ namespace TruLoad.Backend.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("DocumentUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("document_url");
+
                     b.Property<int?>("GvwExtensionKg")
                         .HasColumnType("integer")
                         .HasColumnName("gvw_extension_kg");
@@ -8394,6 +8364,10 @@ namespace TruLoad.Backend.Migrations
                     b.Property<decimal?>("LocationLng")
                         .HasColumnType("numeric");
 
+                    b.Property<string>("LocationSubcounty")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("LocationTown")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -8427,6 +8401,9 @@ namespace TruLoad.Backend.Migrations
                     b.Property<Guid>("StationId")
                         .HasColumnType("uuid")
                         .HasColumnName("station_id");
+
+                    b.Property<Guid?>("SubcountyId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("SyncAt")
                         .HasColumnType("timestamp with time zone");
@@ -8515,6 +8492,8 @@ namespace TruLoad.Backend.Migrations
                     b.HasIndex("ScaleTestId");
 
                     b.HasIndex("StationId");
+
+                    b.HasIndex("SubcountyId");
 
                     b.HasIndex("TicketNumber")
                         .IsUnique();
@@ -9545,6 +9524,15 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("Weighing");
                 });
 
+            modelBuilder.Entity("TruLoad.Backend.Models.CaseManagement.Court", b =>
+                {
+                    b.HasOne("TruLoad.Backend.Models.Infrastructure.Subcounty", "Subcounty")
+                        .WithMany()
+                        .HasForeignKey("SubcountyId");
+
+                    b.Navigation("Subcounty");
+                });
+
             modelBuilder.Entity("TruLoad.Backend.Models.CaseManagement.CourtHearing", b =>
                 {
                     b.HasOne("TruLoad.Backend.Models.CaseManagement.CaseRegister", "CaseRegister")
@@ -9685,17 +9673,6 @@ namespace TruLoad.Backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Organization");
-                });
-
-            modelBuilder.Entity("TruLoad.Backend.Models.Districts", b =>
-                {
-                    b.HasOne("TruLoad.Backend.Models.Counties", "County")
-                        .WithMany("Districts")
-                        .HasForeignKey("CountyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("County");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.Financial.Invoice", b =>
@@ -9841,6 +9818,25 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("Station");
                 });
 
+            modelBuilder.Entity("TruLoad.Backend.Models.Infrastructure.RoadSubcounty", b =>
+                {
+                    b.HasOne("TruLoad.Backend.Models.Roads", "Road")
+                        .WithMany("RoadSubcounties")
+                        .HasForeignKey("RoadId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TruLoad.Backend.Models.Infrastructure.Subcounty", "Subcounty")
+                        .WithMany()
+                        .HasForeignKey("SubcountyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Road");
+
+                    b.Navigation("Subcounty");
+                });
+
             modelBuilder.Entity("TruLoad.Backend.Models.Infrastructure.ScaleTest", b =>
                 {
                     b.HasOne("TruLoad.Backend.Models.Identity.ApplicationUser", "CarriedBy")
@@ -9870,13 +9866,13 @@ namespace TruLoad.Backend.Migrations
 
             modelBuilder.Entity("TruLoad.Backend.Models.Infrastructure.Subcounty", b =>
                 {
-                    b.HasOne("TruLoad.Backend.Models.Districts", "District")
+                    b.HasOne("TruLoad.Backend.Models.Counties", "County")
                         .WithMany()
-                        .HasForeignKey("DistrictId")
+                        .HasForeignKey("CountyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("District");
+                    b.Navigation("County");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.Infrastructure.VehicleModel", b =>
@@ -10025,25 +10021,6 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("Road");
                 });
 
-            modelBuilder.Entity("TruLoad.Backend.Models.RoadDistrict", b =>
-                {
-                    b.HasOne("TruLoad.Backend.Models.Districts", "District")
-                        .WithMany()
-                        .HasForeignKey("DistrictId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TruLoad.Backend.Models.Roads", "Road")
-                        .WithMany("RoadDistricts")
-                        .HasForeignKey("RoadId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("District");
-
-                    b.Navigation("Road");
-                });
-
             modelBuilder.Entity("TruLoad.Backend.Models.RolePermission", b =>
                 {
                     b.HasOne("TruLoad.Backend.Models.Permission", "Permission")
@@ -10110,11 +10087,17 @@ namespace TruLoad.Backend.Migrations
                         .HasForeignKey("RoadId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("TruLoad.Backend.Models.Infrastructure.Subcounty", "Subcounty")
+                        .WithMany()
+                        .HasForeignKey("SubcountyId");
+
                     b.Navigation("County");
 
                     b.Navigation("Organization");
 
                     b.Navigation("Road");
+
+                    b.Navigation("Subcounty");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.System.DocumentConvention", b =>
@@ -10476,6 +10459,10 @@ namespace TruLoad.Backend.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("TruLoad.Backend.Models.Infrastructure.Subcounty", "Subcounty")
+                        .WithMany()
+                        .HasForeignKey("SubcountyId");
+
                     b.HasOne("TruLoad.Backend.Models.Weighing.Transporter", "Transporter")
                         .WithMany()
                         .HasForeignKey("TransporterId")
@@ -10517,6 +10504,8 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("ScaleTest");
 
                     b.Navigation("Station");
+
+                    b.Navigation("Subcounty");
 
                     b.Navigation("Transporter");
 
@@ -10768,11 +10757,6 @@ namespace TruLoad.Backend.Migrations
                     b.Navigation("ArrestWarrants");
                 });
 
-            modelBuilder.Entity("TruLoad.Backend.Models.Counties", b =>
-                {
-                    b.Navigation("Districts");
-                });
-
             modelBuilder.Entity("TruLoad.Backend.Models.Financial.Invoice", b =>
                 {
                     b.Navigation("Receipts");
@@ -10812,7 +10796,7 @@ namespace TruLoad.Backend.Migrations
                 {
                     b.Navigation("RoadCounties");
 
-                    b.Navigation("RoadDistricts");
+                    b.Navigation("RoadSubcounties");
                 });
 
             modelBuilder.Entity("TruLoad.Backend.Models.ShiftRotation", b =>

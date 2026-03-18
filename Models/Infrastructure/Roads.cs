@@ -1,4 +1,5 @@
 using TruLoad.Backend.Models.Common;
+using TruLoad.Backend.Models.Infrastructure;
 
 namespace TruLoad.Backend.Models;
 
@@ -13,5 +14,5 @@ public class Roads : BaseEntity
     public decimal? TotalLengthKm { get; set; }
 
     public ICollection<RoadCounty> RoadCounties { get; set; } = new List<RoadCounty>();
-    public ICollection<RoadDistrict> RoadDistricts { get; set; } = new List<RoadDistrict>();
+    public ICollection<RoadSubcounty> RoadSubcounties { get; set; } = new List<RoadSubcounty>();
 }

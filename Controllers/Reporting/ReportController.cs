@@ -77,8 +77,10 @@ public class ReportController : ControllerBase
     /// <param name="dateFrom">Optional start date filter</param>
     /// <param name="dateTo">Optional end date filter</param>
     /// <param name="format">Output format: pdf or csv (default: pdf)</param>
-    /// <param name="stationId">Optional station filter</param>
+    /// <param name="stationId">Optional station filter (GUID)</param>
     /// <param name="status">Optional status filter</param>
+    /// <param name="weighingType">Optional weighing type (e.g. multideck, mobile) for weighing reports</param>
+    /// <param name="controlStatus">Optional control status (e.g. LEGAL, OVERLOAD) for weighing reports</param>
     /// <param name="ct">Cancellation token</param>
     [HttpGet("{module}/{reportType}")]
     [HasPermission("analytics.read")]
@@ -93,6 +95,8 @@ public class ReportController : ControllerBase
         [FromQuery] string format = "pdf",
         [FromQuery] string? stationId = null,
         [FromQuery] string? status = null,
+        [FromQuery] string? weighingType = null,
+        [FromQuery] string? controlStatus = null,
         CancellationToken ct = default)
     {
         try
@@ -102,7 +106,9 @@ public class ReportController : ControllerBase
                 DateFrom = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : null,
                 DateTo = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : null,
                 StationId = stationId,
-                Status = status
+                Status = status,
+                WeighingType = weighingType,
+                ControlStatus = controlStatus
             };
 
             var result = await _reportService.GenerateAsync(module, reportType, filters, format, ct);

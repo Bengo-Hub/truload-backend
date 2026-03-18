@@ -299,14 +299,29 @@ public class CourtHearingService : ICourtHearingService
         return true;
     }
 
-    public async Task<Dictionary<string, int>> GetHearingStatisticsAsync(CancellationToken ct = default)
+    public async Task<Dictionary<string, int>> GetHearingStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, Guid? stationId = null, CancellationToken ct = default)
     {
         var stats = new Dictionary<string, int>();
 
-        // Single grouped query to avoid N+1
-        var statusCounts = await _context.CourtHearings
+        var query = _context.CourtHearings
             .AsNoTracking()
-            .Where(h => h.DeletedAt == null)
+            .Where(h => h.DeletedAt == null);
+
+        if (stationId.HasValue)
+            query = query.Where(h => h.CaseRegister != null && h.CaseRegister.Weighing != null && h.CaseRegister.Weighing.StationId == stationId.Value);
+        if (dateFrom.HasValue)
+        {
+            var from = DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc);
+            query = query.Where(h => h.HearingDate >= from);
+        }
+        if (dateTo.HasValue)
+        {
+            var to = DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc);
+            query = query.Where(h => h.HearingDate <= to);
+        }
+
+        // Single grouped query to avoid N+1
+        var statusCounts = await query
             .GroupBy(h => h.HearingStatus!.Name)
             .Select(g => new { StatusName = g.Key, Count = g.Count() })
             .ToListAsync(ct);
@@ -320,10 +335,17 @@ public class CourtHearingService : ICourtHearingService
         }
 
         // Upcoming hearings (next 7 days)
-        var upcomingCount = await _context.CourtHearings
-            .CountAsync(h => h.DeletedAt == null
+        var upcomingQuery = _context.CourtHearings
+            .Where(h => h.DeletedAt == null
                 && h.HearingDate >= DateTime.UtcNow.Date
-                && h.HearingDate <= DateTime.UtcNow.Date.AddDays(7), ct);
+                && h.HearingDate <= DateTime.UtcNow.Date.AddDays(7));
+        if (stationId.HasValue)
+            upcomingQuery = upcomingQuery.Where(h => h.CaseRegister != null && h.CaseRegister.Weighing != null && h.CaseRegister.Weighing.StationId == stationId.Value);
+        if (dateFrom.HasValue)
+            upcomingQuery = upcomingQuery.Where(h => h.HearingDate >= DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc));
+        if (dateTo.HasValue)
+            upcomingQuery = upcomingQuery.Where(h => h.HearingDate <= DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc));
+        var upcomingCount = await upcomingQuery.CountAsync(ct);
         stats["Upcoming7Days"] = upcomingCount;
 
         return stats;

@@ -46,6 +46,10 @@ namespace TruLoad.Backend.Models.Weighing
         [StringLength(20)]
         public string Status { get; set; } = "active"; // active, expired, revoked
 
+        [Column("document_url")]
+        [StringLength(500)]
+        public string? DocumentUrl { get; set; }
+
         // Navigation properties
         [ForeignKey("VehicleId")]
         public virtual Vehicle? Vehicle { get; set; }

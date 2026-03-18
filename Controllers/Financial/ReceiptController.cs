@@ -122,9 +122,15 @@ public class ReceiptController : ControllerBase
     /// </summary>
     [HttpGet("api/v1/receipts/statistics")]
     [HasAnyPermission("analytics.read", "receipt.read")]
-    public async Task<IActionResult> GetStatistics(CancellationToken ct)
+    public async Task<IActionResult> GetStatistics(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] Guid? stationId,
+        CancellationToken ct)
     {
-        var stats = await _receiptService.GetStatisticsAsync(ct);
+        var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && (c.Value == "analytics.read" || c.Value == "receipt.read"));
+        var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+        var stats = await _receiptService.GetStatisticsAsync(dateFrom, dateTo, effectiveStationId, ct);
         return Ok(stats);
     }
 

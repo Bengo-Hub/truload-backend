@@ -5,12 +5,13 @@ using Microsoft.Extensions.Caching.Memory;
 using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.Infrastructure;
 
 namespace TruLoad.Backend.Controllers.System;
 
 /// <summary>
-/// Location hierarchy: Counties and Subcounties (Districts).
-/// Subcounty and District mean the same thing; API uses Subcounty for consistency.
+/// Location hierarchy: Counties and Subcounties.
+/// </summary>
 /// GET responses are cached for 5 minutes; POST invalidates cache.
 /// </summary>
 [ApiController]
@@ -75,9 +76,9 @@ public class GeographicController : ControllerBase
         if (county == null || county.DeletedAt != null)
             return BadRequest("County not found.");
         var code = string.IsNullOrWhiteSpace(request.Code) ? $"{county.Code}-{request.Name[..Math.Min(5, request.Name.Length)].ToUpperInvariant()}" : request.Code.Trim();
-        if (await _context.Districts.AnyAsync(d => d.Code == code && d.DeletedAt == null, ct))
+        if (await _context.Subcounties.AnyAsync(s => s.Code == code && s.DeletedAt == null, ct))
             return BadRequest($"A subcounty with code '{code}' already exists.");
-        var district = new Districts
+        var subcounty = new Subcounty
         {
             Id = Guid.NewGuid(),
             CountyId = request.CountyId.Value,
@@ -87,11 +88,11 @@ public class GeographicController : ControllerBase
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        _context.Districts.Add(district);
+        _context.Subcounties.Add(subcounty);
         await _context.SaveChangesAsync(ct);
         _cache.Remove(CacheKeySubcountiesPrefix + request.CountyId.Value);
         _cache.Remove(CacheKeySubcountiesPrefix + "all");
-        return Created($"/api/v1/geographic/subcounties", new SubcountyDto { Id = district.Id, CountyId = district.CountyId, Code = district.Code, Name = district.Name });
+        return Created($"/api/v1/geographic/subcounties", new SubcountyDto { Id = subcounty.Id, CountyId = subcounty.CountyId, Code = subcounty.Code, Name = subcounty.Name });
     }
 
     /// <summary>
@@ -116,8 +117,7 @@ public class GeographicController : ControllerBase
     }
 
     /// <summary>
-    /// Get subcounties (districts) optionally filtered by county. Cached 5 min per countyId.
-    /// District and Subcounty are the same; we use Subcounty in the API.
+    /// Get subcounties optionally filtered by county. Cached 5 min per countyId.
     /// </summary>
     [HttpGet("subcounties")]
     [HasPermission("config.read")]
@@ -130,21 +130,21 @@ public class GeographicController : ControllerBase
         if (_cache.TryGetValue(cacheKey, out List<SubcountyDto>? cached) && cached != null)
             return Ok(cached);
 
-        var query = _context.Districts
+        var query = _context.Subcounties
             .AsNoTracking()
-            .Where(d => d.IsActive && d.DeletedAt == null);
+            .Where(s => s.IsActive && s.DeletedAt == null);
 
         if (countyId.HasValue)
-            query = query.Where(d => d.CountyId == countyId.Value);
+            query = query.Where(s => s.CountyId == countyId.Value);
 
         var list = await query
-            .OrderBy(d => d.Name)
-            .Select(d => new SubcountyDto
+            .OrderBy(s => s.Name)
+            .Select(s => new SubcountyDto
             {
-                Id = d.Id,
-                CountyId = d.CountyId,
-                Code = d.Code,
-                Name = d.Name
+                Id = s.Id,
+                CountyId = s.CountyId,
+                Code = s.Code,
+                Name = s.Name
             })
             .ToListAsync(ct);
         _cache.Set(cacheKey, list, CacheDuration);

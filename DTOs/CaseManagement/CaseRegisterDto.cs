@@ -72,7 +72,6 @@ public class CreateCaseRegisterRequest
     public Guid? ActId { get; set; }
     public Guid? RoadId { get; set; }
     public Guid? CountyId { get; set; }
-    public Guid? DistrictId { get; set; }
     public Guid? SubcountyId { get; set; }
 }
 

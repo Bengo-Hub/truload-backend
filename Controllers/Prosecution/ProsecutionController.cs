@@ -17,6 +17,7 @@ namespace TruLoad.Backend.Controllers.Prosecution;
 /// Handles charge calculation, case creation, and status tracking.
 /// </summary>
 [ApiController]
+[Route("api/v1/prosecutions")]
 [Authorize]
 public class ProsecutionController : ControllerBase
 {
@@ -40,7 +41,7 @@ public class ProsecutionController : ControllerBase
     /// <summary>
     /// Get prosecution default settings (court, complainant, county, subcounty, road) for pre-filling create prosecution / case register forms.
     /// </summary>
-    [HttpGet("api/v1/prosecutions/defaults")]
+    [HttpGet("defaults")]
     [HasPermission("prosecution.read")]
     public async Task<IActionResult> GetDefaults(CancellationToken ct)
     {
@@ -63,9 +64,52 @@ public class ProsecutionController : ControllerBase
     }
 
     /// <summary>
+    /// Update prosecution default settings (court, complainant, county, subcounty, road).
+    /// </summary>
+    [HttpPut("defaults")]
+    [HasPermission("prosecution.update")]
+    public async Task<IActionResult> UpdateDefaults([FromBody] UpdateProsecutionDefaultsRequest request, CancellationToken ct)
+    {
+        var settings = await _context.Set<ApplicationSettings>()
+            .Where(s => s.Category == SettingKeys.CategoryProsecution && s.DeletedAt == null)
+            .ToListAsync(ct);
+
+        void UpdateOrAdd(string key, string? value, string displayName)
+        {
+            var setting = settings.FirstOrDefault(s => s.SettingKey == key);
+            if (setting != null)
+            {
+                setting.SettingValue = value ?? string.Empty;
+                setting.UpdatedAt = DateTime.UtcNow;
+            }
+            else if (!string.IsNullOrEmpty(value))
+            {
+                _context.Set<ApplicationSettings>().Add(new ApplicationSettings
+                {
+                    SettingKey = key,
+                    SettingValue = value,
+                    Category = SettingKeys.CategoryProsecution,
+                    DisplayName = displayName,
+                    SettingType = "String",
+                    IsEditable = true
+                });
+            }
+        }
+
+        UpdateOrAdd(SettingKeys.ProsecutionDefaultCourtId, request.DefaultCourtId, "Default Court");
+        UpdateOrAdd(SettingKeys.ProsecutionDefaultComplainantOfficerId, request.DefaultComplainantOfficerId, "Default Complainant Officer");
+        UpdateOrAdd(SettingKeys.ProsecutionDefaultCountyId, request.DefaultCountyId, "Default County");
+        UpdateOrAdd(SettingKeys.ProsecutionDefaultSubCountyId, request.DefaultSubcountyId, "Default Subcounty");
+        UpdateOrAdd(SettingKeys.ProsecutionDefaultRoadId, request.DefaultRoadId, "Default Road");
+
+        await _context.SaveChangesAsync(ct);
+        return Ok(new { message = "Prosecution defaults updated successfully" });
+    }
+
+    /// <summary>
     /// Get prosecution case by ID
     /// </summary>
-    [HttpGet("api/v1/prosecutions/{id}")]
+    [HttpGet("{id}")]
     [HasPermission("prosecution.read")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
@@ -77,7 +121,7 @@ public class ProsecutionController : ControllerBase
     /// <summary>
     /// Get prosecution case by case register ID
     /// </summary>
-    [HttpGet("api/v1/cases/{caseId}/prosecution")]
+    [HttpGet("/api/v1/cases/{caseId}/prosecution")]
     [HasPermission("prosecution.read")]
     public async Task<IActionResult> GetByCaseId(Guid caseId, CancellationToken ct)
     {
@@ -89,7 +133,7 @@ public class ProsecutionController : ControllerBase
     /// <summary>
     /// Search prosecution cases with filters
     /// </summary>
-    [HttpPost("api/v1/prosecutions/search")]
+    [HttpPost("search")]
     [HasPermission("prosecution.read")]
     public async Task<IActionResult> Search([FromBody] ProsecutionSearchCriteria criteria, CancellationToken ct)
     {
@@ -100,7 +144,7 @@ public class ProsecutionController : ControllerBase
     /// <summary>
     /// Calculate charges for a weighing transaction
     /// </summary>
-    [HttpPost("api/v1/weighings/{weighingId}/calculate-charges")]
+    [HttpPost("/api/v1/weighings/{weighingId}/calculate-charges")]
     [HasPermission("prosecution.create")]
     public async Task<IActionResult> CalculateCharges(
         Guid weighingId,
@@ -121,7 +165,7 @@ public class ProsecutionController : ControllerBase
     /// <summary>
     /// Create prosecution case from a case register
     /// </summary>
-    [HttpPost("api/v1/cases/{caseId}/prosecution")]
+    [HttpPost("/api/v1/cases/{caseId}/prosecution")]
     [HasPermission("prosecution.create")]
     public async Task<IActionResult> CreateFromCase(
         Guid caseId,
@@ -146,7 +190,7 @@ public class ProsecutionController : ControllerBase
     /// <summary>
     /// Update an existing prosecution case
     /// </summary>
-    [HttpPut("api/v1/prosecutions/{id}")]
+    [HttpPut("{id}")]
     [HasPermission("prosecution.update")]
     public async Task<IActionResult> Update(
         Guid id,
@@ -171,7 +215,7 @@ public class ProsecutionController : ControllerBase
     /// <summary>
     /// Delete a prosecution case (soft delete)
     /// </summary>
-    [HttpDelete("api/v1/prosecutions/{id}")]
+    [HttpDelete("{id}")]
     [HasPermission("prosecution.update")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
@@ -183,30 +227,40 @@ public class ProsecutionController : ControllerBase
     /// <summary>
     /// Get prosecution statistics for dashboard
     /// </summary>
-    [HttpGet("api/v1/prosecutions/statistics")]
+    [HttpGet("statistics")]
     [HasPermission("prosecution.read")]
-    public async Task<IActionResult> GetStatistics(CancellationToken ct)
+    public async Task<IActionResult> GetStatistics(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] Guid? stationId,
+        CancellationToken ct)
     {
-        var stats = await _prosecutionService.GetStatisticsAsync(ct);
+        var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "prosecution.read");
+        var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+        var stats = await _prosecutionService.GetStatisticsAsync(dateFrom, dateTo, effectiveStationId, ct);
         return Ok(stats);
     }
 
     /// <summary>
     /// Get daily prosecution case creation trend
     /// </summary>
-    [HttpGet("api/v1/prosecutions/trend")]
+    [HttpGet("trend")]
     [HasPermission("prosecution.read")]
     public async Task<IActionResult> GetTrend(
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
+        [FromQuery] Guid? stationId,
         CancellationToken ct)
     {
         var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
         var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+        var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "prosecution.read");
+        var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
 
         var trendData = await _context.ProsecutionCases
             .AsNoTracking()
             .Where(p => p.CreatedAt >= from && p.CreatedAt <= to && p.DeletedAt == null)
+            .Where(p => !effectiveStationId.HasValue || p.StationId == effectiveStationId)
             .GroupBy(p => p.CreatedAt.Date)
             .OrderBy(g => g.Key)
             .Select(g => new { Date = g.Key, Total = g.Count() })
@@ -219,19 +273,23 @@ public class ProsecutionController : ControllerBase
     /// <summary>
     /// Get prosecution cases grouped by status
     /// </summary>
-    [HttpGet("api/v1/prosecutions/by-status")]
+    [HttpGet("by-status")]
     [HasPermission("prosecution.read")]
     public async Task<IActionResult> GetByStatus(
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
+        [FromQuery] Guid? stationId,
         CancellationToken ct)
     {
         var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
         var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+        var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "prosecution.read");
+        var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
 
         var grouped = await _context.ProsecutionCases
             .AsNoTracking()
             .Where(p => p.CreatedAt >= from && p.CreatedAt <= to && p.DeletedAt == null)
+            .Where(p => !effectiveStationId.HasValue || p.StationId == effectiveStationId)
             .GroupBy(p => p.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync(ct);
@@ -253,7 +311,7 @@ public class ProsecutionController : ControllerBase
     /// <summary>
     /// Download charge sheet PDF for a prosecution case
     /// </summary>
-    [HttpGet("api/v1/prosecutions/{id}/charge-sheet")]
+    [HttpGet("{id}/charge-sheet")]
     [HasPermission("prosecution.read")]
     public async Task<IActionResult> DownloadChargeSheet(Guid id, CancellationToken ct)
     {

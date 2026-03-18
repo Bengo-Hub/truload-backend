@@ -84,11 +84,11 @@ public class RoadsController : ControllerBase
         return Ok(roads);
     }
 
-    [HttpGet("district/{districtId}")]
+    [HttpGet("subcounty/{subcountyId}")]
     [ProducesResponseType(typeof(List<Roads>), 200)]
-    public async Task<IActionResult> GetByDistrict(Guid districtId)
+    public async Task<IActionResult> GetBySubcounty(Guid subcountyId)
     {
-        var roads = await _repository.GetByDistrictAsync(districtId);
+        var roads = await _repository.GetBySubcountyAsync(subcountyId);
         return Ok(roads);
     }
 

@@ -40,9 +40,9 @@ public interface IVehicleTagService
     Task<List<TagCategoryDto>> GetCategoriesAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Get tag statistics, optionally filtered by date range.
+    /// Get tag statistics, optionally filtered by date range and station.
     /// </summary>
-    Task<VehicleTagStatisticsDto> GetStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, CancellationToken ct = default);
+    Task<VehicleTagStatisticsDto> GetStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, Guid? stationId = null, CancellationToken ct = default);
 }
 
 /// <summary>

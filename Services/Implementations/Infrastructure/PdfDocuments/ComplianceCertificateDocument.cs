@@ -35,12 +35,12 @@ public class ComplianceCertificateDocument : BaseDocument
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(1.5f, Unit.Centimetre);
+                page.Margin(1.0f, Unit.Centimetre);
                 page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(11).FontFamily("Inter"));
+                page.DefaultTextStyle(x => x.FontSize(9.5f).FontFamily("Inter"));
 
                 page.Header().Element(ComposeHeader);
-                page.Content().PaddingVertical(15).Element(ComposeContent);
+                page.Content().PaddingVertical(8).Element(ComposeContent);
                 page.Footer().Element(ComposeOfficialFooter);
             });
         }).GeneratePdf();
@@ -64,11 +64,11 @@ public class ComplianceCertificateDocument : BaseDocument
                 row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(center =>
                 {
                     center.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
-                        .FontSize(14).SemiBold();
+                        .FontSize(11).SemiBold();
                     center.Item().AlignCenter().Text(BrandingConstants.Organization.KenyaRoadsAuthority)
-                        .FontSize(11);
-                    center.Item().AlignCenter().Text("THE TRAFFIC ACT (CAP. 403)").FontSize(9);
-                    center.Item().AlignCenter().Text("EAST AFRICAN COMMUNITY VEHICLE LOAD CONTROL ACT, 2016").FontSize(9);
+                        .FontSize(9);
+                    center.Item().AlignCenter().Text("THE TRAFFIC ACT (CAP. 403)").FontSize(7.5f);
+                    center.Item().AlignCenter().Text("EAST AFRICAN COMMUNITY VEHICLE LOAD CONTROL ACT, 2016").FontSize(7.5f);
                 });
 
                 row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
@@ -78,11 +78,11 @@ public class ComplianceCertificateDocument : BaseDocument
                 });
             });
 
-            col.Item().PaddingVertical(10).AlignCenter()
+            col.Item().PaddingVertical(6).AlignCenter()
                 .Background(OfficialGreen)
-                .Padding(10)
+                .Padding(6)
                 .Text("VEHICLE COMPLIANCE CERTIFICATE")
-                .FontSize(18)
+                .FontSize(15)
                 .SemiBold()
                 .FontColor(Colors.White);
 
@@ -104,10 +104,10 @@ public class ComplianceCertificateDocument : BaseDocument
             col.Spacing(12);
 
             // Certificate Statement Box
-            col.Item().Border(2).BorderColor(OfficialGreen).Background(Colors.Green.Lighten4).Padding(15).Column(cert =>
+            col.Item().Border(1.5f).BorderColor(OfficialGreen).Background(Colors.Green.Lighten4).Padding(10).Column(cert =>
             {
-                cert.Spacing(8);
-                cert.Item().AlignCenter().Text("OFFICIAL CERTIFICATION").FontSize(14).SemiBold().FontColor(Colors.Green.Darken3);
+                cert.Spacing(6);
+                cert.Item().AlignCenter().Text("OFFICIAL CERTIFICATION").FontSize(11).SemiBold().FontColor(Colors.Green.Darken3);
 
                 cert.Item().Text(t =>
                 {
@@ -198,16 +198,16 @@ public class ComplianceCertificateDocument : BaseDocument
             });
 
             // Compliance Badge
-            col.Item().PaddingTop(15).AlignCenter()
+            col.Item().PaddingTop(10).AlignCenter()
                 .Background(Colors.Green.Lighten3)
-                .Border(2)
+                .Border(1.5f)
                 .BorderColor(Colors.Green.Darken2)
-                .Padding(15)
+                .Padding(10)
                 .Column(badge =>
                 {
-                    badge.Item().AlignCenter().Text("✓").FontSize(40).FontColor(Colors.Green.Darken3);
-                    badge.Item().AlignCenter().Text("COMPLIANCE VERIFIED").FontSize(16).SemiBold().FontColor(Colors.Green.Darken3);
-                    badge.Item().AlignCenter().Text("Vehicle meets all legal weight requirements").FontSize(10).Italic();
+                    badge.Item().AlignCenter().Text("✓").FontSize(30).FontColor(Colors.Green.Darken3);
+                    badge.Item().AlignCenter().Text("COMPLIANCE VERIFIED").FontSize(14).SemiBold().FontColor(Colors.Green.Darken3);
+                    badge.Item().AlignCenter().Text("Vehicle meets all legal weight requirements").FontSize(9).Italic();
                 });
 
             // Authorization Statement

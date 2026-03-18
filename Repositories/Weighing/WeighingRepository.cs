@@ -40,6 +40,7 @@ public class WeighingRepository : IWeighingRepository
             .Include(t => t.Destination)
             .Include(t => t.Cargo)
             .Include(t => t.Road)
+            .Include(t => t.Subcounty)
             .Include(t => t.ScaleTest)
             .Include(t => t.Act)
             .FirstOrDefaultAsync(t => t.Id == id);
@@ -114,7 +115,11 @@ public class WeighingRepository : IWeighingRepository
 
     public async Task DeleteTransactionAsync(Guid id)
     {
-        var transaction = await _context.WeighingTransactions.FindAsync(id);
+        // WeighingTransaction uses a composite key (Id, OrganizationId), so FindAsync(id)
+        // will throw. Query by Id instead and let EF generate the correct predicate.
+        var transaction = await _context.WeighingTransactions
+            .FirstOrDefaultAsync(t => t.Id == id);
+
         if (transaction != null)
         {
             _context.WeighingTransactions.Remove(transaction);
@@ -256,6 +261,15 @@ public class WeighingRepository : IWeighingRepository
             .Include(t => t.Vehicle)
             .Include(t => t.Driver)
             .FirstOrDefaultAsync(t => t.ClientLocalId == parsedId);
+    }
+
+    public async Task<WeighingTransaction?> GetLastWeighingByVehicleAsync(Guid vehicleId, int limit = 1)
+    {
+        return await _context.WeighingTransactions
+            .AsNoTracking()
+            .Where(t => t.VehicleId == vehicleId)
+            .OrderByDescending(t => t.WeighedAt)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<WeighingTransaction?> GetLatestAutoweighByVehicleAsync(

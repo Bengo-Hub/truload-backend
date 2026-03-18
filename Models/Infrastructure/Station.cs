@@ -46,6 +46,11 @@ public class Station : TenantAwareEntity
     /// </summary>
     public Guid? CountyId { get; set; }
 
+    /// <summary>
+    /// Subcounty where this station is located (foreign key)
+    /// </summary>
+    public Guid? SubcountyId { get; set; }
+
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
     public bool SupportsBidirectional { get; set; } = false;
@@ -63,4 +68,5 @@ public class Station : TenantAwareEntity
     // Navigation properties
     public Roads? Road { get; set; }
     public Counties? County { get; set; }
+    public Infrastructure.Subcounty? Subcounty { get; set; }
 }

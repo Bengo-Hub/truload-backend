@@ -50,6 +50,15 @@ public class QuestPdfService : IPdfService
         });
     }
 
+    public async Task<byte[]> GeneratePermitAsync(Permit permit)
+    {
+        return await Task.Run(() =>
+        {
+            var document = new PermitDocument(permit);
+            return document.Generate();
+        });
+    }
+
     public async Task<byte[]> GenerateLoadCorrectionMemoAsync(Guid caseRegisterId, WeighingTransaction originalWeighing, WeighingTransaction reweighing)
     {
         return await Task.Run(async () =>

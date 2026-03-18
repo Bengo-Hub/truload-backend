@@ -106,12 +106,23 @@ public class WeighingService : IWeighingService
         Guid? driverId = null,
         Guid? transporterId = null,
         string weighingType = "static",
-        Guid? actId = null)
+        Guid? actId = null,
+        Guid? roadId = null,
+        Guid? subcountyId = null,
+        string? locationTown = null,
+        string? locationSubcounty = null,
+        string? locationCounty = null,
+        decimal? locationLat = null,
+        decimal? locationLng = null,
+        Guid? originId = null,
+        Guid? destinationId = null,
+        Guid? cargoId = null)
     {
         // Validate scale test requirement
+        var isScaleTestRequired = await _settingsService.GetSettingValueAsync(SettingKeys.WeighingScaleTestRequired, false);
         var hasValidScaleTest = await _scaleTestRepository.HasPassedDailyCalibrationalAsync(stationId, bound);
 
-        if (!hasValidScaleTest)
+        if (isScaleTestRequired && !hasValidScaleTest)
         {
             _logger.LogWarning(
                 "Weighing initiation blocked - no valid scale test for Station {StationId}, Bound {Bound}",
@@ -126,6 +137,54 @@ public class WeighingService : IWeighingService
         {
             var todaysTest = await _scaleTestRepository.GetTodaysPassingTestAsync(stationId, bound);
             validScaleTestId = todaysTest?.Id;
+        }
+
+        // When request did not send driver/transporter/location, copy from last weighing for this vehicle
+        var effectiveDriverId = driverId;
+        var effectiveTransporterId = transporterId;
+        var effectiveRoadId = roadId;
+        var effectiveSubcountyId = subcountyId;
+        var effectiveLocationTown = locationTown;
+        var effectiveLocationSubcounty = locationSubcounty;
+        var effectiveLocationCounty = locationCounty;
+        var effectiveLocationLat = locationLat;
+        var effectiveLocationLng = locationLng;
+        var effectiveOriginId = originId;
+        var effectiveDestinationId = destinationId;
+        var effectiveCargoId = cargoId;
+
+        if (!driverId.HasValue && !transporterId.HasValue && !roadId.HasValue && !subcountyId.HasValue)
+        {
+            var lastWeighing = await _weighingRepository.GetLastWeighingByVehicleAsync(vehicleId);
+            if (lastWeighing != null)
+            {
+                effectiveDriverId = lastWeighing.DriverId;
+                effectiveTransporterId = lastWeighing.TransporterId;
+                effectiveRoadId = lastWeighing.RoadId;
+                effectiveSubcountyId = lastWeighing.SubcountyId;
+                effectiveLocationTown = lastWeighing.LocationTown ?? locationTown;
+                effectiveLocationSubcounty = lastWeighing.LocationSubcounty ?? locationSubcounty;
+                effectiveLocationCounty = lastWeighing.LocationCounty ?? locationCounty;
+                effectiveLocationLat = lastWeighing.LocationLat ?? locationLat;
+                effectiveLocationLng = lastWeighing.LocationLng ?? locationLng;
+                effectiveOriginId = lastWeighing.OriginId ?? originId;
+                effectiveDestinationId = lastWeighing.DestinationId ?? destinationId;
+                effectiveCargoId = lastWeighing.CargoId ?? cargoId;
+                _logger.LogDebug("Copied driver/transporter/location from last weighing {LastId} for vehicle {VehicleId}", lastWeighing.Id, vehicleId);
+            }
+        }
+        else
+        {
+            if (!originId.HasValue || !destinationId.HasValue || !cargoId.HasValue)
+            {
+                var lastWeighing = await _weighingRepository.GetLastWeighingByVehicleAsync(vehicleId);
+                if (lastWeighing != null)
+                {
+                    if (!effectiveOriginId.HasValue) effectiveOriginId = lastWeighing.OriginId;
+                    if (!effectiveDestinationId.HasValue) effectiveDestinationId = lastWeighing.DestinationId;
+                    if (!effectiveCargoId.HasValue) effectiveCargoId = lastWeighing.CargoId;
+                }
+            }
         }
 
         // Generate ticket number via DocumentNumberService
@@ -145,12 +204,22 @@ public class WeighingService : IWeighingService
             WeighedByUserId = userId,
             VehicleId = vehicleId,
             VehicleRegNumber = vehicleRegNo,
-            DriverId = driverId,
-            TransporterId = transporterId,
+            DriverId = effectiveDriverId,
+            TransporterId = effectiveTransporterId,
             WeighingType = weighingType,
             Bound = bound,
             ScaleTestId = validScaleTestId,
             ActId = actId,
+            RoadId = effectiveRoadId,
+            SubcountyId = effectiveSubcountyId,
+            LocationTown = effectiveLocationTown,
+            LocationSubcounty = effectiveLocationSubcounty,
+            LocationCounty = effectiveLocationCounty,
+            LocationLat = effectiveLocationLat,
+            LocationLng = effectiveLocationLng,
+            OriginId = effectiveOriginId,
+            DestinationId = effectiveDestinationId,
+            CargoId = effectiveCargoId,
             ControlStatus = "Pending",
             CaptureStatus = "pending",
             CaptureSource = "frontend",
@@ -235,36 +304,57 @@ public class WeighingService : IWeighingService
         var transaction = await _weighingRepository.GetTransactionByIdAsync(transactionId);
         if (transaction == null) throw new KeyNotFoundException($"Weighing transaction {transactionId} not found");
 
-        // Resolve axle configuration if not set on the incoming axles
-        var needsConfigResolution = axles.Any(a => a.AxleConfigurationId == Guid.Empty);
-        if (needsConfigResolution)
+        // Resolve axle configuration and grouping data if missing
+        var needsDataResolution = axles.Any(a => a.AxleConfigurationId == Guid.Empty || string.IsNullOrEmpty(a.AxleGrouping));
+        if (needsDataResolution)
         {
-            AxleConfiguration? resolvedConfig = null;
-            var firstValidConfigId = axles.FirstOrDefault(a => a.AxleConfigurationId != Guid.Empty)?.AxleConfigurationId;
-            if (firstValidConfigId.HasValue)
+            // Group axles by configuration to minimize DB calls
+            var configIds = axles.Where(a => a.AxleConfigurationId != Guid.Empty)
+                .Select(a => a.AxleConfigurationId)
+                .Distinct()
+                .ToList();
+
+            var configs = new Dictionary<Guid, AxleConfiguration>();
+            foreach (var cid in configIds)
             {
-                resolvedConfig = await _axleConfigurationRepository.GetByIdAsync(firstValidConfigId.Value, includeWeightReferences: true);
+                var cfg = await _axleConfigurationRepository.GetByIdAsync(cid, includeWeightReferences: true);
+                if (cfg != null) configs[cid] = cfg;
             }
-            if (resolvedConfig == null)
+
+            // Fallback for axles without any configId
+            AxleConfiguration? standardConfig = null;
+            if (axles.Any(a => a.AxleConfigurationId == Guid.Empty))
             {
-                resolvedConfig = await _axleConfigurationRepository.GetStandardByAxleCountAsync(axles.Count);
+                standardConfig = await _axleConfigurationRepository.GetStandardByAxleCountAsync(axles.Count);
             }
-            if (resolvedConfig != null)
+
+            foreach (var axle in axles)
             {
-                foreach (var axle in axles)
+                var cid = axle.AxleConfigurationId == Guid.Empty ? standardConfig?.Id : axle.AxleConfigurationId;
+                if (!cid.HasValue || cid == Guid.Empty) continue;
+
+                if (!configs.TryGetValue(cid.Value, out var config) && cid == standardConfig?.Id)
                 {
-                    if (axle.AxleConfigurationId == Guid.Empty)
+                    config = standardConfig;
+                }
+                else if (!configs.TryGetValue(cid.Value, out config))
+                {
+                    config = await _axleConfigurationRepository.GetByIdAsync(cid.Value, includeWeightReferences: true);
+                    if (config != null) configs[cid.Value] = config;
+                }
+
+                if (config != null)
+                {
+                    axle.AxleConfigurationId = config.Id;
+                    var weightRef = config.AxleWeightReferences?
+                        .FirstOrDefault(r => r.AxlePosition == axle.AxleNumber);
+                    if (weightRef != null)
                     {
-                        axle.AxleConfigurationId = resolvedConfig.Id;
-                        var weightRef = resolvedConfig.AxleWeightReferences?
-                            .FirstOrDefault(r => r.AxlePosition == axle.AxleNumber);
-                        if (weightRef != null)
-                        {
-                            axle.AxleWeightReferenceId = weightRef.Id;
-                            axle.PermissibleWeightKg = weightRef.AxleLegalWeightKg;
-                            axle.AxleGrouping = weightRef.AxleGrouping;
-                            axle.AxleGroupId = weightRef.AxleGroupId;
-                        }
+                        axle.AxleWeightReferenceId = weightRef.Id;
+                        axle.PermissibleWeightKg = weightRef.AxleLegalWeightKg;
+                        axle.AxleGrouping = weightRef.AxleGrouping;
+                        axle.AxleGroupId = weightRef.AxleGroupId;
+                        axle.TyreTypeId = weightRef.TyreTypeId;
                     }
                 }
             }
@@ -1140,10 +1230,11 @@ public class WeighingService : IWeighingService
         }
 
         // 3. Validate scale test requirement
+        var isScaleTestRequired = await _settingsService.GetSettingValueAsync(SettingKeys.WeighingScaleTestRequired, false);
         var hasValidScaleTest = await _scaleTestRepository.HasPassedDailyCalibrationalAsync(
             request.StationId, request.Bound);
 
-        if (!hasValidScaleTest)
+        if (isScaleTestRequired && !hasValidScaleTest)
         {
             _logger.LogWarning(
                 "Autoweigh blocked - no valid scale test for Station {StationId}, Bound {Bound}",
@@ -1151,6 +1242,8 @@ public class WeighingService : IWeighingService
             throw new InvalidOperationException(
                 $"Scale test required before weighing. No passing scale test found for this station{(string.IsNullOrEmpty(request.Bound) ? "" : $" (Bound {request.Bound})")} today.");
         }
+    
+        // If scale test is NOT required and NOT found, scaleTestId will simply be null
 
         // 4. Get today's passing scale test
         var todaysTest = await _scaleTestRepository.GetTodaysPassingTestAsync(request.StationId, request.Bound);

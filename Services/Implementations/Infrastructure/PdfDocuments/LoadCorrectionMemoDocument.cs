@@ -34,12 +34,12 @@ public class LoadCorrectionMemoDocument : BaseDocument
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(1.5f, Unit.Centimetre);
+                page.Margin(1.0f, Unit.Centimetre);
                 page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(11).FontFamily("Inter"));
+                page.DefaultTextStyle(x => x.FontSize(9.5f).FontFamily("Inter"));
 
                 page.Header().Element(ComposeHeader);
-                page.Content().PaddingVertical(15).Element(ComposeContent);
+                page.Content().PaddingVertical(8).Element(ComposeContent);
                 page.Footer().Element(ComposeOfficialFooter);
             });
         }).GeneratePdf();
@@ -62,19 +62,19 @@ public class LoadCorrectionMemoDocument : BaseDocument
                 row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(center =>
                 {
                     center.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
-                        .FontSize(14).SemiBold();
+                        .FontSize(11).SemiBold();
                     center.Item().AlignCenter().Text(BrandingConstants.Organization.KenyaRoadsAuthority)
-                        .FontSize(11);
+                        .FontSize(9);
                 });
 
                 row.ConstantItem(LogoWidth); // No secondary logo for memo
             });
 
-            col.Item().PaddingVertical(10).AlignCenter()
+            col.Item().PaddingVertical(6).AlignCenter()
                 .Background(KuraBlue)
-                .Padding(10)
+                .Padding(6)
                 .Text("LOAD CORRECTION MEMO")
-                .FontSize(18)
+                .FontSize(15)
                 .SemiBold()
                 .FontColor(Colors.White);
 

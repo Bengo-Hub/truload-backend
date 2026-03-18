@@ -48,8 +48,9 @@ public class BackupService : IBackupService
 
         return new BackupSystemStatusDto(
             IsEnabled: settings.Enabled,
-            ScheduleCron: settings.ScheduleCron ?? "0 0 * * *",
+            ScheduleCron: settings.ScheduleCron ?? "0 2 * * *",
             StoragePath: storagePath,
+            BackupPgDumpPath: await GetPgDumpPathAsync(ct),
             RetentionDays: settings.RetentionDays,
             LastBackupAt: lastBackup?.CreationTime,
             NextScheduledBackup: nextScheduled,
@@ -313,14 +314,70 @@ public class BackupService : IBackupService
         }
     }
 
+    public async Task<bool> UpdateSettingsAsync(UpdateBackupSettingsRequest request, Guid userId, CancellationToken ct = default)
+    {
+        try
+        {
+            await _settingsService.UpdateSettingAsync(SettingKeys.BackupEnabled, request.IsEnabled.ToString(), userId, ct);
+            await _settingsService.UpdateSettingAsync(SettingKeys.BackupScheduleCron, request.ScheduleCron, userId, ct);
+            await _settingsService.UpdateSettingAsync(SettingKeys.BackupStoragePath, request.StoragePath, userId, ct);
+            await _settingsService.UpdateSettingAsync(SettingKeys.BackupRetentionDays, request.RetentionDays.ToString(), userId, ct);
+            
+            if (request.BackupPgDumpPath != null)
+            {
+                await _settingsService.UpdateSettingAsync(SettingKeys.BackupPgDumpPath, request.BackupPgDumpPath, userId, ct);
+            }
+
+            _logger.LogInformation("Backup settings updated by user {UserId}", userId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating backup settings");
+            return false;
+        }
+    }
+
     private async Task<string> GetStoragePathAsync(CancellationToken ct)
     {
         var path = await _settingsService.GetSettingValueAsync(
             SettingKeys.BackupStoragePath,
-            "/mnt/data/backups",
+            "./backups",
             ct);
 
         return path;
+    }
+
+    private async Task<string> GetPgDumpPathAsync(CancellationToken ct)
+    {
+        var defaultPath = OperatingSystem.IsWindows() 
+            ? @"C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" 
+            : "pg_dump";
+
+        return await _settingsService.GetSettingValueAsync(
+            SettingKeys.BackupPgDumpPath,
+            defaultPath,
+            ct);
+    }
+
+    private async Task<string> GetPsqlPathAsync(CancellationToken ct)
+    {
+        var defaultPath = OperatingSystem.IsWindows() 
+            ? @"C:\Program Files\PostgreSQL\17\bin\psql.exe" 
+            : "psql";
+
+        // We use the same directory as pg_dump for psql by default
+        var pgDumpPath = await GetPgDumpPathAsync(ct);
+        if (Path.IsPathRooted(pgDumpPath))
+        {
+            var dir = Path.GetDirectoryName(pgDumpPath);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                defaultPath = Path.Combine(dir, OperatingSystem.IsWindows() ? "psql.exe" : "psql");
+            }
+        }
+
+        return defaultPath;
     }
 
     private static void EnsureDirectoryExists(string path)
@@ -396,9 +453,10 @@ public class BackupService : IBackupService
     {
         try
         {
+            var pgDumpPath = await GetPgDumpPathAsync(ct);
             var startInfo = new ProcessStartInfo
             {
-                FileName = "pg_dump",
+                FileName = pgDumpPath,
                 Arguments = $"-h {host} -p {port} -U {username} -d {database} -f \"{outputFile}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -435,9 +493,10 @@ public class BackupService : IBackupService
     {
         try
         {
+            var psqlPath = await GetPsqlPathAsync(ct);
             var startInfo = new ProcessStartInfo
             {
-                FileName = "psql",
+                FileName = psqlPath,
                 Arguments = $"-h {host} -p {port} -U {username} -d {database} -f \"{inputFile}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,

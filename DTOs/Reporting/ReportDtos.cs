@@ -51,6 +51,10 @@ public class ReportFilterParams
     public DateTime? DateTo { get; set; }
     public string? StationId { get; set; }
     public string? Status { get; set; }
+    /// <summary>Weighing type filter (e.g. static, multideck, mobile) for weighing reports.</summary>
+    public string? WeighingType { get; set; }
+    /// <summary>Control status filter (e.g. LEGAL, OVERLOAD, WARNING) for weighing reports.</summary>
+    public string? ControlStatus { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 1000;
 }

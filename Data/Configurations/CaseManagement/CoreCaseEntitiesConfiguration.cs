@@ -64,9 +64,6 @@ public static class CoreCaseEntitiesConfiguration
             entity.Property(e => e.CountyId)
                 .HasColumnName("county_id");
 
-            entity.Property(e => e.DistrictId)
-                .HasColumnName("district_id");
-
             entity.Property(e => e.SubcountyId)
                 .HasColumnName("subcounty_id");
 

@@ -28,7 +28,6 @@ public record UpdateSettingRequest
     [Required]
     public string SettingKey { get; init; } = string.Empty;
 
-    [Required]
     public string SettingValue { get; init; } = string.Empty;
 }
 

@@ -4,6 +4,7 @@ using TruLoad.Backend.Data.Repositories.Weighing;
 using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.Weighing;
+using TruLoad.Backend.Services.Interfaces.Infrastructure;
 
 namespace TruLoad.Backend.Controllers.WeighingOperations;
 
@@ -15,15 +16,18 @@ public class PermitsController : ControllerBase
     private readonly IPermitRepository _permitRepository;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<PermitsController> _logger;
+    private readonly IPdfService _pdfService;
 
     public PermitsController(
         IPermitRepository permitRepository,
         ITenantContext tenantContext,
-        ILogger<PermitsController> logger)
+        ILogger<PermitsController> logger,
+        IPdfService pdfService)
     {
         _permitRepository = permitRepository;
         _tenantContext = tenantContext;
         _logger = logger;
+        _pdfService = pdfService;
     }
 
     /// <summary>
@@ -41,6 +45,46 @@ public class PermitsController : ControllerBase
 
         var permitDto = MapToDto(permit);
         return Ok(permitDto);
+    }
+
+    /// <summary>
+    /// Get permit by number
+    /// </summary>
+    [HttpGet("by-number/{permitNo}")]
+    public async Task<ActionResult<PermitDto>> GetPermitByNumber(string permitNo)
+    {
+        var permit = await _permitRepository.GetByPermitNoAsync(permitNo);
+
+        if (permit == null)
+        {
+            return NotFound(new { message = "Permit not found" });
+        }
+
+        return Ok(MapToDto(permit));
+    }
+
+    /// <summary>
+    /// Generate and get permit PDF
+    /// </summary>
+    [HttpGet("{id}/pdf")]
+    public async Task<IActionResult> GetPermitPdf(Guid id)
+    {
+        var permit = await _permitRepository.GetByIdAsync(id);
+        if (permit == null)
+        {
+            return NotFound(new { message = "Permit not found" });
+        }
+
+        try
+        {
+            var pdfBytes = await _pdfService.GeneratePermitAsync(permit);
+            return File(pdfBytes, "application/pdf", $"Permit_{permit.PermitNo}.pdf");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating permit PDF for {PermitId}", id);
+            return StatusCode(500, new { message = "An error occurred while generating the permit PDF" });
+        }
     }
 
     /// <summary>
@@ -99,6 +143,7 @@ public class PermitsController : ControllerBase
             ValidFrom = request.ValidFrom,
             ValidTo = request.ValidTo,
             IssuingAuthority = request.IssuingAuthority,
+            DocumentUrl = request.DocumentUrl,
             Status = request.Status,
             CreatedAt = DateTime.UtcNow
         };
@@ -159,6 +204,9 @@ public class PermitsController : ControllerBase
         if (!string.IsNullOrWhiteSpace(request.Status))
             permit.Status = request.Status;
 
+        if (request.DocumentUrl != null)
+            permit.DocumentUrl = request.DocumentUrl;
+
         // Validate date range if both dates are present
         if (permit.ValidTo <= permit.ValidFrom)
         {
@@ -205,6 +253,45 @@ public class PermitsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Extend a permit
+    /// </summary>
+    [HttpPost("{id}/extend")]
+    public async Task<ActionResult<PermitDto>> ExtendPermit(Guid id, [FromBody] ExtendPermitRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var permit = await _permitRepository.GetByIdAsync(id);
+        if (permit == null)
+        {
+            return NotFound(new { message = "Permit not found" });
+        }
+
+        if (request.NewValidTo <= permit.ValidTo)
+        {
+            return BadRequest(new { message = "New validity date must be after current validity date" });
+        }
+
+        permit.ValidTo = request.NewValidTo;
+        // Optionally log the comment or update a remarks field if it exists
+        // permit.Remarks = string.IsNullOrWhiteSpace(permit.Remarks) ? request.Comment : $"{permit.Remarks}; {request.Comment}";
+
+        try
+        {
+            await _permitRepository.UpdateAsync(permit);
+            var updatedPermit = await _permitRepository.GetByIdAsync(id);
+            return Ok(MapToDto(updatedPermit!));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error extending permit {PermitId}", id);
+            return StatusCode(500, new { message = "An error occurred while extending the permit" });
+        }
+    }
+
     private static PermitDto MapToDto(Permit permit)
     {
         return new PermitDto
@@ -221,6 +308,7 @@ public class PermitsController : ControllerBase
             ValidTo = permit.ValidTo,
             IssuingAuthority = permit.IssuingAuthority ?? string.Empty,
             Status = permit.Status,
+            DocumentUrl = permit.DocumentUrl,
             CreatedAt = permit.CreatedAt
         };
     }

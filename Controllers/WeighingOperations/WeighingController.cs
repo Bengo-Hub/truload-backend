@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using System.Text.Json;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Services.Interfaces;
@@ -318,13 +319,27 @@ public class WeighingController : ControllerBase
                 request.DriverId,
                 request.TransporterId,
                 request.WeighingType ?? "static",
-                request.ActId);
+                request.ActId,
+                request.RoadId,
+                request.SubcountyId,
+                request.LocationTown,
+                request.LocationSubcounty,
+                request.LocationCounty,
+                request.LocationLat,
+                request.LocationLng,
+                request.OriginId,
+                request.DestinationId,
+                request.CargoId);
+
+            // Reload with includes so MapToDto gets Vehicle, Driver, Transporter, Origin, Destination, Cargo, Road, Subcounty, etc.
+            var loaded = await _weighingService.GetTransactionAsync(transaction.Id);
+            var transactionForDto = loaded ?? transaction;
 
             // Tag checks are informational — run after transaction is safely created
             var kenhaTag = await CheckKeNHATagAsync(vehicleRegNo);
             var localTags = await _vehicleTagService.CheckVehicleTagsAsync(vehicleRegNo);
 
-            var dto = MapToDto(transaction);
+            var dto = MapToDto(transactionForDto);
             dto.KeNHATagAlert = kenhaTag;
             dto.OpenTags = localTags;
 
@@ -398,21 +413,39 @@ public class WeighingController : ControllerBase
                 transaction.RoadId = request.RoadId;
             if (request.LocationTown != null)
                 transaction.LocationTown = request.LocationTown;
+            if (request.LocationSubcounty != null)
+                transaction.LocationSubcounty = request.LocationSubcounty;
             if (request.LocationCounty != null)
                 transaction.LocationCounty = request.LocationCounty;
             if (request.LocationLat.HasValue)
                 transaction.LocationLat = request.LocationLat;
+            if (request.SubcountyId.HasValue)
+            {
+                var subcountyExists = await _context.Subcounties.AsNoTracking().AnyAsync(s => s.Id == request.SubcountyId.Value);
+                if (!subcountyExists)
+                {
+                    return BadRequest($"SubcountyId '{request.SubcountyId.Value}' is not valid. The subcounty may have been removed or does not exist.");
+                }
+                transaction.SubcountyId = request.SubcountyId;
+            }
             if (request.LocationLng.HasValue)
                 transaction.LocationLng = request.LocationLng;
 
             await _weighingService.UpdateTransactionAsync(transaction);
 
-            var dto = MapToDto(transaction);
+            // Reload with includes so MapToDto has Origin, Destination, Cargo, Vehicle, etc. populated
+            var reloaded = await _weighingService.GetTransactionAsync(id);
+            var dto = MapToDto(reloaded ?? transaction);
             return Ok(dto);
         }
         catch (KeyNotFoundException)
         {
             return NotFound($"Weighing transaction {id} not found");
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pg && pg.SqlState == "23503")
+        {
+            _logger.LogWarning(ex, "Foreign key violation updating weighing transaction {TransactionId}", id);
+            return BadRequest("One or more reference values (e.g. Subcounty, Road, Driver, Transporter) are invalid or do not exist. Check the selected location and entity IDs.");
         }
         catch (Exception ex)
         {
@@ -441,13 +474,18 @@ public class WeighingController : ControllerBase
                 return NotFound($"Weighing transaction {id} not found");
             }
 
-            if (transaction.ControlStatus != "Pending")
+            if (transaction.CaptureStatus.ToUpper() != "PENDING")
             {
                 return BadRequest($"Cannot delete weighing in status '{transaction.ControlStatus}'. Only Pending transactions can be deleted.");
             }
 
             await _weighingService.DeleteTransactionAsync(id);
             return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Business-rule validation (e.g. non-Pending status) should return 400, not 500
+            return BadRequest(ex.Message);
         }
         catch (KeyNotFoundException)
         {
@@ -1068,21 +1106,21 @@ public class WeighingController : ControllerBase
             OriginalWeighingId = transaction.OriginalWeighingId,
             HasPermit = transaction.HasPermit,
 
-            // Vehicle details (vehicle may be auto-created with only reg number on mobile)
-            VehicleMake = transaction.Vehicle?.Make,
-            VehicleModel = transaction.Vehicle?.Model,
-            VehicleType = transaction.Vehicle?.VehicleType,
-            AxleConfiguration = axleConfigCode,
+            // Vehicle details (vehicle may be auto-created with only reg number on mobile). Use empty string instead of null for display.
+            VehicleMake = transaction.Vehicle?.Make ?? string.Empty,
+            VehicleModel = transaction.Vehicle?.Model ?? string.Empty,
+            VehicleType = transaction.Vehicle?.VehicleType ?? string.Empty,
+            AxleConfiguration = axleConfigCode ?? string.Empty,
             IsMultiDeck = isMultiDeck,
 
             // People
-            DriverName = transaction.Driver?.FullNames,
-            TransporterName = transaction.Transporter?.Name,
-            WeighedByUserName = transaction.WeighedByUser?.FullName,
+            DriverName = transaction.Driver?.FullNames ?? string.Empty,
+            TransporterName = transaction.Transporter?.Name ?? string.Empty,
+            WeighedByUserName = transaction.WeighedByUser?.FullName ?? string.Empty,
 
             // Station
-            StationName = transaction.Station?.Name,
-            StationCode = transaction.Station?.Code,
+            StationName = transaction.Station?.Name ?? string.Empty,
+            StationCode = transaction.Station?.Code ?? string.Empty,
 
             // Scale test (daily calibration verification for this session)
             ScaleTestId = transaction.ScaleTestId,
@@ -1098,17 +1136,22 @@ public class WeighingController : ControllerBase
             DeckCWeightKg = isMultiDeck ? NullIfZero(axles.Where(a => a.AxleGrouping == "C").Sum(a => a.MeasuredWeightKg)) : null,
             DeckDWeightKg = isMultiDeck ? NullIfZero(axles.Where(a => a.AxleGrouping == "D").Sum(a => a.MeasuredWeightKg)) : null,
 
-            // Route & Cargo
-            SourceLocation = transaction.Origin?.Name,
-            DestinationLocation = transaction.Destination?.Name,
-            CargoType = transaction.Cargo?.Name,
-            CargoDescription = transaction.Cargo?.Category,
+            // Route & Cargo. Use empty string for display fields so response does not return null.
+            OriginId = transaction.OriginId,
+            DestinationId = transaction.DestinationId,
+            CargoId = transaction.CargoId,
+            SourceLocation = transaction.Origin?.Name ?? string.Empty,
+            DestinationLocation = transaction.Destination?.Name ?? string.Empty,
+            CargoType = transaction.Cargo?.Name ?? string.Empty,
+            CargoDescription = transaction.Cargo?.Category ?? string.Empty,
 
             RoadId = transaction.RoadId,
-            RoadName = transaction.Road?.Name,
-            RoadCode = transaction.Road?.Code,
-            LocationTown = transaction.LocationTown,
-            LocationCounty = transaction.LocationCounty,
+            RoadName = transaction.Road?.Name ?? string.Empty,
+            RoadCode = transaction.Road?.Code ?? string.Empty,
+            SubcountyId = transaction.SubcountyId,
+            LocationSubcounty = transaction.LocationSubcounty ?? string.Empty,
+            LocationTown = transaction.LocationTown ?? string.Empty,
+            LocationCounty = transaction.LocationCounty ?? string.Empty,
             LocationLat = transaction.LocationLat,
             LocationLng = transaction.LocationLng,
 

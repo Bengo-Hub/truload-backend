@@ -41,4 +41,9 @@ public interface IBackupService
     /// Restores from a backup (dangerous operation).
     /// </summary>
     Task<RestoreBackupResponse> RestoreBackupAsync(RestoreBackupRequest request, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates backup settings.
+    /// </summary>
+    Task<bool> UpdateSettingsAsync(UpdateBackupSettingsRequest request, Guid userId, CancellationToken ct = default);
 }

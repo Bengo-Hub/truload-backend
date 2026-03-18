@@ -64,11 +64,6 @@ public class CaseRegister : TenantAwareEntity
     public Guid? CountyId { get; set; }
 
     /// <summary>
-    /// District
-    /// </summary>
-    public Guid? DistrictId { get; set; }
-
-    /// <summary>
     /// Subcounty
     /// </summary>
     public Guid? SubcountyId { get; set; }

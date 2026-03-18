@@ -248,14 +248,14 @@ namespace TruLoad.Backend.Data.Configurations.Infrastructure
                 entity.HasOne(e => e.County).WithMany().HasForeignKey(e => e.CountyId).OnDelete(DeleteBehavior.Restrict);
             });
 
-            modelBuilder.Entity<RoadDistrict>(entity =>
+            modelBuilder.Entity<RoadSubcounty>(entity =>
             {
-                entity.ToTable("road_districts");
-                entity.HasKey(e => new { e.RoadId, e.DistrictId });
+                entity.ToTable("road_subcounties");
+                entity.HasKey(e => new { e.RoadId, e.SubcountyId });
                 entity.HasIndex(e => e.RoadId);
-                entity.HasIndex(e => e.DistrictId);
-                entity.HasOne(e => e.Road).WithMany(r => r.RoadDistricts).HasForeignKey(e => e.RoadId).OnDelete(DeleteBehavior.Cascade);
-                entity.HasOne(e => e.District).WithMany().HasForeignKey(e => e.DistrictId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(e => e.SubcountyId);
+                entity.HasOne(e => e.Road).WithMany(r => r.RoadSubcounties).HasForeignKey(e => e.RoadId).OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Subcounty).WithMany().HasForeignKey(e => e.SubcountyId).OnDelete(DeleteBehavior.Restrict);
             });
 
             // VehicleMake entity configuration

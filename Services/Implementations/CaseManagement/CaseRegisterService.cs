@@ -134,7 +134,6 @@ public class CaseRegisterService : ICaseRegisterService
             ActId = request.ActId,
             RoadId = request.RoadId,
             CountyId = request.CountyId,
-            DistrictId = request.DistrictId,
             SubcountyId = request.SubcountyId,
             CaseStatusId = openStatus.Id,
             DispositionTypeId = pendingDisposition.Id,
@@ -378,10 +377,12 @@ public class CaseRegisterService : ICaseRegisterService
         return MapToDto(updated);
     }
 
-    public async Task<CaseStatisticsDto> GetCaseStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null)
+    public async Task<CaseStatisticsDto> GetCaseStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, Guid? stationId = null)
     {
         var cases = _context.CaseRegisters.AsNoTracking().Where(c => c.DeletedAt == null);
 
+        if (stationId.HasValue)
+            cases = cases.Where(c => c.Weighing != null && c.Weighing.StationId == stationId.Value);
         if (dateFrom.HasValue)
         {
             var from = DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc);

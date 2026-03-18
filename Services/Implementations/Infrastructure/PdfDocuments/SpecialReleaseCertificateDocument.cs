@@ -28,12 +28,12 @@ public class SpecialReleaseCertificateDocument : BaseDocument
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(1.5f, Unit.Centimetre);
+                page.Margin(1.0f, Unit.Centimetre);
                 page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(11).FontFamily("Inter"));
+                page.DefaultTextStyle(x => x.FontSize(9.5f).FontFamily("Inter"));
 
                 page.Header().Element(ComposeHeader);
-                page.Content().PaddingVertical(15).Element(ComposeContent);
+                page.Content().PaddingVertical(8).Element(ComposeContent);
                 page.Footer().Element(ComposeOfficialFooter);
             });
         }).GeneratePdf();
@@ -56,20 +56,20 @@ public class SpecialReleaseCertificateDocument : BaseDocument
                 row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(center =>
                 {
                     center.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
-                        .FontSize(14).SemiBold();
+                        .FontSize(11).SemiBold();
                     center.Item().AlignCenter().Text(BrandingConstants.Organization.KenyaRoadsAuthority)
-                        .FontSize(11);
-                    center.Item().AlignCenter().Text("VEHICLE LOAD CONTROL UNIT").FontSize(9);
+                        .FontSize(9);
+                    center.Item().AlignCenter().Text("VEHICLE LOAD CONTROL UNIT").FontSize(7.5f);
                 });
 
                 row.ConstantItem(LogoWidth); // No secondary logo for special release
             });
 
-            col.Item().PaddingVertical(10).AlignCenter()
+            col.Item().PaddingVertical(6).AlignCenter()
                 .Background(Colors.Orange.Darken2)
-                .Padding(10)
+                .Padding(6)
                 .Text("SPECIAL RELEASE CERTIFICATE")
-                .FontSize(18)
+                .FontSize(15)
                 .SemiBold()
                 .FontColor(Colors.White);
 
@@ -91,10 +91,10 @@ public class SpecialReleaseCertificateDocument : BaseDocument
             col.Spacing(12);
 
             // Important Notice Banner
-            col.Item().Background(Colors.Orange.Lighten3).Border(2).BorderColor(Colors.Orange.Darken2).Padding(10).Column(notice =>
+            col.Item().Background(Colors.Orange.Lighten3).Border(1.5f).BorderColor(Colors.Orange.Darken2).Padding(8).Column(notice =>
             {
-                notice.Item().AlignCenter().Text("⚠ CONDITIONAL RELEASE NOTICE").FontSize(12).SemiBold().FontColor(Colors.Orange.Darken3);
-                notice.Item().AlignCenter().Text("This is NOT a compliance certificate. Release is granted under special conditions.").FontSize(9).Italic();
+                notice.Item().AlignCenter().Text("⚠ CONDITIONAL RELEASE NOTICE").FontSize(11).SemiBold().FontColor(Colors.Orange.Darken3);
+                notice.Item().AlignCenter().Text("This is NOT a compliance certificate. Release is granted under special conditions.").FontSize(8.5f).Italic();
             });
 
             // Vehicle Information

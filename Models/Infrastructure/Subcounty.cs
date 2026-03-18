@@ -1,17 +1,18 @@
 using TruLoad.Backend.Models.Common;
+using TruLoad.Backend.Models;
 
 namespace TruLoad.Backend.Models.Infrastructure;
 
 /// <summary>
-/// Subcounty master data within districts.
-/// Administrative subdivision for geographic organization.
+/// Subcounty master data within counties.
+/// Administrative subdivision (formerly "district"); one level under County.
 /// </summary>
 public class Subcounty : BaseEntity
 {
     /// <summary>
-    /// Parent district ID (foreign key)
+    /// Parent county ID (foreign key)
     /// </summary>
-    public Guid DistrictId { get; set; }
+    public Guid CountyId { get; set; }
 
     /// <summary>
     /// Unique subcounty code
@@ -24,5 +25,5 @@ public class Subcounty : BaseEntity
     public string Name { get; set; } = string.Empty;
 
     // Navigation properties
-    public Districts? District { get; set; }
+    public Counties? County { get; set; }
 }

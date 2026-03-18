@@ -171,4 +171,31 @@ public class BackupController : ControllerBase
 
         return Ok(result);
     }
+
+    /// <summary>
+    /// Update backup system settings.
+    /// </summary>
+    [HttpPut("settings")]
+    [HasPermission("system.backup_restore")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> UpdateSettings(
+        [FromBody] UpdateBackupSettingsRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var userId = GetUserId();
+        var success = await _backupService.UpdateSettingsAsync(request, userId, ct);
+
+        if (!success)
+        {
+            return BadRequest(new { message = "Failed to update backup settings" });
+        }
+
+        return Ok(new { message = "Backup settings updated successfully" });
+    }
 }

@@ -162,6 +162,11 @@ public class WeighingTransaction : TenantAwareEntity
     /// Road/location where weighing took place (e.g. A109, Langata Road).
     /// </summary>
     public Guid? RoadId { get; set; }
+    
+    /// <summary>
+    /// Subcounty where weighing took place (foreign key).
+    /// </summary>
+    public Guid? SubcountyId { get; set; }
 
     /// <summary>
     /// Town or city at weighing location (from geolocation or manual).
@@ -174,6 +179,12 @@ public class WeighingTransaction : TenantAwareEntity
     /// </summary>
     [MaxLength(100)]
     public string? LocationCounty { get; set; }
+    
+    /// <summary>
+    /// Subcounty at weighing location.
+    /// </summary>
+    [MaxLength(100)]
+    public string? LocationSubcounty { get; set; }
 
     /// <summary>
     /// Latitude at weighing location (from geolocation).
@@ -250,6 +261,7 @@ public class WeighingTransaction : TenantAwareEntity
     public OriginsDestinations? Destination { get; set; }
     public CargoTypes? Cargo { get; set; }
     public Roads? Road { get; set; }
+    public Subcounty? Subcounty { get; set; }
     public ScaleTest? ScaleTest { get; set; }
 
     // One-to-Many relationship with Axle Weights

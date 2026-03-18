@@ -16,6 +16,7 @@ public class PermitDto
     public DateTime ValidTo { get; set; }
     public string IssuingAuthority { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public string? DocumentUrl { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
@@ -46,6 +47,9 @@ public class CreatePermitRequest
     [StringLength(255, ErrorMessage = "Issuing authority cannot exceed 255 characters")]
     public string IssuingAuthority { get; set; } = string.Empty;
 
+    [StringLength(500, ErrorMessage = "Document URL cannot exceed 500 characters")]
+    public string? DocumentUrl { get; set; }
+
     public string Status { get; set; } = "active";
 }
 
@@ -69,4 +73,16 @@ public class UpdatePermitRequest
 
     [RegularExpression("^(active|expired|revoked)$", ErrorMessage = "Status must be active, expired, or revoked")]
     public string? Status { get; set; }
+
+    [StringLength(500, ErrorMessage = "Document URL cannot exceed 500 characters")]
+    public string? DocumentUrl { get; set; }
+}
+
+public class ExtendPermitRequest
+{
+    [Required(ErrorMessage = "New validity date is required")]
+    public DateTime NewValidTo { get; set; }
+
+    [StringLength(500, ErrorMessage = "Comment cannot exceed 500 characters")]
+    public string? Comment { get; set; }
 }

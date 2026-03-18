@@ -41,6 +41,12 @@ public interface IWeighingRepository
     Task<WeighingTransaction?> GetByClientLocalIdAsync(string clientLocalId);
 
     /// <summary>
+    /// Gets the most recent weighing transaction for a vehicle (by vehicle ID).
+    /// Used to copy driver, transporter, origin, destination, cargo, road, location from last weighing when creating a new transaction.
+    /// </summary>
+    Task<WeighingTransaction?> GetLastWeighingByVehicleAsync(Guid vehicleId, int limit = 1);
+
+    /// <summary>
     /// Gets the latest auto-weigh transaction for a vehicle at a station.
     /// Used to find existing auto-weigh records when frontend submits final capture.
     /// </summary>

@@ -13,7 +13,7 @@ public interface IRoadsRepository
     Task<Roads?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<Roads?> GetByCodeAsync(string code, CancellationToken cancellationToken = default);
     Task<List<Roads>> GetByRoadClassAsync(string roadClass, CancellationToken cancellationToken = default);
-    Task<List<Roads>> GetByDistrictAsync(Guid districtId, CancellationToken cancellationToken = default);
+    Task<List<Roads>> GetBySubcountyAsync(Guid subcountyId, CancellationToken cancellationToken = default);
     Task<List<Roads>> GetByCountyAsync(Guid countyId, CancellationToken cancellationToken = default);
     Task<Roads> CreateAsync(Roads road, CancellationToken cancellationToken = default);
     Task<Roads> UpdateAsync(Roads road, CancellationToken cancellationToken = default);

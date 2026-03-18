@@ -36,6 +36,15 @@ public class PermitRepository : IPermitRepository
             .FirstOrDefaultAsync(p => p.Id == id);
     }
 
+    public async Task<Permit?> GetByPermitNoAsync(string permitNo)
+    {
+        return await _context.Permits
+            .AsNoTracking()
+            .Include(p => p.PermitType)
+            .Include(p => p.Vehicle)
+            .FirstOrDefaultAsync(p => p.PermitNo == permitNo);
+    }
+
     public async Task<IEnumerable<Permit>> GetByVehicleIdAsync(Guid vehicleId)
     {
         return await _context.Permits

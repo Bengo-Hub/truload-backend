@@ -224,15 +224,23 @@ public class YardService : IYardService
         return MapToDto(entry, isCaseClosed);
     }
 
-    public async Task<YardStatisticsDto> GetStatisticsAsync(Guid? stationId, CancellationToken ct = default)
+    public async Task<YardStatisticsDto> GetStatisticsAsync(Guid? stationId, DateTime? dateFrom = null, DateTime? dateTo = null, CancellationToken ct = default)
     {
         var today = DateTime.UtcNow.Date;
 
         var query = _context.YardEntries.Where(y => y.DeletedAt == null);
 
         if (stationId.HasValue)
-        {
             query = query.Where(y => y.StationId == stationId.Value);
+        if (dateFrom.HasValue)
+        {
+            var from = DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc);
+            query = query.Where(y => y.EnteredAt >= from);
+        }
+        if (dateTo.HasValue)
+        {
+            var to = DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc);
+            query = query.Where(y => y.EnteredAt <= to);
         }
 
         var stats = await query

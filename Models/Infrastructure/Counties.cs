@@ -10,6 +10,5 @@ public class Counties : BaseEntity
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
 
-    // Navigation properties
-    public ICollection<Districts>? Districts { get; set; }
+    // Navigation properties (Subcounties are in Infrastructure and reference CountyId)
 }

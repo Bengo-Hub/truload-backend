@@ -86,9 +86,29 @@ public record BackupSystemStatusDto(
     bool IsEnabled,
     string ScheduleCron,
     string StoragePath,
+    string BackupPgDumpPath,
     int RetentionDays,
     DateTime? LastBackupAt,
     DateTime? NextScheduledBackup,
     int TotalBackupsCount,
     long TotalStorageUsedBytes
 );
+
+/// <summary>
+/// Request to update backup settings.
+/// </summary>
+public record UpdateBackupSettingsRequest
+{
+    public bool IsEnabled { get; init; } = true;
+
+    [Required]
+    public string ScheduleCron { get; init; } = "0 2 * * *";
+
+    [Required]
+    public string StoragePath { get; init; } = "./backups";
+
+    public string? BackupPgDumpPath { get; init; }
+
+    [Range(1, 365)]
+    public int RetentionDays { get; init; } = 30;
+}

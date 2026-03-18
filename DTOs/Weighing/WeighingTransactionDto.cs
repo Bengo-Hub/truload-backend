@@ -54,6 +54,9 @@ public class WeighingTransactionDto
     public bool AnprMatch { get; set; }
 
     // Origin & Destination
+    public Guid? OriginId { get; set; }
+    public Guid? DestinationId { get; set; }
+    public Guid? CargoId { get; set; }
     public string? SourceLocation { get; set; }
     public string? DestinationLocation { get; set; }
     public string? CargoType { get; set; }
@@ -63,6 +66,8 @@ public class WeighingTransactionDto
     public Guid? RoadId { get; set; }
     public string? RoadName { get; set; }
     public string? RoadCode { get; set; }
+    public Guid? SubcountyId { get; set; }
+    public string? LocationSubcounty { get; set; }
     public string? LocationTown { get; set; }
     public string? LocationCounty { get; set; }
     public decimal? LocationLat { get; set; }
@@ -209,8 +214,11 @@ public class CreateWeighingRequest
     /// Road where weighing took place; Town/City, County and coordinates from geolocation or manual.
     /// </summary>
     public Guid? RoadId { get; set; }
+    public Guid? SubcountyId { get; set; }
     [StringLength(100)]
     public string? LocationTown { get; set; }
+    [StringLength(100)]
+    public string? LocationSubcounty { get; set; }
     [StringLength(100)]
     public string? LocationCounty { get; set; }
     public decimal? LocationLat { get; set; }
@@ -237,8 +245,11 @@ public class UpdateWeighingRequest
     public Guid? CargoId { get; set; }
 
     public Guid? RoadId { get; set; }
+    public Guid? SubcountyId { get; set; }
     [StringLength(100)]
     public string? LocationTown { get; set; }
+    [StringLength(100)]
+    public string? LocationSubcounty { get; set; }
     [StringLength(100)]
     public string? LocationCounty { get; set; }
     public decimal? LocationLat { get; set; }

@@ -28,12 +28,12 @@ public class WeightTicketDocument : BaseDocument
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(1.5f, Unit.Centimetre);
+                page.Margin(1.0f, Unit.Centimetre);
                 page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Inter"));
+                page.DefaultTextStyle(x => x.FontSize(8.5f).FontFamily("Inter"));
 
                 page.Header().Element(ComposeHeader);
-                page.Content().PaddingVertical(5).Element(ComposeContent);
+                page.Content().PaddingVertical(4).Element(ComposeContent);
                 page.Footer().Element(ComposeOfficialFooter);
             });
         }).GeneratePdf();
@@ -112,11 +112,10 @@ public class WeightTicketDocument : BaseDocument
                 });
             }
 
-            // Signature Blocks
-            col.Item().PaddingTop(15).Element(ComposeSignatures);
+            col.Item().PaddingTop(10).Element(ComposeSignatures);
 
             // Legal Note
-            col.Item().PaddingTop(8).Element(ComposeLegalNote);
+            col.Item().PaddingTop(6).Element(ComposeLegalNote);
         });
     }
 
@@ -124,32 +123,39 @@ public class WeightTicketDocument : BaseDocument
     {
         container.Border(0.5f).BorderColor(Colors.Grey.Lighten1).Column(col =>
         {
-            col.Item().Background("#F0F4F8").Padding(4)
-                .Text("VEHICLE & TRANSPORT INFORMATION").FontSize(9).SemiBold();
+            col.Item().Background("#F0F4F8").Padding(3)
+                .Text("VEHICLE & TRANSPORT INFORMATION").FontSize(8.5f).SemiBold();
 
-            col.Item().Padding(6).Table(table =>
+            col.Item().Padding(4).Table(table =>
             {
                 table.ColumnsDefinition(columns =>
                 {
                     columns.RelativeColumn();
                     columns.RelativeColumn();
+                    columns.RelativeColumn();
                 });
 
-                ComposeInfoCell(table, "Vehicle Registration", _transaction.VehicleRegNumber, true);
-                ComposeInfoCell(table, "Vehicle Type", _transaction.Vehicle?.VehicleType ?? "N/A");
-                ComposeInfoCell(table, "Vehicle Make", _transaction.Vehicle?.Make ?? "N/A");
-                ComposeInfoCell(table, "Axle Configuration", GetAxleConfigurationDisplay());
+                ComposeInfoCell(table, "Reg No", _transaction.VehicleRegNumber, true);
+                ComposeInfoCell(table, "Type/Make", $"{_transaction.Vehicle?.VehicleType ?? "N/A"} / {_transaction.Vehicle?.Make ?? "N/A"}");
+                ComposeInfoCell(table, "Axle Config", GetAxleConfigurationDisplay());
+                
                 ComposeInfoCell(table, "Driver", _transaction.Driver?.FullNames ?? "N/A");
                 ComposeInfoCell(table, "Transporter", _transaction.Transporter?.Name ?? "N/A");
+                ComposeInfoCell(table, "Cargo", _transaction.Cargo?.Name ?? "N/A");
+
                 ComposeInfoCell(table, "Origin", _transaction.Origin?.Name ?? "N/A");
                 ComposeInfoCell(table, "Destination", _transaction.Destination?.Name ?? "N/A");
-                ComposeInfoCell(table, "Cargo", _transaction.Cargo?.Name ?? "N/A");
-                ComposeInfoCell(table, "Weighing Type", _transaction.WeighingType?.ToUpperInvariant() ?? "N/A");
                 ComposeInfoCell(table, "Bound", _transaction.Bound ?? "N/A");
-                ComposeInfoCell(table, "Station Code", _transaction.Station?.Code ?? "N/A");
-                ComposeInfoCell(table, "Location (Road)", _transaction.Road != null ? $"{_transaction.Road.Code} – {_transaction.Road.Name}" : (_transaction.LocationTown ?? "N/A"));
-                ComposeInfoCell(table, "Town/City", _transaction.LocationTown ?? "N/A");
+
+                ComposeInfoCell(table, "Station", _transaction.Station?.Code ?? "N/A");
+                ComposeInfoCell(table, "Weighing", _transaction.WeighingType?.ToUpperInvariant() ?? "N/A");
                 ComposeInfoCell(table, "County", _transaction.LocationCounty ?? "N/A");
+
+                table.Cell().ColumnSpan(3).PaddingVertical(1).Row(row =>
+                {
+                    row.ConstantItem(100).Text("Location (Road):").FontSize(7.5f).SemiBold().FontColor("#4B5563");
+                    row.RelativeItem().Text(_transaction.Road != null ? $"{_transaction.Road.Code} – {_transaction.Road.Name}" : (_transaction.LocationTown ?? "N/A")).FontSize(8.5f);
+                });
             });
         });
     }
@@ -177,13 +183,13 @@ public class WeightTicketDocument : BaseDocument
 
     private static void ComposeInfoCell(TableDescriptor table, string label, string value, bool bold = false)
     {
-        table.Cell().PaddingVertical(2).Row(row =>
+        table.Cell().PaddingVertical(1).Row(row =>
         {
-            row.ConstantItem(120).Text(label + ":").FontSize(8).SemiBold().FontColor("#4B5563");
+            row.ConstantItem(65).Text(label + ":").FontSize(7.5f).SemiBold().FontColor("#4B5563");
             if (bold)
-                row.RelativeItem().Text(value).FontSize(9).Bold();
+                row.RelativeItem().Text(value).FontSize(8.5f).Bold();
             else
-                row.RelativeItem().Text(value).FontSize(9);
+                row.RelativeItem().Text(value).FontSize(8.5f);
         });
     }
 
@@ -223,8 +229,8 @@ public class WeightTicketDocument : BaseDocument
                     header.Cell().Element(HeaderStyle).Text(FeeColumnHeader());
 
                     static IContainer HeaderStyle(IContainer c) =>
-                        c.DefaultTextStyle(x => x.SemiBold().FontSize(7).FontColor("#1F2937"))
-                         .PaddingVertical(4).PaddingHorizontal(2)
+                        c.DefaultTextStyle(x => x.SemiBold().FontSize(6.5f).FontColor("#1F2937"))
+                         .PaddingVertical(3).PaddingHorizontal(2)
                          .Background("#E5E7EB")
                          .BorderBottom(1).BorderColor(Colors.Black);
                 });
@@ -268,69 +274,65 @@ public class WeightTicketDocument : BaseDocument
                 }
 
                 static IContainer CellStyle(IContainer c, bool isEven) =>
-                    c.PaddingVertical(3).PaddingHorizontal(2)
+                    c.PaddingVertical(2).PaddingHorizontal(2)
                      .Background(isEven ? Colors.White : "#F9FAFB")
                      .BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2)
-                     .DefaultTextStyle(t => t.FontSize(8));
+                     .DefaultTextStyle(t => t.FontSize(7.5f));
             });
         });
     }
 
     private void ComposeGvwSummary(IContainer container)
     {
-        container.Border(1.5f).BorderColor(_transaction.IsCompliant ? OfficialGreen : OfficialRed)
+        container.Border(1f).BorderColor(_transaction.IsCompliant ? OfficialGreen : OfficialRed)
             .Column(col =>
         {
             col.Item().Background(_transaction.IsCompliant ? "#DCFCE7" : "#FEE2E2")
-                .Padding(5).Text("GROSS VEHICLE WEIGHT SUMMARY")
-                .FontSize(10).SemiBold()
+                .Padding(4).Text("GROSS VEHICLE WEIGHT SUMMARY")
+                .FontSize(9).SemiBold()
                 .FontColor(_transaction.IsCompliant ? OfficialGreen : OfficialRed);
 
-            col.Item().Padding(8).Row(row =>
+            col.Item().Padding(6).Row(row =>
             {
-                // Left side - weight details
+                // Summary data in horizontal row
                 row.RelativeItem().Column(c =>
                 {
-                    c.Spacing(4);
                     c.Item().Row(r =>
                     {
-                        r.ConstantItem(140).Text("GVW Measured:").FontSize(10).SemiBold();
-                        r.RelativeItem().Text($"{_transaction.GvwMeasuredKg:N0} kg").FontSize(10).Bold();
-                    });
-                    c.Item().Row(r =>
-                    {
-                        r.ConstantItem(140).Text("GVW Permissible:").FontSize(10).SemiBold();
-                        r.RelativeItem().Text($"{_transaction.GvwPermissibleKg:N0} kg").FontSize(10);
-                    });
-                    c.Item().Row(r =>
-                    {
-                        r.ConstantItem(140).Text("Overload:").FontSize(10).SemiBold();
-                        var overloadText = r.RelativeItem();
-                        if (_transaction.OverloadKg > 0)
-                            overloadText.Text($"{_transaction.OverloadKg:N0} kg").FontSize(10).Bold()
-                                .FontColor(OfficialRed);
-                        else
-                            overloadText.Text("0 kg (Compliant)").FontSize(10)
-                                .FontColor(OfficialGreen);
-                    });
-                    if (_transaction.TotalFeeUsd > 0)
-                    {
-                        c.Item().Row(r =>
-                        {
-                            r.ConstantItem(140).Text("Total Fee:").FontSize(10).SemiBold();
-                            var currency = _transaction.Act?.ChargingCurrency ?? "KES";
-                            r.RelativeItem().Text($"{currency} {_transaction.TotalFeeUsd:N2}").FontSize(10).Bold();
+                        r.RelativeItem().Column(mc => {
+                            mc.Item().Text("GVW Measured").FontSize(7.5f).SemiBold().FontColor("#4B5563");
+                            mc.Item().Text($"{_transaction.GvwMeasuredKg:N0} kg").FontSize(9.5f).Bold();
                         });
-                    }
+                        r.RelativeItem().Column(pc => {
+                            pc.Item().Text("GVW Permissible").FontSize(7.5f).SemiBold().FontColor("#4B5563");
+                            pc.Item().Text($"{_transaction.GvwPermissibleKg:N0} kg").FontSize(9.5f);
+                        });
+                        r.RelativeItem().Column(oc => {
+                            oc.Item().Text("Overload").FontSize(7.5f).SemiBold().FontColor("#4B5563");
+                            if (_transaction.OverloadKg > 0)
+                                oc.Item().Text($"{_transaction.OverloadKg:N0} kg").FontSize(9.5f).Bold().FontColor(OfficialRed);
+                            else
+                                oc.Item().Text("0 kg").FontSize(9.5f).FontColor(OfficialGreen);
+                        });
+                        if (_transaction.TotalFeeUsd > 0)
+                        {
+                            r.RelativeItem().Column(fc => {
+                                var currency = _transaction.Act?.ChargingCurrency ?? "KES";
+                                fc.Item().Text($"Total Fee ({currency})").FontSize(7.5f).SemiBold().FontColor("#4B5563");
+                                fc.Item().Text($"{_transaction.TotalFeeUsd:N2}").FontSize(9.5f).Bold();
+                            });
+                        }
+                    });
+                    
                     if (_transaction.ToleranceApplied)
                     {
-                        c.Item().Text("* Tolerance has been applied to weight measurements")
-                            .FontSize(7).Italic().FontColor("#6B7280");
+                        c.Item().PaddingTop(2).Text("* Tolerance has been applied to weight measurements")
+                            .FontSize(6.5f).Italic().FontColor("#6B7280");
                     }
                 });
 
-                // Right side - status image
-                row.ConstantItem(100).AlignCenter().AlignMiddle().Element(statusContainer =>
+                // Status image on the right
+                row.ConstantItem(70).AlignCenter().AlignMiddle().Element(statusContainer =>
                     ComposeStatusImage(statusContainer, _transaction.ControlStatus));
             });
         });
@@ -340,16 +342,14 @@ public class WeightTicketDocument : BaseDocument
     {
         container.Row(row =>
         {
-            row.RelativeItem().Element(c => ComposeSignatureBlock(c, "Weighing Officer",
-                _transaction.WeighedByUserId != Guid.Empty ? null : null));
-            row.ConstantItem(30);
+            row.RelativeItem().Element(c => ComposeSignatureBlock(c, "Weighing Officer"));
+            row.ConstantItem(25);
             row.RelativeItem().Column(c =>
             {
-                c.Spacing(3);
-                c.Item().Text("_______________________________").FontSize(9);
-                c.Item().Text("DRIVER ACKNOWLEDGMENT").SemiBold().FontSize(8);
-                c.Item().Text("I acknowledge that the above weights were measured in my presence.").FontSize(7).Italic();
-                c.Item().Text("Name, Signature & Date").FontSize(7).Italic();
+                c.Item().Text("_______________________________").FontSize(8.5f);
+                c.Item().Text("DRIVER ACKNOWLEDGMENT").SemiBold().FontSize(7.5f);
+                c.Item().Text("I acknowledge that the above weights were measured in my presence.").FontSize(6.5f).Italic();
+                c.Item().Text("Name, Signature & Date").FontSize(6.5f).Italic();
             });
         });
     }
@@ -357,22 +357,12 @@ public class WeightTicketDocument : BaseDocument
     private static void ComposeLegalNote(IContainer container)
     {
         container.Background("#F9FAFB").Border(0.5f).BorderColor(Colors.Grey.Lighten1)
-            .Padding(6).Column(col =>
+            .Padding(4).Column(col =>
         {
-            col.Item().Text("NOTES").FontSize(8).SemiBold();
-            col.Item().PaddingTop(2).Text(
-                "1. Axle group weights are measured in accordance with the EAC Vehicle Load Control Act 2016 " +
-                "and Kenya Traffic Act Cap 403.")
-                .FontSize(7);
-            col.Item().Text(
-                "2. Pavement Damage Factor (PDF) is calculated using the fourth power law: (Actual/Permissible)^4.")
-                .FontSize(7);
-            col.Item().Text(
-                "3. Fees are assessed per axle overload as per the gazette schedule.")
-                .FontSize(7);
-            col.Item().Text(
-                "4. A vehicle found to be overloaded must not proceed until corrective action is taken.")
-                .FontSize(7);
+            col.Item().Text("NOTES").FontSize(7.5f).SemiBold();
+            col.Item().Text("1. Axle group weights measured as per EAC Vehicle Load Control Act 2016 and Kenya Traffic Act Cap 403.").FontSize(6.5f);
+            col.Item().Text("2. Pavement Damage Factor (PDF) calculated using the fourth power law: (Actual/Permissible)^4.").FontSize(6.5f);
+            col.Item().Text("3. Fees assessed per axle overload as per gazette schedule. Overloaded vehicles must offload before proceeding.").FontSize(6.5f);
         });
     }
 }

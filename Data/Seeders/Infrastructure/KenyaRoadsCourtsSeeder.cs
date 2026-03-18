@@ -2,11 +2,12 @@ using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.CaseManagement;
+using TruLoad.Backend.Models.Infrastructure;
 
 namespace TruLoad.Backend.Data.Seeders.Infrastructure;
 
 /// <summary>
-/// Seeds road–county and road–district (many-to-many) links for Kenya, and magistrate courts per county.
+/// Seeds road–county and road–subcounty (many-to-many) links for Kenya, and magistrate courts per county.
 /// Run after KenyaCountiesDistrictsSeeder and RoadsSeeder.
 /// </summary>
 public class KenyaRoadsCourtsSeeder
@@ -20,17 +21,14 @@ public class KenyaRoadsCourtsSeeder
 
     public async Task SeedAsync()
     {
-        await SeedRoadCountyDistrictLinksAsync();
+        await SeedRoadCountySubcountyLinksAsync();
         await SeedCourtsAsync();
     }
 
-    private async Task SeedRoadCountyDistrictLinksAsync()
+    private async Task SeedRoadCountySubcountyLinksAsync()
     {
-        if (await _context.RoadCounties.AnyAsync())
-            return;
-
         var counties = await _context.Counties.Where(c => c.DeletedAt == null).ToListAsync();
-        var districts = await _context.Districts.Where(d => d.DeletedAt == null).ToListAsync();
+        var subcounties = await _context.Subcounties.Where(s => s.DeletedAt == null).ToListAsync();
         var roads = await _context.Roads.Where(r => r.DeletedAt == null).ToListAsync();
         if (counties.Count == 0 || roads.Count == 0)
             return;
@@ -63,7 +61,7 @@ public class KenyaRoadsCourtsSeeder
         };
 
         var roadCounties = new List<RoadCounty>();
-        var roadDistricts = new List<RoadDistrict>();
+        var roadSubcounties = new List<RoadSubcounty>();
 
         foreach (var road in roads)
         {
@@ -76,73 +74,109 @@ public class KenyaRoadsCourtsSeeder
                     continue;
 
                 roadCounties.Add(new RoadCounty { RoadId = road.Id, CountyId = county.Id });
-                
-                // Link to all districts in this county (Road passes through the whole county conceptually for filtering)
-                var countyDistricts = districts.Where(d => d.CountyId == county.Id).ToList();
-                foreach (var d in countyDistricts)
+
+                var countySubcounties = subcounties.Where(s => s.CountyId == county.Id).ToList();
+                foreach (var s in countySubcounties)
                 {
-                    roadDistricts.Add(new RoadDistrict { RoadId = road.Id, DistrictId = d.Id });
+                    roadSubcounties.Add(new RoadSubcounty { RoadId = road.Id, SubcountyId = s.Id });
                 }
             }
         }
 
-        if (roadCounties.Count > 0)
+        var hasRoadCounties = await _context.RoadCounties.AnyAsync();
+        if (!hasRoadCounties && roadCounties.Count > 0)
         {
             _context.RoadCounties.AddRange(roadCounties);
-            _context.RoadDistricts.AddRange(roadDistricts);
+            await _context.SaveChangesAsync();
+        }
+
+        var hasRoadSubcounties = await _context.RoadSubcounties.AnyAsync();
+        if (!hasRoadSubcounties && roadSubcounties.Count > 0)
+        {
+            _context.RoadSubcounties.AddRange(roadSubcounties);
             await _context.SaveChangesAsync();
         }
     }
 
     private async Task SeedCourtsAsync()
     {
-        if (await _context.Courts.AnyAsync(c => c.DeletedAt == null))
-            return;
-
         var counties = await _context.Counties.Where(c => c.DeletedAt == null).OrderBy(c => c.Name).ToListAsync();
-        var districts = await _context.Districts.Where(d => d.DeletedAt == null).ToListAsync();
+        var subcounties = await _context.Subcounties.Where(s => s.DeletedAt == null).ToListAsync();
 
-        var courts = new List<Court>();
-        foreach (var county in counties)
+        if (!await _context.Courts.AnyAsync(c => c.DeletedAt == null))
         {
-            // Seed multiple courts for major counties
-            var countyCourts = new List<string>();
-            if (county.Name == "Nairobi City")
+            var courts = new List<Court>();
+            foreach (var county in counties)
             {
-                countyCourts.AddRange(new[] { "Milimani Law Courts", "Kibera Law Courts", "Makadara Law Courts" });
-            }
-            else if (county.Name == "Mombasa")
-            {
-                countyCourts.AddRange(new[] { "Mombasa Law Courts", "Shanzu Law Courts" });
-            }
-            else
-            {
-                countyCourts.Add($"{county.Name} Magistrate's Court");
+                var countyCourts = new List<string>();
+                if (county.Name == "Nairobi City")
+                {
+                    countyCourts.AddRange(new[] { "Milimani Law Courts", "Kibera Law Courts", "Makadara Law Courts" });
+                }
+                else if (county.Name == "Mombasa")
+                {
+                    countyCourts.AddRange(new[] { "Mombasa Law Courts", "Shanzu Law Courts" });
+                }
+                else
+                {
+                    countyCourts.Add($"{county.Name} Magistrate's Court");
+                }
+
+                var countySubcounties = subcounties.Where(s => s.CountyId == county.Id).ToList();
+
+                for (int i = 0; i < countyCourts.Count; i++)
+                {
+                    var subcountyId = countySubcounties.ElementAtOrDefault(i)?.Id ?? countySubcounties.FirstOrDefault()?.Id;
+
+                    courts.Add(new Court
+                    {
+                        Id = Guid.NewGuid(),
+                        Code = $"{county.Code}-MC-{i + 1:D2}",
+                        Name = countyCourts[i],
+                        Location = $"{county.Name}, Kenya",
+                        CourtType = "magistrate",
+                        CountyId = county.Id,
+                        SubcountyId = subcountyId,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                }
             }
 
-            var countyDistricts = districts.Where(d => d.CountyId == county.Id).ToList();
-            
-            for (int i = 0; i < countyCourts.Count; i++)
-            {
-                var districtId = countyDistricts.ElementAtOrDefault(i)?.Id ?? countyDistricts.FirstOrDefault()?.Id;
-                
-                courts.Add(new Court
-                {
-                    Id = Guid.NewGuid(),
-                    Code = $"{county.Code}-MC-{i+1:D2}",
-                    Name = countyCourts[i],
-                    Location = $"{county.Name}, Kenya",
-                    CourtType = "magistrate",
-                    CountyId = county.Id,
-                    DistrictId = districtId,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                });
-            }
+            _context.Courts.AddRange(courts);
+            await _context.SaveChangesAsync();
+            return;
         }
 
-        _context.Courts.AddRange(courts);
-        await _context.SaveChangesAsync();
+        await RepairCourtSubcountyReferencesAsync(subcounties);
+    }
+
+    /// <summary>
+    /// Updates courts whose SubcountyId no longer exists (e.g. after subcounty re-seed) to the first subcounty of their county.
+    /// </summary>
+    private async Task RepairCourtSubcountyReferencesAsync(List<Subcounty> subcounties)
+    {
+        var validSubcountyIds = subcounties.Select(s => s.Id).ToHashSet();
+        var countyToFirstSubcounty = subcounties
+            .GroupBy(s => s.CountyId)
+            .ToDictionary(g => g.Key, g => g.First().Id);
+
+        var courts = await _context.Courts.Where(c => c.DeletedAt == null).ToListAsync();
+        var updated = false;
+        foreach (var court in courts)
+        {
+            if (court.CountyId is null)
+                continue;
+            var currentValid = court.SubcountyId.HasValue && validSubcountyIds.Contains(court.SubcountyId.Value);
+            if (currentValid)
+                continue;
+            court.SubcountyId = countyToFirstSubcounty.TryGetValue(court.CountyId.Value, out var firstId) ? firstId : null;
+            court.UpdatedAt = DateTime.UtcNow;
+            updated = true;
+        }
+
+        if (updated)
+            await _context.SaveChangesAsync();
     }
 }

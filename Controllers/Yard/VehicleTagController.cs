@@ -1,9 +1,10 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.DTOs.Yard;
 using TruLoad.Backend.DTOs.Shared;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Services.Interfaces.Yard;
-using System.Security.Claims;
 
 namespace TruLoad.Backend.Controllers.Yard;
 
@@ -13,13 +14,16 @@ namespace TruLoad.Backend.Controllers.Yard;
 public class VehicleTagController : ControllerBase
 {
     private readonly IVehicleTagService _vehicleTagService;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<VehicleTagController> _logger;
 
     public VehicleTagController(
         IVehicleTagService vehicleTagService,
+        ITenantContext tenantContext,
         ILogger<VehicleTagController> logger)
     {
         _vehicleTagService = vehicleTagService;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -76,9 +80,12 @@ public class VehicleTagController : ControllerBase
     public async Task<IActionResult> GetStatistics(
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
+        [FromQuery] Guid? stationId,
         CancellationToken ct)
     {
-        var stats = await _vehicleTagService.GetStatisticsAsync(dateFrom, dateTo, ct);
+        var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "tag.read");
+        var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+        var stats = await _vehicleTagService.GetStatisticsAsync(dateFrom, dateTo, effectiveStationId, ct);
         return Ok(stats);
     }
 

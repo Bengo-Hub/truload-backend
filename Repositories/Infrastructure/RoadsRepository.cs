@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.Infrastructure;
 
 namespace TruLoad.Backend.Repositories.Infrastructure;
 
@@ -74,12 +75,11 @@ public class RoadsRepository : IRoadsRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<List<Roads>> GetByDistrictAsync(Guid districtId, CancellationToken cancellationToken = default)
+    public async Task<List<Roads>> GetBySubcountyAsync(Guid subcountyId, CancellationToken cancellationToken = default)
     {
-        return await _context.RoadDistricts
-            .Where(rd => rd.DistrictId == districtId)
-            .Select(rd => rd.Road)
-            .Where(r => r.IsActive && r.DeletedAt == null)
+        return await _context.RoadSubcounties
+            .Where(rs => rs.SubcountyId == subcountyId)
+            .Join(_context.Roads.Where(r => r.IsActive && r.DeletedAt == null), rs => rs.RoadId, r => r.Id, (rs, r) => r)
             .OrderBy(r => r.Name)
             .Distinct()
             .ToListAsync(cancellationToken);

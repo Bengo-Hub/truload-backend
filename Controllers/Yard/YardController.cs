@@ -90,14 +90,17 @@ public class YardController : ControllerBase
     [HttpGet("statistics")]
     [Authorize(Policy = "Permission:yard.read")]
     [ProducesResponseType(typeof(YardStatisticsDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetStatistics(CancellationToken ct)
+    public async Task<IActionResult> GetStatistics(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] Guid? stationId,
+        CancellationToken ct)
     {
         try
         {
             var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "yard.read");
-            var effectiveStationId = hasGlobalRead ? null : _tenantContext.StationId;
-
-            var stats = await _yardService.GetStatisticsAsync(effectiveStationId, ct);
+            var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+            var stats = await _yardService.GetStatisticsAsync(effectiveStationId, dateFrom, dateTo, ct);
             return Ok(stats);
         }
         catch (Exception ex)

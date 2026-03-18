@@ -244,9 +244,11 @@ public class VehicleTagService : IVehicleTagService
         return categories;
     }
 
-    public async Task<VehicleTagStatisticsDto> GetStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, CancellationToken ct = default)
+    public async Task<VehicleTagStatisticsDto> GetStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, Guid? stationId = null, CancellationToken ct = default)
     {
         var query = _context.VehicleTags.Where(t => t.DeletedAt == null);
+        if (stationId.HasValue)
+            query = query.Where(t => t.StationId == stationId.Value);
         var hasDateFilter = dateFrom.HasValue || dateTo.HasValue;
 
         if (hasDateFilter)
