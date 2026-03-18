@@ -117,10 +117,10 @@ public class YardReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "yard_occupancy", null, null);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "yard_occupancy", null, null);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Yard Occupancy Report", headers, rows, null, null), "yard_occupancy", null, null);
 
         var summaryItems = new List<(string label, string value)>
         {
@@ -204,10 +204,10 @@ public class YardReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "vehicle_entries_exits", from, to);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "vehicle_entries_exits", from, to);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Vehicle Entries & Exits", headers, rows, from, to), "vehicle_entries_exits", from, to);
 
         var totalEntries = entries.Count;
         var totalExits = entries.Count(e => e.ReleasedAt.HasValue);

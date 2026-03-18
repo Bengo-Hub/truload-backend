@@ -65,10 +65,10 @@ public class ReportService : IReportService
             throw new ArgumentException($"Unknown report module: {module}");
         }
 
-        var validFormats = new[] { "pdf", "csv" };
+        var validFormats = new[] { "pdf", "csv", "xlsx" };
         if (!validFormats.Contains(format.ToLowerInvariant()))
         {
-            throw new ArgumentException($"Unsupported format: {format}. Supported formats: pdf, csv");
+            throw new ArgumentException($"Unsupported format: {format}. Supported formats: pdf, csv, xlsx");
         }
 
         _logger.LogInformation(

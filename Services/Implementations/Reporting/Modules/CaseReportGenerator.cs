@@ -107,10 +107,10 @@ public class CaseReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "case_register", from, to);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "case_register", from, to);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Case Register", headers, rows, from, to), "case_register", from, to);
 
         var doc = new CaseRegisterDocument
         {
@@ -186,10 +186,10 @@ public class CaseReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "repeat_offenders", from, to);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "repeat_offenders", from, to);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Repeat Offenders Report", headers, rows, from, to), "repeat_offenders", from, to);
 
         var doc = new RepeatOffendersDocument
         {
@@ -248,10 +248,10 @@ public class CaseReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "case_status_summary", from, to);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "case_status_summary", from, to);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Case Status Summary", headers, rows, from, to), "case_status_summary", from, to);
 
         var doc = new CaseStatusSummaryDocument
         {

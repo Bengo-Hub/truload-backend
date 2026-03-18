@@ -110,10 +110,10 @@ public class SecurityReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "audit_log", from, to);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "audit_log", from, to);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Audit Log Report", headers, rows, from, to), "audit_log", from, to);
 
         var summaryItems = new List<(string label, string value)>
         {
@@ -188,10 +188,10 @@ public class SecurityReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "shift_report", from, to);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "shift_report", from, to);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Shift Report", headers, rows, from, to), "shift_report", from, to);
 
         var totalAssignments = userShifts.Count;
         var activeAssignments = userShifts.Count(us => us.IsActive);

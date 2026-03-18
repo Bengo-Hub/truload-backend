@@ -97,10 +97,10 @@ public class FinancialReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "revenue_collection", from, to);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "revenue_collection", from, to);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Revenue Collection Report", headers, rows, from, to), "revenue_collection", from, to);
 
         var summaryItems = new List<(string label, string value)>
         {
@@ -197,10 +197,10 @@ public class FinancialReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "invoice_aging", null, null);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "invoice_aging", null, null);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Invoice Aging Report", headers, rows, null, null), "invoice_aging", null, null);
 
         var totalOutstanding = invoices.Sum(i => i.AmountDue - i.TotalPaid);
         var doc = new InvoiceAgingDocument
@@ -275,10 +275,10 @@ public class FinancialReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "payment_reconciliation", from, to);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "payment_reconciliation", from, to);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Payment Reconciliation Report", headers, rows, from, to), "payment_reconciliation", from, to);
 
         var totalDue = invoices.Sum(i => i.AmountDue);
         var totalPaid = invoices.Sum(i => i.TotalPaid);

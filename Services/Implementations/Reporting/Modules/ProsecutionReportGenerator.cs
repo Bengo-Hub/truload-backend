@@ -109,10 +109,10 @@ public class ProsecutionReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "prosecution_statistics", from, to);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "prosecution_statistics", from, to);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Prosecution Statistics Report", headers, rows, from, to), "prosecution_statistics", from, to);
 
         var doc = new ProsecutionStatisticsDocument
         {
@@ -179,10 +179,10 @@ public class ProsecutionReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "court_calendar", from, to);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "court_calendar", from, to);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Court Calendar", headers, rows, from, to), "court_calendar", from, to);
 
         var doc = new SimpleTableDocument
         {
@@ -249,10 +249,10 @@ public class ProsecutionReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "daily_charged", from, to);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "daily_charged", from, to);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Daily Charged Vehicles", headers, rows, from, to), "daily_charged", from, to);
 
         var doc = new SimpleTableDocument
         {
@@ -310,10 +310,10 @@ public class ProsecutionReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "prosecution_payment_list", from, to);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "prosecution_payment_list", from, to);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Prosecution Payment List", headers, rows, from, to), "prosecution_payment_list", from, to);
 
         var totalFees = data.Sum(d => d.TotalFeeKes);
         var paidCount = data.Count(d => d.InvoiceStatus == "paid");
@@ -375,10 +375,10 @@ public class ProsecutionReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "court_fines", from, to);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "court_fines", from, to);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Court Fines Summary", headers, rows, from, to), "court_fines", from, to);
 
         var totalDue = invoices.Sum(i => i.AmountDue);
         var totalPaid = invoices.Sum(i => i.TotalPaid);
@@ -448,10 +448,10 @@ public class ProsecutionReportGenerator : BaseReportGenerator
         });
 
         if (format == "csv")
-        {
-            var csvData = GenerateCsv(headers, rows);
-            return CsvResult(csvData, "habitual_offenders", from, to);
-        }
+            return CsvResult(GenerateCsv(headers, rows), "habitual_offenders", from, to);
+
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Habitual Offenders Report", headers, rows, from, to), "habitual_offenders", from, to);
 
         var doc = new SimpleTableDocument
         {
