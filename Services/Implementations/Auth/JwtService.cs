@@ -341,6 +341,77 @@ public class JwtService : IJwtService
         }
     }
 
+    public string GenerateSsoExchangeToken(Guid userId, Guid orgId)
+    {
+        var secretKey = _configuration["Jwt:SecretKey"]
+            ?? throw new InvalidOperationException("JWT SecretKey not configured");
+        var issuer = _configuration["Jwt:Issuer"] ?? "https://truload-backend";
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
+            new("org_id", orgId.ToString()),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new("purpose", "sso-exchange")
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: issuer,
+            audience: "truload-sso-exchange",
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(5),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public (Guid userId, Guid orgId)? ValidateSsoExchangeToken(string token)
+    {
+        try
+        {
+            var secretKey = _configuration["Jwt:SecretKey"]
+                ?? throw new InvalidOperationException("JWT SecretKey not configured");
+            var issuer = _configuration["Jwt:Issuer"] ?? "https://truload-backend";
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+            var validationParams = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = issuer,
+                ValidateAudience = true,
+                ValidAudience = "truload-sso-exchange",
+                ValidateLifetime = true,
+                IssuerSigningKey = key,
+                ClockSkew = TimeSpan.FromSeconds(30)
+            };
+
+            var handler = new JwtSecurityTokenHandler();
+            var principal = handler.ValidateToken(token, validationParams, out _);
+
+            var purposeClaim = principal.FindFirst("purpose");
+            if (purposeClaim?.Value != "sso-exchange")
+                return null;
+
+            var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier);
+            var orgIdClaim = principal.FindFirst("org_id");
+
+            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId)
+                && orgIdClaim != null && Guid.TryParse(orgIdClaim.Value, out var orgId))
+                return (userId, orgId);
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Invalid SSO exchange token");
+            return null;
+        }
+    }
+
     private static string HashToken(string token)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));

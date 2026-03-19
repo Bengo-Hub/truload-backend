@@ -2,6 +2,9 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using TruLoad.Backend.Constants;
 using TruLoad.Backend.DTOs.Auth;
 using TruLoad.Backend.Models;
@@ -32,7 +35,12 @@ public class AuthController : ControllerBase
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IStationRepository _stationRepository;
     private readonly IConfiguration _configuration;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<AuthController> _logger;
+
+    // JWKS cache: tuple of (keys, fetched-at)
+    private static (IList<SecurityKey> keys, DateTime fetchedAt)? _jwksCache;
+    private static readonly SemaphoreSlim _jwksCacheLock = new(1, 1);
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
@@ -46,6 +54,7 @@ public class AuthController : ControllerBase
         IOrganizationRepository organizationRepository,
         IStationRepository stationRepository,
         IConfiguration configuration,
+        IHttpClientFactory httpClientFactory,
         ILogger<AuthController> logger)
     {
         _userManager = userManager;
@@ -59,6 +68,7 @@ public class AuthController : ControllerBase
         _organizationRepository = organizationRepository;
         _stationRepository = stationRepository;
         _configuration = configuration;
+        _httpClientFactory = httpClientFactory;
         _logger = logger;
     }
 
@@ -316,12 +326,23 @@ public class AuthController : ControllerBase
 
         var isSuperUser = roles.Contains("SUPERUSER", StringComparer.OrdinalIgnoreCase);
 
-        // Resolve organization code for frontend routing (e.g. redirect to /{orgSlug}/auth)
+        // Resolve organization for frontend routing and tenant-mode enforcement
         string? organizationCode = null;
+        string? tenantType = null;
+        List<string>? enabledModules = null;
         if (user.OrganizationId.HasValue)
         {
             var org = await _organizationRepository.GetByIdAsync(user.OrganizationId.Value);
             organizationCode = org?.Code;
+            tenantType = org?.TenantType;
+            if (!string.IsNullOrWhiteSpace(org?.EnabledModulesJson))
+            {
+                try
+                {
+                    enabledModules = JsonSerializer.Deserialize<List<string>>(org.EnabledModulesJson);
+                }
+                catch { /* ignore malformed JSON */ }
+            }
         }
 
         var response = new
@@ -339,6 +360,8 @@ public class AuthController : ControllerBase
                 isSuperUser,
                 organizationId = user.OrganizationId ?? (await _organizationRepository.GetByCodeAsync("KURA"))?.Id,
                 organizationCode,
+                tenantType,
+                enabledModules,
                 stationId = user.StationId,
                 isHqUser,
                 departmentId = user.DepartmentId
@@ -761,5 +784,223 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> GetCurrentUser()
     {
         return await GetProfile();
+    }
+
+    // ── SSO / Commercial Tenant Endpoints ────────────────────────────────────────
+
+    /// <summary>
+    /// Returns public tenant info for a given org slug.
+    /// Used by the login page to determine whether to show local login or redirect to SSO.
+    /// No authentication required.
+    /// </summary>
+    [HttpGet("tenant-info")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetTenantInfo([FromQuery] string code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            return BadRequest(new { message = "code is required" });
+
+        var org = await _organizationRepository.GetByCodeAsync(code);
+        if (org == null)
+            return NotFound(new { message = "Organization not found" });
+
+        return Ok(new
+        {
+            tenantType = org.TenantType ?? "AxleLoadEnforcement",
+            name = org.Name,
+            logoUrl = org.LogoUrl,
+            ssoTenantSlug = org.SsoTenantSlug,
+            organizationCode = org.Code
+        });
+    }
+
+    /// <summary>
+    /// Exchanges an SSO access token (from auth-api) for a short-lived truload SSO exchange token.
+    /// JIT-provisions the user if not found. Does not issue a full session — returns requiresStationSelection=true.
+    /// </summary>
+    [HttpPost("sso-exchange")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SsoExchange([FromBody] SsoExchangeRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.AccessToken))
+            return BadRequest(new { message = "accessToken is required" });
+
+        // 1. Validate SSO token via JWKS
+        ClaimsPrincipal? ssoPrincipal;
+        try
+        {
+            ssoPrincipal = await ValidateSsoTokenAsync(request.AccessToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "SSO token validation failed");
+            return Unauthorized(new { message = "Invalid or expired SSO token" });
+        }
+
+        if (ssoPrincipal == null)
+            return Unauthorized(new { message = "Invalid SSO token" });
+
+        // 2. Extract claims
+        var email = ssoPrincipal.FindFirst(ClaimTypes.Email)?.Value
+                    ?? ssoPrincipal.FindFirst(JwtRegisteredClaimNames.Email)?.Value;
+        var tenantSlug = ssoPrincipal.FindFirst("tenant_slug")?.Value;
+        var fullName = ssoPrincipal.FindFirst(ClaimTypes.Name)?.Value
+                       ?? ssoPrincipal.FindFirst("name")?.Value
+                       ?? email;
+
+        if (string.IsNullOrWhiteSpace(email))
+            return Unauthorized(new { message = "SSO token missing email claim" });
+
+        if (string.IsNullOrWhiteSpace(tenantSlug))
+            return Unauthorized(new { message = "SSO token missing tenant_slug claim" });
+
+        // 3. Find matching Organization by SsoTenantSlug
+        var org = await _organizationRepository.GetBySsoTenantSlugAsync(tenantSlug);
+        if (org == null)
+        {
+            _logger.LogWarning("No organization found for SSO tenant slug {TenantSlug}", tenantSlug);
+            return NotFound(new { message = "No TruLoad organization mapped to this SSO tenant" });
+        }
+
+        // 4. JIT-provision user (find by email within org, create if missing)
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null || user.OrganizationId != org.Id)
+        {
+            // Create new user — no password (SSO-only; local login will be blocked)
+            user = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                FullName = fullName ?? email,
+                OrganizationId = org.Id,
+                EmailConfirmed = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            var createResult = await _userManager.CreateAsync(user);
+            if (!createResult.Succeeded)
+            {
+                _logger.LogError("JIT user provisioning failed for {Email}: {Errors}",
+                    email, string.Join(", ", createResult.Errors.Select(e => e.Description)));
+                return StatusCode(500, new { message = "Failed to provision user account" });
+            }
+            _logger.LogInformation("JIT-provisioned SSO user {Email} for org {OrgCode}", email, org.Code);
+        }
+
+        // 5. Issue short-lived SSO exchange token (station selection required before full session)
+        var ssoExchangeToken = _jwtService.GenerateSsoExchangeToken(user.Id, org.Id);
+
+        return Ok(new
+        {
+            requiresStationSelection = true,
+            ssoExchangeToken
+        });
+    }
+
+    /// <summary>
+    /// Completes station selection and issues a full truload JWT session.
+    /// Accepts either an ssoExchangeToken (SSO path) or a current accessToken (local user station switch).
+    /// </summary>
+    [HttpPost("select-station")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SelectStation([FromBody] SelectStationRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.StationCode))
+            return BadRequest(new { message = "stationCode is required" });
+
+        ApplicationUser? user = null;
+
+        if (!string.IsNullOrWhiteSpace(request.SsoExchangeToken))
+        {
+            // SSO path: validate ssoExchangeToken
+            var exchangeResult = _jwtService.ValidateSsoExchangeToken(request.SsoExchangeToken);
+            if (exchangeResult == null)
+                return Unauthorized(new { message = "Invalid or expired SSO exchange token" });
+
+            user = await _userManager.FindByIdAsync(exchangeResult.Value.userId.ToString());
+            if (user == null)
+                return Unauthorized(new { message = "User not found" });
+        }
+        else if (!string.IsNullOrWhiteSpace(request.AccessToken))
+        {
+            // Local path: validate existing access token
+            var userId = _jwtService.GetUserIdFromToken(request.AccessToken);
+            if (!userId.HasValue)
+                return Unauthorized(new { message = "Invalid access token" });
+
+            user = await _userManager.FindByIdAsync(userId.Value.ToString());
+            if (user == null)
+                return Unauthorized(new { message = "User not found" });
+        }
+        else
+        {
+            return BadRequest(new { message = "Either ssoExchangeToken or accessToken is required" });
+        }
+
+        // Find station by code, scoped to the user's organization
+        Station? station = null;
+        if (user.OrganizationId.HasValue)
+        {
+            var orgStations = await _stationRepository.GetByOrganizationIdAsync(user.OrganizationId.Value);
+            station = orgStations.FirstOrDefault(s =>
+                s.Code.Equals(request.StationCode, StringComparison.OrdinalIgnoreCase) && s.IsActive);
+        }
+
+        if (station == null)
+            return NotFound(new { message = "Station not found or not active" });
+
+        // Bind the station to the user and issue full JWT
+        user.StationId = station.Id;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _userManager.UpdateAsync(user);
+
+        return await CompleteLoginAsync(user);
+    }
+
+    /// <summary>
+    /// Fetches and caches JWKS from auth-api, then validates the SSO token.
+    /// JWKS is cached for 24 hours.
+    /// </summary>
+    private async Task<ClaimsPrincipal?> ValidateSsoTokenAsync(string token)
+    {
+        var jwksUrl = _configuration["Auth:JwksUrl"];
+        if (string.IsNullOrWhiteSpace(jwksUrl))
+            throw new InvalidOperationException("Auth:JwksUrl is not configured");
+
+        var issuer = _configuration["Auth:SsoIssuer"] ?? jwksUrl.Split("/.well-known")[0];
+
+        // Refresh JWKS if not cached or older than 24 h
+        if (_jwksCache == null || (DateTime.UtcNow - _jwksCache.Value.fetchedAt).TotalHours > 24)
+        {
+            await _jwksCacheLock.WaitAsync();
+            try
+            {
+                if (_jwksCache == null || (DateTime.UtcNow - _jwksCache.Value.fetchedAt).TotalHours > 24)
+                {
+                    var client = _httpClientFactory.CreateClient();
+                    var json = await client.GetStringAsync(jwksUrl);
+                    var jwks = new JsonWebKeySet(json);
+                    _jwksCache = (jwks.GetSigningKeys(), DateTime.UtcNow);
+                }
+            }
+            finally
+            {
+                _jwksCacheLock.Release();
+            }
+        }
+
+        var validationParams = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = issuer,
+            ValidateAudience = false, // auth-api tokens may use 'truload-ui' or no audience
+            ValidateLifetime = true,
+            IssuerSigningKeys = _jwksCache!.Value.keys,
+            ClockSkew = TimeSpan.FromSeconds(60)
+        };
+
+        var handler = new JwtSecurityTokenHandler();
+        var principal = handler.ValidateToken(token, validationParams, out _);
+        return principal;
     }
 }

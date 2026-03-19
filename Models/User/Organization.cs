@@ -50,6 +50,27 @@ public class Organization
     /// <summary>Secondary brand colour (hex).</summary>
     public string? SecondaryColor { get; set; }
 
+    // ── Commercial Weighing fields ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Flat fee charged to a transporter per commercial weighing session (KES).
+    /// Only applies when TenantType = "CommercialWeighing". Default 500 KES.
+    /// </summary>
+    public decimal CommercialWeighingFeeKes { get; set; } = 500m;
+
+    /// <summary>
+    /// Payment gateway used for invoices: "ecitizen_pesaflow" (default, enforcement) | "treasury" (commercial).
+    /// </summary>
+    public string PaymentGateway { get; set; } = "ecitizen_pesaflow";
+
+    /// <summary>
+    /// SSO tenant slug matching the auth-api tenant slug for this commercial organisation.
+    /// Used to JIT-provision users via SSO token exchange. Null for enforcement tenants.
+    /// </summary>
+    public string? SsoTenantSlug { get; set; }
+
+    // ── Audit ───────────────────────────────────────────────────────────────────
+
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

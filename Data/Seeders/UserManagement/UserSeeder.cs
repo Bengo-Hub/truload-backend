@@ -34,6 +34,7 @@ public class UserSeeder
     {
         await SeedSuperUserAsync();
         await SeedMiddlewareServiceUserAsync();
+        await SeedTruLoadDemoAdminAsync();
     }
 
     private async Task SeedSuperUserAsync()
@@ -192,6 +193,89 @@ public class UserSeeder
             else
             {
                 Console.WriteLine($"✓ Middleware service user {middlewareEmail} already exists, skipping seed");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Seeds a demo admin user for the TruLoad Demo commercial weighing organization.
+    /// This user logs in via SSO (auth-api "truload" tenant) in production.
+    /// A local account is also seeded here as a fallback for development/testing.
+    /// </summary>
+    private async Task SeedTruLoadDemoAdminAsync()
+    {
+        var truloadDemoOrg = await _context.Organizations
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(o => o.Code == "TRULOAD-DEMO");
+
+        if (truloadDemoOrg == null)
+        {
+            Console.WriteLine("⚠ TRULOAD-DEMO organization not found, skipping demo admin seed");
+            return;
+        }
+
+        var demoStation = await _context.Stations
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(s => s.Code == "DEMO-WB-01");
+
+        // Station Manager role is appropriate for a commercial weighbridge admin
+        var stationManagerRole = await _roleManager.FindByNameAsync("Station Manager");
+        if (stationManagerRole == null)
+        {
+            Console.WriteLine("⚠ Station Manager role not found, skipping TruLoad demo admin seed");
+            return;
+        }
+
+        var demoAdminEmail = "admin@truload.codevertexitsolutions.com";
+        var existingAdmin = await _userManager.FindByEmailAsync(demoAdminEmail);
+
+        if (existingAdmin == null)
+        {
+            var demoAdmin = new ApplicationUser
+            {
+                Email = demoAdminEmail,
+                NormalizedEmail = demoAdminEmail.ToUpper(),
+                UserName = demoAdminEmail,
+                NormalizedUserName = demoAdminEmail.ToUpper(),
+                FullName = "TruLoad Demo Admin",
+                PhoneNumber = "+254700000010",
+                OrganizationId = truloadDemoOrg.Id,
+                StationId = demoStation?.Id,
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true,
+                TwoFactorEnabled = false,
+                LockoutEnabled = false
+            };
+
+            var result = await _userManager.CreateAsync(demoAdmin, DefaultPassword);
+            if (!result.Succeeded)
+            {
+                Console.WriteLine($"⚠ Failed to create TruLoad demo admin: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                return;
+            }
+
+            var roleResult = await _userManager.AddToRoleAsync(demoAdmin, "Station Manager");
+            if (!roleResult.Succeeded)
+            {
+                Console.WriteLine($"⚠ Failed to assign role to TruLoad demo admin: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
+                return;
+            }
+
+            Console.WriteLine($"✓ Seeded TruLoad demo admin: {demoAdminEmail} → TRULOAD-DEMO org ({truloadDemoOrg.Name}), station: {demoStation?.Name ?? "none"}");
+            Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY — production login is via SSO)");
+        }
+        else
+        {
+            if (existingAdmin.OrganizationId != truloadDemoOrg.Id || (existingAdmin.StationId == null && demoStation != null))
+            {
+                existingAdmin.OrganizationId = truloadDemoOrg.Id;
+                if (demoStation != null) existingAdmin.StationId = demoStation.Id;
+                await _userManager.UpdateAsync(existingAdmin);
+                Console.WriteLine($"✓ Updated TruLoad demo admin {demoAdminEmail}: org + station linked");
+            }
+            else
+            {
+                Console.WriteLine($"✓ TruLoad demo admin {demoAdminEmail} already exists, skipping seed");
             }
         }
     }

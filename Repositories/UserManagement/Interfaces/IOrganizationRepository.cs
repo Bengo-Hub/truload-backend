@@ -12,4 +12,5 @@ public interface IOrganizationRepository
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
     Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default);
     Task<bool> CodeExistsAsync(string code, Guid? excludeId = null, CancellationToken cancellationToken = default);
+    Task<Organization?> GetBySsoTenantSlugAsync(string ssoTenantSlug, CancellationToken cancellationToken = default);
 }

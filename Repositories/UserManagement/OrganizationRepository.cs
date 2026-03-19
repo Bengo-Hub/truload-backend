@@ -82,4 +82,10 @@ public class OrganizationRepository : IOrganizationRepository
 
         return await query.AnyAsync(cancellationToken);
     }
+
+    public async Task<Organization?> GetBySsoTenantSlugAsync(string ssoTenantSlug, CancellationToken cancellationToken = default)
+    {
+        return await _context.Organizations
+            .FirstOrDefaultAsync(o => o.SsoTenantSlug == ssoTenantSlug && o.IsActive, cancellationToken);
+    }
 }

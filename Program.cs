@@ -48,6 +48,8 @@ using TruLoad.Backend.Services.Interfaces.Prosecution;
 using TruLoad.Backend.Services.Implementations.Prosecution;
 using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Implementations.Financial;
+using TruLoad.Backend.Services.Interfaces.Subscription;
+using TruLoad.Backend.Services.Implementations.Subscription;
 using TruLoad.Backend.Services.Interfaces.Yard;
 using TruLoad.Backend.Services.Implementations.Yard;
 using TruLoad.Backend.Services.Interfaces.System;
@@ -312,6 +314,9 @@ builder.Services.AddTruLoadRateLimiting();
 // Multi-tenant context (Organization/Station resolution from headers/claims/default)
 builder.Services.AddTenantContext();
 
+// Commercial mode filter (blocks enforcement-only routes for CommercialWeighing tenants)
+builder.Services.AddCommercialModeFilter();
+
 // Response Compression (Performance optimization - reduces bandwidth)
 builder.Services.AddTruLoadResponseCompression();
 
@@ -422,6 +427,14 @@ builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(sp =>
 builder.Services.AddHttpClient<IECitizenService, ECitizenService>(c =>
     c.Timeout = TimeSpan.FromSeconds(30));
 
+// Treasury-api integration (commercial tenants)
+builder.Services.AddHttpClient<ITreasuryService, TreasuryService>(c =>
+    c.Timeout = TimeSpan.FromSeconds(30));
+
+// Subscriptions-api integration (commercial tenants)
+builder.Services.AddHttpClient<ISubscriptionService, SubscriptionService>(c =>
+    c.Timeout = TimeSpan.FromSeconds(15));
+
 // KeNHA & NTSA integration services
 builder.Services.AddHttpClient<IKeNHAService, KeNHAService>(c =>
     c.Timeout = TimeSpan.FromSeconds(15));
@@ -507,7 +520,7 @@ try
 
 
         // Check if initial seeding has already been completed
-        var seedingVersion = 13; // Increment this when you need to re-seed
+        var seedingVersion = 14; // Increment this when you need to re-seed
         var seedingName = "InitialSeed";
 
         var existingSeed = await dbContext.DatabaseSeedingHistory
@@ -675,6 +688,12 @@ app.UseAuthentication();
 // Tenant context middleware - resolves org/station from headers/claims/default
 // Must be after authentication (needs user claims) and before authorization
 app.UseTenantContext();
+
+// Commercial mode filter - blocks enforcement-only routes for CommercialWeighing tenants
+app.UseCommercialModeFilter();
+
+// Subscription enforcement - returns 402 for CommercialWeighing tenants with expired subscription
+app.UseSubscriptionEnforcement();
 
 app.UseAuthorization();
 

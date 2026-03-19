@@ -14,6 +14,8 @@ using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using TruLoad.Backend.Services.Interfaces.CaseManagement;
 using TruLoad.Backend.Services.Interfaces.Yard;
 using TruLoad.Backend.Services.Interfaces.Shared;
+using TruLoad.Backend.Services.Interfaces.Financial;
+using TruLoad.Backend.Services.Interfaces.Subscription;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Data.Repositories.Infrastructure;
 using TruLoad.Backend.Repositories.Infrastructure;
@@ -45,6 +47,8 @@ public class WeighingServiceTests
     private readonly Mock<ISettingsService> _mockSettingsService;
     private readonly Mock<IDocumentNumberService> _mockDocumentNumberService;
     private readonly Mock<INotificationService> _mockNotificationService;
+    private readonly Mock<ITreasuryService> _mockTreasuryService;
+    private readonly Mock<ISubscriptionService> _mockSubscriptionService;
     private readonly Mock<ILogger<WeighingService>> _mockLogger;
     private readonly WeighingService _service;
 
@@ -72,6 +76,8 @@ public class WeighingServiceTests
         _mockSettingsService = new Mock<ISettingsService>();
         _mockDocumentNumberService = new Mock<IDocumentNumberService>();
         _mockNotificationService = new Mock<INotificationService>();
+        _mockTreasuryService = new Mock<ITreasuryService>();
+        _mockSubscriptionService = new Mock<ISubscriptionService>();
         _mockLogger = new Mock<ILogger<WeighingService>>();
 
         // Setup default behavior for aggregation service
@@ -103,6 +109,8 @@ public class WeighingServiceTests
             _mockSettingsService.Object,
             _mockDocumentNumberService.Object,
             _mockNotificationService.Object,
+            _mockTreasuryService.Object,
+            _mockSubscriptionService.Object,
             _mockLogger.Object
         );
     }

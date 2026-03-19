@@ -107,3 +107,28 @@ public class PermissionDto
     public string Name { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Request body for POST /api/v1/auth/sso-exchange.
+/// </summary>
+public class SsoExchangeRequest
+{
+    /// <summary>SSO access token issued by auth-api after PKCE flow.</summary>
+    public string AccessToken { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request body for POST /api/v1/auth/select-station.
+/// Either SsoExchangeToken (SSO path) or AccessToken (local user station-switch path) must be provided.
+/// </summary>
+public class SelectStationRequest
+{
+    /// <summary>Short-lived exchange token from sso-exchange response (SSO path).</summary>
+    public string? SsoExchangeToken { get; set; }
+
+    /// <summary>Existing truload access token (local user station-switch path).</summary>
+    public string? AccessToken { get; set; }
+
+    /// <summary>Code of the station to bind to the session.</summary>
+    public string StationCode { get; set; } = string.Empty;
+}

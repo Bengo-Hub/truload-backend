@@ -20,6 +20,8 @@ using TruLoad.Backend.Models.Financial;
 using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Services.Interfaces.System;
 using TruLoad.Backend.Services.Interfaces.Shared;
+using TruLoad.Backend.Services.Interfaces.Financial;
+using TruLoad.Backend.Services.Interfaces.Subscription;
 
 namespace TruLoad.Backend.Services.Implementations.Weighing;
 
@@ -44,6 +46,8 @@ public class WeighingService : IWeighingService
     private readonly ISettingsService _settingsService;
     private readonly IDocumentNumberService _documentNumberService;
     private readonly INotificationService _notificationService;
+    private readonly ITreasuryService _treasuryService;
+    private readonly ISubscriptionService _subscriptionService;
     private readonly ILogger<WeighingService> _logger;
 
     public WeighingService(
@@ -66,6 +70,8 @@ public class WeighingService : IWeighingService
         ISettingsService settingsService,
         IDocumentNumberService documentNumberService,
         INotificationService notificationService,
+        ITreasuryService treasuryService,
+        ISubscriptionService subscriptionService,
         ILogger<WeighingService> logger)
     {
         _weighingRepository = weighingRepository;
@@ -87,6 +93,8 @@ public class WeighingService : IWeighingService
         _settingsService = settingsService;
         _documentNumberService = documentNumberService;
         _notificationService = notificationService;
+        _treasuryService = treasuryService;
+        _subscriptionService = subscriptionService;
         _logger = logger;
     }
 
@@ -400,6 +408,22 @@ public class WeighingService : IWeighingService
             return transaction; // Nothing to calculate
         }
 
+        // Resolve org to determine tenant mode (commercial vs enforcement)
+        Organization? org = null;
+        if (transaction.StationId.HasValue)
+        {
+            var stationOrgId = await _dbContext.Stations
+                .Where(s => s.Id == transaction.StationId.Value)
+                .Select(s => (Guid?)s.OrganizationId)
+                .FirstOrDefaultAsync();
+            if (stationOrgId.HasValue)
+            {
+                org = await _dbContext.Organizations.AsNoTracking()
+                    .FirstOrDefaultAsync(o => o.Id == stationOrgId.Value);
+            }
+        }
+        var isCommercialMode = org?.TenantType == "CommercialWeighing";
+
         // 2. Identify the Axle Configuration
         var firstAxle = transaction.WeighingAxles.OrderBy(a => a.AxleNumber).First();
         var configId = firstAxle.AxleConfigurationId;
@@ -563,30 +587,34 @@ public class WeighingService : IWeighingService
             else
             {
                 transaction.ControlStatus = "Overloaded";
-                transaction.IsSentToYard = true;
+                transaction.IsSentToYard = !isCommercialMode; // Commercial: no yard hold
 
-                // 8. Generate Prohibition Order if not exists
-                var existingProhibition = await _prohibitionRepository.GetByWeighingIdAsync(transactionId);
-                if (existingProhibition == null)
+                // 8. Generate Prohibition Order if not exists (enforcement only)
+                if (!isCommercialMode)
                 {
-                    var prohibitionNo = await _prohibitionRepository.GenerateProhibitionNumberAsync();
-                    var prohibitionOrder = new ProhibitionOrder
+                    var existingProhibition = await _prohibitionRepository.GetByWeighingIdAsync(transactionId);
+                    if (existingProhibition == null)
                     {
-                        WeighingId = transactionId,
-                        ProhibitionNo = prohibitionNo,
-                        IssuedById = transaction.WeighedByUserId,
-                        Status = "Open",
-                        Reason = transaction.ViolationReason,
-                        IssuedAt = DateTime.UtcNow
-                    };
-                    await _prohibitionRepository.CreateAsync(prohibitionOrder);
+                        var prohibitionNo = await _prohibitionRepository.GenerateProhibitionNumberAsync();
+                        var prohibitionOrder = new ProhibitionOrder
+                        {
+                            WeighingId = transactionId,
+                            ProhibitionNo = prohibitionNo,
+                            IssuedById = transaction.WeighedByUserId,
+                            Status = "Open",
+                            Reason = transaction.ViolationReason,
+                            IssuedAt = DateTime.UtcNow
+                        };
+                        await _prohibitionRepository.CreateAsync(prohibitionOrder);
+                    }
                 }
             }
         }
 
         // 9. MANUAL TAG ENFORCEMENT: Check for open manual KeNHA tags on weight-compliant vehicles
         // Per FRD A.2: Manual tags from KeNHA can bar vehicle from exiting even if weight-compliant
-        if (transaction.ControlStatus is "Compliant" or "Warning")
+        // Commercial tenants have no KeNHA tag enforcement
+        if (!isCommercialMode && transaction.ControlStatus is "Compliant" or "Warning")
         {
             try
             {
@@ -626,6 +654,13 @@ public class WeighingService : IWeighingService
 
         // 10. Persist Updates
         await _weighingRepository.UpdateTransactionAsync(transaction);
+
+        // 10a. COMMERCIAL MODE: Create flat-fee invoice (skip all enforcement auto-triggers below)
+        if (isCommercialMode && org != null)
+        {
+            await CreateCommercialWeighingInvoiceAsync(transaction, org);
+            return transaction;
+        }
 
         // 11. AUTO-TRIGGER: Create Case Register + Special Release for within-tolerance overload
         if (transaction.ControlStatus == "Warning" && !transaction.IsCompliant)
@@ -927,6 +962,90 @@ public class WeighingService : IWeighingService
         }
 
         return transaction;
+    }
+
+    /// <summary>
+    /// Creates a flat-fee commercial weighing invoice for a completed commercial weighing session.
+    /// Uses the org's PaymentGateway to route to treasury-api (online) or mark as offline-pending.
+    /// </summary>
+    private async Task CreateCommercialWeighingInvoiceAsync(WeighingTransaction transaction, Organization org)
+    {
+        try
+        {
+            var existingInvoice = await _dbContext.Invoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.WeighingId == transaction.Id && i.InvoiceType == "commercial_weighing_fee");
+            if (existingInvoice != null)
+                return; // Already created (idempotent)
+
+            var invoiceNo = await _documentNumberService.GenerateNumberAsync(
+                org.Id, transaction.StationId, Models.System.DocumentTypes.Invoice);
+            var invoice = new Invoice
+            {
+                InvoiceNo = invoiceNo,
+                WeighingId = transaction.Id,
+                AmountDue = org.CommercialWeighingFeeKes,
+                Currency = "KES",
+                Status = "pending",
+                InvoiceType = "commercial_weighing_fee",
+                GeneratedAt = DateTime.UtcNow,
+                OrganizationId = org.Id,
+                StationId = transaction.StationId
+            };
+
+            _dbContext.Invoices.Add(invoice);
+            await _dbContext.SaveChangesAsync();
+
+            // Create treasury payment intent if org uses the treasury gateway
+            if (org.PaymentGateway == "treasury" && !string.IsNullOrWhiteSpace(org.SsoTenantSlug))
+            {
+                try
+                {
+                    var intent = await _treasuryService.CreatePaymentIntentAsync(
+                        org.SsoTenantSlug,
+                        org.CommercialWeighingFeeKes,
+                        invoice.Id.ToString(),
+                        $"Weighing fee — ticket {transaction.TicketNumber}");
+
+                    invoice.TreasuryIntentId = intent.IntentId;
+                    invoice.TreasuryIntentStatus = intent.Status;
+                    await _dbContext.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Failed to create treasury payment intent for invoice {InvoiceNo}. " +
+                        "Invoice saved as pending; payment will need to be initiated manually.",
+                        invoiceNo);
+                }
+            }
+
+            _logger.LogInformation(
+                "Created commercial weighing invoice {InvoiceNo} ({AmountDue} KES) for weighing {TransactionId}",
+                invoiceNo, org.CommercialWeighingFeeKes, transaction.Id);
+
+            // Fire-and-forget usage report to subscriptions-api
+            if (!string.IsNullOrWhiteSpace(org.SsoTenantSlug))
+            {
+                _ = _subscriptionService.ReportUsageAsync(
+                    org.SsoTenantSlug,
+                    "weighing_transaction",
+                    1,
+                    new
+                    {
+                        weighing_id = transaction.Id,
+                        station_id = transaction.StationId,
+                        fee_kes = org.CommercialWeighingFeeKes
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to create commercial weighing invoice for transaction {TransactionId}. Manual intervention required.",
+                transaction.Id);
+            // Don't throw — weighing result is still valid
+        }
     }
 
     /// <summary>

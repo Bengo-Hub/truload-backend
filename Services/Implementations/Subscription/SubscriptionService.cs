@@ -1,0 +1,105 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using TruLoad.Backend.Services.Interfaces.Subscription;
+
+namespace TruLoad.Backend.Services.Implementations.Subscription;
+
+/// <summary>
+/// HTTP client for the subscriptions-api.
+/// Auth: X-Tenant-Slug header identifies the tenant; service JWT in Authorization header.
+/// </summary>
+public class SubscriptionService : ISubscriptionService
+{
+    private readonly HttpClient _httpClient;
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<SubscriptionService> _logger;
+
+    public SubscriptionService(HttpClient httpClient, IConfiguration configuration, ILogger<SubscriptionService> logger)
+    {
+        _httpClient = httpClient;
+        _configuration = configuration;
+        _logger = logger;
+    }
+
+    public async Task<SubscriptionStatus> GetTenantSubscriptionAsync(string ssoTenantSlug, CancellationToken ct = default)
+    {
+        var baseUrl = _configuration["Subscriptions:ApiUrl"]
+            ?? throw new InvalidOperationException("Subscriptions:ApiUrl is not configured");
+        var serviceJwt = _configuration["Subscriptions:ServiceJwt"]
+            ?? throw new InvalidOperationException("Subscriptions:ServiceJwt is not configured");
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/v1/subscription/");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", serviceJwt);
+        request.Headers.Add("X-Tenant-Slug", ssoTenantSlug);
+
+        var response = await _httpClient.SendAsync(request, ct);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return new SubscriptionStatus("NONE", null, null);
+
+        var json = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning("Subscriptions API returned {Status} for tenant {Slug}: {Body}",
+                response.StatusCode, ssoTenantSlug, json);
+            // Fail open: return ACTIVE to not block user if subscriptions-api is degraded
+            return new SubscriptionStatus("ACTIVE", null, null);
+        }
+
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var status = root.TryGetProperty("status", out var s) ? s.GetString() ?? "NONE" : "NONE";
+        DateTime? expiresAt = null;
+        if (root.TryGetProperty("expires_at", out var exp) && exp.ValueKind != JsonValueKind.Null)
+        {
+            if (DateTime.TryParse(exp.GetString(), out var dt))
+                expiresAt = dt;
+        }
+        var planName = root.TryGetProperty("plan_name", out var p) ? p.GetString() : null;
+
+        return new SubscriptionStatus(status, expiresAt, planName);
+    }
+
+    public async Task ReportUsageAsync(string ssoTenantSlug, string metricType, int qty, object? metadata = null, CancellationToken ct = default)
+    {
+        try
+        {
+            var baseUrl = _configuration["Subscriptions:ApiUrl"];
+            var serviceJwt = _configuration["Subscriptions:ServiceJwt"];
+            if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(serviceJwt))
+            {
+                _logger.LogWarning("Subscriptions API not configured — skipping usage report for {Slug}", ssoTenantSlug);
+                return;
+            }
+
+            var body = new
+            {
+                tenant_slug = ssoTenantSlug,
+                metric_type = metricType,
+                quantity = qty,
+                metadata
+            };
+
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/v1/usage")
+            {
+                Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json")
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", serviceJwt);
+
+            var response = await _httpClient.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                var resp = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning("Usage report failed ({Status}) for tenant {Slug}: {Body}",
+                    response.StatusCode, ssoTenantSlug, resp);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Usage report exception for tenant {Slug}", ssoTenantSlug);
+            // Swallow — usage reporting must never block weighing operations
+        }
+    }
+}

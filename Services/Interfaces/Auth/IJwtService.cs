@@ -53,4 +53,16 @@ public interface IJwtService
     /// Get user ID from access token (without full validation)
     /// </summary>
     Guid? GetUserIdFromToken(string token);
+
+    /// <summary>
+    /// Generate a short-lived (5 min) SSO exchange token used only for the /auth/select-station
+    /// call after a successful SSO token exchange. Embeds userId and orgId.
+    /// </summary>
+    string GenerateSsoExchangeToken(Guid userId, Guid orgId);
+
+    /// <summary>
+    /// Validate an SSO exchange token and extract userId + orgId.
+    /// Returns null if token is invalid, expired, or wrong purpose.
+    /// </summary>
+    (Guid userId, Guid orgId)? ValidateSsoExchangeToken(string token);
 }

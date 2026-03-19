@@ -84,6 +84,25 @@ public class UserManagementSeeder
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
+            },
+            // Demo commercial weighing organization — TenantType = CommercialWeighing
+            // SsoTenantSlug matches the auth-api "truload" tenant for PKCE/SSO login
+            new Organization
+            {
+                Id = Guid.NewGuid(),
+                Code = "TRULOAD-DEMO",
+                Name = "TruLoad Demo Weighbridge",
+                OrgType = "Private",
+                TenantType = "CommercialWeighing",
+                SsoTenantSlug = "truload",
+                PaymentGateway = "treasury",
+                CommercialWeighingFeeKes = 500m,
+                ContactEmail = "admin@truload.codevertexitsolutions.com",
+                ContactPhone = "+254700000010",
+                Address = "Nairobi, Kenya",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             }
         };
 
@@ -200,7 +219,7 @@ public class UserManagementSeeder
 
         var stations = new List<Station>();
 
-        // KURA Stations (default tenant - users are linked to KURA by default)
+        // KURA Stations (default enforcement tenant - users are linked to KURA by default)
         if (kura != null)
         {
             stations.AddRange(new[]
@@ -224,6 +243,29 @@ public class UserManagementSeeder
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 }
+            });
+        }
+
+        // TRULOAD-DEMO station: demo commercial weighbridge (fixed platform scale)
+        var truloadDemo = await _context.Organizations.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Code == "TRULOAD-DEMO");
+        if (truloadDemo != null)
+        {
+            stations.Add(new Station
+            {
+                Id = Guid.NewGuid(),
+                Code = "DEMO-WB-01",
+                Name = "Demo Weighbridge Station 01",
+                StationType = "weigh_bridge",
+                Location = "Nairobi, Kenya",
+                Latitude = -1.286389m,
+                Longitude = 36.817223m,
+                SupportsBidirectional = false,
+                OrganizationId = truloadDemo.Id,
+                IsDefault = true,
+                IsHq = false,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             });
         }
 

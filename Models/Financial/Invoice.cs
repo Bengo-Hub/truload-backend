@@ -92,6 +92,24 @@ public class Invoice : TenantAwareEntity
     /// </summary>
     public string? PesaflowSyncStatus { get; set; }
 
+    // ── Invoice type and treasury gateway fields ─────────────────────────────────
+
+    /// <summary>
+    /// Invoice type: "enforcement_fine" (default) | "commercial_weighing_fee".
+    /// Drives payment gateway routing and UI display labels.
+    /// </summary>
+    public string InvoiceType { get; set; } = "enforcement_fine";
+
+    /// <summary>
+    /// Treasury-api payment intent ID for commercial invoices (PaymentGateway = "treasury").
+    /// </summary>
+    public string? TreasuryIntentId { get; set; }
+
+    /// <summary>
+    /// Status mirrored from treasury-api: null | "pending" | "succeeded" | "failed".
+    /// </summary>
+    public string? TreasuryIntentStatus { get; set; }
+
     // Navigation properties
     public CaseRegister? CaseRegister { get; set; }
     public ProsecutionCase? ProsecutionCase { get; set; }
