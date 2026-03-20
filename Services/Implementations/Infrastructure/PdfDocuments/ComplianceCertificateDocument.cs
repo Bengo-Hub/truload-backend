@@ -17,15 +17,18 @@ public class ComplianceCertificateDocument : BaseDocument
     private readonly WeighingTransaction _reweighing;
     private readonly string _caseNo;
     private readonly string _certificateNo;
+    private readonly string _orgLogoFile;
 
     public ComplianceCertificateDocument(
         WeighingTransaction reweighing,
         string caseNo,
-        string certificateNo)
+        string certificateNo,
+        string? orgLogoFile = null)
     {
         _reweighing = reweighing;
         _caseNo = caseNo;
         _certificateNo = certificateNo;
+        _orgLogoFile = ResolveOrgLogo(orgLogoFile);
     }
 
     public override byte[] Generate()
@@ -48,7 +51,7 @@ public class ComplianceCertificateDocument : BaseDocument
 
     private void ComposeHeader(IContainer container)
     {
-        var primaryLogo = LoadLogo(BrandingConstants.Logos.KuraLogo);
+        var primaryLogo = LoadLogo(_orgLogoFile);
         var secondaryLogo = LoadLogo(BrandingConstants.Logos.CourtOfArmsKenya);
 
         container.Column(col =>

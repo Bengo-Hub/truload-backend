@@ -15,10 +15,12 @@ namespace TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments;
 public class SpecialReleaseCertificateDocument : BaseDocument
 {
     private readonly SpecialRelease _specialRelease;
+    private readonly string _orgLogoFile;
 
-    public SpecialReleaseCertificateDocument(SpecialRelease specialRelease)
+    public SpecialReleaseCertificateDocument(SpecialRelease specialRelease, string? orgLogoFile = null)
     {
         _specialRelease = specialRelease;
+        _orgLogoFile = ResolveOrgLogo(orgLogoFile);
     }
 
     public override byte[] Generate()
@@ -41,7 +43,7 @@ public class SpecialReleaseCertificateDocument : BaseDocument
 
     private void ComposeHeader(IContainer container)
     {
-        var primaryLogo = LoadLogo(BrandingConstants.Logos.KuraLogo);
+        var primaryLogo = LoadLogo(_orgLogoFile);
 
         container.Column(col =>
         {

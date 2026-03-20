@@ -16,15 +16,18 @@ public class LoadCorrectionMemoDocument : BaseDocument
     private readonly WeighingTransaction _originalWeighing;
     private readonly WeighingTransaction _reweighing;
     private readonly string _caseNo;
+    private readonly string _orgLogoFile;
 
     public LoadCorrectionMemoDocument(
         WeighingTransaction originalWeighing,
         WeighingTransaction reweighing,
-        string caseNo)
+        string caseNo,
+        string? orgLogoFile = null)
     {
         _originalWeighing = originalWeighing;
         _reweighing = reweighing;
         _caseNo = caseNo;
+        _orgLogoFile = ResolveOrgLogo(orgLogoFile);
     }
 
     public override byte[] Generate()
@@ -47,7 +50,7 @@ public class LoadCorrectionMemoDocument : BaseDocument
 
     private void ComposeHeader(IContainer container)
     {
-        var primaryLogo = LoadLogo(BrandingConstants.Logos.KuraLogo);
+        var primaryLogo = LoadLogo(_orgLogoFile);
 
         container.Column(col =>
         {

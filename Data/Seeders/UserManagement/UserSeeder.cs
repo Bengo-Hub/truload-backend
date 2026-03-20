@@ -32,27 +32,114 @@ public class UserSeeder
 
     public async Task SeedAsync()
     {
+        await SeedPlatformOwnerAsync();
         await SeedSuperUserAsync();
         await SeedMiddlewareServiceUserAsync();
         await SeedTruLoadDemoAdminAsync();
     }
 
+    /// <summary>
+    /// Seeds the platform owner account (admin@codevertexitsolutions.com) linked to CODEVERTEX org.
+    /// This is the primary platform admin — similar to how ordering-backend and other Go services
+    /// sync the platform owner from auth-api.
+    /// </summary>
+    private async Task SeedPlatformOwnerAsync()
+    {
+        var codevertexOrg = await _context.Organizations
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(o => o.Code == "CODEVERTEX");
+
+        if (codevertexOrg == null)
+        {
+            Console.WriteLine("⚠ CODEVERTEX organization not found, skipping platform owner seed");
+            return;
+        }
+
+        var superuserRole = await _roleManager.FindByNameAsync("Superuser");
+        if (superuserRole == null)
+        {
+            throw new InvalidOperationException("SUPERUSER role not found. Ensure RoleSeeder runs before UserSeeder.");
+        }
+
+        // Get or create an HQ station for the platform owner
+        var codevertexHq = await _context.Stations
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(s => s.OrganizationId == codevertexOrg.Id && s.IsHq);
+
+        var platformAdminEmail = "admin@codevertexitsolutions.com";
+        var existingAdmin = await _userManager.FindByEmailAsync(platformAdminEmail);
+
+        if (existingAdmin == null)
+        {
+            var platformAdmin = new ApplicationUser
+            {
+                Email = platformAdminEmail,
+                NormalizedEmail = platformAdminEmail.ToUpper(),
+                UserName = platformAdminEmail,
+                NormalizedUserName = platformAdminEmail.ToUpper(),
+                FullName = "Platform Administrator",
+                PhoneNumber = "+254700000001",
+                OrganizationId = codevertexOrg.Id,
+                StationId = codevertexHq?.Id,
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true,
+                TwoFactorEnabled = false,
+                LockoutEnabled = false
+            };
+
+            var result = await _userManager.CreateAsync(platformAdmin, DefaultPassword);
+            if (!result.Succeeded)
+            {
+                Console.WriteLine($"⚠ Failed to create platform admin: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                return;
+            }
+
+            var roleResult = await _userManager.AddToRoleAsync(platformAdmin, "Superuser");
+            if (!roleResult.Succeeded)
+            {
+                Console.WriteLine($"⚠ Failed to assign role to platform admin: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
+                return;
+            }
+
+            Console.WriteLine($"✓ Seeded platform owner: {platformAdminEmail} → CODEVERTEX org with SUPERUSER role");
+            Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY - change in production!)");
+        }
+        else
+        {
+            // Ensure linked to CODEVERTEX org
+            if (existingAdmin.OrganizationId != codevertexOrg.Id)
+            {
+                existingAdmin.OrganizationId = codevertexOrg.Id;
+                if (codevertexHq != null) existingAdmin.StationId = codevertexHq.Id;
+                await _userManager.UpdateAsync(existingAdmin);
+                Console.WriteLine($"✓ Updated platform admin {platformAdminEmail}: linked to CODEVERTEX org");
+            }
+            else
+            {
+                Console.WriteLine($"✓ Platform admin {platformAdminEmail} already exists, skipping seed");
+            }
+        }
+    }
+
     private async Task SeedSuperUserAsync()
     {
-        // Check if KURA organization exists (required for linking - KURA is the default tenant)
+        // Link gadmin@masterspace.co.ke to KURA organization (default enforcement tenant)
         var kuraOrg = await _context.Organizations
-            .FirstOrDefaultAsync(o => o.IsDefault) ?? await _context.Organizations
-            .FirstOrDefaultAsync(o => o.Code == "KURA");
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(o => o.Code == "KURA")
+            ?? await _context.Organizations
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(o => o.IsDefault);
 
         if (kuraOrg == null)
         {
-            throw new InvalidOperationException("Default or KURA organization not found. Ensure UserManagementSeeder runs before UserSeeder.");
+            throw new InvalidOperationException("KURA organization not found. Ensure UserManagementSeeder runs before UserSeeder.");
         }
 
-        // Get the first mobile station to link to the user (NRB-MOBILE-01)
-        var mobileStation = await _context.Stations
-            .FirstOrDefaultAsync(s => s.IsDefault) ?? await _context.Stations
-            .FirstOrDefaultAsync(s => s.Code == "NRB-MOBILE-01");
+        // Get the HQ station for KURA
+        var hqStation = await _context.Stations
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(s => s.OrganizationId == kuraOrg.Id && s.IsHq);
 
         // Check if SUPERUSER role exists
         var superuserRole = await _roleManager.FindByNameAsync("Superuser");
@@ -62,7 +149,7 @@ public class UserSeeder
             throw new InvalidOperationException("SUPERUSER role not found. Ensure RoleSeeder runs before UserSeeder.");
         }
 
-        // Seed superuser: gadmin@masterspace.co.ke
+        // Seed superuser: gadmin@masterspace.co.ke — linked to kura org
         var superUserEmail = "gadmin@masterspace.co.ke";
         var existingSuperUser = await _userManager.FindByEmailAsync(superUserEmail);
 
@@ -77,7 +164,7 @@ public class UserSeeder
                 FullName = "Global Administrator",
                 PhoneNumber = "+254700000000",
                 OrganizationId = kuraOrg.Id,
-                StationId = mobileStation?.Id,  // Link to mobile station
+                StationId = hqStation?.Id,
                 EmailConfirmed = true,
                 PhoneNumberConfirmed = true,
                 TwoFactorEnabled = false,
@@ -97,22 +184,31 @@ public class UserSeeder
                 throw new Exception($"Failed to assign role to superuser: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
             }
 
-            Console.WriteLine($"✓ Seeded superuser: {superUserEmail} linked to KURA organization and {mobileStation?.Name ?? "no station"} with SUPERUSER role");
+            Console.WriteLine($"✓ Seeded superuser: {superUserEmail} linked to {kuraOrg.Name} ({kuraOrg.Code}) and {hqStation?.Name ?? "no station"} with SUPERUSER role");
             Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY - change in production!)");
         }
         else
         {
-            // Update existing user to link station if not already linked
-            if (existingSuperUser.StationId == null && mobileStation != null)
+            // Update to link to KURA org if currently linked elsewhere
+            var updated = false;
+            if (existingSuperUser.OrganizationId != kuraOrg.Id)
             {
-                existingSuperUser.StationId = mobileStation.Id;
                 existingSuperUser.OrganizationId = kuraOrg.Id;
+                updated = true;
+            }
+            if (existingSuperUser.StationId == null && hqStation != null)
+            {
+                existingSuperUser.StationId = hqStation.Id;
+                updated = true;
+            }
+            if (updated)
+            {
                 await _userManager.UpdateAsync(existingSuperUser);
-                Console.WriteLine($"✓ Updated superuser {superUserEmail} to link station {mobileStation.Name}");
+                Console.WriteLine($"✓ Updated superuser {superUserEmail}: linked to {kuraOrg.Name} ({kuraOrg.Code})");
             }
             else
             {
-                Console.WriteLine($"✓ Superuser {superUserEmail} already exists with station link, skipping seed");
+                Console.WriteLine($"✓ Superuser {superUserEmail} already exists, skipping seed");
             }
         }
     }

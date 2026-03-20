@@ -14,11 +14,21 @@ public class WeightTicketDocument : BaseDocument
 {
     private readonly WeighingTransaction _transaction;
     private readonly string? _organizationName;
+    private readonly string? _tenantType;
+    private readonly string? _orgLogoFile;
+    private readonly bool _isCommercial;
 
-    public WeightTicketDocument(WeighingTransaction transaction, string? organizationName = null)
+    public WeightTicketDocument(
+        WeighingTransaction transaction,
+        string? organizationName = null,
+        string? tenantType = null,
+        string? orgLogoFile = null)
     {
         _transaction = transaction;
         _organizationName = organizationName;
+        _tenantType = tenantType;
+        _orgLogoFile = orgLogoFile;
+        _isCommercial = string.Equals(tenantType, "CommercialWeighing", StringComparison.OrdinalIgnoreCase);
     }
 
     public override byte[] Generate()
@@ -41,10 +51,19 @@ public class WeightTicketDocument : BaseDocument
 
     private void ComposeHeader(IContainer container)
     {
+        // Commercial: org logo only (no judicial coat of arms)
+        // Enforcement: org logo (falls back to KURA) + coat of arms
+        var primaryLogo = _isCommercial
+            ? ResolveOrgLogo(_orgLogoFile)
+            : ResolveOrgLogo(_orgLogoFile);
+        var secondaryLogo = _isCommercial
+            ? null  // No coat of arms for commercial tenants
+            : BrandingConstants.Logos.CourtOfArmsKenya;
+
         ComposeOfficialHeaderWithLogos(
             container,
-            BrandingConstants.Logos.KuraLogo,
-            BrandingConstants.Logos.CourtOfArmsKenya,
+            primaryLogo,
+            secondaryLogo,
             "WEIGHT CERTIFICATE",
             subtitle: _transaction.Station?.Name ?? "Weighbridge Station",
             referenceNumber: $"Ticket No: {_transaction.TicketNumber}",

@@ -57,6 +57,13 @@ public class ReportFilterParams
     public string? ControlStatus { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 1000;
+
+    /// <summary>Organization name for report headers.</summary>
+    public string? OrganizationName { get; set; }
+    /// <summary>Organization logo filename for report branding.</summary>
+    public string? OrgLogoFile { get; set; }
+    /// <summary>Whether the tenant is enforcement (shows "REPUBLIC OF KENYA") or commercial.</summary>
+    public bool IsEnforcement { get; set; } = true;
 }
 
 /// <summary>

@@ -108,6 +108,11 @@ public static class BrandingConstants
         public const string EcitizenLogo = "ecitizen-logo.png";
         public const string KuraWeighLogo = "kuraweigh-logo.png";
         public const string NtsaLogo = "ntsa-logo.png";
+
+        /// <summary>
+        /// Default TruLoad platform logo, used as fallback when org has no custom logo.
+        /// </summary>
+        public const string TruLoadLogo = "truload-logo.png";
     }
 
     /// <summary>

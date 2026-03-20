@@ -16,6 +16,14 @@ public abstract class BaseReportDocument : BaseDocument
     public DateTime? DateFrom { get; set; }
     public DateTime? DateTo { get; set; }
     public string? StationName { get; set; }
+    public string? OrgLogoFile { get; set; }
+
+    /// <summary>Organization name for report header branding (e.g. tenant name).</summary>
+    public string? OrganizationName { get; set; }
+    /// <summary>Whether this is an enforcement org (shows "REPUBLIC OF KENYA") or commercial.</summary>
+    public bool IsEnforcement { get; set; } = true;
+    /// <summary>Secondary logo file override. Null means no secondary logo.</summary>
+    public string? SecondaryLogoFile { get; set; } = "coat-of-arms.png";
 
     public override byte[] Generate()
     {
@@ -46,12 +54,14 @@ public abstract class BaseReportDocument : BaseDocument
 
         ComposeOfficialHeaderWithLogos(
             container,
-            "kura-logo.png",
-            "coat-of-arms.png",
+            ResolveOrgLogo(OrgLogoFile),
+            SecondaryLogoFile,
             ReportTitle,
             ReportSubtitle ?? StationName,
             null,
-            dateRange);
+            dateRange,
+            organizationName: OrganizationName,
+            isEnforcement: IsEnforcement);
     }
 
     protected abstract void ComposeContent(IContainer container);

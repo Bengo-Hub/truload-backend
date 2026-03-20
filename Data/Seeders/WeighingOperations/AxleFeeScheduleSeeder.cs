@@ -187,7 +187,8 @@ public class AxleFeeScheduleSeeder
             }
         });
 
-        // ===== Traffic Act GVW Fee Bands =====
+        // ===== Traffic Act GVW Fee Bands (KES native — no USD→KES conversion at runtime) =====
+        // Kenya Traffic Act Cap 403 charges in KES. USD columns kept as reference only.
         feeSchedules.AddRange(new[]
         {
             new AxleFeeSchedule
@@ -197,6 +198,8 @@ public class AxleFeeScheduleSeeder
                 FeeType = "GVW",
                 OverloadMinKg = 1,
                 OverloadMaxKg = 500,
+                FeePerKgKes = 39m,
+                FlatFeeKes = 6_500m,
                 FeePerKgUsd = 0.30m,
                 FlatFeeUsd = 50m,
                 DemeritPoints = 0,
@@ -212,6 +215,8 @@ public class AxleFeeScheduleSeeder
                 FeeType = "GVW",
                 OverloadMinKg = 501,
                 OverloadMaxKg = 1000,
+                FeePerKgKes = 65m,
+                FlatFeeKes = 13_000m,
                 FeePerKgUsd = 0.50m,
                 FlatFeeUsd = 100m,
                 DemeritPoints = 2,
@@ -227,6 +232,8 @@ public class AxleFeeScheduleSeeder
                 FeeType = "GVW",
                 OverloadMinKg = 1001,
                 OverloadMaxKg = 2000,
+                FeePerKgKes = 97.50m,
+                FlatFeeKes = 26_000m,
                 FeePerKgUsd = 0.75m,
                 FlatFeeUsd = 200m,
                 DemeritPoints = 4,
@@ -242,6 +249,8 @@ public class AxleFeeScheduleSeeder
                 FeeType = "GVW",
                 OverloadMinKg = 2001,
                 OverloadMaxKg = 3000,
+                FeePerKgKes = 130m,
+                FlatFeeKes = 65_000m,
                 FeePerKgUsd = 1.00m,
                 FlatFeeUsd = 500m,
                 DemeritPoints = 6,
@@ -257,6 +266,8 @@ public class AxleFeeScheduleSeeder
                 FeeType = "GVW",
                 OverloadMinKg = 3001,
                 OverloadMaxKg = null,
+                FeePerKgKes = 260m,
+                FlatFeeKes = 130_000m,
                 FeePerKgUsd = 2.00m,
                 FlatFeeUsd = 1000m,
                 DemeritPoints = 10,

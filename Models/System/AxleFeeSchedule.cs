@@ -29,14 +29,25 @@ public class AxleFeeSchedule
     public int? OverloadMaxKg { get; set; }
     
     /// <summary>
-    /// Fee per kg in USD
+    /// Fee per kg in USD (used when act ChargingCurrency = USD, e.g. EAC Act)
     /// </summary>
     public decimal FeePerKgUsd { get; set; }
-    
+
     /// <summary>
     /// Flat fee component in USD (default 0)
     /// </summary>
     public decimal FlatFeeUsd { get; set; } = 0;
+
+    /// <summary>
+    /// Fee per kg in KES (used when act ChargingCurrency = KES, e.g. Traffic Act Cap 403).
+    /// When non-zero, this is the native KES rate — no USD→KES conversion needed.
+    /// </summary>
+    public decimal FeePerKgKes { get; set; }
+
+    /// <summary>
+    /// Flat fee component in KES (default 0)
+    /// </summary>
+    public decimal FlatFeeKes { get; set; } = 0;
     
     /// <summary>
     /// Demerit points assigned for this overload band

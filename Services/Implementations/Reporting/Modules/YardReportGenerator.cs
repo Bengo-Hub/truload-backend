@@ -141,7 +141,7 @@ public class YardReportGenerator : BaseReportGenerator
             Rows = rows.ToList(),
             SummaryItems = summaryItems.ToArray()
         };
-        return PdfResult(doc.Generate(), "yard_occupancy", null, null);
+        return PdfResult(doc, filters, "yard_occupancy", null, null);
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -228,7 +228,7 @@ public class YardReportGenerator : BaseReportGenerator
                 ("Avg Duration (hrs)", $"{avgDuration:F1}")
             ]
         };
-        return PdfResult(doc.Generate(), "vehicle_entries_exits", from, to);
+        return PdfResult(doc, filters, "vehicle_entries_exits", from, to);
     }
 
     // ══════════════════════════════════════════════════════════════════

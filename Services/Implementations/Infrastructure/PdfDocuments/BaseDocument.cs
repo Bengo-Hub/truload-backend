@@ -21,12 +21,35 @@ public abstract class BaseDocument
     protected readonly string OfficialGreen = BrandingConstants.Colors.OfficialGreen;
 
     // Logo sizes - large enough for official documents
-    protected const float LogoWidth = 85;
-    protected const float LogoHeight = 65;
-    protected const float SmallLogoWidth = 55;
-    protected const float SmallLogoHeight = 45;
+    protected const float LogoWidth = 120;
+    protected const float LogoHeight = 90;
+    protected const float SmallLogoWidth = 80;
+    protected const float SmallLogoHeight = 60;
 
     public abstract byte[] Generate();
+
+    /// <summary>
+    /// Resolves the organization logo file to use for document branding.
+    /// Falls back to TruLoad default logo, then KURA logo as last resort.
+    /// </summary>
+    public static string ResolveOrgLogo(string? orgLogoFile)
+    {
+        // Try org-specific logo first
+        if (!string.IsNullOrEmpty(orgLogoFile))
+        {
+            var orgPath = Path.Combine(ImagesBasePath, orgLogoFile);
+            if (File.Exists(orgPath))
+                return orgLogoFile;
+        }
+
+        // Fall back to TruLoad default logo
+        var truloadPath = Path.Combine(ImagesBasePath, BrandingConstants.Logos.TruLoadLogo);
+        if (File.Exists(truloadPath))
+            return BrandingConstants.Logos.TruLoadLogo;
+
+        // Last resort: KURA logo (for enforcement orgs)
+        return BrandingConstants.Logos.KuraLogo;
+    }
 
     /// <summary>
     /// Loads an image from wwwroot/images/ as byte array.
@@ -52,7 +75,8 @@ public abstract class BaseDocument
         string? referenceNumber = null,
         string? dateText = null,
         string? titleColor = null,
-        string? organizationName = null)
+        string? organizationName = null,
+        bool isEnforcement = true)
     {
         var primaryLogo = LoadLogo(primaryLogoFile);
         var secondaryLogo = secondaryLogoFile != null ? LoadLogo(secondaryLogoFile) : null;
@@ -72,14 +96,26 @@ public abstract class BaseDocument
                 // Center title block
                 row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(center =>
                 {
-                    center.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
-                        .FontSize(11).SemiBold();
-
-                    // Organization name (e.g., "KENYA URBAN ROADS AUTHORITY")
-                    if (!string.IsNullOrEmpty(organizationName))
+                    if (isEnforcement)
                     {
-                        center.Item().AlignCenter().Text(organizationName)
-                            .FontSize(9).SemiBold();
+                        // Government documents: "REPUBLIC OF KENYA" above org name
+                        center.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
+                            .FontSize(11).SemiBold();
+
+                        if (!string.IsNullOrEmpty(organizationName))
+                        {
+                            center.Item().AlignCenter().Text(organizationName)
+                                .FontSize(9).SemiBold();
+                        }
+                    }
+                    else
+                    {
+                        // Commercial tenants: org name as main heading, no "REPUBLIC OF KENYA"
+                        if (!string.IsNullOrEmpty(organizationName))
+                        {
+                            center.Item().AlignCenter().Text(organizationName)
+                                .FontSize(11).SemiBold();
+                        }
                     }
 
                     center.Item().AlignCenter().Text(documentTitle)

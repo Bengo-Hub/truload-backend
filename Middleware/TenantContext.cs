@@ -59,8 +59,8 @@ public class TenantContextMiddleware
     public const string OrgIdHeader = "X-Org-ID";
     public const string StationIdHeader = "X-Station-ID";
 
-    // Default organization code when no tenant can be resolved
-    public const string DefaultOrgCode = "KURA";
+    // Default organization code when no tenant can be resolved (for non-superusers without headers/claims)
+    public const string DefaultOrgCode = "TRULOAD-DEMO";
 
     public TenantContextMiddleware(RequestDelegate next, ILogger<TenantContextMiddleware> logger)
     {
@@ -170,16 +170,32 @@ public class TenantContextMiddleware
         }
 
         // Layer 2: Try user claims from JWT (if not resolved from headers)
+        // For Superusers WITHOUT explicit headers: skip claim-based org resolution
+        // so they operate in cross-tenant mode (OrgId stays empty, global filters bypassed).
+        // When headers ARE provided (isExplicit=true, e.g. platform user drilling into a tenant),
+        // orgId is already set from Layer 1 — this block is skipped.
         if (!orgId.HasValue)
         {
-            var orgIdClaim = context.User.FindFirst("org_id") ??
-                            context.User.FindFirst("organization_id") ??
-                            context.User.FindFirst("tenant_id");
+            var roles = context.User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
+            var isSuperuser = roles.Contains("Superuser");
 
-            if (orgIdClaim != null && Guid.TryParse(orgIdClaim.Value, out var claimOrgId))
+            if (isSuperuser)
             {
-                orgId = claimOrgId;
-                _logger.LogDebug("Resolved OrgId from claims: {OrgId}", orgId);
+                // Platform owner with no explicit tenant → cross-tenant mode
+                _logger.LogDebug("Superuser without explicit tenant — operating in cross-tenant mode");
+            }
+            else
+            {
+                // Regular user: resolve org from JWT claims
+                var orgIdClaim = context.User.FindFirst("org_id") ??
+                                context.User.FindFirst("organization_id") ??
+                                context.User.FindFirst("tenant_id");
+
+                if (orgIdClaim != null && Guid.TryParse(orgIdClaim.Value, out var claimOrgId))
+                {
+                    orgId = claimOrgId;
+                    _logger.LogDebug("Resolved OrgId from claims: {OrgId}", orgId);
+                }
             }
         }
 
@@ -227,22 +243,36 @@ public class TenantContextMiddleware
             }
         }
 
-        // Layer 4: Fallback to default organization (KURA)
+        // Layer 4: Fallback to default organization
+        // Platform owners (Superusers) with NO explicit tenant headers → leave org empty (Guid.Empty)
+        // so global query filters are bypassed and they see all tenants' data.
         if (!orgId.HasValue)
         {
-            var defaultOrg = await dbContext.Organizations
-                .AsNoTracking()
-                .FirstOrDefaultAsync(o => o.Code == DefaultOrgCode && o.IsActive);
+            var roles = context.User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
+            var isSuperuser = roles.Contains("Superuser");
 
-            if (defaultOrg != null)
+            if (isSuperuser)
             {
-                orgId = defaultOrg.Id;
-                tenantContext.OrganizationCode = defaultOrg.Code;
-                _logger.LogDebug("Resolved OrgId from default ({DefaultOrgCode}): {OrgId}", DefaultOrgCode, orgId);
+                // Platform owner: no tenant context → bypass tenant filters
+                _logger.LogDebug("Superuser without explicit tenant — skipping default org fallback (cross-tenant mode)");
             }
             else
             {
-                _logger.LogWarning("Default organization {DefaultOrgCode} not found in database", DefaultOrgCode);
+                // Regular user: fall back to default org (KURA)
+                var defaultOrg = await dbContext.Organizations
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(o => o.Code == DefaultOrgCode && o.IsActive);
+
+                if (defaultOrg != null)
+                {
+                    orgId = defaultOrg.Id;
+                    tenantContext.OrganizationCode = defaultOrg.Code;
+                    _logger.LogDebug("Resolved OrgId from default ({DefaultOrgCode}): {OrgId}", DefaultOrgCode, orgId);
+                }
+                else
+                {
+                    _logger.LogWarning("Default organization {DefaultOrgCode} not found in database", DefaultOrgCode);
+                }
             }
         }
         else

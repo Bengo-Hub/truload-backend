@@ -381,13 +381,17 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     {
         if (typeof(T) == typeof(Station))
         {
-            modelBuilder.Entity<T>().HasQueryFilter(e => e.OrganizationId == _tenantContext.OrganizationId);
+            // Platform owners (OrgId == Empty when no tenant headers sent) bypass tenant filter
+            modelBuilder.Entity<T>().HasQueryFilter(e =>
+                _tenantContext.OrganizationId == Guid.Empty || e.OrganizationId == _tenantContext.OrganizationId);
         }
         else
         {
+            // Platform owners bypass all tenant filtering; regular users filtered by org + optional station
             modelBuilder.Entity<T>().HasQueryFilter(e =>
-                e.OrganizationId == _tenantContext.OrganizationId &&
-                (!_tenantContext.StationId.HasValue || e.StationId == null || e.StationId == _tenantContext.StationId));
+                _tenantContext.OrganizationId == Guid.Empty ||
+                (e.OrganizationId == _tenantContext.OrganizationId &&
+                 (!_tenantContext.StationId.HasValue || e.StationId == null || e.StationId == _tenantContext.StationId)));
         }
     }
 

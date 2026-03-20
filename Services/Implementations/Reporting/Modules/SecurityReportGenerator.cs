@@ -136,7 +136,7 @@ public class SecurityReportGenerator : BaseReportGenerator
             Rows = rows.ToList(),
             SummaryItems = summaryItems.ToArray()
         };
-        return PdfResult(doc.Generate(), "audit_log", from, to);
+        return PdfResult(doc, filters, "audit_log", from, to);
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -219,7 +219,7 @@ public class SecurityReportGenerator : BaseReportGenerator
             Rows = rows.ToList(),
             SummaryItems = summaryItems.ToArray()
         };
-        return PdfResult(doc.Generate(), "shift_report", from, to);
+        return PdfResult(doc, filters, "shift_report", from, to);
     }
 
     // ══════════════════════════════════════════════════════════════════

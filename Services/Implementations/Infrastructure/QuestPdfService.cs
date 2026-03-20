@@ -24,25 +24,36 @@ public class QuestPdfService : IPdfService
 
     public async Task<byte[]> GenerateWeightTicketAsync(WeighingTransaction transaction)
     {
-        // Resolve organization name from station
+        // Resolve organization info from station for branding
         string? organizationName = null;
+        string? tenantType = null;
+        string? orgLogoFile = null;
         if (transaction.StationId != Guid.Empty)
         {
-            organizationName = await _context.Stations
+            var orgInfo = await _context.Stations
                 .Where(s => s.Id == transaction.StationId)
-                .Select(s => s.Organization.Name)
+                .Select(s => new { s.Organization.Name, s.Organization.TenantType, s.Organization.LogoUrl })
                 .FirstOrDefaultAsync();
+            organizationName = orgInfo?.Name;
+            tenantType = orgInfo?.TenantType;
+            // Convert frontend logo URL path to backend wwwroot filename for PDF rendering
+            // e.g. "/images/logos/kura-logo.png" → "kura-logo.png" (LoadLogo reads from wwwroot/images/)
+            if (!string.IsNullOrEmpty(orgInfo?.LogoUrl))
+            {
+                orgLogoFile = Path.GetFileName(orgInfo.LogoUrl);
+            }
         }
 
         return await Task.Run(() =>
         {
-            var document = new WeightTicketDocument(transaction, organizationName);
+            var document = new WeightTicketDocument(transaction, organizationName, tenantType, orgLogoFile);
             return document.Generate();
         });
     }
 
     public async Task<byte[]> GenerateProhibitionOrderAsync(ProhibitionOrder order)
     {
+        // ProhibitionOrder is a legal document - keeps Kenya Police + Court of Arms logos
         return await Task.Run(() =>
         {
             var document = new ProhibitionOrderDocument(order);
@@ -69,10 +80,16 @@ public class QuestPdfService : IPdfService
                 .Select(c => c.CaseNo)
                 .FirstOrDefaultAsync();
 
+            // Resolve org logo from station
+            string? orgLogoFile = null;
+            if (originalWeighing.StationId.HasValue && originalWeighing.StationId.Value != Guid.Empty)
+                orgLogoFile = await ResolveOrgLogoFromStationAsync(originalWeighing.StationId.Value);
+
             var document = new LoadCorrectionMemoDocument(
                 originalWeighing,
                 reweighing,
-                caseRegister ?? caseRegisterId.ToString());
+                caseRegister ?? caseRegisterId.ToString(),
+                orgLogoFile);
             return document.Generate();
         });
     }
@@ -89,19 +106,40 @@ public class QuestPdfService : IPdfService
 
             var certificateNo = $"COMP-{caseRegister ?? caseRegisterId.ToString()}";
 
+            // Resolve org logo from station
+            string? orgLogoFile = null;
+            if (reweighing.StationId.HasValue && reweighing.StationId.Value != Guid.Empty)
+                orgLogoFile = await ResolveOrgLogoFromStationAsync(reweighing.StationId.Value);
+
             var document = new ComplianceCertificateDocument(
                 reweighing,
                 caseRegister ?? caseRegisterId.ToString(),
-                certificateNo);
+                certificateNo,
+                orgLogoFile);
             return document.Generate();
         });
     }
 
     public async Task<byte[]> GenerateSpecialReleaseCertificateAsync(SpecialRelease specialRelease)
     {
+        // Resolve org logo from the case register's weighing station
+        string? orgLogoFile = null;
+        var weighingId = specialRelease.CaseRegister?.WeighingId;
+        if (weighingId.HasValue && weighingId.Value != Guid.Empty)
+        {
+            var stationId = specialRelease.CaseRegister?.Weighing?.StationId
+                ?? await _context.WeighingTransactions
+                    .Where(w => w.Id == weighingId.Value)
+                    .Select(w => w.StationId)
+                    .FirstOrDefaultAsync();
+
+            if (stationId.HasValue && stationId.Value != Guid.Empty)
+                orgLogoFile = await ResolveOrgLogoFromStationAsync(stationId.Value);
+        }
+
         return await Task.Run(() =>
         {
-            var document = new SpecialReleaseCertificateDocument(specialRelease);
+            var document = new SpecialReleaseCertificateDocument(specialRelease, orgLogoFile);
             return document.Generate();
         });
     }
@@ -152,7 +190,17 @@ public class QuestPdfService : IPdfService
         // Get organization name from station or default
         var organizationName = invoice.ProsecutionCase?.Weighing?.Station?.Name;
 
-        var document = new InvoiceDocument(invoice, organizationName);
+        // Resolve org logo from station
+        string? orgLogoFile = null;
+        var stationId = invoice.ProsecutionCase?.Weighing?.StationId;
+        if (stationId.HasValue && stationId.Value != Guid.Empty)
+        {
+            orgLogoFile = await ResolveOrgLogoFromStationAsync(stationId.Value);
+        }
+
+        // Commercial/treasury invoices should not show the eCitizen secondary logo
+        var showSecondaryLogo = invoice.InvoiceType != "commercial_weighing_fee";
+        var document = new InvoiceDocument(invoice, organizationName, orgLogoFile: orgLogoFile, showSecondaryLogo: showSecondaryLogo);
         return document.Generate();
     }
 
@@ -176,7 +224,33 @@ public class QuestPdfService : IPdfService
             .FirstOrDefaultAsync(r => r.Id == receiptId && r.DeletedAt == null, ct)
             ?? throw new InvalidOperationException($"Receipt {receiptId} not found");
 
-        var document = new ReceiptDocument(receipt);
+        // Resolve org logo from station
+        string? orgLogoFile = null;
+        var stationId = receipt.Invoice?.ProsecutionCase?.Weighing?.StationId;
+        if (stationId.HasValue && stationId.Value != Guid.Empty)
+        {
+            orgLogoFile = await ResolveOrgLogoFromStationAsync(stationId.Value);
+        }
+
+        // Commercial/treasury receipts should not show the eCitizen secondary logo
+        var showSecondaryLogo = receipt.Invoice?.InvoiceType != "commercial_weighing_fee";
+        var document = new ReceiptDocument(receipt, orgLogoFile: orgLogoFile, showSecondaryLogo: showSecondaryLogo);
         return document.Generate();
+    }
+
+    /// <summary>
+    /// Resolves the organization logo filename from a station's organization.
+    /// Extracts the filename from Organization.LogoUrl for use in PDF rendering.
+    /// </summary>
+    private async Task<string?> ResolveOrgLogoFromStationAsync(Guid stationId)
+    {
+        if (stationId == Guid.Empty) return null;
+
+        var logoUrl = await _context.Stations
+            .Where(s => s.Id == stationId)
+            .Select(s => s.Organization.LogoUrl)
+            .FirstOrDefaultAsync();
+
+        return !string.IsNullOrEmpty(logoUrl) ? Path.GetFileName(logoUrl) : null;
     }
 }

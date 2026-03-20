@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.DTOs.User;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.UserManagement.Interfaces;
 
@@ -13,11 +14,16 @@ namespace TruLoad.Controllers;
 public class DepartmentsController : ControllerBase
 {
     private readonly IDepartmentRepository _departmentRepository;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<DepartmentsController> _logger;
 
-    public DepartmentsController(IDepartmentRepository departmentRepository, ILogger<DepartmentsController> logger)
+    public DepartmentsController(
+        IDepartmentRepository departmentRepository,
+        ITenantContext tenantContext,
+        ILogger<DepartmentsController> logger)
     {
         _departmentRepository = departmentRepository;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -33,6 +39,10 @@ public class DepartmentsController : ControllerBase
             return NotFound(new { message = "Department not found" });
         }
 
+        // Tenant isolation: non-superusers can only view departments in their org
+        if (!User.IsInRole("Superuser") && _tenantContext.OrganizationId != Guid.Empty && dept.OrganizationId != _tenantContext.OrganizationId)
+            return NotFound(new { message = "Department not found" });
+
         return Ok(MapToDto(dept));
     }
 
@@ -44,7 +54,15 @@ public class DepartmentsController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var depts = await _departmentRepository.GetAllAsync(includeInactive, cancellationToken);
-        return Ok(depts.Select(MapToDto));
+        var list = depts.ToList();
+
+        // Tenant isolation: non-superusers only see departments in their own org
+        if (!User.IsInRole("Superuser") && _tenantContext.OrganizationId != Guid.Empty)
+        {
+            list = list.Where(d => d.OrganizationId == _tenantContext.OrganizationId).ToList();
+        }
+
+        return Ok(list.Select(MapToDto));
     }
 
     [HttpGet("organization/{organizationId:guid}")]

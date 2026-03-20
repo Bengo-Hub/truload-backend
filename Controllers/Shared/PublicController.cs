@@ -35,7 +35,7 @@ public class PublicController : ControllerBase
     {
         var orgs = await _organizationRepository.GetAllAsync(includeInactive: false, cancellationToken);
         var list = orgs
-            .Where(o => o.IsActive)
+            .Where(o => o.IsActive && o.Code != "CODEVERTEX") // Platform org not visible on public pages
             .Select(o => new
             {
                 id = o.Id,
@@ -46,6 +46,7 @@ public class PublicController : ControllerBase
                 loginPageImageUrl = o.LoginPageImageUrl,
                 primaryColor = o.PrimaryColor,
                 secondaryColor = o.SecondaryColor,
+                tenantType = o.TenantType,
             })
             .ToList();
         return Ok(list);
@@ -64,9 +65,7 @@ public class PublicController : ControllerBase
         if (string.IsNullOrEmpty(trimmed))
             return NotFound();
 
-        var org = await _organizationRepository.GetByCodeAsync(trimmed, cancellationToken)
-            ?? await _organizationRepository.GetByCodeAsync(trimmed.ToUpperInvariant(), cancellationToken)
-            ?? await _organizationRepository.GetByCodeAsync(trimmed.ToLowerInvariant(), cancellationToken);
+        var org = await _organizationRepository.GetByCodeAsync(trimmed, cancellationToken);
 
         if (org == null || !org.IsActive)
             return NotFound();
@@ -80,6 +79,7 @@ public class PublicController : ControllerBase
             loginPageImageUrl = org.LoginPageImageUrl,
             primaryColor = org.PrimaryColor,
             secondaryColor = org.SecondaryColor,
+            tenantType = org.TenantType,
         });
     }
 

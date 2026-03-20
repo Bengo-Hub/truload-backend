@@ -34,6 +34,51 @@ TruLoad is a cloud-hosted intelligent weighing and enforcement platform enabling
 ### Current Phase
 Sprint 22.1 (Production Bug Fixes) complete. All Sprint 22 features delivered. Focus on production stability, integration testing, and documentation audit.
 
+### Sprint 23 - Module Access Audit & Security Hardening (March 20, 2026)
+
+**Report Filtering by Module Access (Commercial Mode)**
+- Report catalog endpoint now filters by org's enabled modules and tenant type
+- Commercial tenants only see weighing and security reports (not prosecution, cases, yard, financial)
+- Cache key includes org ID for per-tenant catalog caching
+- GenerateReport endpoint validates module access before generating
+
+**Document Generation - Flexible Org Logo**
+- All non-legal documents now use org-specific logo with fallback chain: org logo → truload-logo.png → kura-logo.png
+- Logo dimensions increased: primary 120x90px (was 85x65), report 80x60px (was 55x45)
+- Applied to: WeightTicket, Invoice, Receipt, ComplianceCertificate, LoadCorrectionMemo, SpecialReleaseCertificate, BaseReportDocument
+- Legal documents (ChargeSheet, CourtMinutes, ProhibitionOrder) retain government/judicial logos
+- Added `BrandingConstants.Logos.TruLoadLogo` constant for default fallback
+
+**Logout Flow Hardening**
+- Backend logout now clears ASP.NET Identity cookie (`TruLoad.Auth`) via `HttpContext.SignOutAsync()`
+
+**SSO Auth Flow - Cross-Org Login Prevention**
+- SsoExchange endpoint no longer JIT-reassigns existing users to a different org
+- Returns 403 `org_mismatch` if user belongs to a different org than the SSO-resolved org
+- Prevents unauthorized cross-tenant access via SSO
+
+**CORS Configuration**
+- Added `accounts.codevertexitsolutions.com` and `sso.codevertexitsolutions.com` to allowed origins
+- Added `truload.codevertexitsolutions.com` to appsettings.json dev defaults
+
+**Commercial Mode - Financial Modules & Invoices/Receipts**
+- Added `financial_invoices` and `financial_receipts` to `DefaultCommercialWeighingModules` and TRULOAD-DEMO seed
+- Commercial invoices use treasury gateway (not eCitizen) — eCitizen logo hidden on commercial invoice/receipt PDFs via `showSecondaryLogo` flag
+- QuestPdfService detects `commercial_weighing_fee` invoice type and suppresses eCitizen branding
+- Seeder sync now updates `EnabledModulesJson` for existing orgs when seed data changes
+
+**Report Filtering - Commercial-Specific Weighing Reports**
+- Enforcement-only weighing reports filtered out for commercial tenants: axle-overload, overloaded-vehicles, reweigh-statement, special-release
+- Commercial tenants see only: daily-summary, weighbridge-register, compliance-trend, station-performance, transporter-statement, scale-test
+
+**Document Generation - Tenant-Specific Branding**
+- Report headers now use tenant org name and logo instead of hardcoded "REPUBLIC OF KENYA" / KURA
+- `ComposeOfficialHeaderWithLogos` accepts `isEnforcement` flag — enforcement orgs show "REPUBLIC OF KENYA", commercial orgs show only their org name
+- `BaseReportDocument` accepts `OrganizationName`, `IsEnforcement`, `SecondaryLogoFile` properties
+- `ReportFilterParams` extended with `OrganizationName`, `OrgLogoFile`, `IsEnforcement` for pipeline-wide org context
+- `BaseReportGenerator.ApplyOrgContext()` helper auto-applies org branding to report documents
+- All 6 module report generators updated to use org-aware `PdfResult()` overload
+
 ---
 
 ## Project Scorecard

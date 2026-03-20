@@ -42,6 +42,8 @@ public static class DocumentSeedDefinitions
             IncludeStationCode: true, IncludeBound: false, IncludeDate: true, DateFormat: "yyyyMMdd", IncludeVehicleReg: false),
         new DocumentSeedEntry(DocumentTypes.CourtMinutes, "Court Minutes", "CM", Monthly,
             IncludeStationCode: true, IncludeBound: false, IncludeDate: true, DateFormat: "yyyyMMdd", IncludeVehicleReg: false),
+        new DocumentSeedEntry(DocumentTypes.Permit, "Transport Permit", "PRM", Never,
+            IncludeStationCode: false, IncludeBound: false, IncludeDate: true, DateFormat: "yyyyMMdd", IncludeVehicleReg: true),
     ];
 
     public sealed record DocumentSeedEntry(

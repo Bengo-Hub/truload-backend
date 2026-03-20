@@ -339,6 +339,13 @@ public class InvoiceService : IInvoiceService
             PesaflowAmountNet = invoice.PesaflowAmountNet,
             PesaflowTotalAmount = invoice.PesaflowTotalAmount,
             PesaflowSyncStatus = invoice.PesaflowSyncStatus,
+            InvoiceType = invoice.InvoiceType ?? "enforcement_fine",
+            TreasuryIntentId = invoice.TreasuryIntentId,
+            TreasuryIntentStatus = invoice.TreasuryIntentStatus,
+            // Generate treasury pay URL for commercial invoices with a payment intent
+            TreasuryPaymentUrl = !string.IsNullOrWhiteSpace(invoice.TreasuryIntentId)
+                ? $"https://books.codevertexitsolutions.com/pay?intent_id={invoice.TreasuryIntentId}"
+                : null,
             CreatedAt = invoice.CreatedAt,
             UpdatedAt = invoice.UpdatedAt
         };

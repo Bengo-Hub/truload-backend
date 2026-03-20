@@ -52,9 +52,14 @@ public class StationRepository : IStationRepository
 
     public async Task<IEnumerable<Station>> GetByOrganizationIdAsync(Guid organizationId, CancellationToken cancellationToken = default)
     {
+        // IgnoreQueryFilters: this method explicitly filters by organizationId,
+        // so the global tenant filter must be bypassed. Critical for:
+        // - Public stations endpoint during SSO login (no tenant context yet)
+        // - Platform owner accessing stations from a different org
         return await _context.Stations
+            .IgnoreQueryFilters()
             .Include(s => s.Organization)
-            .Where(s => s.OrganizationId == organizationId && s.DeletedAt == null)
+            .Where(s => s.OrganizationId == organizationId && s.IsActive && s.DeletedAt == null)
             .ToListAsync(cancellationToken);
     }
 

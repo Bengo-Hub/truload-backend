@@ -36,7 +36,8 @@ public static class TenantModules
     /// </summary>
     public static readonly IReadOnlyList<string> DefaultCommercialWeighingModules = new[]
     {
-        Dashboard, Weighing, Reporting, Users, SetupWeighingMetadata, SetupSettings
+        Dashboard, Weighing, Reporting, Users, SetupWeighingMetadata, SetupSettings,
+        FinancialInvoices, FinancialReceipts
     };
 
     public const string TenantTypeCommercialWeighing = "CommercialWeighing";

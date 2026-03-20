@@ -318,14 +318,14 @@ public class BackupService : IBackupService
     {
         try
         {
-            await _settingsService.UpdateSettingAsync(SettingKeys.BackupEnabled, request.IsEnabled.ToString(), userId, ct);
-            await _settingsService.UpdateSettingAsync(SettingKeys.BackupScheduleCron, request.ScheduleCron, userId, ct);
-            await _settingsService.UpdateSettingAsync(SettingKeys.BackupStoragePath, request.StoragePath, userId, ct);
-            await _settingsService.UpdateSettingAsync(SettingKeys.BackupRetentionDays, request.RetentionDays.ToString(), userId, ct);
-            
+            await UpsertSettingAsync(SettingKeys.BackupEnabled, request.IsEnabled.ToString(), "Boolean", SettingKeys.CategoryBackup, "Backup Enabled", userId, ct);
+            await UpsertSettingAsync(SettingKeys.BackupScheduleCron, request.ScheduleCron, "String", SettingKeys.CategoryBackup, "Backup Schedule (Cron)", userId, ct);
+            await UpsertSettingAsync(SettingKeys.BackupStoragePath, request.StoragePath, "String", SettingKeys.CategoryBackup, "Backup Storage Path", userId, ct);
+            await UpsertSettingAsync(SettingKeys.BackupRetentionDays, request.RetentionDays.ToString(), "Integer", SettingKeys.CategoryBackup, "Backup Retention Days", userId, ct);
+
             if (request.BackupPgDumpPath != null)
             {
-                await _settingsService.UpdateSettingAsync(SettingKeys.BackupPgDumpPath, request.BackupPgDumpPath, userId, ct);
+                await UpsertSettingAsync(SettingKeys.BackupPgDumpPath, request.BackupPgDumpPath, "String", SettingKeys.CategoryBackup, "pg_dump Executable Path", userId, ct);
             }
 
             _logger.LogInformation("Backup settings updated by user {UserId}", userId);
@@ -335,6 +335,38 @@ public class BackupService : IBackupService
         {
             _logger.LogError(ex, "Error updating backup settings");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Update an existing setting or create it if it doesn't exist.
+    /// Handles the case where backup settings haven't been seeded yet.
+    /// </summary>
+    private async Task UpsertSettingAsync(string key, string value, string settingType, string category, string displayName, Guid userId, CancellationToken ct)
+    {
+        try
+        {
+            await _settingsService.UpdateSettingAsync(key, value, userId, ct);
+        }
+        catch (KeyNotFoundException)
+        {
+            _logger.LogInformation("Setting {Key} not found, creating it", key);
+            var setting = new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = key,
+                SettingValue = value,
+                SettingType = settingType,
+                Category = category,
+                DisplayName = displayName,
+                DefaultValue = value,
+                IsEditable = true,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Set<ApplicationSettings>().Add(setting);
+            await _context.SaveChangesAsync(ct);
         }
     }
 

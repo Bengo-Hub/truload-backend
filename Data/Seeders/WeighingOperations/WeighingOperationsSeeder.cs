@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
@@ -8,8 +7,13 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Backend.Data.Seeders.WeighingOperations;
 
 /// <summary>
-/// Seeds weighing operations base data: tyre types, axle groups, axle configurations, references, and fee schedules
-/// Loads data from JSON seed files for maintainability and reduced parsing overhead
+/// Seeds weighing operations base data from split JSON files:
+///   - core-axle-seed-data.json      → tyre types, axle groups, fee schedules
+///   - axle-configs-seed-data.json   → all axle configurations (standard + derived)
+///   - axle-refs-{N}-axle.json       → weight references split by axle count (1-7)
+///
+/// Fully idempotent — safe to run multiple times without dropping the DB.
+/// Upserts by natural key (Code, AxleCode, Position, etc.).
 /// </summary>
 public class WeighingOperationsSeeder
 {
@@ -24,102 +28,170 @@ public class WeighingOperationsSeeder
 
     public async Task SeedAsync()
     {
-        var seedDataFile = Path.Combine(_seedDataPath, "axle-seed-data.json");
-
-        if (!File.Exists(seedDataFile))
+        // 1. Core data: tyre types, axle groups, fee schedules
+        var coreFile = Path.Combine(_seedDataPath, "core-axle-seed-data.json");
+        if (File.Exists(coreFile))
         {
-            Console.WriteLine($"⚠ Seed data file not found: {seedDataFile}");
-            return;
+            var coreJson = await File.ReadAllTextAsync(coreFile);
+            using var coreDoc = JsonDocument.Parse(coreJson);
+            var root = coreDoc.RootElement;
+
+            if (root.TryGetProperty("tyreTypes", out var tt)) await SeedTyreTypesAsync(tt);
+            if (root.TryGetProperty("axleGroups", out var ag)) await SeedAxleGroupsAsync(ag);
+            if (root.TryGetProperty("axleFeeSchedules", out var fs)) await SeedAxleFeeSchedulesAsync(fs);
+        }
+        else
+        {
+            Console.WriteLine($"⚠ Core seed data not found: {coreFile}");
         }
 
-        var jsonContent = await File.ReadAllTextAsync(seedDataFile);
-        using var doc = JsonDocument.Parse(jsonContent);
-        var root = doc.RootElement;
-
-        // Pre-scan: build set of axle codes that have weight references
-        var codesWithReferences = new HashSet<string>();
-        foreach (var refEl in root.GetProperty("axleWeightReferences").EnumerateArray())
+        // 2. Axle configurations
+        var configsFile = Path.Combine(_seedDataPath, "axle-configs-seed-data.json");
+        if (File.Exists(configsFile))
         {
-            var code = refEl.GetProperty("axleCode").GetString() ?? "";
-            if (!string.IsNullOrEmpty(code))
-                codesWithReferences.Add(code);
+            var configsJson = await File.ReadAllTextAsync(configsFile);
+            using var configsDoc = JsonDocument.Parse(configsJson);
+            var configsArray = configsDoc.RootElement.GetProperty("axleConfigurations");
+
+            // Pre-scan refs to know which configs have references
+            var codesWithRefs = await PreScanReferenceCodes();
+            await SeedAxleConfigurationsAsync(configsArray, codesWithRefs);
+        }
+        else
+        {
+            Console.WriteLine($"⚠ Configs seed data not found: {configsFile}");
         }
 
-        // Load data from JSON in order
-        await SeedTyreTypesAsync(root.GetProperty("tyreTypes"));
-        await SeedAxleGroupsAsync(root.GetProperty("axleGroups"));
-        await SeedAxleConfigurationsAsync(root.GetProperty("axleConfigurations"), codesWithReferences);
-        await SeedAxleWeightReferencesAsync(root.GetProperty("axleWeightReferences"));
-        await SeedAxleFeeSchedulesAsync(root.GetProperty("axleFeeSchedules"));
+        // 3. Weight references from per-axle-count files
+        for (int n = 1; n <= 7; n++)
+        {
+            var refsFile = Path.Combine(_seedDataPath, $"axle-refs-{n}-axle.json");
+            if (File.Exists(refsFile))
+            {
+                var refsJson = await File.ReadAllTextAsync(refsFile);
+                using var refsDoc = JsonDocument.Parse(refsJson);
+                var refsArray = refsDoc.RootElement.GetProperty("axleWeightReferences");
+                await SeedAxleWeightReferencesAsync(refsArray, n);
+            }
+        }
 
-        // Post-seed cleanup: remove any existing configurations without weight references
+        // Also try the original combined file as fallback
+        var combinedRefsFile = Path.Combine(_seedDataPath, "axle-refs-seed-data.json");
+        if (File.Exists(combinedRefsFile))
+        {
+            var existingRefCount = await _context.AxleWeightReferences.CountAsync();
+            if (existingRefCount == 0)
+            {
+                Console.WriteLine("  Loading refs from combined fallback file...");
+                var refsJson = await File.ReadAllTextAsync(combinedRefsFile);
+                using var refsDoc = JsonDocument.Parse(refsJson);
+                var refsArray = refsDoc.RootElement.GetProperty("axleWeightReferences");
+                await SeedAxleWeightReferencesAsync(refsArray, 0);
+            }
+        }
+
+        // 4. Cleanup orphans (configs with no refs)
         await CleanupOrphanedConfigurationsAsync();
+    }
+
+    /// <summary>Pre-scan all ref files to build a set of axle codes that have weight references.</summary>
+    private async Task<HashSet<string>> PreScanReferenceCodes()
+    {
+        var codes = new HashSet<string>();
+
+        for (int n = 1; n <= 7; n++)
+        {
+            var refsFile = Path.Combine(_seedDataPath, $"axle-refs-{n}-axle.json");
+            if (File.Exists(refsFile))
+            {
+                var json = await File.ReadAllTextAsync(refsFile);
+                using var doc = JsonDocument.Parse(json);
+                foreach (var el in doc.RootElement.GetProperty("axleWeightReferences").EnumerateArray())
+                {
+                    var code = el.GetProperty("axleCode").GetString();
+                    if (!string.IsNullOrEmpty(code)) codes.Add(code);
+                }
+            }
+        }
+
+        // Also check the combined file
+        var combinedFile = Path.Combine(_seedDataPath, "axle-refs-seed-data.json");
+        if (File.Exists(combinedFile))
+        {
+            var json = await File.ReadAllTextAsync(combinedFile);
+            using var doc = JsonDocument.Parse(json);
+            foreach (var el in doc.RootElement.GetProperty("axleWeightReferences").EnumerateArray())
+            {
+                var code = el.GetProperty("axleCode").GetString();
+                if (!string.IsNullOrEmpty(code)) codes.Add(code);
+            }
+        }
+
+        return codes;
     }
 
     private async Task SeedTyreTypesAsync(JsonElement tyreTypesElement)
     {
         Console.WriteLine("=== Seeding Tyre Types ===");
-        
-        int seeded = 0;
-        foreach (var tyreElement in tyreTypesElement.EnumerateArray())
+        int seeded = 0, updated = 0;
+
+        foreach (var el in tyreTypesElement.EnumerateArray())
         {
-            var code = tyreElement.GetProperty("code").GetString() ?? "";
-            
-            var existing = await _context.TyreTypes
-                .FirstOrDefaultAsync(tt => tt.Code == code);
-            
+            var code = el.GetProperty("code").GetString() ?? "";
+            var existing = await _context.TyreTypes.FirstOrDefaultAsync(tt => tt.Code == code);
+
             if (existing == null)
             {
-                var tyreType = new TyreType
+                await _context.TyreTypes.AddAsync(new TyreType
                 {
                     Code = code,
-                    Name = tyreElement.GetProperty("name").GetString() ?? "",
-                    Description = tyreElement.GetProperty("description").GetString(),
-                    TypicalMaxWeightKg = tyreElement.GetProperty("typicalMaxWeightKg").GetInt32(),
+                    Name = el.GetProperty("name").GetString() ?? "",
+                    Description = el.GetProperty("description").GetString(),
+                    TypicalMaxWeightKg = el.GetProperty("typicalMaxWeightKg").GetInt32(),
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
-                };
-                
-                await _context.TyreTypes.AddAsync(tyreType);
+                });
                 seeded++;
+            }
+            else
+            {
+                // Update fields if changed
+                var name = el.GetProperty("name").GetString() ?? "";
+                if (existing.Name != name) { existing.Name = name; updated++; }
             }
         }
 
         await _context.SaveChangesAsync();
-        Console.WriteLine($"✓ Seeded {seeded} tyre types");
+        Console.WriteLine($"✓ Tyre types: {seeded} seeded, {updated} updated");
     }
 
     private async Task SeedAxleGroupsAsync(JsonElement axleGroupsElement)
     {
         Console.WriteLine("=== Seeding Axle Groups ===");
-        
         int seeded = 0;
-        foreach (var groupElement in axleGroupsElement.EnumerateArray())
+
+        foreach (var el in axleGroupsElement.EnumerateArray())
         {
-            var code = groupElement.GetProperty("code").GetString() ?? "";
-            
-            var existing = await _context.AxleGroups
-                .FirstOrDefaultAsync(ag => ag.Code == code);
-            
+            var code = el.GetProperty("code").GetString() ?? "";
+            var existing = await _context.AxleGroups.FirstOrDefaultAsync(ag => ag.Code == code);
+
             if (existing == null)
             {
-                var group = new AxleGroup
+                await _context.AxleGroups.AddAsync(new AxleGroup
                 {
                     Id = Guid.NewGuid(),
                     Code = code,
-                    Name = groupElement.GetProperty("name").GetString() ?? "",
-                    Description = groupElement.GetProperty("description").GetString(),
-                    TypicalWeightKg = groupElement.GetProperty("typicalWeightKg").GetInt32(),
-                    MinSpacingFeet = groupElement.TryGetProperty("minSpacingFeet", out var min) && min.ValueKind != JsonValueKind.Null 
+                    Name = el.GetProperty("name").GetString() ?? "",
+                    Description = el.GetProperty("description").GetString(),
+                    TypicalWeightKg = el.GetProperty("typicalWeightKg").GetInt32(),
+                    MinSpacingFeet = el.TryGetProperty("minSpacingFeet", out var min) && min.ValueKind != JsonValueKind.Null
                         ? (decimal?)min.GetDecimal() : null,
-                    MaxSpacingFeet = groupElement.TryGetProperty("maxSpacingFeet", out var max) && max.ValueKind != JsonValueKind.Null 
+                    MaxSpacingFeet = el.TryGetProperty("maxSpacingFeet", out var max) && max.ValueKind != JsonValueKind.Null
                         ? (decimal?)max.GetDecimal() : null,
-                    AxleCountInGroup = groupElement.GetProperty("axleCountInGroup").GetInt32(),
+                    AxleCountInGroup = el.GetProperty("axleCountInGroup").GetInt32(),
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
-                };
-                
-                await _context.AxleGroups.AddAsync(group);
+                });
                 seeded++;
             }
         }
@@ -128,204 +200,200 @@ public class WeighingOperationsSeeder
         Console.WriteLine($"✓ Seeded {seeded} axle groups");
     }
 
-    private async Task SeedAxleConfigurationsAsync(JsonElement configurationsElement, HashSet<string> codesWithReferences)
+    private async Task SeedAxleConfigurationsAsync(JsonElement configurationsElement, HashSet<string> codesWithRefs)
     {
-        Console.WriteLine("=== Seeding Axle Configurations (Standard) ===");
+        Console.WriteLine("=== Seeding Axle Configurations ===");
+        int seeded = 0, updated = 0, skipped = 0;
+        var processedCodes = new HashSet<string>();
 
-        int seeded = 0;
-        int skippedOrphans = 0;
-        var addedCodes = new HashSet<string>();
-        foreach (var configElement in configurationsElement.EnumerateArray())
+        foreach (var el in configurationsElement.EnumerateArray())
         {
-            var axleCode = configElement.GetProperty("axleCode").GetString() ?? "";
+            var axleCode = el.GetProperty("axleCode").GetString() ?? "";
+            if (string.IsNullOrEmpty(axleCode) || processedCodes.Contains(axleCode)) continue;
+            processedCodes.Add(axleCode);
 
-            if (addedCodes.Contains(axleCode))
-            {
-                Console.WriteLine($"  Skipping duplicate axle code: {axleCode}");
-                continue;
-            }
+            // Skip configs with no weight references
+            if (!codesWithRefs.Contains(axleCode)) { skipped++; continue; }
 
-            // Skip configurations that have no weight references in the seed data
-            if (!codesWithReferences.Contains(axleCode))
-            {
-                Console.WriteLine($"  ⚠ Skipping {axleCode} — no axle weight references defined");
-                skippedOrphans++;
-                continue;
-            }
+            var axleNumber = el.GetProperty("axleNumber").GetInt32();
+            var gvw = el.GetProperty("gvw").GetInt32();
+            var axleName = el.TryGetProperty("axleName", out var nameEl) ? nameEl.GetString() ?? axleCode : axleCode;
+
+            // Standard = simple codes (no pipes, no asterisk patterns with pipes)
+            // Derived = pipe notation (e.g., "3*S|DD||", "5*S|DD|D|D")
+            var isStandard = !axleCode.Contains('|');
 
             var existing = await _context.AxleConfigurations
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(ac => ac.AxleCode == axleCode);
 
             if (existing == null)
             {
-                var config = new AxleConfiguration
+                await _context.AxleConfigurations.AddAsync(new AxleConfiguration
                 {
                     Id = Guid.NewGuid(),
                     AxleCode = axleCode,
-                    AxleName = configElement.GetProperty("axleName").GetString() ?? axleCode,
-                    Description = $"Standard configuration: {configElement.GetProperty("axleNumber").GetInt32()} axles",
-                    AxleNumber = configElement.GetProperty("axleNumber").GetInt32(),
-                    GvwPermissibleKg = configElement.GetProperty("gvw").GetInt32(),
-                    IsStandard = true,
+                    AxleName = axleName,
+                    Description = isStandard
+                        ? $"Standard configuration: {axleNumber} axles"
+                        : $"Derived configuration: {axleNumber} axles",
+                    AxleNumber = axleNumber,
+                    GvwPermissibleKg = gvw,
+                    IsStandard = isStandard,
                     LegalFramework = "BOTH",
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
-                };
-
-                await _context.AxleConfigurations.AddAsync(config);
-                addedCodes.Add(axleCode);
+                });
                 seeded++;
             }
-        }
-
-        await _context.SaveChangesAsync();
-        Console.WriteLine($"✓ Seeded {seeded} axle configurations ({skippedOrphans} skipped — no weight references)");
-    }
-
-    private async Task SeedAxleWeightReferencesAsync(JsonElement referencesElement)
-    {
-        Console.WriteLine("=== Seeding Axle Weight References ===");
-        
-        // Load all axle groups and tyre types once
-        var axleGroups = await _context.AxleGroups.ToListAsync();
-        var tyreTypes = await _context.TyreTypes.ToListAsync();
-        var configurations = await _context.AxleConfigurations.ToListAsync();
-        
-        int seeded = 0;
-        foreach (var refElement in referencesElement.EnumerateArray())
-        {
-            var axleCodeStr = refElement.GetProperty("axleCode").GetString() ?? "";
-            var position = refElement.GetProperty("axlePosition").GetInt32();
-            
-            var existing = await _context.AxleWeightReferences
-                .FirstOrDefaultAsync(awr => 
-                    awr.AxleConfiguration!.AxleCode == axleCodeStr && 
-                    awr.AxlePosition == position);
-            
-            if (existing == null)
+            else
             {
-                var parentConfig = configurations.FirstOrDefault(ac => ac.AxleCode == axleCodeStr);
-                var axleGroup = axleGroups.FirstOrDefault(ag => 
-                    ag.Code == refElement.GetProperty("axleGroupCode").GetString());
-                
-                var tyreTypeCode = refElement.GetProperty("tyreTypeCode").ValueKind != JsonValueKind.Null 
-                    ? refElement.GetProperty("tyreTypeCode").GetString() : null;
-                var tyreType = string.IsNullOrEmpty(tyreTypeCode) ? null 
-                    : tyreTypes.FirstOrDefault(tt => tt.Code == tyreTypeCode);
-                
-                if (parentConfig != null && axleGroup != null)
+                // Update GVW and name if changed
+                if (existing.GvwPermissibleKg != gvw || existing.AxleName != axleName)
                 {
-                    var reference = new AxleWeightReference
-                    {
-                        Id = Guid.NewGuid(),
-                        AxleConfigurationId = parentConfig.Id,
-                        AxlePosition = position,
-                        AxleLegalWeightKg = refElement.GetProperty("legalWeightKg").GetInt32(),
-                        AxleGroupId = axleGroup.Id,
-                        AxleGrouping = refElement.GetProperty("axleGrouping").GetString() ?? "",
-                        TyreTypeId = tyreType?.Id,
-                        IsActive = true,
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    
-                    await _context.AxleWeightReferences.AddAsync(reference);
-                    seeded++;
+                    existing.GvwPermissibleKg = gvw;
+                    existing.AxleName = axleName;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    updated++;
                 }
             }
         }
 
         await _context.SaveChangesAsync();
-        Console.WriteLine($"✓ Seeded {seeded} axle weight references");
+        Console.WriteLine($"✓ Configs: {seeded} seeded, {updated} updated, {skipped} skipped (no refs)");
+    }
+
+    private async Task SeedAxleWeightReferencesAsync(JsonElement refsElement, int axleCount)
+    {
+        var label = axleCount > 0 ? $"{axleCount}-axle" : "combined";
+        Console.WriteLine($"=== Seeding Weight References ({label}) ===");
+
+        // Load lookups
+        var axleGroups = await _context.AxleGroups.ToListAsync();
+        var tyreTypes = await _context.TyreTypes.ToListAsync();
+        var configs = await _context.AxleConfigurations.IgnoreQueryFilters().ToListAsync();
+        var configMap = configs.ToDictionary(c => c.AxleCode, c => c.Id);
+
+        int seeded = 0, updated = 0, skipped = 0;
+
+        foreach (var el in refsElement.EnumerateArray())
+        {
+            var axleCode = el.GetProperty("axleCode").GetString() ?? "";
+            var position = el.GetProperty("axlePosition").GetInt32();
+
+            if (!configMap.TryGetValue(axleCode, out var configId)) { skipped++; continue; }
+
+            var groupCode = el.GetProperty("axleGroupCode").GetString() ?? "";
+            var axleGroup = axleGroups.FirstOrDefault(ag => ag.Code == groupCode);
+            if (axleGroup == null) { skipped++; continue; }
+
+            var tyreCode = el.TryGetProperty("tyreTypeCode", out var tc) && tc.ValueKind != JsonValueKind.Null
+                ? tc.GetString() : null;
+            var tyreType = string.IsNullOrEmpty(tyreCode) ? null : tyreTypes.FirstOrDefault(tt => tt.Code == tyreCode);
+
+            var legalWeight = el.GetProperty("legalWeightKg").GetInt32();
+            var grouping = el.GetProperty("axleGrouping").GetString() ?? "A";
+
+            var existing = await _context.AxleWeightReferences
+                .FirstOrDefaultAsync(r => r.AxleConfigurationId == configId && r.AxlePosition == position);
+
+            if (existing == null)
+            {
+                await _context.AxleWeightReferences.AddAsync(new AxleWeightReference
+                {
+                    Id = Guid.NewGuid(),
+                    AxleConfigurationId = configId,
+                    AxlePosition = position,
+                    AxleLegalWeightKg = legalWeight,
+                    AxleGroupId = axleGroup.Id,
+                    AxleGrouping = grouping,
+                    TyreTypeId = tyreType?.Id,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+                seeded++;
+            }
+            else
+            {
+                // Update if weight or group changed
+                if (existing.AxleLegalWeightKg != legalWeight || existing.AxleGroupId != axleGroup.Id)
+                {
+                    existing.AxleLegalWeightKg = legalWeight;
+                    existing.AxleGroupId = axleGroup.Id;
+                    existing.AxleGrouping = grouping;
+                    existing.TyreTypeId = tyreType?.Id;
+                    updated++;
+                }
+            }
+        }
+
+        await _context.SaveChangesAsync();
+        Console.WriteLine($"✓ Refs ({label}): {seeded} seeded, {updated} updated, {skipped} skipped");
     }
 
     private async Task SeedAxleFeeSchedulesAsync(JsonElement feeSchedulesElement)
     {
         Console.WriteLine("=== Seeding Axle Fee Schedules ===");
-        
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
-        
         int seeded = 0;
-        foreach (var feeElement in feeSchedulesElement.EnumerateArray())
+
+        foreach (var el in feeSchedulesElement.EnumerateArray())
         {
-            var legalFramework = feeElement.GetProperty("legalFramework").GetString() ?? "";
-            var feeType = feeElement.GetProperty("feeType").GetString() ?? "";
-            var overloadMin = feeElement.GetProperty("overloadMinKg").GetInt32();
-            var overloadMax = feeElement.TryGetProperty("overloadMaxKg", out var maxEl) && maxEl.ValueKind != JsonValueKind.Null 
+            var legalFramework = (el.GetProperty("legalFramework").GetString() ?? "").ToUpperInvariant() switch
+            {
+                "TRAFFICACT" => "TRAFFIC_ACT",
+                _ => el.GetProperty("legalFramework").GetString()?.ToUpperInvariant() ?? "EAC"
+            };
+            var feeType = (el.GetProperty("feeType").GetString() ?? "").ToUpperInvariant();
+            var overloadMin = el.GetProperty("overloadMinKg").GetInt32();
+            var overloadMax = el.TryGetProperty("overloadMaxKg", out var maxEl) && maxEl.ValueKind != JsonValueKind.Null
                 ? (int?)maxEl.GetInt32() : null;
-            
-            var todayDateTime = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+
             var existing = await _context.AxleFeeSchedules
-                .FirstOrDefaultAsync(afs => 
+                .FirstOrDefaultAsync(afs =>
                     afs.LegalFramework == legalFramework &&
                     afs.FeeType == feeType &&
-                    afs.OverloadMinKg == overloadMin &&
-                    afs.OverloadMaxKg == overloadMax &&
-                    afs.EffectiveFrom.Date == todayDateTime.Date);
-            
+                    afs.OverloadMinKg == overloadMin);
+
             if (existing == null)
             {
-                // Normalize legal framework to match database check constraints ('EAC', 'TRAFFIC_ACT')
-                var normalizedFramework = legalFramework.ToUpperInvariant() switch
-                {
-                    "TRAFFICACT" => "TRAFFIC_ACT",
-                    "TRAFFIC_ACT" => "TRAFFIC_ACT",
-                    "EAC" => "EAC",
-                    _ => legalFramework.ToUpperInvariant()
-                };
-
-                var schedule = new AxleFeeSchedule
+                var todayUtc = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+                await _context.AxleFeeSchedules.AddAsync(new AxleFeeSchedule
                 {
                     Id = Guid.NewGuid(),
-                    LegalFramework = normalizedFramework,
-                    FeeType = feeType.ToUpperInvariant(), // Also normalize feeType to 'GVW' or 'AXLE'
+                    LegalFramework = legalFramework,
+                    FeeType = feeType,
                     OverloadMinKg = overloadMin,
                     OverloadMaxKg = overloadMax,
-                    FeePerKgUsd = feeElement.GetProperty("feePerKgUsd").GetDecimal(),
-                    FlatFeeUsd = feeElement.GetProperty("flatFeeUsd").GetDecimal(),
-                    DemeritPoints = feeElement.GetProperty("demeritPoints").GetInt32(),
-                    PenaltyDescription = feeElement.GetProperty("penaltyDescription").GetString() ?? string.Empty,
-                    EffectiveFrom = todayDateTime,
+                    FeePerKgUsd = el.GetProperty("feePerKgUsd").GetDecimal(),
+                    FlatFeeUsd = el.GetProperty("flatFeeUsd").GetDecimal(),
+                    DemeritPoints = el.GetProperty("demeritPoints").GetInt32(),
+                    PenaltyDescription = el.GetProperty("penaltyDescription").GetString() ?? "",
+                    EffectiveFrom = todayUtc,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
-                };
-                
-                await _context.AxleFeeSchedules.AddAsync(schedule);
+                });
                 seeded++;
             }
         }
 
         await _context.SaveChangesAsync();
-        Console.WriteLine($"✓ Seeded {seeded} axle fee schedules");
+        Console.WriteLine($"✓ Seeded {seeded} fee schedules");
     }
 
-    /// <summary>
-    /// Removes any axle configurations that have no weight references in the database.
-    /// These are unusable for compliance calculations and should not exist.
-    /// </summary>
     private async Task CleanupOrphanedConfigurationsAsync()
     {
-        Console.WriteLine("=== Cleaning up orphaned axle configurations ===");
-
         var orphans = await _context.AxleConfigurations
-            .Where(ac => !_context.AxleWeightReferences.Any(awr => awr.AxleConfigurationId == ac.Id))
+            .IgnoreQueryFilters()
+            .Where(ac => !_context.AxleWeightReferences.Any(r => r.AxleConfigurationId == ac.Id))
             .ToListAsync();
 
         if (orphans.Count > 0)
         {
-            foreach (var orphan in orphans)
-            {
-                Console.WriteLine($"  Removing orphaned config: {orphan.AxleCode} ({orphan.AxleName})");
-            }
             _context.AxleConfigurations.RemoveRange(orphans);
             await _context.SaveChangesAsync();
-            Console.WriteLine($"✓ Removed {orphans.Count} orphaned axle configurations");
-        }
-        else
-        {
-            Console.WriteLine("✓ No orphaned axle configurations found");
+            Console.WriteLine($"✓ Removed {orphans.Count} orphaned configs (no weight refs)");
         }
     }
-
 }

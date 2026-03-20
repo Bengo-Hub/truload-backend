@@ -121,7 +121,7 @@ public class FinancialReportGenerator : BaseReportGenerator
             Rows = rows.ToList(),
             SummaryItems = summaryItems.ToArray()
         };
-        return PdfResult(doc.Generate(), "revenue_collection", from, to);
+        return PdfResult(doc, filters, "revenue_collection", from, to);
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -218,7 +218,7 @@ public class FinancialReportGenerator : BaseReportGenerator
                 ("Total Invoices", invoices.Count.ToString())
             ]
         };
-        return PdfResult(doc.Generate(), "invoice_aging", null, null);
+        return PdfResult(doc, filters, "invoice_aging", null, null);
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -304,7 +304,7 @@ public class FinancialReportGenerator : BaseReportGenerator
                 ("Unpaid", unpaid.ToString())
             ]
         };
-        return PdfResult(doc.Generate(), "payment_reconciliation", from, to);
+        return PdfResult(doc, filters, "payment_reconciliation", from, to);
     }
 
     // ══════════════════════════════════════════════════════════════════

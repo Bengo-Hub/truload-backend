@@ -118,6 +118,11 @@ public static class DatabaseSeeder
             var documentSequenceSeeder = new DocumentSequenceSeeder(context);
             await documentSequenceSeeder.SeedAsync();
 
+            // Seed case officers: complainant and case manager accounts per enforcement org
+            logger.LogInformation("Seeding case officers (complainants and case managers)...");
+            var caseOfficerSeeder = new CaseOfficerSeeder(userManager, roleManager, context);
+            await caseOfficerSeeder.SeedAsync();
+
             logger.LogInformation("=== Database seeding completed successfully ===");
         }
         catch (Exception ex)

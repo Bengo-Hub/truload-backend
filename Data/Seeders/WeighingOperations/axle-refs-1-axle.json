@@ -1,0 +1,60 @@
+{
+  "axleWeightReferences": [
+    {
+      "axleCode": "1*S",
+      "axlePosition": 1,
+      "legalWeightKg": 7500,
+      "axleGroupCode": "S1",
+      "axleGrouping": "A",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "1*W",
+      "axlePosition": 1,
+      "legalWeightKg": 7500,
+      "axleGroupCode": "S1",
+      "axleGrouping": "B",
+      "tyreTypeCode": null
+    },
+    {
+      "axleCode": "6C SDSSS",
+      "axlePosition": 6,
+      "legalWeightKg": 6000,
+      "axleGroupCode": "SSS",
+      "axleGrouping": "C",
+      "tyreTypeCode": null
+    },
+    {
+      "axleCode": "6C SDWWW",
+      "axlePosition": 6,
+      "legalWeightKg": 7500,
+      "axleGroupCode": "WWW",
+      "axleGrouping": "C",
+      "tyreTypeCode": null
+    },
+    {
+      "axleCode": "6C WDSSS",
+      "axlePosition": 6,
+      "legalWeightKg": 6000,
+      "axleGroupCode": "SSS",
+      "axleGrouping": "C",
+      "tyreTypeCode": null
+    },
+    {
+      "axleCode": "6C WDWWW",
+      "axlePosition": 6,
+      "legalWeightKg": 7500,
+      "axleGroupCode": "WWW",
+      "axleGrouping": "C",
+      "tyreTypeCode": null
+    },
+    {
+      "axleCode": "6I",
+      "axlePosition": 6,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "TAG12",
+      "axleGrouping": "C",
+      "tyreTypeCode": "D"
+    }
+  ]
+}

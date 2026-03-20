@@ -15,15 +15,18 @@ public class CaseRegisterService : ICaseRegisterService
     private readonly ICaseRegisterRepository _caseRegisterRepository;
     private readonly INotificationService _notificationService;
     private readonly TruLoadDbContext _context;
+    private readonly ILogger<CaseRegisterService> _logger;
 
     public CaseRegisterService(
         ICaseRegisterRepository caseRegisterRepository,
         INotificationService notificationService,
-        TruLoadDbContext context)
+        TruLoadDbContext context,
+        ILogger<CaseRegisterService> logger)
     {
         _caseRegisterRepository = caseRegisterRepository;
         _notificationService = notificationService;
         _context = context;
+        _logger = logger;
     }
 
     public async Task<CaseRegisterDto?> GetByIdAsync(Guid id)
@@ -329,9 +332,36 @@ public class CaseRegisterService : ICaseRegisterService
         var caseRegister = await _caseRegisterRepository.GetByIdAsync(id)
             ?? throw new InvalidOperationException($"Case {id} not found");
 
-        // Verify case manager exists
-        var caseManager = await _context.CaseManagers.FindAsync(caseManagerId)
-            ?? throw new InvalidOperationException($"Case manager {caseManagerId} not found");
+        // Verify case manager exists — lookup by entity ID first, then by UserId
+        // Frontend may send either the CaseManager entity ID or the User ID
+        var caseManager = await _context.CaseManagers.FindAsync(caseManagerId);
+        if (caseManager == null)
+        {
+            // Try looking up by UserId (frontend sends user ID from the escalation form)
+            caseManager = await _context.CaseManagers
+                .FirstOrDefaultAsync(cm => cm.UserId == caseManagerId && cm.RoleType == "case_manager" && cm.IsActive);
+            if (caseManager == null)
+            {
+                // Auto-create a CaseManager record for this user if they exist
+                var userExists = await _context.Users.AnyAsync(u => u.Id == caseManagerId);
+                if (!userExists)
+                    throw new InvalidOperationException($"Case manager {caseManagerId} not found");
+
+                caseManager = new CaseManager
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = caseManagerId,
+                    RoleType = "case_manager",
+                    Specialization = "General",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _context.CaseManagers.Add(caseManager);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Auto-created CaseManager record for user {UserId}", caseManagerId);
+            }
+        }
 
         // Get "Escalated" status
         var escalatedStatus = await _context.CaseStatuses
@@ -339,14 +369,14 @@ public class CaseRegisterService : ICaseRegisterService
             ?? throw new InvalidOperationException("ESCALATED status not found");
 
         caseRegister.EscalatedToCaseManager = true;
-        caseRegister.CaseManagerId = caseManagerId;
+        caseRegister.CaseManagerId = caseManager.Id;
         caseRegister.CaseStatusId = escalatedStatus.Id;
 
         var updated = await _caseRegisterRepository.UpdateAsync(caseRegister);
 
-        // NOTIFY: Case Escalated
+        // NOTIFY: Case Escalated (notify the user, not the CaseManager entity)
         await _notificationService.SendInternalNotificationAsync(
-            caseManagerId,
+            caseManager.UserId,
             "Case Escalated to You",
             $"Case {caseRegister.CaseNo} has been escalated to you by {userId}.",
             "warning",
@@ -431,6 +461,42 @@ public class CaseRegisterService : ICaseRegisterService
         var vehicleRegNumber = weighing?.VehicleRegNumber ?? string.Empty;
         var transporterName = weighing?.Transporter?.Name;
 
+        // Resolve names that aren't loaded via navigation properties
+        string? caseManagerName = null;
+        if (caseRegister.CaseManager != null)
+        {
+            var cmUser = _context.Users.AsNoTracking().FirstOrDefault(u => u.Id == caseRegister.CaseManager.UserId);
+            caseManagerName = cmUser?.FullName;
+        }
+
+        string? investigatingOfficerName = null;
+        if (caseRegister.InvestigatingOfficerId.HasValue)
+        {
+            var ioUser = _context.Users.AsNoTracking().FirstOrDefault(u => u.Id == caseRegister.InvestigatingOfficerId);
+            investigatingOfficerName = ioUser?.FullName;
+        }
+
+        string? courtName = null;
+        if (caseRegister.CourtId.HasValue)
+        {
+            var court = _context.Courts.AsNoTracking().FirstOrDefault(c => c.Id == caseRegister.CourtId);
+            courtName = court?.Name;
+        }
+
+        string? createdByName = null;
+        if (caseRegister.CreatedById.HasValue)
+        {
+            var createdByUser = _context.Users.AsNoTracking().FirstOrDefault(u => u.Id == caseRegister.CreatedById);
+            createdByName = createdByUser?.FullName;
+        }
+
+        string? closedByName = null;
+        if (caseRegister.ClosedById.HasValue)
+        {
+            var closedByUser = _context.Users.AsNoTracking().FirstOrDefault(u => u.Id == caseRegister.ClosedById);
+            closedByName = closedByUser?.FullName;
+        }
+
         return new CaseRegisterDto
         {
             Id = caseRegister.Id,
@@ -453,22 +519,27 @@ public class CaseRegisterService : ICaseRegisterService
             TransporterName = transporterName,
             ObNo = caseRegister.ObNo,
             CourtId = caseRegister.CourtId,
+            CourtName = courtName,
             DispositionTypeId = caseRegister.DispositionTypeId,
             DispositionType = caseRegister.DispositionType?.Name,
             CaseStatusId = caseRegister.CaseStatusId,
             CaseStatus = caseRegister.CaseStatus?.Name ?? string.Empty,
             EscalatedToCaseManager = caseRegister.EscalatedToCaseManager,
             CaseManagerId = caseRegister.CaseManagerId,
+            CaseManagerName = caseManagerName,
             ProsecutorId = caseRegister.ProsecutorId,
             ComplainantOfficerId = caseRegister.ComplainantOfficerId,
             ComplainantOfficerName = caseRegister.ComplainantOfficer?.FullName,
             DetentionStationId = caseRegister.DetentionStationId,
             DetentionStationName = caseRegister.DetentionStation?.Name,
             InvestigatingOfficerId = caseRegister.InvestigatingOfficerId,
+            InvestigatingOfficerName = investigatingOfficerName,
             CreatedById = caseRegister.CreatedById,
+            CreatedByName = createdByName,
             CreatedAt = caseRegister.CreatedAt,
             ClosedAt = caseRegister.ClosedAt,
             ClosedById = caseRegister.ClosedById,
+            ClosedByName = closedByName,
             ClosingReason = caseRegister.ClosingReason,
             UpdatedAt = caseRegister.UpdatedAt
         };

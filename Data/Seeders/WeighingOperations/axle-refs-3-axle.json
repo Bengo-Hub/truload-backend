@@ -1,0 +1,412 @@
+{
+  "axleWeightReferences": [
+    {
+      "axleCode": "3*",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "S1",
+      "axleGrouping": "A",
+      "tyreTypeCode": null
+    },
+    {
+      "axleCode": "3*",
+      "axlePosition": 2,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "TAG8",
+      "axleGrouping": "B",
+      "tyreTypeCode": null
+    },
+    {
+      "axleCode": "3*",
+      "axlePosition": 3,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "WWW",
+      "axleGrouping": "B",
+      "tyreTypeCode": null
+    },
+    {
+      "axleCode": "3*SDW",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "S1",
+      "axleGrouping": "A",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3*SDW",
+      "axlePosition": 2,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "TAG8",
+      "axleGrouping": "B",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*SDW",
+      "axlePosition": 3,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "WWW",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3*SSD",
+      "axlePosition": 1,
+      "legalWeightKg": 6000,
+      "axleGroupCode": "SA6",
+      "axleGrouping": "A",
+      "tyreTypeCode": null
+    },
+    {
+      "axleCode": "3*SSD",
+      "axlePosition": 2,
+      "legalWeightKg": 6000,
+      "axleGroupCode": "SA6",
+      "axleGrouping": "A",
+      "tyreTypeCode": null
+    },
+    {
+      "axleCode": "3*SSD",
+      "axlePosition": 3,
+      "legalWeightKg": 10000,
+      "axleGroupCode": "SA4",
+      "axleGrouping": "B",
+      "tyreTypeCode": null
+    },
+    {
+      "axleCode": "3*SSS",
+      "axlePosition": 1,
+      "legalWeightKg": 7500,
+      "axleGroupCode": "S1",
+      "axleGrouping": "A",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*SSS",
+      "axlePosition": 2,
+      "legalWeightKg": 7500,
+      "axleGroupCode": "S1",
+      "axleGrouping": "B",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*SSS",
+      "axlePosition": 3,
+      "legalWeightKg": 7500,
+      "axleGroupCode": "S1",
+      "axleGrouping": "B",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*WDD",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "S1",
+      "axleGrouping": "A",
+      "tyreTypeCode": null
+    },
+    {
+      "axleCode": "3*WDD",
+      "axlePosition": 2,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "TAG8",
+      "axleGrouping": "B",
+      "tyreTypeCode": null
+    },
+    {
+      "axleCode": "3*WDD",
+      "axlePosition": 3,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "WWW",
+      "axleGrouping": "B",
+      "tyreTypeCode": null
+    },
+    {
+      "axleCode": "3*WWW",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "S1",
+      "axleGrouping": "A",
+      "tyreTypeCode": "W"
+    },
+    {
+      "axleCode": "3*WWW",
+      "axlePosition": 2,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "S1",
+      "axleGrouping": "B",
+      "tyreTypeCode": "W"
+    },
+    {
+      "axleCode": "3*WWW",
+      "axlePosition": 3,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "S1",
+      "axleGrouping": "B",
+      "tyreTypeCode": "W"
+    },
+    {
+      "axleCode": "3A",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "S1",
+      "axleGrouping": "A",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3A",
+      "axlePosition": 2,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "TAG8",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3A",
+      "axlePosition": 3,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "TAG8",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3B",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "S1",
+      "axleGrouping": "A",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3B",
+      "axlePosition": 2,
+      "legalWeightKg": 10000,
+      "axleGroupCode": "SA4",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3B",
+      "axlePosition": 3,
+      "legalWeightKg": 10000,
+      "axleGroupCode": "SA4",
+      "axleGrouping": "C",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3*S|DD||",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "",
+      "axleGrouping": "A",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*S|DD||",
+      "axlePosition": 3,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3*S|DD||",
+      "axlePosition": 2,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3*S|DW||",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "",
+      "axleGrouping": "A",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*S|DW||",
+      "axlePosition": 3,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "W"
+    },
+    {
+      "axleCode": "3*S|DW||",
+      "axlePosition": 2,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3*S|SS||",
+      "axlePosition": 2,
+      "legalWeightKg": 6750,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*S|SS||",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "",
+      "axleGrouping": "A",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*S|SS||",
+      "axlePosition": 3,
+      "legalWeightKg": 6750,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*S|DS||",
+      "axlePosition": 2,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3*S|DS||",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "",
+      "axleGrouping": "A",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*S|DS||",
+      "axlePosition": 3,
+      "legalWeightKg": 6750,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*D|DS||",
+      "axlePosition": 3,
+      "legalWeightKg": 6750,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*D|DS||",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "",
+      "axleGrouping": "A",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3*D|DS||",
+      "axlePosition": 2,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3*S|WD||",
+      "axlePosition": 3,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3*S|WD||",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "",
+      "axleGrouping": "A",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*S|WD||",
+      "axlePosition": 2,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "W"
+    },
+    {
+      "axleCode": "3*S|SD||",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "",
+      "axleGrouping": "A",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*S|SD||",
+      "axlePosition": 2,
+      "legalWeightKg": 6750,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*S|SD||",
+      "axlePosition": 3,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3*S|D|W|",
+      "axlePosition": 2,
+      "legalWeightKg": 10000,
+      "axleGroupCode": "",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3*S|D|W|",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "",
+      "axleGrouping": "A",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*S|D|W|",
+      "axlePosition": 3,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "",
+      "axleGrouping": "C",
+      "tyreTypeCode": "W"
+    },
+    {
+      "axleCode": "3*S|D|D|",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "S1",
+      "axleGrouping": "A",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "3*S|D|D|",
+      "axlePosition": 2,
+      "legalWeightKg": 10000,
+      "axleGroupCode": "S1",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "3*S|D|D|",
+      "axlePosition": 3,
+      "legalWeightKg": 10000,
+      "axleGroupCode": "S1",
+      "axleGrouping": "C",
+      "tyreTypeCode": "D"
+    }
+  ]
+}

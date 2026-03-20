@@ -24,8 +24,9 @@ public class OrganizationRepository : IOrganizationRepository
     public async Task<Organization?> GetByCodeAsync(string code, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(code)) return null;
+        var trimmed = code.Trim();
         return await _context.Organizations
-            .FirstOrDefaultAsync(o => o.Code == code.Trim(), cancellationToken);
+            .FirstOrDefaultAsync(o => o.Code.ToLower() == trimmed.ToLower(), cancellationToken);
     }
 
     public async Task<List<Organization>> GetAllAsync(bool includeInactive = false, CancellationToken cancellationToken = default)

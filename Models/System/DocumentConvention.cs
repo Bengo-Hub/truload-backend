@@ -103,4 +103,6 @@ public static class DocumentTypes
     public const string CourtMinutes = "court_minutes";
     /// <summary>Reweigh cycle weight ticket (auto-generated when not provided).</summary>
     public const string ReweighTicket = "reweigh_ticket";
+    /// <summary>Transport permit document (2A, 3A, 3B, Overload, Special).</summary>
+    public const string Permit = "permit";
 }

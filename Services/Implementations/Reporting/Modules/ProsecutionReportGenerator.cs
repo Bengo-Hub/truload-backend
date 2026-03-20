@@ -131,7 +131,7 @@ public class ProsecutionReportGenerator : BaseReportGenerator
                 ("Avg Overload (kg)", FormatNumber(avgOverloadKg))
             ]
         };
-        return PdfResult(doc.Generate(), "prosecution_statistics", from, to);
+        return PdfResult(doc, filters, "prosecution_statistics", from, to);
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -194,7 +194,7 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             SummaryLabel = "Total Hearings",
             SummaryValue = hearings.Count.ToString()
         };
-        return PdfResult(doc.Generate(), "court_calendar", from, to);
+        return PdfResult(doc, filters, "court_calendar", from, to);
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -264,7 +264,7 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             SummaryLabel = "Total Charged",
             SummaryValue = $"{cases.Count} vehicles | {FormatKes(cases.Sum(c => c.TotalFeeKes))}"
         };
-        return PdfResult(doc.Generate(), "daily_charged", from, to);
+        return PdfResult(doc, filters, "daily_charged", from, to);
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -327,7 +327,7 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             SummaryLabel = "Total Fees",
             SummaryValue = $"{FormatKes(totalFees)} | {paidCount}/{data.Count} paid"
         };
-        return PdfResult(doc.Generate(), "prosecution_payment_list", from, to);
+        return PdfResult(doc, filters, "prosecution_payment_list", from, to);
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -392,7 +392,7 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             SummaryLabel = "Totals",
             SummaryValue = $"Due: {FormatNumber(totalDue)} | Paid: {FormatNumber(totalPaid)}"
         };
-        return PdfResult(doc.Generate(), "court_fines", from, to);
+        return PdfResult(doc, filters, "court_fines", from, to);
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -463,7 +463,7 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             SummaryLabel = "Total Habitual Offenders",
             SummaryValue = offenders.Count.ToString()
         };
-        return PdfResult(doc.Generate(), "habitual_offenders", from, to);
+        return PdfResult(doc, filters, "habitual_offenders", from, to);
     }
 
     // ══════════════════════════════════════════════════════════════════

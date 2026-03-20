@@ -574,9 +574,14 @@ public class WeighingService : IWeighingService
         {
             transaction.IsCompliant = false;
 
-            // Use operational tolerance for auto-release warning (200kg default from database)
+            // Use org-specific operational allowance if set, otherwise fall back to global setting
             var operationalTolerance = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_TOLERANCE");
             int operationalToleranceKg = operationalTolerance?.ToleranceKg ?? 200;
+            // Check org-specific override
+            var txOrganization = await _dbContext.Organizations.AsNoTracking()
+                .FirstOrDefaultAsync(o => o.Id == transaction.OrganizationId);
+            if (txOrganization?.OperationalAllowanceKg.HasValue == true)
+                operationalToleranceKg = txOrganization.OperationalAllowanceKg.Value;
 
             if (transaction.OverloadKg <= operationalToleranceKg && transaction.OverloadKg > 0 && !hasGroupViolation)
             {
@@ -1060,9 +1065,13 @@ public class WeighingService : IWeighingService
         if (transaction.WeighingAxles == null || !transaction.WeighingAxles.Any())
             return;
 
-        // Get operational tolerance from settings (default 200kg)
+        // Get operational tolerance — org-specific override takes priority
         var operationalTolerance = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_TOLERANCE");
         int operationalToleranceKg = operationalTolerance?.ToleranceKg ?? 200;
+        var txOrg = await _dbContext.Organizations.AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == transaction.OrganizationId);
+        if (txOrg?.OperationalAllowanceKg.HasValue == true)
+            operationalToleranceKg = txOrg.OperationalAllowanceKg.Value;
 
         // Use the AxleGroupAggregationService for proper tolerance calculation
         var groupResults = await _axleGroupAggregationService.AggregateAxleGroupsAsync(

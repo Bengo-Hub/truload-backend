@@ -92,8 +92,16 @@ public class WeighingTransaction : TenantAwareEntity
 
     /// <summary>
     /// Total fees calculated for this transaction (USD).
+    /// For EAC Act: this is the primary fee. For Traffic Act: this is the reference conversion.
     /// </summary>
     public decimal TotalFeeUsd { get; set; }
+
+    /// <summary>
+    /// Total fees calculated for this transaction (KES).
+    /// For Traffic Act: this is the primary fee (native KES, no conversion).
+    /// For EAC Act: this is the reference conversion from USD.
+    /// </summary>
+    public decimal TotalFeeKes { get; set; }
 
     /// <summary>
     /// Timestamp when reading was captured.

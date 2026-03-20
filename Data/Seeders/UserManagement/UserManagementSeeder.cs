@@ -32,15 +32,40 @@ public class UserManagementSeeder
     {
         var organizations = new[]
         {
+            // Platform owner organization — linked to platform admin (admin@codevertexitsolutions.com)
+            new Organization
+            {
+                Id = Guid.NewGuid(),
+                Code = "CODEVERTEX",
+                Name = "CodeVertex IT Solutions",
+                OrgType = "Private",
+                ContactEmail = "admin@codevertexitsolutions.com",
+                ContactPhone = "+254-700-000000",
+                Address = "Nairobi, Kenya",
+                PrimaryColor = "#5B1C4D",
+                SecondaryColor = "#ea8022",
+                LogoUrl = "/images/logos/codevertex-logo.png",
+                PlatformLogoUrl = "/images/logos/codevertex-logo.png",
+                LoginPageImageUrl = "/images/background-images/login-background-image.png",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
             new Organization
             {
                 Id = Guid.NewGuid(),
                 Code = "KENHA",
                 Name = "Kenya National Highways Authority",
                 OrgType = "Government",
+                TenantType = "AxleLoadEnforcement",
                 ContactEmail = "info@kenha.go.ke",
                 ContactPhone = "+254-20-1234567",
                 Address = "KENHA Headquarters, Blue Shield Towers, Hospital Road, Upper Hill, Nairobi",
+                PrimaryColor = "#1a5276",
+                SecondaryColor = "#d4ac0d",
+                LogoUrl = "/images/logos/kenha-logo.png",
+                PlatformLogoUrl = "/images/logos/kenha-logo.png",
+                LoginPageImageUrl = "/images/background-images/login-background-image.png",
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -51,9 +76,15 @@ public class UserManagementSeeder
                 Code = "KURA",
                 Name = "Kenya Urban Roads Authority",
                 OrgType = "Government",
+                TenantType = "AxleLoadEnforcement",
                 ContactEmail = "info@kura.go.ke",
                 ContactPhone = "+254-20-7654321",
                 Address = "KURA Headquarters, Mombasa Road, Nairobi",
+                PrimaryColor = "#0a9f3d",
+                SecondaryColor = "#1a1a2e",
+                LogoUrl = "/images/logos/kura-logo.png",
+                PlatformLogoUrl = "/images/logos/kuraweigh-logo.png",
+                LoginPageImageUrl = "/images/background-images/login-background-image.png",
                 IsDefault = true,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
@@ -65,22 +96,15 @@ public class UserManagementSeeder
                 Code = "KERRA",
                 Name = "Kenya Rural Roads Authority",
                 OrgType = "Government",
+                TenantType = "AxleLoadEnforcement",
                 ContactEmail = "info@kerra.go.ke",
                 ContactPhone = "+254-20-9876543",
                 Address = "KERRA Headquarters, Mombasa Road, Nairobi",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            },
-            new Organization
-            {
-                Id = Guid.NewGuid(),
-                Code = "MSS",
-                Name = "Masterspace Solutions Ltd",
-                OrgType = "Private",
-                ContactEmail = "info@masterspace.co.ke",
-                ContactPhone = "+254-722-123456",
-                Address = "Nairobi, Kenya",
+                PrimaryColor = "#2e7d32",
+                SecondaryColor = "#f57c00",
+                LogoUrl = "/images/logos/court-of-arms-kenya.png",
+                PlatformLogoUrl = "/images/logos/court-of-arms-kenya.png",
+                LoginPageImageUrl = "/images/background-images/login-background-image.png",
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -97,9 +121,15 @@ public class UserManagementSeeder
                 SsoTenantSlug = "truload",
                 PaymentGateway = "treasury",
                 CommercialWeighingFeeKes = 500m,
+                EnabledModulesJson = "[\"dashboard\",\"weighing\",\"reporting\",\"users\",\"setup_weighing_metadata\",\"setup_settings\",\"financial_invoices\",\"financial_receipts\"]",
                 ContactEmail = "admin@truload.codevertexitsolutions.com",
                 ContactPhone = "+254700000010",
                 Address = "Nairobi, Kenya",
+                PrimaryColor = "#0cbd4a",
+                SecondaryColor = "#067a2e",
+                LogoUrl = "/truload-logo.svg",
+                PlatformLogoUrl = "/truload-logo.svg",
+                LoginPageImageUrl = "/images/background-images/login-background-image.png",
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -111,11 +141,53 @@ public class UserManagementSeeder
             var existing = await _context.Organizations
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(o => o.Code == org.Code);
-            
+
             if (existing == null)
             {
                 await _context.Organizations.AddAsync(org);
                 Console.WriteLine($"✓ Seeded organization: {org.Name} ({org.Code})");
+            }
+            else
+            {
+                // Always sync brand settings from seed data (fill any null fields)
+                var updated = false;
+                if (string.IsNullOrEmpty(existing.PrimaryColor) && !string.IsNullOrEmpty(org.PrimaryColor))
+                {
+                    existing.PrimaryColor = org.PrimaryColor;
+                    updated = true;
+                }
+                if (string.IsNullOrEmpty(existing.SecondaryColor) && !string.IsNullOrEmpty(org.SecondaryColor))
+                {
+                    existing.SecondaryColor = org.SecondaryColor;
+                    updated = true;
+                }
+                if (string.IsNullOrEmpty(existing.LogoUrl) && !string.IsNullOrEmpty(org.LogoUrl))
+                {
+                    existing.LogoUrl = org.LogoUrl;
+                    updated = true;
+                }
+                if (string.IsNullOrEmpty(existing.PlatformLogoUrl) && !string.IsNullOrEmpty(org.PlatformLogoUrl))
+                {
+                    existing.PlatformLogoUrl = org.PlatformLogoUrl;
+                    updated = true;
+                }
+                if (string.IsNullOrEmpty(existing.LoginPageImageUrl) && !string.IsNullOrEmpty(org.LoginPageImageUrl))
+                {
+                    existing.LoginPageImageUrl = org.LoginPageImageUrl;
+                    updated = true;
+                }
+                // Sync EnabledModulesJson: always update from seed for commercial tenants
+                // to ensure new modules (e.g. financial_invoices, financial_receipts) are picked up
+                if (!string.IsNullOrEmpty(org.EnabledModulesJson) && org.EnabledModulesJson != existing.EnabledModulesJson)
+                {
+                    existing.EnabledModulesJson = org.EnabledModulesJson;
+                    updated = true;
+                }
+                if (updated)
+                {
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    Console.WriteLine($"✓ Updated brand settings for {org.Name} ({org.Code}): logo={existing.LogoUrl}, platform={existing.PlatformLogoUrl}, colors={existing.PrimaryColor}/{existing.SecondaryColor}");
+                }
             }
         }
 

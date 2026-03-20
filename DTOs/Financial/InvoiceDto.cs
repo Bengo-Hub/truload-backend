@@ -29,6 +29,14 @@ public class InvoiceDto
     public decimal? PesaflowAmountNet { get; set; }
     public decimal? PesaflowTotalAmount { get; set; }
     public string? PesaflowSyncStatus { get; set; }
+    /// <summary>Invoice type: "enforcement_fine" or "commercial_weighing_fee"</summary>
+    public string InvoiceType { get; set; } = "enforcement_fine";
+    /// <summary>Treasury payment intent ID (for commercial tenants using treasury gateway)</summary>
+    public string? TreasuryIntentId { get; set; }
+    /// <summary>Treasury intent status: pending, processing, succeeded, failed</summary>
+    public string? TreasuryIntentStatus { get; set; }
+    /// <summary>Payment URL for treasury checkout (redirects to books.codevertexitsolutions.com/pay)</summary>
+    public string? TreasuryPaymentUrl { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

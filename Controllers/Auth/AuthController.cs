@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -335,14 +336,10 @@ public class AuthController : ControllerBase
             var org = await _organizationRepository.GetByIdAsync(user.OrganizationId.Value);
             organizationCode = org?.Code;
             tenantType = org?.TenantType;
-            if (!string.IsNullOrWhiteSpace(org?.EnabledModulesJson))
-            {
-                try
-                {
-                    enabledModules = JsonSerializer.Deserialize<List<string>>(org.EnabledModulesJson);
-                }
-                catch { /* ignore malformed JSON */ }
-            }
+            // Use the same resolver as profile endpoint — falls back to DefaultCommercialWeighingModules
+            // for commercial tenants when EnabledModulesJson is empty
+            if (org != null)
+                enabledModules = ResolveEnabledModulesForOrg(org);
         }
 
         var response = new
@@ -491,6 +488,12 @@ public class AuthController : ControllerBase
         {
             await _jwtService.RevokeAllUserTokensAsync(userId);
         }
+
+        // Clear ASP.NET Identity authentication cookie
+        await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+
+        // Also delete the auth cookie explicitly in case a custom cookie name is used
+        Response.Cookies.Delete("TruLoad.Auth");
 
         _logger.LogInformation("User logged out");
         return Ok(new { message = "Logged out successfully" });
@@ -862,11 +865,18 @@ public class AuthController : ControllerBase
             return NotFound(new { message = "No TruLoad organization mapped to this SSO tenant" });
         }
 
-        // 4. JIT-provision user (find by email within org, create if missing)
+        // 4. Find or JIT-provision user
         var user = await _userManager.FindByEmailAsync(email);
-        if (user == null || user.OrganizationId != org.Id)
+        if (user != null && user.OrganizationId != org.Id)
         {
-            // Create new user — no password (SSO-only; local login will be blocked)
+            // User exists but belongs to a different organization — block cross-org login
+            _logger.LogWarning("SSO cross-org login blocked: {Email} belongs to org {UserOrg} but SSO resolved to org {SsoOrg}",
+                email, user.OrganizationId, org.Id);
+            return StatusCode(403, new { message = "You are not a member of this organisation. Please contact the organisation administrator to join first.", code = "org_mismatch" });
+        }
+        if (user == null)
+        {
+            // JIT-provision new user — no password (SSO-only; local login will be blocked)
             user = new ApplicationUser
             {
                 UserName = email,

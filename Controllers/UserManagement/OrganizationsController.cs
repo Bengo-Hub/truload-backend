@@ -52,7 +52,15 @@ public class OrganizationsController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var orgs = await _organizationRepository.GetAllAsync(includeInactive, cancellationToken);
-        return Ok(orgs.Select(MapToDto));
+        var orgList = orgs.ToList();
+
+        // Tenant users should not see platform-owner organization (CODEVERTEX)
+        if (!User.IsInRole("Superuser"))
+        {
+            orgList = orgList.Where(o => o.Code != "CODEVERTEX").ToList();
+        }
+
+        return Ok(orgList.Select(MapToDto));
     }
 
     [HttpGet("code/{code}")]

@@ -69,6 +69,15 @@ public class Organization
     /// </summary>
     public string? SsoTenantSlug { get; set; }
 
+    // ── Operational Allowance ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Org-specific operational tolerance in kg. Overrides the global WeighingOperationalToleranceKg setting.
+    /// Used by enforcement orgs to set a custom auto-release threshold.
+    /// Null = use global default (typically 200 kg from application settings).
+    /// </summary>
+    public int? OperationalAllowanceKg { get; set; }
+
     // ── Audit ───────────────────────────────────────────────────────────────────
 
     public bool IsActive { get; set; } = true;

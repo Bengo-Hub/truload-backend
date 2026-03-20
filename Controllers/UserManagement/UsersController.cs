@@ -7,6 +7,7 @@ using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.User;
 using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.DTOs.Weighing;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.Identity;
 
 namespace TruLoad.Controllers;
@@ -19,17 +20,20 @@ public class UsersController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly TruLoadDbContext _context;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<UsersController> _logger;
 
     public UsersController(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
         TruLoadDbContext context,
+        ITenantContext tenantContext,
         ILogger<UsersController> logger)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _context = context;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -55,6 +59,11 @@ public class UsersController : ControllerBase
         var roles = await _userManager.GetRolesAsync(user);
         if (!User.IsInRole("Superuser"))
         {
+            // Tenant isolation: non-superusers can only view users in their own org
+            var tenantOrgId = _tenantContext.OrganizationId;
+            if (tenantOrgId != Guid.Empty && user.OrganizationId != tenantOrgId)
+                return NotFound(new { message = "User not found" });
+
             var systemRoleIds = await _roleManager.Roles.Where(r => r.IsSystemRole).Select(r => r.Id).ToListAsync();
             var userRoleIds = await _context.Set<IdentityUserRole<Guid>>()
                 .Where(ur => ur.UserId == user.Id)
@@ -210,6 +219,20 @@ public class UsersController : ControllerBase
             return NotFound(new { message = "User not found" });
         }
 
+        // Non-superusers should not see users with system roles
+        if (!User.IsInRole("Superuser"))
+        {
+            var userRoles = await _userManager.GetRolesAsync(user);
+            var systemRoleNames = await _roleManager.Roles
+                .Where(r => r.IsSystemRole)
+                .Select(r => r.Name!)
+                .ToListAsync();
+            if (userRoles.Any(r => systemRoleNames.Contains(r)))
+            {
+                return NotFound(new { message = "User not found" });
+            }
+        }
+
         var roles = await _userManager.GetRolesAsync(user);
         return Ok(await MapToDto(user, roles));
     }
@@ -252,7 +275,15 @@ public class UsersController : ControllerBase
                 .Distinct()
                 .ToListAsync();
             query = query.Where(u => !userIdsWithSystemRole.Contains(u.Id));
+
+            // TENANT ISOLATION: Non-superusers can only see users in their own organization
+            var tenantOrgId = _tenantContext.OrganizationId;
+            if (tenantOrgId != Guid.Empty)
+            {
+                query = query.Where(u => u.OrganizationId == tenantOrgId);
+            }
         }
+        // Platform users (superusers) see all users across all orgs — no tenant filter applied
 
         // Text search across name, email, phone
         if (!string.IsNullOrWhiteSpace(search))

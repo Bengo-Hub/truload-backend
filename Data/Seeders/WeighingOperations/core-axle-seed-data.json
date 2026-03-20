@@ -1,0 +1,216 @@
+ {
+    "tyreTypes": [
+    {
+      "code": "S",
+      "name": "Single Tyre",
+      "description": "Single tyre per axle end",
+      "typicalMaxWeightKg": 7500
+    },
+    {
+      "code": "D",
+      "name": "Dual Tyres",
+      "description": "Dual/twin tyres per axle end",
+      "typicalMaxWeightKg": 10000
+    },
+    {
+      "code": "W",
+      "name": "Wide Single",
+      "description": "Wide single super tyre",
+      "typicalMaxWeightKg": 8000
+    }
+  ],
+    "axleGroups": [
+    {
+      "code": "S1",
+      "name": "Single Axle S1",
+      "description": "Single axle standard configuration",
+      "typicalWeightKg": 8000,
+      "minSpacingFeet": null,
+      "maxSpacingFeet": null,
+      "axleCountInGroup": 1
+    },
+    {
+      "code": "SA4",
+      "name": "Single Axle SA4",
+      "description": "Single axle heavy duty configuration",
+      "typicalWeightKg": 10000,
+      "minSpacingFeet": null,
+      "maxSpacingFeet": null,
+      "axleCountInGroup": 1
+    },
+    {
+      "code": "SA6",
+      "name": "Single Axle SA6",
+      "description": "Single axle light configuration",
+      "typicalWeightKg": 6000,
+      "minSpacingFeet": null,
+      "maxSpacingFeet": null,
+      "axleCountInGroup": 1
+    },
+    {
+      "code": "TAG8",
+      "name": "Tandem Axle Group TAG8",
+      "description": "Twin tandem axle group standard",
+      "typicalWeightKg": 9000,
+      "minSpacingFeet": 4.0,
+      "maxSpacingFeet": 6.0,
+      "axleCountInGroup": 2
+    },
+    {
+      "code": "TAG8B",
+      "name": "Tandem Axle Group TAG8B",
+      "description": "Twin tandem axle group variant",
+      "typicalWeightKg": 7000,
+      "minSpacingFeet": 4.0,
+      "maxSpacingFeet": 6.0,
+      "axleCountInGroup": 2
+    },
+    {
+      "code": "TAG12",
+      "name": "Tandem Axle Group TAG12",
+      "description": "Twin tandem axle group 12-wheeler",
+      "typicalWeightKg": 8000,
+      "minSpacingFeet": 4.0,
+      "maxSpacingFeet": 6.0,
+      "axleCountInGroup": 2
+    },
+    {
+      "code": "QAG16",
+      "name": "Quad Axle Group QAG16",
+      "description": "Quad axle group configuration",
+      "typicalWeightKg": 8000,
+      "minSpacingFeet": 3.5,
+      "maxSpacingFeet": 5.5,
+      "axleCountInGroup": 4
+    },
+    {
+      "code": "WWW",
+      "name": "Wide Wheel Group",
+      "description": "Wide wheel single tire group",
+      "typicalWeightKg": 7500,
+      "minSpacingFeet": null,
+      "maxSpacingFeet": null,
+      "axleCountInGroup": 1
+    },
+    {
+      "code": "SSS",
+      "name": "Single Super Single",
+      "description": "Single super single tire configuration",
+      "typicalWeightKg": 6000,
+      "minSpacingFeet": null,
+      "maxSpacingFeet": null,
+      "axleCountInGroup": 1
+    },
+    {
+      "code": "S4",
+      "name": "Single Axle S4",
+      "description": "Single axle variant",
+      "typicalWeightKg": 6000,
+      "minSpacingFeet": null,
+      "maxSpacingFeet": null,
+      "axleCountInGroup": 1
+    }
+  ],
+   "axleFeeSchedules": [
+    {
+      "legalFramework": "EAC",
+      "feeType": "GVW",
+      "overloadMinKg": 1,
+      "overloadMaxKg": 1000,
+      "feePerKgUsd": 0.5,
+      "flatFeeUsd": 0.0,
+      "demeritPoints": 5,
+      "penaltyDescription": "EAC GVW Overload 1-1000 kg - USD 0.50/kg"
+    },
+    {
+      "legalFramework": "EAC",
+      "feeType": "GVW",
+      "overloadMinKg": 1001,
+      "overloadMaxKg": 2000,
+      "feePerKgUsd": 0.75,
+      "flatFeeUsd": 0.0,
+      "demeritPoints": 10,
+      "penaltyDescription": "EAC GVW Overload 1001-2000 kg - USD 0.75/kg"
+    },
+    {
+      "legalFramework": "EAC",
+      "feeType": "GVW",
+      "overloadMinKg": 2001,
+      "overloadMaxKg": null,
+      "feePerKgUsd": 1.0,
+      "flatFeeUsd": 0.0,
+      "demeritPoints": 15,
+      "penaltyDescription": "EAC GVW Overload >2000 kg - USD 1.00/kg"
+    },
+    {
+      "legalFramework": "EAC",
+      "feeType": "AXLE",
+      "overloadMinKg": 1,
+      "overloadMaxKg": 500,
+      "feePerKgUsd": 0.25,
+      "flatFeeUsd": 0.0,
+      "demeritPoints": 3,
+      "penaltyDescription": "EAC Axle Overload 1-500 kg - USD 0.25/kg"
+    },
+    {
+      "legalFramework": "EAC",
+      "feeType": "AXLE",
+      "overloadMinKg": 501,
+      "overloadMaxKg": null,
+      "feePerKgUsd": 0.5,
+      "flatFeeUsd": 0.0,
+      "demeritPoints": 8,
+      "penaltyDescription": "EAC Axle Overload >500 kg - USD 0.50/kg"
+    },
+    {
+      "legalFramework": "TRAFFIC_ACT",
+      "feeType": "GVW",
+      "overloadMinKg": 1,
+      "overloadMaxKg": 2000,
+      "feePerKgUsd": 3.846,
+      "flatFeeUsd": 0.0,
+      "demeritPoints": 10,
+      "penaltyDescription": "Kenya Traffic Act GVW 1-2000kg - KSh 500/100kg (KSh 5/kg)"
+    },
+    {
+      "legalFramework": "TRAFFIC_ACT",
+      "feeType": "GVW",
+      "overloadMinKg": 2001,
+      "overloadMaxKg": 5000,
+      "feePerKgUsd": 7.692,
+      "flatFeeUsd": 0.0,
+      "demeritPoints": 15,
+      "penaltyDescription": "Kenya Traffic Act GVW 2001-5000kg - KSh 1,000/100kg (KSh 10/kg)"
+    },
+    {
+      "legalFramework": "TRAFFIC_ACT",
+      "feeType": "GVW",
+      "overloadMinKg": 5001,
+      "overloadMaxKg": null,
+      "feePerKgUsd": 11.538,
+      "flatFeeUsd": 0.0,
+      "demeritPoints": 20,
+      "penaltyDescription": "Kenya Traffic Act GVW >5000kg - KSh 1,500/100kg (KSh 15/kg)"
+    },
+    {
+      "legalFramework": "TRAFFIC_ACT",
+      "feeType": "AXLE",
+      "overloadMinKg": 1,
+      "overloadMaxKg": 1000,
+      "feePerKgUsd": 1.923,
+      "flatFeeUsd": 0.0,
+      "demeritPoints": 5,
+      "penaltyDescription": "Kenya Traffic Act Axle 1-1000kg - KSh 250/100kg (KSh 2.50/kg)"
+    },
+    {
+      "legalFramework": "TRAFFIC_ACT",
+      "feeType": "AXLE",
+      "overloadMinKg": 1001,
+      "overloadMaxKg": null,
+      "feePerKgUsd": 3.846,
+      "flatFeeUsd": 0.0,
+      "demeritPoints": 10,
+      "penaltyDescription": "Kenya Traffic Act Axle >1000kg - KSh 500/100kg (KSh 5/kg)"
+    }
+  ]
+}

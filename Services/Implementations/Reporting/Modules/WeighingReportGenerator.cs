@@ -161,7 +161,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             ]
         };
 
-        return PdfResult(doc.Generate(), "weighing_daily_summary", from, to);
+        return PdfResult(doc, filters, "weighing_daily_summary", from, to);
     }
 
     // =====================================================================
@@ -261,7 +261,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             TotalRecords = transactions.Count
         };
 
-        return PdfResult(doc.Generate(), "weighbridge_register", from, to);
+        return PdfResult(doc, filters, "weighbridge_register", from, to);
     }
 
     // =====================================================================
@@ -347,7 +347,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             ]
         };
 
-        return PdfResult(doc.Generate(), "compliance_trend", from, to);
+        return PdfResult(doc, filters, "compliance_trend", from, to);
     }
 
     // =====================================================================
@@ -449,7 +449,7 @@ public class WeighingReportGenerator : BaseReportGenerator
                 ]
         };
 
-        return PdfResult(doc.Generate(), "axle_overload_analysis", from, to);
+        return PdfResult(doc, filters, "axle_overload_analysis", from, to);
     }
 
     // =====================================================================
@@ -543,7 +543,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             ]
         };
 
-        return PdfResult(doc.Generate(), "station_performance", from, to);
+        return PdfResult(doc, filters, "station_performance", from, to);
     }
 
     // =====================================================================
@@ -630,7 +630,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             ]
         };
 
-        return PdfResult(doc.Generate(), "transporter_statement", from, to);
+        return PdfResult(doc, filters, "transporter_statement", from, to);
     }
 
     // =====================================================================
@@ -736,7 +736,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             ]
         };
 
-        return PdfResult(doc.Generate(), "overloaded_vehicles", from, to);
+        return PdfResult(doc, filters, "overloaded_vehicles", from, to);
     }
 
     // =====================================================================
@@ -840,7 +840,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             ]
         };
 
-        return PdfResult(doc.Generate(), "reweigh_statement", from, to);
+        return PdfResult(doc, filters, "reweigh_statement", from, to);
     }
 
     // =====================================================================
@@ -940,7 +940,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             ]
         };
 
-        return PdfResult(doc.Generate(), "special_release_register", from, to);
+        return PdfResult(doc, filters, "special_release_register", from, to);
     }
 
     // =====================================================================
@@ -1032,7 +1032,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             ]
         };
 
-        return PdfResult(doc.Generate(), "scale_test_log", from, to);
+        return PdfResult(doc, filters, "scale_test_log", from, to);
     }
 
     // =====================================================================

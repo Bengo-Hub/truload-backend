@@ -3,6 +3,7 @@ using System.Text;
 using ClosedXML.Excel;
 using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.DTOs.Reporting;
+using TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments.Reports;
 using TruLoad.Backend.Services.Interfaces.Reporting;
 
 namespace TruLoad.Backend.Services.Implementations.Reporting;
@@ -73,6 +74,16 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
             ContentType = "application/pdf",
             FileName = $"{reportName}{suffix}.pdf"
         };
+    }
+
+    /// <summary>
+    /// Creates a ReportResult for PDF output, applying tenant org context from filters before generating.
+    /// </summary>
+    protected static ReportResult PdfResult(
+        BaseReportDocument doc, ReportFilterParams filters, string reportName, DateTime? dateFrom, DateTime? dateTo)
+    {
+        ApplyOrgContext(doc, filters);
+        return PdfResult(doc.Generate(), reportName, dateFrom, dateTo);
     }
 
     /// <summary>
@@ -206,4 +217,19 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
             Module = Module,
             SupportedFormats = formats ?? ["pdf", "csv", "xlsx"]
         };
+
+    /// <summary>
+    /// Applies tenant org context (name, logo, enforcement flag) from filters to a report document.
+    /// Call this after creating the document to set branding properties.
+    /// </summary>
+    protected static void ApplyOrgContext(BaseReportDocument doc, ReportFilterParams filters)
+    {
+        doc.OrganizationName = filters.OrganizationName;
+        doc.IsEnforcement = filters.IsEnforcement;
+        if (!string.IsNullOrEmpty(filters.OrgLogoFile))
+            doc.OrgLogoFile = filters.OrgLogoFile;
+        // Commercial tenants don't show coat of arms as secondary logo
+        if (!filters.IsEnforcement)
+            doc.SecondaryLogoFile = null;
+    }
 }

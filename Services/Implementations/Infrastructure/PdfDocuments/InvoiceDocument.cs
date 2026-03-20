@@ -15,12 +15,16 @@ public class InvoiceDocument : BaseDocument
     private readonly Invoice _invoice;
     private readonly string? _organizationName;
     private readonly string? _organizationAddress;
+    private readonly string _orgLogoFile;
+    private readonly bool _showSecondaryLogo;
 
-    public InvoiceDocument(Invoice invoice, string? organizationName = null, string? organizationAddress = null)
+    public InvoiceDocument(Invoice invoice, string? organizationName = null, string? organizationAddress = null, string? orgLogoFile = null, bool showSecondaryLogo = true)
     {
         _invoice = invoice;
         _organizationName = organizationName ?? "Kenya Roads Authority (KURA)";
         _organizationAddress = organizationAddress ?? "P.O. Box 00100-1234, Nairobi, Kenya";
+        _orgLogoFile = ResolveOrgLogo(orgLogoFile);
+        _showSecondaryLogo = showSecondaryLogo;
     }
 
     public override byte[] Generate()
@@ -43,8 +47,8 @@ public class InvoiceDocument : BaseDocument
 
     private void ComposeHeader(IContainer container)
     {
-        var primaryLogo = LoadLogo(BrandingConstants.Logos.KuraLogo);
-        var secondaryLogo = LoadLogo(BrandingConstants.Logos.EcitizenLogo);
+        var primaryLogo = LoadLogo(_orgLogoFile);
+        var secondaryLogo = _showSecondaryLogo ? LoadLogo(BrandingConstants.Logos.EcitizenLogo) : null;
 
         container.Column(col =>
         {

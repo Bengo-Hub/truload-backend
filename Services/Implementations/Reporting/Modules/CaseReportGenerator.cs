@@ -121,7 +121,7 @@ public class CaseReportGenerator : BaseReportGenerator
             Rows = rows.ToList(),
             TotalCases = cases.Count
         };
-        return PdfResult(doc.Generate(), "case_register", from, to);
+        return PdfResult(doc, filters, "case_register", from, to);
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -206,7 +206,7 @@ public class CaseReportGenerator : BaseReportGenerator
                 ("Max Cases (Single Vehicle)", vehicleCases.FirstOrDefault()?.CaseCount.ToString() ?? "0")
             ]
         };
-        return PdfResult(doc.Generate(), "repeat_offenders", from, to);
+        return PdfResult(doc, filters, "repeat_offenders", from, to);
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -268,7 +268,7 @@ public class CaseReportGenerator : BaseReportGenerator
                 ("Total Closed", statusGroups.Sum(s => s.ClosedCount).ToString())
             ]
         };
-        return PdfResult(doc.Generate(), "case_status_summary", from, to);
+        return PdfResult(doc, filters, "case_status_summary", from, to);
     }
 
     // ══════════════════════════════════════════════════════════════════

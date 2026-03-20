@@ -173,12 +173,26 @@ public static class PermissionSeeder
     };
 
     /// <summary>
-    /// Permission codes that are system-sensitive; only superusers can view/assign them.
+    /// Permission codes that are system-sensitive; only superusers/platform users can view/assign them.
+    /// Tenant users (even tenant admins) cannot see or manage these permissions.
+    /// Includes: destructive operations, rate limiting, cache, integrations, module access, backup.
     /// </summary>
     private static readonly HashSet<string> SystemSensitiveCodes = new(StringComparer.OrdinalIgnoreCase)
     {
+        // User management - destructive
         "user.delete", "user.update", "user.assign_roles", "user.manage_permissions",
-        "system.admin", "system.manage_roles", "system.manage_organizations", "system.security_policy"
+        // System administration
+        "system.admin", "system.manage_roles", "system.manage_organizations", "system.security_policy",
+        // Backup & restore - system critical
+        "system.backup_restore",
+        // Integration management - system critical
+        "system.integration_management",
+        // Cache management - system critical
+        "system.cache_management",
+        // Audit logs - platform-level visibility
+        "system.audit_logs",
+        // Station management - destructive operations
+        "system.manage_stations", "system.manage_departments"
     };
 
     /// <summary>
