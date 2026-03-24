@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Models.Infrastructure;
 using TruLoad.Backend.Repositories.Infrastructure;
 
 namespace TruLoad.Backend.Controllers.WeighingOperations;
@@ -105,17 +106,67 @@ public class RoadsController : ControllerBase
     [ProducesResponseType(typeof(Roads), 201)]
     [ProducesResponseType(400)]
     [ProducesResponseType(409)]
-    public async Task<IActionResult> Create([FromBody] Roads road)
+    public async Task<IActionResult> Create([FromBody] CreateRoadRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var existing = await _repository.GetByCodeAsync(road.Code);
+        if (string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.Name))
+            return BadRequest(new { Message = "Code and Name are required" });
+
+        var existing = await _repository.GetByCodeAsync(request.Code);
         if (existing != null)
-            return Conflict(new { Message = $"Road with code {road.Code} already exists" });
+            return Conflict(new { Message = $"Road with code {request.Code} already exists" });
+
+        var road = new Roads
+        {
+            Code = request.Code,
+            Name = request.Name,
+            RoadClass = request.RoadClass ?? "C",
+            TotalLengthKm = request.TotalLengthKm,
+        };
+
+        // Create junction records for county and subcounty links
+        if (request.RoadCounties?.Count > 0)
+        {
+            foreach (var rc in request.RoadCounties)
+            {
+                road.RoadCounties.Add(new RoadCounty { CountyId = Guid.Parse(rc.CountyId) });
+            }
+        }
+        if (request.RoadDistricts?.Count > 0)
+        {
+            foreach (var rs in request.RoadDistricts)
+            {
+                road.RoadSubcounties.Add(new Models.Infrastructure.RoadSubcounty { SubcountyId = Guid.Parse(rs.DistrictId) });
+            }
+        }
 
         var created = await _repository.CreateAsync(road);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+    }
+
+    /// <summary>
+    /// DTO for creating a road with county/subcounty links.
+    /// </summary>
+    public class CreateRoadRequest
+    {
+        public string Code { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string? RoadClass { get; set; }
+        public decimal? TotalLengthKm { get; set; }
+        public List<RoadCountyLink>? RoadCounties { get; set; }
+        public List<RoadDistrictLink>? RoadDistricts { get; set; }
+    }
+
+    public class RoadCountyLink
+    {
+        public string CountyId { get; set; } = string.Empty;
+    }
+
+    public class RoadDistrictLink
+    {
+        public string DistrictId { get; set; } = string.Empty;
     }
 
     [HttpPut("{id}")]

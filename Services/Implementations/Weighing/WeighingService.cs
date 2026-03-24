@@ -1110,17 +1110,21 @@ public class WeighingService : IWeighingService
         if (transaction.WeighingAxles == null || !transaction.WeighingAxles.Any())
             return;
 
-        decimal totalFeeUsd = 0m;
+        // Determine charging currency from the act
+        string chargingCurrency = transaction.Act?.ChargingCurrency ?? "KES";
+        bool useKes = chargingCurrency.Equals("KES", StringComparison.OrdinalIgnoreCase);
 
-        // Calculate GVW fee if overloaded (still uses the standard fee schedule)
+        decimal totalFee = 0m;
+
+        // Calculate GVW fee if overloaded
         if (transaction.OverloadKg > 0)
         {
             var gvwFeeResult = await _feeScheduleRepository.CalculateFeeAsync(
-                legalFramework, "GVW", transaction.OverloadKg);
+                legalFramework, "GVW", transaction.OverloadKg, chargingCurrency);
 
             if (gvwFeeResult.HasValue)
             {
-                totalFeeUsd += gvwFeeResult.Value.FeeAmountUsd;
+                totalFee += gvwFeeResult.Value.FeeAmountUsd;
             }
         }
 
@@ -1155,9 +1159,9 @@ public class WeighingService : IWeighingService
                             axle.AxleGrouping);
                     }
 
-                    // Use per-axle-type fee calculation
+                    // Use per-axle-type fee calculation with act-aware currency
                     var axleFeeResult = await _feeScheduleRepository.CalculateFeeAsync(
-                        legalFramework, axleType.ToUpperInvariant(), groupOverload);
+                        legalFramework, axleType.ToUpperInvariant(), groupOverload, chargingCurrency);
 
                     if (axleFeeResult.HasValue)
                     {
@@ -1173,13 +1177,13 @@ public class WeighingService : IWeighingService
                             groupAxle.FeeUsd = feePerAxle;
                         }
 
-                        totalFeeUsd += axleFeeResult.Value.FeeAmountUsd;
+                        totalFee += axleFeeResult.Value.FeeAmountUsd;
                     }
                     else
                     {
                         // Fallback to generic AXLE fee if per-type fee not found
                         var fallbackFeeResult = await _feeScheduleRepository.CalculateFeeAsync(
-                            legalFramework, "AXLE", groupOverload);
+                            legalFramework, "AXLE", groupOverload, chargingCurrency);
 
                         if (fallbackFeeResult.HasValue)
                         {
@@ -1194,15 +1198,22 @@ public class WeighingService : IWeighingService
                                 groupAxle.FeeUsd = feePerAxle;
                             }
 
-                            totalFeeUsd += fallbackFeeResult.Value.FeeAmountUsd;
+                            totalFee += fallbackFeeResult.Value.FeeAmountUsd;
                         }
                     }
                 }
             }
         }
 
-        // Update transaction total fee
-        transaction.TotalFeeUsd = totalFeeUsd;
+        // Update transaction total fee in the correct currency
+        if (useKes)
+        {
+            transaction.TotalFeeKes = totalFee;
+        }
+        else
+        {
+            transaction.TotalFeeUsd = totalFee;
+        }
     }
 
     public async Task<WeighingTransaction?> GetTransactionAsync(Guid id)

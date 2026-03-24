@@ -118,6 +118,16 @@ public interface IAxleFeeScheduleRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Calculate fee amount and demerit points with currency-aware column selection.
+    /// </summary>
+    Task<(decimal FeeAmountUsd, int DemeritPoints)?> CalculateFeeAsync(
+        string legalFramework,
+        string feeType,
+        int overloadKg,
+        string currency,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Create new fee schedule (admin only)
     /// </summary>
     Task<AxleFeeSchedule> CreateAsync(

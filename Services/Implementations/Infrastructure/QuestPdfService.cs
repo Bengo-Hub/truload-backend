@@ -24,29 +24,46 @@ public class QuestPdfService : IPdfService
 
     public async Task<byte[]> GenerateWeightTicketAsync(WeighingTransaction transaction)
     {
-        // Resolve organization info from station for branding
+        // Resolve organization info from station for branding (logo, colors, name, tenant type)
         string? organizationName = null;
         string? tenantType = null;
         string? orgLogoFile = null;
+        string? primaryColor = null;
+        string? secondaryColor = null;
         if (transaction.StationId != Guid.Empty)
         {
             var orgInfo = await _context.Stations
                 .Where(s => s.Id == transaction.StationId)
-                .Select(s => new { s.Organization.Name, s.Organization.TenantType, s.Organization.LogoUrl })
+                .Select(s => new {
+                    s.Organization.Name,
+                    s.Organization.TenantType,
+                    s.Organization.LogoUrl,
+                    s.Organization.PrimaryColor,
+                    s.Organization.SecondaryColor
+                })
                 .FirstOrDefaultAsync();
             organizationName = orgInfo?.Name;
             tenantType = orgInfo?.TenantType;
-            // Convert frontend logo URL path to backend wwwroot filename for PDF rendering
-            // e.g. "/images/logos/kura-logo.png" → "kura-logo.png" (LoadLogo reads from wwwroot/images/)
+            primaryColor = orgInfo?.PrimaryColor;
+            secondaryColor = orgInfo?.SecondaryColor;
             if (!string.IsNullOrEmpty(orgInfo?.LogoUrl))
             {
                 orgLogoFile = Path.GetFileName(orgInfo.LogoUrl);
             }
         }
 
+        // Get operational tolerance from settings
+        var toleranceSetting = await _context.ApplicationSettings
+            .Where(s => s.SettingKey == "weighing.operational_tolerance_kg")
+            .Select(s => s.SettingValue)
+            .FirstOrDefaultAsync();
+        int operationalToleranceKg = int.TryParse(toleranceSetting, out var tol) ? tol : 200;
+
         return await Task.Run(() =>
         {
-            var document = new WeightTicketDocument(transaction, organizationName, tenantType, orgLogoFile);
+            var document = new WeightTicketDocument(
+                transaction, organizationName, tenantType, orgLogoFile,
+                operationalToleranceKg, primaryColor, secondaryColor);
             return document.Generate();
         });
     }

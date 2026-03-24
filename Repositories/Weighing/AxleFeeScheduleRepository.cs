@@ -57,21 +57,39 @@ public class AxleFeeScheduleRepository : IAxleFeeScheduleRepository
     }
 
     public async Task<(decimal FeeAmountUsd, int DemeritPoints)?> CalculateFeeAsync(
-        string legalFramework, 
-        string feeType, 
+        string legalFramework,
+        string feeType,
         int overloadKg,
         CancellationToken cancellationToken = default)
     {
+        return await CalculateFeeAsync(legalFramework, feeType, overloadKg, "USD", cancellationToken);
+    }
+
+    public async Task<(decimal FeeAmountUsd, int DemeritPoints)?> CalculateFeeAsync(
+        string legalFramework,
+        string feeType,
+        int overloadKg,
+        string currency,
+        CancellationToken cancellationToken = default)
+    {
         var schedule = await GetFeeByOverloadAsync(legalFramework, feeType, overloadKg, cancellationToken);
-        
+
         if (schedule == null)
         {
             return null;
         }
 
-        // Calculate fee: (overload * feePerKg) + flatFee
-        decimal fee = (overloadKg * schedule.FeePerKgUsd) + schedule.FlatFeeUsd;
-        
+        // Calculate fee using KES or USD columns based on act's charging currency
+        decimal fee;
+        if (currency.Equals("KES", StringComparison.OrdinalIgnoreCase) && (schedule.FeePerKgKes > 0 || schedule.FlatFeeKes > 0))
+        {
+            fee = (overloadKg * schedule.FeePerKgKes) + schedule.FlatFeeKes;
+        }
+        else
+        {
+            fee = (overloadKg * schedule.FeePerKgUsd) + schedule.FlatFeeUsd;
+        }
+
         return (fee, schedule.DemeritPoints);
     }
 

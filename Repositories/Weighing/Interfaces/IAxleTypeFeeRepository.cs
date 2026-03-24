@@ -37,6 +37,16 @@ public interface IAxleTypeFeeRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Calculate fee for a specific axle type, overload, and currency.
+    /// </summary>
+    Task<decimal> CalculateFeeAsync(
+        string legalFramework,
+        string axleType,
+        int overloadKg,
+        string currency,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Create a new fee schedule
     /// </summary>
     Task<AxleTypeOverloadFeeSchedule> CreateAsync(

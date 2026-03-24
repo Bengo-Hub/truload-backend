@@ -42,7 +42,8 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
     public async Task<List<AxleGroupResultDto>> AggregateAxleGroupsAsync(
         ICollection<WeighingAxle> axles,
         string legalFramework,
-        int operationalToleranceKg = 200)
+        int operationalToleranceKg = 200,
+        string chargingCurrency = "USD")
     {
         if (axles == null || !axles.Any())
             return [];
@@ -80,12 +81,22 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
 
             // Calculate fee for this group if overloaded
             decimal feeUsd = 0m;
+            decimal feeKes = 0m;
             int demeritPoints = 0;
 
             if (overloadKg > 0)
             {
-                feeUsd = await _axleTypeFeeRepository.CalculateFeeAsync(
-                    legalFramework, axleType, overloadKg);
+                // Calculate fees in the act's charging currency
+                if (chargingCurrency.Equals("KES", StringComparison.OrdinalIgnoreCase))
+                {
+                    feeKes = await _axleTypeFeeRepository.CalculateFeeAsync(
+                        legalFramework, axleType, overloadKg, "KES");
+                }
+                else
+                {
+                    feeUsd = await _axleTypeFeeRepository.CalculateFeeAsync(
+                        legalFramework, axleType, overloadKg, "USD");
+                }
 
                 // Convert AxleType to violation type for demerit lookup
                 string violationType = axleType.ToUpper() switch
@@ -119,6 +130,7 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
                 Status = status,
                 OperationalToleranceKg = operationalToleranceKg,
                 FeeUsd = feeUsd,
+                FeeKes = feeKes,
                 DemeritPoints = demeritPoints,
                 Axles = groupAxles.Select(a => new AxleDetailDto
                 {
@@ -186,40 +198,57 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
             return result;
         }
 
-        // Determine legal framework (default to Traffic Act - stricter)
-        string legalFramework = "TRAFFIC_ACT";
+        // Determine legal framework from the transaction's act (fall back to Traffic Act)
+        string legalFramework = transaction.Act?.ActType?.Equals("EAC", StringComparison.OrdinalIgnoreCase) == true
+            ? "EAC"
+            : "TRAFFIC_ACT";
+
+        // Determine charging currency from the act
+        string chargingCurrency = transaction.Act?.ChargingCurrency ?? "KES";
 
         // Get operational tolerance
         var operationalTolerance = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_TOLERANCE");
         int operationalToleranceKg = operationalTolerance?.ToleranceKg ?? 200;
 
-        // Aggregate axle groups
+        // Aggregate axle groups with currency-aware fee calculation
         var groupResults = await AggregateAxleGroupsAsync(
             transaction.WeighingAxles.ToList(),
             legalFramework,
-            operationalToleranceKg);
+            operationalToleranceKg,
+            chargingCurrency);
 
         result.GroupResults = groupResults;
         result.OperationalToleranceKg = operationalToleranceKg;
+        result.ChargingCurrency = chargingCurrency;
 
         // Calculate GVW compliance (0% tolerance)
         result.GvwMeasuredKg = transaction.WeighingAxles.Sum(a => a.MeasuredWeightKg);
         result.GvwPermissibleKg = transaction.GvwPermissibleKg;
         result.GvwOverloadKg = Math.Max(0, result.GvwMeasuredKg - result.GvwPermissibleKg);
 
-        // Calculate fees
+        // Calculate fees in the act's charging currency
         result.TotalAxleFeeUsd = groupResults.Sum(g => g.FeeUsd);
+        result.TotalAxleFeeKes = groupResults.Sum(g => g.FeeKes);
 
         if (result.GvwOverloadKg > 0)
         {
             var gvwFeeResult = await _gvwFeeRepository.CalculateFeeAsync(
-                legalFramework, "GVW", result.GvwOverloadKg);
+                legalFramework, "GVW", result.GvwOverloadKg, chargingCurrency);
 
-            result.GvwFeeUsd = gvwFeeResult?.FeeAmountUsd ?? 0m;
+            if (chargingCurrency.Equals("KES", StringComparison.OrdinalIgnoreCase))
+            {
+                result.GvwFeeKes = gvwFeeResult?.FeeAmountUsd ?? 0m; // FeeAmountUsd returns the calculated amount regardless of currency name
+            }
+            else
+            {
+                result.GvwFeeUsd = gvwFeeResult?.FeeAmountUsd ?? 0m;
+            }
         }
 
         // EAC Rule: Total fee is MAX(GVW fee, sum of axle fees)
+        // Traffic Act: Primarily charges on GVW, but same MAX rule applies
         result.TotalFeeUsd = Math.Max(result.GvwFeeUsd, result.TotalAxleFeeUsd);
+        result.TotalFeeKes = Math.Max(result.GvwFeeKes, result.TotalAxleFeeKes);
 
         // Calculate demerit points
         var demeritResult = new DemeritPointsResultDto();

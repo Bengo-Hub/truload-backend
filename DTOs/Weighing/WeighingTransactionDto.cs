@@ -80,6 +80,9 @@ public class WeighingTransactionDto
     // Status & Compliance
     public string ControlStatus { get; set; } = string.Empty;
     public decimal TotalFeeUsd { get; set; }
+    public decimal TotalFeeKes { get; set; }
+    /// <summary>Charging currency for this transaction (KES or USD) from the applied Act</summary>
+    public string ChargingCurrency { get; set; } = "KES";
     public bool IsCompliant { get; set; }
     public bool IsSentToYard { get; set; }
     public string ViolationReason { get; set; } = string.Empty;
@@ -306,6 +309,8 @@ public class WeighingResultDto
 
     public Guid? VehicleId { get; set; }
     public decimal TotalFeeUsd { get; set; }
+    public decimal TotalFeeKes { get; set; }
+    public string ChargingCurrency { get; set; } = "KES";
     public bool HasPermit { get; set; }
     public int ReweighCycleNo { get; set; }
 

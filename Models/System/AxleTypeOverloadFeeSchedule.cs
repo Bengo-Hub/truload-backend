@@ -49,6 +49,13 @@ public class AxleTypeOverloadFeeSchedule : BaseEntity
     /// </summary>
     public decimal QuadAxleFeeUsd { get; set; } = 0m;
 
+    // KES fee columns — used when act ChargingCurrency = KES (e.g. Traffic Act Cap 403)
+    public decimal SteeringAxleFeeKes { get; set; }
+    public decimal SingleDriveAxleFeeKes { get; set; }
+    public decimal TandemAxleFeeKes { get; set; }
+    public decimal TridemAxleFeeKes { get; set; }
+    public decimal QuadAxleFeeKes { get; set; } = 0m;
+
     /// <summary>
     /// Legal framework: EAC or TRAFFIC_ACT
     /// </summary>

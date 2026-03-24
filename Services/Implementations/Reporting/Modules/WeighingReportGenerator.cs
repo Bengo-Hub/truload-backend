@@ -26,6 +26,34 @@ public class WeighingReportGenerator : BaseReportGenerator
 
     public override string Module => "weighing";
 
+    /// <summary>
+    /// Determine the charging currency from the default act (via settings).
+    /// Traffic Act = KES, EAC = USD.
+    /// </summary>
+    private async Task<string> GetChargingCurrencyAsync(CancellationToken ct = default)
+    {
+        var defaultActCodeSetting = await _context.ApplicationSettings
+            .Where(s => s.SettingKey == "compliance.default_act_code")
+            .Select(s => s.SettingValue)
+            .FirstOrDefaultAsync(ct);
+
+        var actCode = defaultActCodeSetting ?? "TRAFFIC_ACT";
+        var defaultAct = await _context.ActDefinitions
+            .Where(a => a.Code == actCode && a.IsActive)
+            .FirstOrDefaultAsync(ct);
+        return defaultAct?.ChargingCurrency ?? "KES";
+    }
+
+    /// <summary>
+    /// Select the correct fee value based on charging currency.
+    /// </summary>
+    private static decimal GetFee(WeighingTransaction w, string currency)
+    {
+        return currency.Equals("KES", StringComparison.OrdinalIgnoreCase) && w.TotalFeeKes > 0
+            ? w.TotalFeeKes
+            : w.TotalFeeUsd;
+    }
+
     public override List<ReportDefinitionDto> GetDefinitions() =>
     [
         Def("daily-summary", "Daily Weighing Summary",
@@ -76,6 +104,7 @@ public class WeighingReportGenerator : BaseReportGenerator
     private async Task<ReportResult> GenerateDailySummaryAsync(
         ReportFilterParams filters, string format, CancellationToken ct)
     {
+        var currency = await GetChargingCurrencyAsync(ct);
         var (from, to) = GetDateRange(filters);
 
         var query = _context.WeighingTransactions
@@ -102,7 +131,8 @@ public class WeighingReportGenerator : BaseReportGenerator
                 Overloaded = g.Count(x => !x.IsCompliant),
                 TotalOverloadKg = g.Where(x => x.OverloadKg > 0).Sum(x => x.OverloadKg),
                 AvgGvwKg = (int)g.Average(x => x.GvwMeasuredKg),
-                TotalFeesUsd = g.Sum(x => x.TotalFeeUsd)
+                TotalFeesUsd = g.Sum(x => x.TotalFeeUsd),
+                TotalFeesKes = g.Sum(x => x.TotalFeeKes)
             })
             .OrderBy(r => r.Date)
             .ThenBy(r => r.StationName)
@@ -111,7 +141,7 @@ public class WeighingReportGenerator : BaseReportGenerator
         var headers = new[]
         {
             "Date", "Station", "Total Vehicles", "Compliant", "Overloaded",
-            "Compliance %", "Total Overload (kg)", "Avg GVW (kg)", "Total Fees (USD)"
+            "Compliance %", "Total Overload (kg)", "Avg GVW (kg)", $"Total Fees ({currency})"
         };
 
         var csvRows = rows.Select(r => new[]
@@ -126,7 +156,7 @@ public class WeighingReportGenerator : BaseReportGenerator
                 : "0.0%",
             FormatNumber(r.TotalOverloadKg),
             FormatNumber(r.AvgGvwKg),
-            $"{r.TotalFeesUsd:N2}"
+            $"{(currency == "KES" && r.TotalFeesKes > 0 ? r.TotalFeesKes : r.TotalFeesUsd):N2}"
         });
 
         if (format == "csv")
@@ -171,6 +201,7 @@ public class WeighingReportGenerator : BaseReportGenerator
     private async Task<ReportResult> GenerateWeighbridgeRegisterAsync(
         ReportFilterParams filters, string format, CancellationToken ct)
     {
+        var currency = await GetChargingCurrencyAsync(ct);
         var (from, to) = GetDateRange(filters);
 
         var query = _context.WeighingTransactions
@@ -211,7 +242,8 @@ public class WeighingReportGenerator : BaseReportGenerator
                 w.ControlStatus,
                 w.WeighingType,
                 w.ReweighCycleNo,
-                w.TotalFeeUsd
+                w.TotalFeeUsd,
+                w.TotalFeeKes
             })
             .ToListAsync(ct);
 
@@ -219,7 +251,7 @@ public class WeighingReportGenerator : BaseReportGenerator
         {
             "Ticket #", "Date/Time", "Station", "Bound", "Vehicle Reg", "Axle Config",
             "Driver", "Transporter", "GVW (kg)", "Permissible (kg)", "Overload (kg)",
-            "Status", "Type", "Reweigh #", "Fee (USD)"
+            "Status", "Type", "Reweigh #", $"Fee ({currency})"
         };
 
         var csvRows = transactions.Select(t => new[]
@@ -459,6 +491,7 @@ public class WeighingReportGenerator : BaseReportGenerator
     private async Task<ReportResult> GenerateStationPerformanceAsync(
         ReportFilterParams filters, string format, CancellationToken ct)
     {
+        var currency = await GetChargingCurrencyAsync(ct);
         var (from, to) = GetDateRange(filters);
 
         var query = _context.WeighingTransactions
@@ -485,6 +518,7 @@ public class WeighingReportGenerator : BaseReportGenerator
                 MaxOverloadKg = g.Where(x => x.OverloadKg > 0).Any()
                     ? g.Where(x => x.OverloadKg > 0).Max(x => x.OverloadKg) : 0,
                 TotalFeesUsd = g.Sum(x => x.TotalFeeUsd),
+                TotalFeesKes = g.Sum(x => x.TotalFeeKes),
                 Reweighs = g.Count(x => x.ReweighCycleNo > 0),
                 AutoWeighs = g.Count(x => x.CaptureSource == "auto"),
                 ManualWeighs = g.Count(x => x.CaptureSource == "manual")
@@ -496,7 +530,7 @@ public class WeighingReportGenerator : BaseReportGenerator
         {
             "Station", "Code", "Total Vehicles", "Compliant", "Overloaded",
             "Compliance %", "Sent to Yard", "Total Overload (kg)", "Avg GVW (kg)",
-            "Max Overload (kg)", "Reweighs", "Fees (USD)"
+            "Max Overload (kg)", "Reweighs", $"Fees ({currency})"
         };
 
         var csvRows = stationData.Select(s => new[]
@@ -539,7 +573,7 @@ public class WeighingReportGenerator : BaseReportGenerator
                 ("Overall Compliance", grandTotal > 0
                     ? $"{(decimal)grandCompliant / grandTotal * 100:F1}%"
                     : "N/A"),
-                ("Total Fees", $"USD {stationData.Sum(s => s.TotalFeesUsd):N2}")
+                ("Total Fees", $"{currency} {stationData.Sum(s => currency == "KES" ? s.TotalFeesKes : s.TotalFeesUsd):N2}")
             ]
         };
 
@@ -553,6 +587,7 @@ public class WeighingReportGenerator : BaseReportGenerator
     private async Task<ReportResult> GenerateTransporterStatementAsync(
         ReportFilterParams filters, string format, CancellationToken ct)
     {
+        var currency = await GetChargingCurrencyAsync(ct);
         var (from, to) = GetDateRange(filters);
 
         var query = _context.WeighingTransactions
@@ -579,6 +614,7 @@ public class WeighingReportGenerator : BaseReportGenerator
                     ? (int)g.Where(x => x.OverloadKg > 0).Average(x => x.OverloadKg) : 0,
                 SentToYard = g.Count(x => x.IsSentToYard),
                 TotalFeesUsd = g.Sum(x => x.TotalFeeUsd),
+                TotalFeesKes = g.Sum(x => x.TotalFeeKes),
                 UniqueVehicles = g.Select(x => x.VehicleId).Distinct().Count()
             })
             .OrderByDescending(t => t.Overloaded)
@@ -589,7 +625,7 @@ public class WeighingReportGenerator : BaseReportGenerator
         {
             "Transporter", "Code", "Total Weighings", "Unique Vehicles", "Compliant",
             "Overloaded", "Compliance %", "Total Overload (kg)", "Avg Overload (kg)",
-            "Sent to Yard", "Fees (USD)"
+            "Sent to Yard", $"Fees ({currency})"
         };
 
         var csvRows = transporterData.Select(t => new[]
@@ -626,7 +662,7 @@ public class WeighingReportGenerator : BaseReportGenerator
                 ("Transporters", transporterData.Count.ToString()),
                 ("Total Weighings", FormatNumber(transporterData.Sum(t => t.TotalWeighings))),
                 ("Total Overloaded", FormatNumber(transporterData.Sum(t => t.Overloaded))),
-                ("Total Fees", $"USD {transporterData.Sum(t => t.TotalFeesUsd):N2}")
+                ("Total Fees", $"{currency} {transporterData.Sum(t => currency == "KES" ? t.TotalFeesKes : t.TotalFeesUsd):N2}")
             ]
         };
 
@@ -640,6 +676,7 @@ public class WeighingReportGenerator : BaseReportGenerator
     private async Task<ReportResult> GenerateOverloadedVehiclesAsync(
         ReportFilterParams filters, string format, CancellationToken ct)
     {
+        var currency = await GetChargingCurrencyAsync(ct);
         var (from, to) = GetDateRange(filters);
 
         var query = _context.WeighingTransactions
@@ -681,7 +718,8 @@ public class WeighingReportGenerator : BaseReportGenerator
                 w.ControlStatus,
                 w.IsSentToYard,
                 w.ViolationReason,
-                w.TotalFeeUsd
+                w.TotalFeeUsd,
+                w.TotalFeeKes
             })
             .ToListAsync(ct);
 
@@ -689,7 +727,7 @@ public class WeighingReportGenerator : BaseReportGenerator
         {
             "Ticket #", "Date/Time", "Station", "Vehicle Reg", "Axle Config",
             "Driver", "Transporter", "GVW (kg)", "Permissible (kg)", "Overload (kg)",
-            "Overload %", "Status", "Yard", "Fee (USD)"
+            "Overload %", "Status", "Yard", $"Fee ({currency})"
         };
 
         var csvRows = overloaded.Select(o => new[]
@@ -732,7 +770,7 @@ public class WeighingReportGenerator : BaseReportGenerator
                 ("Max Overload", overloaded.Count > 0
                     ? $"{FormatNumber(overloaded.Max(o => o.OverloadKg))} kg"
                     : "N/A"),
-                ("Total Fees", $"USD {overloaded.Sum(o => o.TotalFeeUsd):N2}")
+                ("Total Fees", $"{currency} {overloaded.Sum(o => currency == "KES" ? o.TotalFeeKes : o.TotalFeeUsd):N2}")
             ]
         };
 

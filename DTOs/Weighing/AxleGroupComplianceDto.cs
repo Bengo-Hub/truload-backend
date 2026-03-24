@@ -68,6 +68,11 @@ public class AxleGroupResultDto
     public decimal FeeUsd { get; set; }
 
     /// <summary>
+    /// Fee calculated for this group in KES (used when act ChargingCurrency = KES)
+    /// </summary>
+    public decimal FeeKes { get; set; }
+
+    /// <summary>
     /// Demerit points for this group overload
     /// </summary>
     public int DemeritPoints { get; set; }
@@ -145,6 +150,16 @@ public class WeighingComplianceResultDto
     /// Total fee - MAX(GvwFee, TotalAxleFees) per EAC Act
     /// </summary>
     public decimal TotalFeeUsd { get; set; }
+
+    // KES fee equivalents (used when act ChargingCurrency = KES)
+    public decimal TotalAxleFeeKes { get; set; }
+    public decimal GvwFeeKes { get; set; }
+    public decimal TotalFeeKes { get; set; }
+
+    /// <summary>
+    /// Charging currency for this compliance result (KES or USD)
+    /// </summary>
+    public string ChargingCurrency { get; set; } = "USD";
 
     /// <summary>
     /// Demerit points calculation result

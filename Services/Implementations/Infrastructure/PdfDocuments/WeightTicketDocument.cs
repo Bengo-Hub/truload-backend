@@ -17,18 +17,27 @@ public class WeightTicketDocument : BaseDocument
     private readonly string? _tenantType;
     private readonly string? _orgLogoFile;
     private readonly bool _isCommercial;
+    private readonly int _operationalToleranceKg;
+    private readonly string? _primaryColor;
+    private readonly string? _secondaryColor;
 
     public WeightTicketDocument(
         WeighingTransaction transaction,
         string? organizationName = null,
         string? tenantType = null,
-        string? orgLogoFile = null)
+        string? orgLogoFile = null,
+        int operationalToleranceKg = 200,
+        string? primaryColor = null,
+        string? secondaryColor = null)
     {
         _transaction = transaction;
         _organizationName = organizationName;
         _tenantType = tenantType;
         _orgLogoFile = orgLogoFile;
         _isCommercial = string.Equals(tenantType, "CommercialWeighing", StringComparison.OrdinalIgnoreCase);
+        _operationalToleranceKg = operationalToleranceKg;
+        _primaryColor = primaryColor;
+        _secondaryColor = secondaryColor;
     }
 
     public override byte[] Generate()
@@ -68,6 +77,7 @@ public class WeightTicketDocument : BaseDocument
             subtitle: _transaction.Station?.Name ?? "Weighbridge Station",
             referenceNumber: $"Ticket No: {_transaction.TicketNumber}",
             dateText: $"Date: {_transaction.WeighedAt:dd/MM/yyyy HH:mm}",
+            titleColor: _primaryColor,
             organizationName: _organizationName);
     }
 
@@ -223,14 +233,15 @@ public class WeightTicketDocument : BaseDocument
             {
                 table.ColumnsDefinition(columns =>
                 {
-                    columns.ConstantColumn(35);   // #
+                    columns.ConstantColumn(30);   // #
                     columns.RelativeColumn(1.2f);  // Axle Type
-                    columns.ConstantColumn(50);    // Tyre
+                    columns.ConstantColumn(45);    // Tyre
                     columns.RelativeColumn();       // Permissible
+                    columns.ConstantColumn(50);    // Op. Allow.
                     columns.RelativeColumn();       // Actual
                     columns.RelativeColumn();       // Overload
-                    columns.ConstantColumn(55);    // Result
-                    columns.ConstantColumn(45);    // PDF
+                    columns.ConstantColumn(50);    // Result
+                    columns.ConstantColumn(40);    // PDF
                     columns.ConstantColumn(55);    // Fee
                 });
 
@@ -241,6 +252,7 @@ public class WeightTicketDocument : BaseDocument
                     header.Cell().Element(HeaderStyle).Text("Axle Type");
                     header.Cell().Element(HeaderStyle).Text("Tyre");
                     header.Cell().Element(HeaderStyle).Text("Permissible");
+                    header.Cell().Element(HeaderStyle).Text("Op. Allow.");
                     header.Cell().Element(HeaderStyle).Text("Actual");
                     header.Cell().Element(HeaderStyle).Text("Overload");
                     header.Cell().Element(HeaderStyle).Text("Result");
@@ -267,6 +279,9 @@ public class WeightTicketDocument : BaseDocument
                     table.Cell().Element(c => CellStyle(c, isEven)).Text(axle.AxleType ?? "N/A");
                     table.Cell().Element(c => CellStyle(c, isEven)).Text(axle.TyreType?.Code ?? "N/A");
                     table.Cell().Element(c => CellStyle(c, isEven)).Text($"{axle.PermissibleWeightKg:N0}");
+                    // Operational Allowance — show the configured tolerance
+                    var opAllowance = _operationalToleranceKg > 0 ? $"+{_operationalToleranceKg}" : "-";
+                    table.Cell().Element(c => CellStyle(c, isEven)).Text(opAllowance).FontColor("#6B7280");
                     table.Cell().Element(c => CellStyle(c, isEven)).Text($"{axle.MeasuredWeightKg:N0}").SemiBold();
 
                     // Overload column - colored
@@ -333,16 +348,25 @@ public class WeightTicketDocument : BaseDocument
                             else
                                 oc.Item().Text("0 kg").FontSize(9.5f).FontColor(OfficialGreen);
                         });
-                        if (_transaction.TotalFeeUsd > 0)
+                        var totalFee = (_transaction.Act?.ChargingCurrency ?? "KES") == "KES"
+                            ? _transaction.TotalFeeKes
+                            : _transaction.TotalFeeUsd;
+                        if (totalFee > 0 || _transaction.TotalFeeUsd > 0 || _transaction.TotalFeeKes > 0)
                         {
+                            var feeToShow = totalFee > 0 ? totalFee : Math.Max(_transaction.TotalFeeUsd, _transaction.TotalFeeKes);
                             r.RelativeItem().Column(fc => {
                                 var currency = _transaction.Act?.ChargingCurrency ?? "KES";
                                 fc.Item().Text($"Total Fee ({currency})").FontSize(7.5f).SemiBold().FontColor("#4B5563");
-                                fc.Item().Text($"{_transaction.TotalFeeUsd:N2}").FontSize(9.5f).Bold();
+                                fc.Item().Text($"{feeToShow:N2}").FontSize(9.5f).Bold();
                             });
                         }
                     });
                     
+                    if (_operationalToleranceKg > 0)
+                    {
+                        c.Item().PaddingTop(2).Text($"* Operational Allowance: {_operationalToleranceKg} kg applied")
+                            .FontSize(6.5f).Italic().FontColor("#6B7280");
+                    }
                     if (_transaction.ToleranceApplied)
                     {
                         c.Item().PaddingTop(2).Text("* Tolerance has been applied to weight measurements")

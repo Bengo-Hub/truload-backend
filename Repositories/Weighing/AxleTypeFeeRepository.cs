@@ -55,12 +55,35 @@ public class AxleTypeFeeRepository : IAxleTypeFeeRepository
         int overloadKg,
         CancellationToken cancellationToken = default)
     {
+        return await CalculateFeeAsync(legalFramework, axleType, overloadKg, "USD", cancellationToken);
+    }
+
+    public async Task<decimal> CalculateFeeAsync(
+        string legalFramework,
+        string axleType,
+        int overloadKg,
+        string currency,
+        CancellationToken cancellationToken = default)
+    {
         if (overloadKg <= 0) return 0m;
 
         var schedule = await GetByOverloadAsync(legalFramework, overloadKg, cancellationToken);
         if (schedule == null) return 0m;
 
-        // Return fee based on axle type
+        // Return fee based on axle type and currency
+        if (currency.Equals("KES", StringComparison.OrdinalIgnoreCase))
+        {
+            return axleType.ToUpper() switch
+            {
+                "STEERING" => schedule.SteeringAxleFeeKes,
+                "SINGLEDRIVE" or "SINGLE_DRIVE" => schedule.SingleDriveAxleFeeKes,
+                "TANDEM" => schedule.TandemAxleFeeKes,
+                "TRIDEM" => schedule.TridemAxleFeeKes,
+                "QUAD" => schedule.QuadAxleFeeKes,
+                _ => schedule.SingleDriveAxleFeeKes
+            };
+        }
+
         return axleType.ToUpper() switch
         {
             "STEERING" => schedule.SteeringAxleFeeUsd,
@@ -68,7 +91,7 @@ public class AxleTypeFeeRepository : IAxleTypeFeeRepository
             "TANDEM" => schedule.TandemAxleFeeUsd,
             "TRIDEM" => schedule.TridemAxleFeeUsd,
             "QUAD" => schedule.QuadAxleFeeUsd,
-            _ => schedule.SingleDriveAxleFeeUsd // Default to single drive
+            _ => schedule.SingleDriveAxleFeeUsd
         };
     }
 

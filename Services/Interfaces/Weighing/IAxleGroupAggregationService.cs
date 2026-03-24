@@ -20,7 +20,8 @@ public interface IAxleGroupAggregationService
     Task<List<AxleGroupResultDto>> AggregateAxleGroupsAsync(
         ICollection<WeighingAxle> axles,
         string legalFramework,
-        int operationalToleranceKg = 200);
+        int operationalToleranceKg = 200,
+        string chargingCurrency = "USD");
 
     /// <summary>
     /// Calculate Pavement Damage Factor using Fourth Power Law.
