@@ -235,8 +235,8 @@ public class ProsecutionController : ControllerBase
         [FromQuery] Guid? stationId,
         CancellationToken ct)
     {
-        var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "prosecution.read");
-        var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+        var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+        var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
         var stats = await _prosecutionService.GetStatisticsAsync(dateFrom, dateTo, effectiveStationId, ct);
         return Ok(stats);
     }
@@ -254,8 +254,8 @@ public class ProsecutionController : ControllerBase
     {
         var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
         var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
-        var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "prosecution.read");
-        var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+        var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+        var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
 
         var trendData = await _context.ProsecutionCases
             .AsNoTracking()
@@ -283,8 +283,8 @@ public class ProsecutionController : ControllerBase
     {
         var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
         var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
-        var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "prosecution.read");
-        var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+        var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+        var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
 
         var grouped = await _context.ProsecutionCases
             .AsNoTracking()

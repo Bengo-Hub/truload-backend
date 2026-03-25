@@ -39,8 +39,8 @@ public class YardController : ControllerBase
 
         try
         {
-            var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "yard.read");
-            var effectiveStationId = hasGlobalRead ? null : _tenantContext.StationId;
+            var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+            var effectiveStationId = isHqOrAdmin ? null : _tenantContext.StationId;
 
             var result = await _yardService.SearchAsync(request, effectiveStationId, ct);
             return Ok(result);
@@ -98,8 +98,8 @@ public class YardController : ControllerBase
     {
         try
         {
-            var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "yard.read");
-            var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+            var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+            var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
             var stats = await _yardService.GetStatisticsAsync(effectiveStationId, dateFrom, dateTo, ct);
             return Ok(stats);
         }
@@ -129,8 +129,8 @@ public class YardController : ControllerBase
             PageSize = 10000
         };
         
-        var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "yard.read");
-        var effectiveStationId = hasGlobalRead ? null : _tenantContext.StationId;
+        var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+        var effectiveStationId = isHqOrAdmin ? null : _tenantContext.StationId;
 
         var result = await _yardService.SearchAsync(request, effectiveStationId, ct);
 

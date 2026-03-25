@@ -220,8 +220,8 @@ public class CaseRegisterController : ControllerBase
         [FromQuery] DateTime? dateTo,
         [FromQuery] Guid? stationId)
     {
-        var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "case.read");
-        var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+        var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+        var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
         var stats = await _caseRegisterService.GetCaseStatisticsAsync(dateFrom, dateTo, effectiveStationId);
         return Ok(stats);
     }
@@ -237,8 +237,8 @@ public class CaseRegisterController : ControllerBase
     {
         try
         {
-            var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "case.read");
-            var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+            var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+            var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
             var criteria = new CaseSearchCriteria
             {
                 CreatedFrom = dateFrom,
@@ -275,8 +275,8 @@ public class CaseRegisterController : ControllerBase
         {
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
             var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
-            var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "case.read");
-            var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+            var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+            var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
             var criteria = new CaseSearchCriteria
             {
                 CreatedFrom = from,

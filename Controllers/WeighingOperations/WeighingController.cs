@@ -76,8 +76,8 @@ public class WeighingController : ControllerBase
         try
         {
             // Use tenant context station if not explicitly provided in request
-            var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "weighing.read");
-            var stationId = (request.StationId == null && hasGlobalRead) ? null : (request.StationId ?? _tenantContext.StationId);
+            var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+            var stationId = (request.StationId == null && isHqOrAdmin) ? null : (request.StationId ?? _tenantContext.StationId);
 
             _logger.LogDebug(
                 "Searching weighing transactions: StationId={StationId}, OrgId={OrgId}",
@@ -715,8 +715,8 @@ public class WeighingController : ControllerBase
     {
         try
         {
-            bool hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "weighing.read");
-            var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+            var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+            var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
             var from = (dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30)).Date;
             var to = (dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow).Date;
 
@@ -800,8 +800,8 @@ public class WeighingController : ControllerBase
     {
         try
         {
-            bool hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "weighing.read");
-            var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+            var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+            var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
             var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
@@ -853,8 +853,8 @@ public class WeighingController : ControllerBase
     {
         try
         {
-            bool hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "weighing.read");
-            var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+            var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+            var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
             var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
@@ -918,8 +918,8 @@ public class WeighingController : ControllerBase
     {
         try
         {
-            bool hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "weighing.read");
-            var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+            var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+            var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
             var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
@@ -964,8 +964,8 @@ public class WeighingController : ControllerBase
     {
         try
         {
-            bool hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "weighing.read");
-            var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+            var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+            var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
             var from = (dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30)).Date;
             var to = (dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow).Date;
 

@@ -218,8 +218,8 @@ public class CourtHearingController : ControllerBase
         [FromQuery] Guid? stationId,
         CancellationToken ct)
     {
-        var hasGlobalRead = User.HasClaim(c => c.Type == "Permission" && c.Value == "case.read");
-        var effectiveStationId = (stationId == null && hasGlobalRead) ? null : (stationId ?? _tenantContext.StationId);
+        var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+        var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
         var stats = await _courtHearingService.GetHearingStatisticsAsync(dateFrom, dateTo, effectiveStationId, ct);
         return Ok(stats);
     }
