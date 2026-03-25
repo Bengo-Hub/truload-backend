@@ -79,17 +79,26 @@ public class DriverController : ControllerBase
         if (string.IsNullOrWhiteSpace(driver.Surname))
             return BadRequest("Surname (last name) is required.");
 
+        // Normalize empty/whitespace optional strings to null so they don't violate
+        // the UNIQUE indexes on id_number and driving_license_no (multiple NULLs are
+        // allowed by PostgreSQL, but multiple empty strings are not).
+        driver.NtsaId = string.IsNullOrWhiteSpace(driver.NtsaId) ? null : driver.NtsaId.Trim();
+        driver.IdNumber = string.IsNullOrWhiteSpace(driver.IdNumber) ? null : driver.IdNumber.Trim();
+        driver.DrivingLicenseNo = string.IsNullOrWhiteSpace(driver.DrivingLicenseNo) ? null : driver.DrivingLicenseNo.Trim();
+        driver.FullNames = driver.FullNames.Trim();
+        driver.Surname = driver.Surname.Trim();
+
         try
         {
-            // Only check for duplicates when the field has a value (skip empty strings)
-            if (!string.IsNullOrWhiteSpace(driver.IdNumber))
+            // Only check for duplicates when the field has a value
+            if (driver.IdNumber != null)
             {
                 var existing = await _driverRepository.GetByIdNumberAsync(driver.IdNumber);
                 if (existing != null)
                     return Conflict($"Driver with ID {driver.IdNumber} already exists.");
             }
 
-            if (!string.IsNullOrWhiteSpace(driver.DrivingLicenseNo))
+            if (driver.DrivingLicenseNo != null)
             {
                 var existing = await _driverRepository.GetByLicenseAsync(driver.DrivingLicenseNo);
                 if (existing != null)
@@ -115,7 +124,14 @@ public class DriverController : ControllerBase
     public async Task<IActionResult> Update(Guid id, [FromBody] Driver driver)
     {
         if (id != driver.Id) return BadRequest();
-        
+
+        // Normalize optional fields (same as Create)
+        driver.NtsaId = string.IsNullOrWhiteSpace(driver.NtsaId) ? null : driver.NtsaId.Trim();
+        driver.IdNumber = string.IsNullOrWhiteSpace(driver.IdNumber) ? null : driver.IdNumber.Trim();
+        driver.DrivingLicenseNo = string.IsNullOrWhiteSpace(driver.DrivingLicenseNo) ? null : driver.DrivingLicenseNo.Trim();
+        driver.FullNames = driver.FullNames?.Trim() ?? string.Empty;
+        driver.Surname = driver.Surname?.Trim() ?? string.Empty;
+
         await _driverRepository.UpdateAsync(driver);
         return NoContent();
     }

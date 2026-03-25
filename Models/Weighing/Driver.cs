@@ -30,14 +30,14 @@ public class Driver : BaseEntity
     /// Driver's full names (first and middle names)
     /// </summary>
     [Required(ErrorMessage = "Full names (first name) is required")]
-    [StringLength(200, MinimumLength = 1)]
+    [StringLength(100, MinimumLength = 1)]
     public string FullNames { get; set; } = string.Empty;
 
     /// <summary>
     /// Driver's surname (last name)
     /// </summary>
     [Required(ErrorMessage = "Surname (last name) is required")]
-    [StringLength(200, MinimumLength = 1)]
+    [StringLength(100, MinimumLength = 1)]
     public string Surname { get; set; } = string.Empty;
     
     /// <summary>

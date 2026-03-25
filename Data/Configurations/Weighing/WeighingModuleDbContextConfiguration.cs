@@ -552,7 +552,7 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.Property(e => e.IdNumber).HasColumnName("id_number").HasMaxLength(20);
                 entity.Property(e => e.DrivingLicenseNo).HasColumnName("driving_license_no").HasMaxLength(50);
                 entity.Property(e => e.FullNames).HasColumnName("full_names").HasMaxLength(100).IsRequired();
-                entity.Property(e => e.Surname).HasColumnName("surname").HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Surname).HasColumnName("surname").HasMaxLength(100).IsRequired();
                 entity.Property(e => e.Gender).HasColumnName("gender").HasMaxLength(20);
                 entity.Property(e => e.Nationality).HasColumnName("nationality").HasMaxLength(50);
                 entity.Property(e => e.DateOfBirth).HasColumnName("date_of_birth");
@@ -571,9 +571,9 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                // Indexes
-                entity.HasIndex(e => e.DrivingLicenseNo).IsUnique();
-                entity.HasIndex(e => e.IdNumber).IsUnique();
+                // Indexes — filtered unique so multiple NULLs are allowed
+                entity.HasIndex(e => e.DrivingLicenseNo).IsUnique().HasFilter("driving_license_no IS NOT NULL");
+                entity.HasIndex(e => e.IdNumber).IsUnique().HasFilter("id_number IS NOT NULL");
                 entity.HasIndex(e => e.NtsaId);
             });
 
