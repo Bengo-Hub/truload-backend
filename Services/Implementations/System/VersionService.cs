@@ -51,18 +51,19 @@ public class VersionService : IVersionService
 
     private string GetVersionFromSources()
     {
-        // Try environment variable first (set by CI/CD or deployment)
-        var envVersion = _configuration["VERSION"];
+        // Try environment variable first (set by Docker build arg / CI/CD)
+        var envVersion = Environment.GetEnvironmentVariable("VERSION")
+            ?? _configuration["VERSION"];
         if (!string.IsNullOrEmpty(envVersion))
         {
-            return envVersion;
+            return StripVersionPrefix(envVersion);
         }
 
-        // Try git tag
+        // Try git tag (works in dev, not in Docker containers)
         var gitVersion = GetGitTagVersion();
         if (!string.IsNullOrEmpty(gitVersion))
         {
-            return gitVersion;
+            return StripVersionPrefix(gitVersion);
         }
 
         // Try assembly version
@@ -72,15 +73,19 @@ public class VersionService : IVersionService
             return assemblyVersion;
         }
 
-        // Fallback to package.json version
-        var packageVersion = GetPackageJsonVersion();
-        if (!string.IsNullOrEmpty(packageVersion))
-        {
-            return packageVersion;
-        }
-
         // Final fallback
         return "1.0.0";
+    }
+
+    /// <summary>
+    /// Strip leading "v" or "V" prefix from version strings (e.g. "v1.0.4" → "1.0.4").
+    /// </summary>
+    private static string StripVersionPrefix(string version)
+    {
+        var trimmed = version.Trim();
+        return trimmed.StartsWith('v') || trimmed.StartsWith('V')
+            ? trimmed[1..]
+            : trimmed;
     }
 
     private string GetAssemblyVersion()
@@ -94,38 +99,6 @@ public class VersionService : IVersionService
                 if (version != null)
                 {
                     return $"{version.Major}.{version.Minor}.{version.Build}";
-                }
-            }
-        }
-        catch
-        {
-            // Ignore errors
-        }
-        return null;
-    }
-
-    private string GetPackageJsonVersion()
-    {
-        try
-        {
-            var projectDir = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location);
-            if (projectDir != null)
-            {
-                // Go up directories to find package.json
-                var currentDir = Directory.GetParent(projectDir);
-                while (currentDir != null)
-                {
-                    var packageJsonPath = Path.Combine(currentDir.FullName, "package.json");
-                    if (File.Exists(packageJsonPath))
-                    {
-                        var content = File.ReadAllText(packageJsonPath);
-                        var packageJson = global::System.Text.Json.JsonDocument.Parse(content);
-                        if (packageJson.RootElement.TryGetProperty("version", out var versionElement))
-                        {
-                            return versionElement.GetString();
-                        }
-                    }
-                    currentDir = currentDir.Parent;
                 }
             }
         }

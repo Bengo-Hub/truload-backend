@@ -83,8 +83,22 @@ info "Running Trivy filesystem scan"
 trivy fs . --exit-code "$TRIVY_ECODE" --format table \
   --skip-files "*.pem" --skip-files "*.key" --skip-files "*.crt" || true
 
+# Compute the next release version from git tags so it can be baked into the image.
+# The release job will create the same tag after successful deployment.
+LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+TAG_VERSION=${LATEST_TAG#v}
+TAG_MAJOR=$(echo "$TAG_VERSION" | cut -d. -f1)
+TAG_MINOR=$(echo "$TAG_VERSION" | cut -d. -f2)
+TAG_PATCH=$(echo "$TAG_VERSION" | cut -d. -f3)
+APP_VERSION="${TAG_MAJOR}.${TAG_MINOR}.$((TAG_PATCH + 1))"
+info "Version : ${APP_VERSION} (from tag ${LATEST_TAG})"
+
+# Export so deploy.yml release job can reuse the same version for the git tag
+echo "APP_VERSION=${APP_VERSION}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
+
 info "Building Docker image"
-DOCKER_BUILDKIT=1 docker build . -t "${IMAGE_REPO}:${GIT_COMMIT_ID}"
+DOCKER_BUILDKIT=1 docker build . -t "${IMAGE_REPO}:${GIT_COMMIT_ID}" \
+  --build-arg APP_VERSION="${APP_VERSION}"
 success "Docker build complete"
 
 if [[ ${DEPLOY} != "true" ]]; then

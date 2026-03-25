@@ -38,6 +38,10 @@ RUN dotnet publish "./truload-backend.csproj" -c $BUILD_CONFIGURATION -o /app/pu
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS final
 # Use SDK image instead of aspnet to have EF Core tools available for migrations
 
+# Accept version from build pipeline (computed from git tags before Docker build)
+ARG APP_VERSION=1.0.0
+ENV VERSION=${APP_VERSION}
+
 # Install curl and postgresql-client for health checks and DB operations
 RUN apt-get update && apt-get install -y curl postgresql-client && rm -rf /var/lib/apt/lists/*
 

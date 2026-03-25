@@ -102,6 +102,8 @@ jobs:
   deploy:
     needs: [sync-secrets]
     runs-on: ubuntu-latest
+    outputs:
+      app_version: ${{ steps.build_step.outputs.app_version }}
     permissions:
       contents: write
       id-token: write
@@ -245,6 +247,7 @@ jobs:
         echo "Note: GH_PAT required for cross-repo push to devops-k8s"
 
     - name: Run production deployment
+      id: build_step
       if: needs.sync-secrets.outputs.result != 'synced'
       env:
         KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
@@ -286,6 +289,8 @@ jobs:
         export ENV_SECRET_NAME="${ENV_SECRET_NAME}"
         export APP_NAME="${APP_NAME}"
         ./build.sh
+        # Pass computed version to release job
+        echo "app_version=${APP_VERSION}" >> $GITHUB_OUTPUT
 
     - name: Tag and push :latest
       if: success() && needs.sync-secrets.outputs.result != 'synced'
@@ -430,6 +435,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT }}
           GIT_USER: ${{ secrets.GIT_USER || 'TruLoad Bot' }}
           GIT_EMAIL: ${{ secrets.GIT_EMAIL || 'dev@truload.io' }}
+          APP_VERSION: ${{ needs.deploy.outputs.app_version }}
         run: |
           chmod +x scripts/release.sh
           ./scripts/release.sh truload-backend
