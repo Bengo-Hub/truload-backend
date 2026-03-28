@@ -1,5 +1,5 @@
- {
-    "tyreTypes": [
+{
+  "tyreTypes": [
     {
       "code": "S",
       "name": "Single Tyre",
@@ -19,7 +19,7 @@
       "typicalMaxWeightKg": 8000
     }
   ],
-    "axleGroups": [
+  "axleGroups": [
     {
       "code": "S1",
       "name": "Single Axle S1",
@@ -110,107 +110,5 @@
       "maxSpacingFeet": null,
       "axleCountInGroup": 1
     }
-  ],
-   "axleFeeSchedules": [
-    {
-      "legalFramework": "EAC",
-      "feeType": "GVW",
-      "overloadMinKg": 1,
-      "overloadMaxKg": 1000,
-      "feePerKgUsd": 0.5,
-      "flatFeeUsd": 0.0,
-      "demeritPoints": 5,
-      "penaltyDescription": "EAC GVW Overload 1-1000 kg - USD 0.50/kg"
-    },
-    {
-      "legalFramework": "EAC",
-      "feeType": "GVW",
-      "overloadMinKg": 1001,
-      "overloadMaxKg": 2000,
-      "feePerKgUsd": 0.75,
-      "flatFeeUsd": 0.0,
-      "demeritPoints": 10,
-      "penaltyDescription": "EAC GVW Overload 1001-2000 kg - USD 0.75/kg"
-    },
-    {
-      "legalFramework": "EAC",
-      "feeType": "GVW",
-      "overloadMinKg": 2001,
-      "overloadMaxKg": null,
-      "feePerKgUsd": 1.0,
-      "flatFeeUsd": 0.0,
-      "demeritPoints": 15,
-      "penaltyDescription": "EAC GVW Overload >2000 kg - USD 1.00/kg"
-    },
-    {
-      "legalFramework": "EAC",
-      "feeType": "AXLE",
-      "overloadMinKg": 1,
-      "overloadMaxKg": 500,
-      "feePerKgUsd": 0.25,
-      "flatFeeUsd": 0.0,
-      "demeritPoints": 3,
-      "penaltyDescription": "EAC Axle Overload 1-500 kg - USD 0.25/kg"
-    },
-    {
-      "legalFramework": "EAC",
-      "feeType": "AXLE",
-      "overloadMinKg": 501,
-      "overloadMaxKg": null,
-      "feePerKgUsd": 0.5,
-      "flatFeeUsd": 0.0,
-      "demeritPoints": 8,
-      "penaltyDescription": "EAC Axle Overload >500 kg - USD 0.50/kg"
-    },
-    {
-      "legalFramework": "TRAFFIC_ACT",
-      "feeType": "GVW",
-      "overloadMinKg": 1,
-      "overloadMaxKg": 2000,
-      "feePerKgUsd": 3.846,
-      "flatFeeUsd": 0.0,
-      "demeritPoints": 10,
-      "penaltyDescription": "Kenya Traffic Act GVW 1-2000kg - KSh 500/100kg (KSh 5/kg)"
-    },
-    {
-      "legalFramework": "TRAFFIC_ACT",
-      "feeType": "GVW",
-      "overloadMinKg": 2001,
-      "overloadMaxKg": 5000,
-      "feePerKgUsd": 7.692,
-      "flatFeeUsd": 0.0,
-      "demeritPoints": 15,
-      "penaltyDescription": "Kenya Traffic Act GVW 2001-5000kg - KSh 1,000/100kg (KSh 10/kg)"
-    },
-    {
-      "legalFramework": "TRAFFIC_ACT",
-      "feeType": "GVW",
-      "overloadMinKg": 5001,
-      "overloadMaxKg": null,
-      "feePerKgUsd": 11.538,
-      "flatFeeUsd": 0.0,
-      "demeritPoints": 20,
-      "penaltyDescription": "Kenya Traffic Act GVW >5000kg - KSh 1,500/100kg (KSh 15/kg)"
-    },
-    {
-      "legalFramework": "TRAFFIC_ACT",
-      "feeType": "AXLE",
-      "overloadMinKg": 1,
-      "overloadMaxKg": 1000,
-      "feePerKgUsd": 1.923,
-      "flatFeeUsd": 0.0,
-      "demeritPoints": 5,
-      "penaltyDescription": "Kenya Traffic Act Axle 1-1000kg - KSh 250/100kg (KSh 2.50/kg)"
-    },
-    {
-      "legalFramework": "TRAFFIC_ACT",
-      "feeType": "AXLE",
-      "overloadMinKg": 1001,
-      "overloadMaxKg": null,
-      "feePerKgUsd": 3.846,
-      "flatFeeUsd": 0.0,
-      "demeritPoints": 10,
-      "penaltyDescription": "Kenya Traffic Act Axle >1000kg - KSh 500/100kg (KSh 5/kg)"
-    }
   ]
-}
+}

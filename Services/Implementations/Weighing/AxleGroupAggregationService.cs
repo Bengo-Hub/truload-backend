@@ -11,9 +11,7 @@ namespace TruLoad.Backend.Services.Implementations.Weighing;
 /// Implements Kenya Traffic Act Cap 403 and EAC Act 2016 group-based compliance checking.
 ///
 /// Key Regulatory Requirements:
-/// - 5% tolerance for SINGLE axles only
-/// - 0% tolerance for grouped axles (Tandem, Tridem)
-/// - 0% tolerance for GVW
+/// - Axle and GVW tolerances are DB-driven via ToleranceSetting per legal framework
 /// - Pavement Damage Factor using Fourth Power Law: (Actual/Permissible)^4
 /// </summary>
 public class AxleGroupAggregationService : IAxleGroupAggregationService
@@ -69,11 +67,12 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
             // Determine axle type
             string axleType = DetermineAxleType(axleCount, groupLabel);
 
-            // Apply tolerance based on Kenya Traffic Act Cap 403:
-            // - 5% for single axles ONLY
-            // - 0% for grouped axles (Tandem, Tridem) - STRICT enforcement
-            int toleranceKg = CalculateGroupTolerance(axleCount, groupPermissibleKg, legalFramework);
+            // Apply tolerance from DB settings (per legal framework)
+            int toleranceKg = await CalculateGroupToleranceAsync(groupAxles, groupPermissibleKg, legalFramework);
             int effectiveLimitKg = groupPermissibleKg + toleranceKg;
+            
+            // Apply Additive Operational Allowance (if configured)
+            int effectiveWeightForOverload = groupWeightKg - operationalToleranceKg; 
             int overloadKg = Math.Max(0, groupWeightKg - effectiveLimitKg);
 
             // Calculate Pavement Damage Factor
@@ -86,31 +85,36 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
 
             if (overloadKg > 0)
             {
-                // Calculate fees in the act's charging currency
-                if (chargingCurrency.Equals("KES", StringComparison.OrdinalIgnoreCase))
+                // Traffic Act Cap 403: No fees or demerit points on axle overloads
+                // EAC Act 2016: Fees and points applied to BOTH axle and GVW
+                if (!legalFramework.Equals("TRAFFIC_ACT", StringComparison.OrdinalIgnoreCase))
                 {
-                    feeKes = await _axleTypeFeeRepository.CalculateFeeAsync(
-                        legalFramework, axleType, overloadKg, "KES");
-                }
-                else
-                {
-                    feeUsd = await _axleTypeFeeRepository.CalculateFeeAsync(
-                        legalFramework, axleType, overloadKg, "USD");
-                }
+                    // Calculate fees in the act's charging currency
+                    if (chargingCurrency.Equals("KES", StringComparison.OrdinalIgnoreCase))
+                    {
+                        feeKes = await _axleTypeFeeRepository.CalculateFeeAsync(
+                            legalFramework, axleType, overloadKg, "KES");
+                    }
+                    else
+                    {
+                        feeUsd = await _axleTypeFeeRepository.CalculateFeeAsync(
+                            legalFramework, axleType, overloadKg, "USD");
+                    }
 
-                // Convert AxleType to violation type for demerit lookup
-                string violationType = axleType.ToUpper() switch
-                {
-                    "STEERING" => "STEERING",
-                    "SINGLEDRIVE" => "SINGLE_DRIVE",
-                    "TANDEM" => "TANDEM",
-                    "TRIDEM" => "TRIDEM",
-                    "QUAD" => "TRIDEM", // Use tridem rate for quad
-                    _ => "SINGLE_DRIVE"
-                };
+                    // Convert AxleType to violation type for demerit lookup
+                    string violationType = axleType.ToUpper() switch
+                    {
+                        "STEERING" => "STEERING",
+                        "SINGLEDRIVE" => "SINGLE_DRIVE",
+                        "TANDEM" => "TANDEM",
+                        "TRIDEM" => "TRIDEM",
+                        "QUAD" => "TRIDEM", // Use tridem rate for quad
+                        _ => "SINGLE_DRIVE"
+                    };
 
-                demeritPoints = await _demeritRepository.CalculatePointsAsync(
-                    legalFramework, violationType, overloadKg);
+                    demeritPoints = await _demeritRepository.CalculatePointsAsync(
+                        legalFramework, violationType, overloadKg);
+                }
             }
 
             // Determine status
@@ -206,25 +210,49 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
         // Determine charging currency from the act
         string chargingCurrency = transaction.Act?.ChargingCurrency ?? "KES";
 
-        // Get operational tolerance
-        var operationalTolerance = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_TOLERANCE");
-        int operationalToleranceKg = operationalTolerance?.ToleranceKg ?? 200;
+        // Get operational tolerance settings
+        var opAllowanceSetting = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_ALLOWANCE");
+        int operationalAllowanceKg = opAllowanceSetting?.ToleranceKg ?? 200;
+
+        var opWarningSetting = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_TOLERANCE");
+        int operationalWarningKg = opWarningSetting?.ToleranceKg ?? 200;
 
         // Aggregate axle groups with currency-aware fee calculation
         var groupResults = await AggregateAxleGroupsAsync(
             transaction.WeighingAxles.ToList(),
             legalFramework,
-            operationalToleranceKg,
+            operationalAllowanceKg, // Used as additive buffer in AggregateAxleGroupsAsync? 
             chargingCurrency);
 
+        // Update results to use the Warning threshold for status
+        foreach (var gr in groupResults)
+        {
+            gr.Status = DetermineStatus(gr.OverloadKg, operationalWarningKg);
+            gr.OperationalToleranceKg = operationalWarningKg;
+        }
+
         result.GroupResults = groupResults;
-        result.OperationalToleranceKg = operationalToleranceKg;
+        result.OperationalToleranceKg = operationalWarningKg;
+        result.OperationalAllowanceUsed = operationalAllowanceKg;
         result.ChargingCurrency = chargingCurrency;
 
-        // Calculate GVW compliance (0% tolerance)
+        // Calculate GVW compliance with DB-driven tolerance
         result.GvwMeasuredKg = transaction.WeighingAxles.Sum(a => a.MeasuredWeightKg);
         result.GvwPermissibleKg = transaction.GvwPermissibleKg;
-        result.GvwOverloadKg = Math.Max(0, result.GvwMeasuredKg - result.GvwPermissibleKg);
+
+        // Fetch GVW tolerance from database (per legal framework)
+        int gvwToleranceKg = await _toleranceRepository.CalculateToleranceKgAsync(
+            legalFramework, "GVW", result.GvwPermissibleKg);
+        var gvwToleranceSetting = await _toleranceRepository.GetToleranceAsync(legalFramework, "GVW");
+
+        // Fetch Axle tolerance setting for display
+        var axleToleranceSetting = await _toleranceRepository.GetToleranceAsync(legalFramework, "AXLE");
+
+        result.GvwToleranceKg = gvwToleranceKg;
+        result.GvwEffectiveLimitKg = result.GvwPermissibleKg + gvwToleranceKg;
+        result.GvwToleranceDisplay = BuildToleranceDisplay(gvwToleranceSetting, gvwToleranceKg);
+        result.AxleToleranceDisplay = BuildToleranceDisplay(axleToleranceSetting, groupResults.FirstOrDefault()?.ToleranceKg ?? 0);
+        result.GvwOverloadKg = Math.Max(0, result.GvwMeasuredKg - result.GvwEffectiveLimitKg);
 
         // Calculate fees in the act's charging currency
         result.TotalAxleFeeUsd = groupResults.Sum(g => g.FeeUsd);
@@ -246,9 +274,19 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
         }
 
         // EAC Rule: Total fee is MAX(GVW fee, sum of axle fees)
-        // Traffic Act: Primarily charges on GVW, but same MAX rule applies
-        result.TotalFeeUsd = Math.Max(result.GvwFeeUsd, result.TotalAxleFeeUsd);
-        result.TotalFeeKes = Math.Max(result.GvwFeeKes, result.TotalAxleFeeKes);
+        // Traffic Act: Charges on GVW only (not per-axle)
+        if (legalFramework.Equals("TRAFFIC_ACT", StringComparison.OrdinalIgnoreCase))
+        {
+            // Traffic Act Cap 403: GVW-based flat fee only
+            result.TotalFeeKes = result.GvwFeeKes;
+            result.TotalFeeUsd = result.GvwFeeUsd;
+        }
+        else
+        {
+            // EAC Act 2016: MAX(GVW fee, sum of axle fees)
+            result.TotalFeeUsd = Math.Max(result.GvwFeeUsd, result.TotalAxleFeeUsd);
+            result.TotalFeeKes = Math.Max(result.GvwFeeKes, result.TotalAxleFeeKes);
+        }
 
         // Calculate demerit points
         var demeritResult = new DemeritPointsResultDto();
@@ -316,57 +354,80 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
 
         if (result.GvwOverloadKg > 0)
         {
-            violations.Add($"GVW Overload: {result.GvwOverloadKg}kg (Permissible: {result.GvwPermissibleKg}kg, 0% tolerance)");
+            violations.Add($"GVW Overload: {result.GvwOverloadKg}kg (Permissible: {result.GvwPermissibleKg}kg, Tolerance: {result.GvwToleranceDisplay})");
         }
 
         result.ViolationReasons = violations;
 
         // Determine overall status
-        bool hasOverload = groupResults.Any(g => g.Status == "OVERLOAD") || result.GvwOverloadKg > 0;
-        bool hasWarning = groupResults.Any(g => g.Status == "WARNING");
+        // GVW is the primary compliance check (drives fees, yard, prosecution).
+        // Per-axle overloads are informational/diagnostic — they affect PDF factor
+        // but do NOT override a compliant GVW determination for enforcement.
+        bool gvwOverloaded = result.GvwOverloadKg > 0;
+        bool hasAxleOverload = groupResults.Any(g => g.Status == "OVERLOAD");
+        bool hasAxleWarning = groupResults.Any(g => g.Status == "WARNING");
 
-        if (!hasOverload && !hasWarning)
+        if (gvwOverloaded)
         {
-            result.OverallStatus = "Compliant";
-            result.IsCompliant = true;
-            result.ShouldSendToYard = false;
-        }
-        else if (hasOverload)
-        {
+            // GVW exceeds effective limit (permissible + tolerance) → Overloaded
             result.OverallStatus = "Overloaded";
             result.IsCompliant = false;
             result.ShouldSendToYard = true;
         }
-        else
+        else if (hasAxleOverload)
         {
-            // Warning only (within operational tolerance)
+            // GVW is within tolerance but individual axle groups exceed their limits.
+            // Warning status — vehicle is within GVW tolerance but has axle distribution issues.
             result.OverallStatus = "Warning";
             result.IsCompliant = false;
-            result.ShouldSendToYard = false; // Auto-release
+            result.ShouldSendToYard = false; // Not yard-worthy when GVW is compliant
+        }
+        else if (hasAxleWarning)
+        {
+            // Axles within operational tolerance, GVW within tolerance
+            result.OverallStatus = "Warning";
+            result.IsCompliant = false;
+            result.ShouldSendToYard = false;
+        }
+        else
+        {
+            result.OverallStatus = "Compliant";
+            result.IsCompliant = true;
+            result.ShouldSendToYard = false;
         }
 
         return result;
     }
 
     /// <summary>
-    /// Calculate tolerance for a group based on Kenya Traffic Act Cap 403.
-    /// CRITICAL: 5% tolerance for SINGLE axles only, 0% for grouped axles.
+    /// Calculate tolerance for an axle group using DB-driven tolerance settings.
+    /// Fallback chain: Act-specific → AxleConfig-specific → 0% (strict).
+    /// No hardcoded percentage fallbacks — the DB is the single source of truth.
     /// </summary>
-    private int CalculateGroupTolerance(int axleCount, int groupPermissibleKg, string legalFramework)
+    private async Task<int> CalculateGroupToleranceAsync(List<WeighingAxle> axles, int groupPermissibleKg, string legalFramework)
     {
-        // Kenya Traffic Act Cap 403 Schedule 2:
-        // - Single axles: 5% tolerance
-        // - Tandem axles (2 axles): 0% tolerance (STRICT)
-        // - Tridem axles (3 axles): 0% tolerance (STRICT)
-        // - GVW: 0% tolerance (STRICT)
+        // 1. Act-Specific Regulatory Tolerance (highest priority)
+        //    e.g. TRAFFIC_ACT_AXLE_TOLERANCE = 0%, EAC_AXLE_TOLERANCE = 5%
+        var toleranceKg = await _toleranceRepository.CalculateToleranceKgAsync(
+            legalFramework, "AXLE", groupPermissibleKg);
+        if (toleranceKg > 0)
+            return toleranceKg;
 
-        if (axleCount == 1)
-        {
-            // 5% tolerance for single axles
-            return (int)Math.Round(groupPermissibleKg * 0.05m);
-        }
+        // 2. Config-Specific Tolerance (per-axle configuration overrides)
+        //    If multiple axles in group have different tolerances, use the MAX
+        var configTolerances = axles
+            .Select(a => {
+                if (a.AxleConfiguration?.ToleranceKg > 0) return a.AxleConfiguration.ToleranceKg.Value;
+                if (a.AxleConfiguration?.TolerancePercentage > 0)
+                    return (int)Math.Round(a.PermissibleWeightKg * (a.AxleConfiguration.TolerancePercentage.Value / 100m));
+                return 0;
+            })
+            .ToList();
 
-        // 0% tolerance for grouped axles (Tandem, Tridem, etc.)
+        if (configTolerances.Any(t => t > 0))
+            return configTolerances.Max();
+
+        // 3. Strict (0%) — no tolerance found from Act or Config
         return 0;
     }
 
@@ -382,5 +443,25 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
             return "WARNING";
 
         return "OVERLOAD";
+    }
+
+    /// <summary>
+    /// Build a human-readable tolerance display string from a tolerance setting.
+    /// Examples: "5%", "2,000 kg", "0% (strict)"
+    /// </summary>
+    private static string BuildToleranceDisplay(ToleranceSetting? setting, int calculatedToleranceKg)
+    {
+        if (setting == null || calculatedToleranceKg == 0)
+            return "0% (strict)";
+
+        // If tolerance is percentage-based
+        if (setting.TolerancePercentage > 0)
+            return $"{setting.TolerancePercentage:0.##}%";
+
+        // If tolerance is fixed kg
+        if (setting.ToleranceKg.HasValue && setting.ToleranceKg.Value > 0)
+            return $"{setting.ToleranceKg.Value:N0} kg";
+
+        return "0% (strict)";
     }
 }

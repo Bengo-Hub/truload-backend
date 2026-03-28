@@ -112,10 +112,16 @@ public class WeighingAxle : TenantAwareEntity
     public Guid? TyreTypeId { get; set; }
 
     /// <summary>
-    /// Fee calculated for this axle in USD
+    /// Fee calculated for this axle in USD (used when act charges in USD, e.g. EAC Act)
     /// Based on overload and applicable fee schedule
     /// </summary>
     public decimal FeeUsd { get; set; } = 0m;
+
+    /// <summary>
+    /// Fee calculated for this axle in KES (used when act charges in KES, e.g. Traffic Act Cap 403)
+    /// Native KES rate — not converted from USD.
+    /// </summary>
+    public decimal FeeKes { get; set; } = 0m;
 
     /// <summary>
     /// Timestamp when this axle was captured/measured

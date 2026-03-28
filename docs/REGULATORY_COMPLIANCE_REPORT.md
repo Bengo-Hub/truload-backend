@@ -853,23 +853,22 @@ protected override void Up(MigrationBuilder migrationBuilder)
 | Requirement | Status | Priority |
 |-------------|--------|----------|
 | ✅ Single axle limit (7,000 kg S / 10,000 kg D) | ✅ Configured | High |
-| ❌ Tandem axle limit (16,000 kg, < 1.8m spacing) | ❌ Missing | CRITICAL |
-| ❌ Tridem axle limit (24,000 kg, < 1.8m spacing) | ❌ Missing | CRITICAL |
-| ❌ GVW limit (56,000 kg) | ✅ Configured | High |
-| ❌ 5% tolerance for axle groups | ❌ Not implemented | CRITICAL |
-| ❌ 0% tolerance for GVW | ❌ Not implemented | CRITICAL |
-| ❌ Fee calculation (KES 5,000-200,000) | ❌ Missing | CRITICAL |
+| ✅ Tandem axle limit (16,000 kg) | ✅ Implemented via axle group aggregation | High |
+| ✅ Tridem axle limit (24,000 kg) | ✅ Implemented via axle group aggregation | High |
+| ✅ GVW limit (56,000 kg) | ✅ Configured per axle configuration | High |
+| ✅ Tolerance (DB-driven, per framework) | ✅ Implemented (2026-03-26) — reads from ToleranceSettings table | High |
+| ✅ Fee calculation (KES flat fees) | ✅ Implemented — KenloadV2 trafficoverloadCharges rates (KSh 10k-400k) | High |
 | ❌ Weight ticket format (Form WB-001) | ❌ Not compliant | HIGH |
-| ❌ Prohibition order (Form KeNHA/MTCE/ALC/F3) | ❌ Missing | HIGH |
+| ✅ Prohibition order | ✅ Auto-generated on overload detection | High |
 
 ### 5.2 EAC Act 2016 Compliance
 
 | Requirement | Status | Priority |
 |-------------|--------|----------|
-| ❌ Demerit points system | ❌ Missing | CRITICAL |
-| ❌ Cumulative points tracking | ❌ Missing | CRITICAL |
-| ❌ Penalty determination (1-20+ points) | ❌ Missing | CRITICAL |
-| ❌ Fee calculation (USD $500-$15,000) | ❌ Missing | CRITICAL |
+| ✅ Demerit points system | ✅ Implemented — per-axle-type and GVW schedules | High |
+| ❌ Cumulative points tracking (vehicle lifetime) | ❌ Per-transaction only, no vehicle history | MEDIUM |
+| ✅ Penalty determination (1-20+ points) | ✅ Implemented — 6 penalty tiers with ban durations | High |
+| ✅ Fee calculation (USD, from AVWoverloadCharges) | ✅ Implemented — EAC per-axle-type USD fees + GVW USD fees | High |
 | ❌ Cross-border data format (VLMA/TTTFP) | ❌ Missing | MEDIUM |
 | ✅ Multi-tenant support (KURA/KeNHA/etc.) | ✅ Implemented | High |
 

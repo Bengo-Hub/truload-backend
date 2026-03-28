@@ -99,7 +99,7 @@
     {
       "axleCode": "2*S|S||",
       "axlePosition": 1,
-      "legalWeightKg": 8000,
+      "legalWeightKg": 7000,
       "axleGroupCode": "",
       "axleGrouping": "A",
       "tyreTypeCode": "S"
@@ -143,6 +143,38 @@
       "axleGroupCode": "",
       "axleGrouping": "B",
       "tyreTypeCode": "W"
+    },
+    {
+      "axleCode": "2*D|D||",
+      "axlePosition": 1,
+      "legalWeightKg": 8000,
+      "axleGroupCode": "SA4",
+      "axleGrouping": "A",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "2*D|D||",
+      "axlePosition": 2,
+      "legalWeightKg": 10000,
+      "axleGroupCode": "SA4",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "2*D|S||",
+      "axlePosition": 1,
+      "legalWeightKg": 7500,
+      "axleGroupCode": "SA4",
+      "axleGrouping": "A",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "2*D|S||",
+      "axlePosition": 2,
+      "legalWeightKg": 7500,
+      "axleGroupCode": "S1",
+      "axleGrouping": "B",
+      "tyreTypeCode": "S"
     }
   ]
 }

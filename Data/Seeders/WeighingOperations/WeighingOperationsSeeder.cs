@@ -38,7 +38,6 @@ public class WeighingOperationsSeeder
 
             if (root.TryGetProperty("tyreTypes", out var tt)) await SeedTyreTypesAsync(tt);
             if (root.TryGetProperty("axleGroups", out var ag)) await SeedAxleGroupsAsync(ag);
-            if (root.TryGetProperty("axleFeeSchedules", out var fs)) await SeedAxleFeeSchedulesAsync(fs);
         }
         else
         {
@@ -219,9 +218,14 @@ public class WeighingOperationsSeeder
             var gvw = el.GetProperty("gvw").GetInt32();
             var axleName = el.TryGetProperty("axleName", out var nameEl) ? nameEl.GetString() ?? axleCode : axleCode;
 
-            // Standard = simple codes (no pipes, no asterisk patterns with pipes)
-            // Derived = pipe notation (e.g., "3*S|DD||", "5*S|DD|D|D")
-            var isStandard = !axleCode.Contains('|');
+            // Per-configuration tolerance (from Traffic Act Amendment Rules 2013)
+            int? toleranceKg = el.TryGetProperty("toleranceKg", out var tolKgEl) ? tolKgEl.GetInt32() : null;
+            decimal? tolerancePercentage = el.TryGetProperty("tolerancePercentage", out var tolPctEl) ? tolPctEl.GetDecimal() : null;
+            int? permissibleGvwKg = el.TryGetProperty("permissibleGvwKg", out var permEl) ? permEl.GetInt32() : null;
+
+            // Standard = official EAC/Traffic Act codes (no pipes, no wildcards)
+            // Derived = pipe notation or asterisk patterns (e.g., "3*", "3*S|DD||", "5*S|DD|D|D")
+            var isStandard = !axleCode.Contains('|') && !axleCode.Contains('*');
 
             var existing = await _context.AxleConfigurations
                 .IgnoreQueryFilters()
@@ -239,6 +243,9 @@ public class WeighingOperationsSeeder
                         : $"Derived configuration: {axleNumber} axles",
                     AxleNumber = axleNumber,
                     GvwPermissibleKg = gvw,
+                    ToleranceKg = toleranceKg,
+                    TolerancePercentage = tolerancePercentage,
+                    PermissibleGvwKg = permissibleGvwKg,
                     IsStandard = isStandard,
                     LegalFramework = "BOTH",
                     IsActive = true,
@@ -249,11 +256,20 @@ public class WeighingOperationsSeeder
             }
             else
             {
-                // Update GVW and name if changed
-                if (existing.GvwPermissibleKg != gvw || existing.AxleName != axleName)
+                // Update GVW, name, and tolerance if changed
+                bool needsUpdate = existing.GvwPermissibleKg != gvw
+                    || existing.AxleName != axleName
+                    || existing.ToleranceKg != toleranceKg
+                    || existing.TolerancePercentage != tolerancePercentage
+                    || existing.PermissibleGvwKg != permissibleGvwKg;
+
+                if (needsUpdate)
                 {
                     existing.GvwPermissibleKg = gvw;
                     existing.AxleName = axleName;
+                    existing.ToleranceKg = toleranceKg;
+                    existing.TolerancePercentage = tolerancePercentage;
+                    existing.PermissibleGvwKg = permissibleGvwKg;
                     existing.UpdatedAt = DateTime.UtcNow;
                     updated++;
                 }

@@ -16,6 +16,7 @@ using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Data.Repositories.Weighing;
+using TruLoad.Backend.Repositories.Weighing.Interfaces;
 using System.Security.Claims;
 
 namespace TruLoad.Backend.Controllers.WeighingOperations;
@@ -34,6 +35,8 @@ public class WeighingController : ControllerBase
     private readonly ILogger<WeighingController> _logger;
     private readonly TruLoadDbContext _context;
     private readonly ICacheService _cacheService;
+    private readonly IToleranceRepository _toleranceRepository;
+    private readonly IAxleGroupAggregationService _axleGroupAggregationService;
 
     public WeighingController(
         IWeighingService weighingService,
@@ -43,7 +46,9 @@ public class WeighingController : ControllerBase
         ITenantContext tenantContext,
         ILogger<WeighingController> logger,
         TruLoadDbContext context,
-        ICacheService cacheService)
+        ICacheService cacheService,
+        IToleranceRepository toleranceRepository,
+        IAxleGroupAggregationService axleGroupAggregationService)
     {
         _weighingService = weighingService;
         _vehicleRepository = vehicleRepository;
@@ -53,6 +58,8 @@ public class WeighingController : ControllerBase
         _logger = logger;
         _context = context;
         _cacheService = cacheService;
+        _toleranceRepository = toleranceRepository;
+        _axleGroupAggregationService = axleGroupAggregationService;
     }
 
     /// <summary>
@@ -542,7 +549,7 @@ public class WeighingController : ControllerBase
             // CaptureWeightsAsync saves axles, resolves config, and runs compliance
             var transaction = await _weighingService.CaptureWeightsAsync(id, axles);
 
-            var resultDto = MapToResultDto(transaction);
+            var resultDto = await MapToResultDtoAsync(transaction);
             return Ok(resultDto);
         }
         catch (KeyNotFoundException)
@@ -1175,9 +1182,46 @@ public class WeighingController : ControllerBase
 
     /// <summary>
     /// Maps WeighingTransaction entity to WeighingResultDto (compliance focused).
+    /// Uses stored tolerance values from CalculateComplianceAsync and includes
+    /// group-level compliance results for frontend display.
     /// </summary>
-    private WeighingResultDto MapToResultDto(WeighingTransaction transaction)
+    private async Task<WeighingResultDto> MapToResultDtoAsync(WeighingTransaction transaction)
     {
+        // Use stored tolerance values (computed by CalculateComplianceAsync).
+        // Fallback to DB lookup for legacy transactions without stored tolerance.
+        int gvwToleranceKg = transaction.GvwToleranceKg;
+        string gvwToleranceDisplay = transaction.GvwToleranceDisplay ?? "0% (strict)";
+
+        if (gvwToleranceKg == 0 && string.IsNullOrEmpty(transaction.GvwToleranceDisplay))
+        {
+            string fw = transaction.Act?.Code ?? "TRAFFIC_ACT";
+            gvwToleranceKg = await _toleranceRepository.CalculateToleranceKgAsync(
+                fw, "GVW", transaction.GvwPermissibleKg);
+            var gvwSetting = await _toleranceRepository.GetToleranceAsync(fw, "GVW");
+            if (gvwSetting != null && gvwToleranceKg > 0)
+            {
+                gvwToleranceDisplay = gvwSetting.TolerancePercentage > 0
+                    ? $"{gvwSetting.TolerancePercentage:0.##}%"
+                    : gvwSetting.ToleranceKg is > 0
+                        ? $"{gvwSetting.ToleranceKg.Value:N0} kg"
+                        : "0% (strict)";
+            }
+        }
+
+        int gvwEffectiveLimitKg = transaction.GvwPermissibleKg + gvwToleranceKg;
+
+        // Build group results from stored axle data for frontend compliance display
+        List<AxleGroupResultDto>? groupResults = null;
+        if (transaction.WeighingAxles != null && transaction.WeighingAxles.Any())
+        {
+            string framework = transaction.Act?.Code ?? "TRAFFIC_ACT";
+            string currency = transaction.Act?.ChargingCurrency ?? "KES";
+            int opTolerance = transaction.OperationalAllowanceUsed > 0
+                ? transaction.OperationalAllowanceUsed : 200;
+            groupResults = await _axleGroupAggregationService.AggregateAxleGroupsAsync(
+                transaction.WeighingAxles.ToList(), framework, opTolerance, currency);
+        }
+
         return new WeighingResultDto
         {
             WeighingId = transaction.Id,
@@ -1186,7 +1230,14 @@ public class WeighingController : ControllerBase
             GvwMeasuredKg = transaction.GvwMeasuredKg,
             GvwPermissibleKg = transaction.GvwPermissibleKg,
             GvwOverloadKg = transaction.OverloadKg,
+            GvwToleranceKg = gvwToleranceKg,
+            GvwEffectiveLimitKg = gvwEffectiveLimitKg,
+            GvwToleranceDisplay = gvwToleranceDisplay,
             OverloadKg = transaction.OverloadKg,
+            OverallStatus = transaction.ControlStatus == "Compliant" ? "LEGAL"
+                : transaction.ControlStatus == "Warning" ? "WARNING"
+                : transaction.ControlStatus == "Overloaded" ? "OVERLOAD"
+                : transaction.ControlStatus,
             IsCompliant = transaction.IsCompliant,
             ControlStatus = transaction.ControlStatus,
             ViolationReason = transaction.ViolationReason,
@@ -1199,6 +1250,9 @@ public class WeighingController : ControllerBase
             HasPermit = transaction.HasPermit,
             ReweighCycleNo = transaction.ReweighCycleNo,
             WeighedAt = transaction.WeighedAt,
+            OperationalToleranceKg = transaction.OperationalAllowanceUsed,
+            AxleToleranceDisplay = transaction.AxleToleranceDisplay,
+            GroupResults = groupResults,
             AxleCompliance = transaction.WeighingAxles?.Select(a => new AxleComplianceDto
             {
                 AxleNumber = a.AxleNumber,

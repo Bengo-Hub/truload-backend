@@ -514,96 +514,81 @@ public class WeighingService : IWeighingService
                 transaction.ActId = resolvedAct.Id;
         }
 
-        int gvwToleranceKg = await _toleranceRepository.CalculateToleranceKgAsync(
-            legalFramework, "GVW", transaction.GvwPermissibleKg);
+        // CRITICAL: Persist GvwPermissibleKg, per-axle PermissibleWeightKg, and ActId
+        // to DB BEFORE delegating to AxleGroupAggregationService which re-fetches
+        // the transaction via AsNoTracking(). Without this save, the aggregation
+        // service reads stale data (GvwPermissibleKg=0) causing wrong overload/fees.
+        await _weighingRepository.UpdateTransactionAsync(transaction);
 
-        // 8. Calculate Axle Group Aggregation & Compliance
-        await ProcessAxleGroupsAsync(transaction, legalFramework);
+        // 8. Delegate all compliance and tolerance calculation to the unified service
+        var complianceResult = await _axleGroupAggregationService.CalculateComplianceAsync(transaction.Id);
 
-        // 9. Calculate Fees for Overloaded Axles and GVW
-        await CalculateFeesAsync(transaction, legalFramework);
+        // 9. Map results back to transaction for persistence
+        transaction.IsCompliant = complianceResult.IsCompliant;
+        transaction.ControlStatus = complianceResult.OverallStatus;
+        transaction.OverloadKg = (int)complianceResult.GvwOverloadKg;
+        transaction.TotalFeeUsd = complianceResult.TotalFeeUsd;
+        transaction.TotalFeeKes = complianceResult.TotalFeeKes;
+        transaction.ViolationReason = string.Join("; ", complianceResult.ViolationReasons);
+        
+        transaction.GvwToleranceKg = complianceResult.GvwToleranceKg;
+        transaction.GvwToleranceDisplay = complianceResult.GvwToleranceDisplay;
+        transaction.AxleToleranceDisplay = complianceResult.AxleToleranceDisplay;
+        transaction.OperationalAllowanceUsed = complianceResult.OperationalAllowanceUsed;
+        transaction.ToleranceApplied = complianceResult.GvwToleranceKg > 0 || complianceResult.GroupResults.Any(g => g.ToleranceKg > 0);
 
-        // 10. Determine Status & Operational Tolerance checking
-        var violationReasons = new List<string>();
-
-        if (transaction.OverloadKg > gvwToleranceKg)
+        // Populate AxleType on each axle from group results (for ticket display)
+        foreach (var groupResult in complianceResult.GroupResults)
         {
-            violationReasons.Add($"GVW Overload: {transaction.OverloadKg}kg (Permissible: {transaction.GvwPermissibleKg}kg, Tolerance: {gvwToleranceKg}kg)");
-        }
-
-        // Check for axle group violations (accounting for regulatory tolerance)
-        // Kenya Traffic Act Cap 403: 5% tolerance for single axles, 0% for grouped (Tandem/Tridem)
-        var groupedAxleData = transaction.WeighingAxles
-            .Where(a => a.GroupAggregateWeightKg.HasValue && a.GroupPermissibleWeightKg.HasValue)
-            .GroupBy(a => a.AxleGrouping)
-            .Select(g => new
+            foreach (var axleDetail in groupResult.Axles)
             {
-                FirstAxle = g.First(),
-                AxleCount = g.Count()
-            })
-            .ToList();
-
-        bool hasGroupViolation = false;
-        foreach (var group in groupedAxleData)
-        {
-            // 5% tolerance for single axles, 0% for multi-axle groups (Tandem/Tridem)
-            int axleToleranceKg = group.AxleCount == 1
-                ? (int)Math.Round(group.FirstAxle.GroupPermissibleWeightKg!.Value * 0.05m)
-                : 0;
-            int effectiveOverload = group.FirstAxle.GroupAggregateWeightKg!.Value
-                - group.FirstAxle.GroupPermissibleWeightKg!.Value
-                - axleToleranceKg;
-            if (effectiveOverload > 0)
-            {
-                hasGroupViolation = true;
-                violationReasons.Add($"Axle Group {group.FirstAxle.AxleGrouping} Overload: {effectiveOverload}kg (Tolerance: {axleToleranceKg}kg)");
-            }
-        }
-
-        transaction.ViolationReason = string.Join("; ", violationReasons);
-
-        if (transaction.OverloadKg <= gvwToleranceKg && !hasGroupViolation)
-        {
-            transaction.ControlStatus = "Compliant";
-            transaction.IsCompliant = true;
-            transaction.IsSentToYard = false;
-            // Mark tolerance applied when within regulatory tolerance (overload > 0 but within limit)
-            transaction.ToleranceApplied = transaction.OverloadKg > 0;
-        }
-        else
-        {
-            transaction.IsCompliant = false;
-
-            // Use org-specific operational allowance if set, otherwise fall back to global setting
-            var operationalTolerance = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_TOLERANCE");
-            int operationalToleranceKg = operationalTolerance?.ToleranceKg ?? 200;
-            // Check org-specific override
-            var txOrganization = await _dbContext.Organizations.AsNoTracking()
-                .FirstOrDefaultAsync(o => o.Id == transaction.OrganizationId);
-            if (txOrganization?.OperationalAllowanceKg.HasValue == true)
-                operationalToleranceKg = txOrganization.OperationalAllowanceKg.Value;
-
-            if (transaction.OverloadKg <= operationalToleranceKg && transaction.OverloadKg > 0 && !hasGroupViolation)
-            {
-                transaction.ControlStatus = "Warning";
-                transaction.IsSentToYard = false; // Auto-release
-                transaction.ToleranceApplied = true; // Operational tolerance applied
-            }
-            else
-            {
-                transaction.ControlStatus = "Overloaded";
-                transaction.IsSentToYard = !isCommercialMode; // Commercial: no yard hold
-
-                // 8. Generate Prohibition Order if not exists (enforcement only)
-                if (!isCommercialMode)
+                var axle = transaction.WeighingAxles.FirstOrDefault(a => a.AxleNumber == axleDetail.AxleNumber);
+                if (axle != null && string.IsNullOrEmpty(axle.AxleType))
                 {
-                    var existingProhibition = await _prohibitionRepository.GetByWeighingIdAsync(transactionId);
+                    axle.AxleType = groupResult.AxleType;
+                    axle.AxleGrouping = groupResult.GroupLabel;
+                }
+            }
+        }
+
+        // 10. Handle Prosecution/Cases and Yard Entry if not compliant (Enforcement Mode)
+        // Per FRD B.1: Auto-trigger Case Register + Yard Entry + Prohibition on overload
+        if (!isCommercialMode && !transaction.IsCompliant && transaction.ControlStatus == "Overloaded")
+        {
+            try
+            {
+                // Create Case Register if it doesn't exist
+                var existingCase = await _caseRegisterService.GetByWeighingIdAsync(transaction.Id);
+                if (existingCase == null)
+                {
+                    var caseDto = await _caseRegisterService.CreateCaseFromWeighingAsync(
+                        transaction.Id, transaction.WeighedByUserId);
+                    _logger.LogInformation(
+                        "Auto-created case register {CaseNo} for overloaded weighing {TransactionId}",
+                        caseDto.CaseNo, transaction.Id);
+
+                    // Auto-create Yard Entry when vehicle sent to yard
+                    var existingYard = await _yardService.GetByWeighingIdAsync(transaction.Id);
+                    if (existingYard == null)
+                    {
+                        await _yardService.CreateAsync(
+                            new CreateYardEntryRequest
+                            {
+                                WeighingId = transaction.Id,
+                                StationId = transaction.StationId ?? Guid.Empty,
+                                Reason = "overload"
+                            },
+                            transaction.WeighedByUserId);
+                    }
+
+                    // Create Prohibition Order if it doesn't exist
+                    var existingProhibition = await _prohibitionRepository.GetByWeighingIdAsync(transaction.Id);
                     if (existingProhibition == null)
                     {
                         var prohibitionNo = await _prohibitionRepository.GenerateProhibitionNumberAsync();
                         var prohibitionOrder = new ProhibitionOrder
                         {
-                            WeighingId = transactionId,
+                            WeighingId = transaction.Id,
                             ProhibitionNo = prohibitionNo,
                             IssuedById = transaction.WeighedByUserId,
                             Status = "Open",
@@ -612,7 +597,19 @@ public class WeighingService : IWeighingService
                         };
                         await _prohibitionRepository.CreateAsync(prohibitionOrder);
                     }
+
+                    // NOTIFY: Overload detected
+                    await _notificationService.SendInternalNotificationAsync(
+                        transaction.WeighedByUserId,
+                        "Overload Detected",
+                        $"Vehicle {transaction.VehicleRegNumber} is overloaded. Case {caseDto.CaseNo} created.",
+                        "error",
+                        $"/weighing/transactions/{transaction.Id}");
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to auto-create case/yard/prohibition for weighing {TransactionId}", transaction.Id);
             }
         }
 
@@ -1050,169 +1047,6 @@ public class WeighingService : IWeighingService
                 "Failed to create commercial weighing invoice for transaction {TransactionId}. Manual intervention required.",
                 transaction.Id);
             // Don't throw — weighing result is still valid
-        }
-    }
-
-    /// <summary>
-    /// Process axle groups for regulatory compliance
-    /// Implements Kenya Traffic Act Cap 403 and EAC Act 2016 group-based tolerance
-    /// Uses the AxleGroupAggregationService for proper tolerance calculation:
-    /// - 5% tolerance for SINGLE axle groups (Steering, SingleDrive)
-    /// - 0% tolerance for MULTI-axle groups (Tandem, Tridem)
-    /// </summary>
-    private async Task ProcessAxleGroupsAsync(WeighingTransaction transaction, string legalFramework)
-    {
-        if (transaction.WeighingAxles == null || !transaction.WeighingAxles.Any())
-            return;
-
-        // Get operational tolerance — org-specific override takes priority
-        var operationalTolerance = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_TOLERANCE");
-        int operationalToleranceKg = operationalTolerance?.ToleranceKg ?? 200;
-        var txOrg = await _dbContext.Organizations.AsNoTracking()
-            .FirstOrDefaultAsync(o => o.Id == transaction.OrganizationId);
-        if (txOrg?.OperationalAllowanceKg.HasValue == true)
-            operationalToleranceKg = txOrg.OperationalAllowanceKg.Value;
-
-        // Use the AxleGroupAggregationService for proper tolerance calculation
-        var groupResults = await _axleGroupAggregationService.AggregateAxleGroupsAsync(
-            transaction.WeighingAxles,
-            legalFramework,
-            operationalToleranceKg);
-
-        // Map group results back to weighing axles
-        foreach (var groupResult in groupResults)
-        {
-            var groupAxles = transaction.WeighingAxles
-                .Where(a => a.AxleGrouping == groupResult.GroupLabel)
-                .ToList();
-
-            foreach (var axle in groupAxles)
-            {
-                axle.GroupAggregateWeightKg = groupResult.GroupWeightKg;
-                axle.GroupPermissibleWeightKg = groupResult.GroupPermissibleKg;
-                axle.PavementDamageFactor = groupResult.PavementDamageFactor;
-                axle.AxleType = groupResult.AxleType;
-                // Tolerance info (ToleranceKg: 5% for single, 0% for grouped) available via GetComplianceResultAsync
-            }
-        }
-    }
-
-    /// <summary>
-    /// Calculate fees for overloaded axles and GVW using per-axle-type fee schedules
-    /// Implements Kenya Traffic Act Cap 403 with differentiated fees:
-    /// - Steering axle: Different rate
-    /// - Single Drive axle: Different rate
-    /// - Tandem (2-axle group): Different rate
-    /// - Tridem (3-axle group): Different rate
-    /// </summary>
-    private async Task CalculateFeesAsync(WeighingTransaction transaction, string legalFramework)
-    {
-        if (transaction.WeighingAxles == null || !transaction.WeighingAxles.Any())
-            return;
-
-        // Determine charging currency from the act
-        string chargingCurrency = transaction.Act?.ChargingCurrency ?? "KES";
-        bool useKes = chargingCurrency.Equals("KES", StringComparison.OrdinalIgnoreCase);
-
-        decimal totalFee = 0m;
-
-        // Calculate GVW fee if overloaded
-        if (transaction.OverloadKg > 0)
-        {
-            var gvwFeeResult = await _feeScheduleRepository.CalculateFeeAsync(
-                legalFramework, "GVW", transaction.OverloadKg, chargingCurrency);
-
-            if (gvwFeeResult.HasValue)
-            {
-                totalFee += gvwFeeResult.Value.FeeAmountUsd;
-            }
-        }
-
-        // Calculate axle fees per group using per-axle-type fee schedule
-        // Each axle type has different fee rates per Kenya Traffic Act Cap 403
-        var processedGroups = new HashSet<string>();
-
-        foreach (var axle in transaction.WeighingAxles)
-        {
-            // Process each group only once
-            if (!processedGroups.Contains(axle.AxleGrouping) &&
-                axle.GroupAggregateWeightKg.HasValue &&
-                axle.GroupPermissibleWeightKg.HasValue)
-            {
-                processedGroups.Add(axle.AxleGrouping);
-
-                // Apply regulatory tolerance: 5% for single axles, 0% for grouped
-                int groupAxleCount = transaction.WeighingAxles.Count(a => a.AxleGrouping == axle.AxleGrouping);
-                int axleToleranceKg = groupAxleCount == 1
-                    ? (int)Math.Round(axle.GroupPermissibleWeightKg.Value * 0.05m)
-                    : 0;
-                int groupOverload = axle.GroupAggregateWeightKg.Value - axle.GroupPermissibleWeightKg.Value - axleToleranceKg;
-
-                if (groupOverload > 0)
-                {
-                    // Determine axle type for fee calculation
-                    string axleType = axle.AxleType;
-                    if (string.IsNullOrEmpty(axleType))
-                    {
-                        axleType = _axleGroupAggregationService.DetermineAxleType(
-                            transaction.WeighingAxles.Count(a => a.AxleGrouping == axle.AxleGrouping),
-                            axle.AxleGrouping);
-                    }
-
-                    // Use per-axle-type fee calculation with act-aware currency
-                    var axleFeeResult = await _feeScheduleRepository.CalculateFeeAsync(
-                        legalFramework, axleType.ToUpperInvariant(), groupOverload, chargingCurrency);
-
-                    if (axleFeeResult.HasValue)
-                    {
-                        // Distribute fee equally across axles in the group
-                        var groupAxles = transaction.WeighingAxles
-                            .Where(a => a.AxleGrouping == axle.AxleGrouping)
-                            .ToList();
-
-                        decimal feePerAxle = axleFeeResult.Value.FeeAmountUsd / groupAxles.Count;
-
-                        foreach (var groupAxle in groupAxles)
-                        {
-                            groupAxle.FeeUsd = feePerAxle;
-                        }
-
-                        totalFee += axleFeeResult.Value.FeeAmountUsd;
-                    }
-                    else
-                    {
-                        // Fallback to generic AXLE fee if per-type fee not found
-                        var fallbackFeeResult = await _feeScheduleRepository.CalculateFeeAsync(
-                            legalFramework, "AXLE", groupOverload, chargingCurrency);
-
-                        if (fallbackFeeResult.HasValue)
-                        {
-                            var groupAxles = transaction.WeighingAxles
-                                .Where(a => a.AxleGrouping == axle.AxleGrouping)
-                                .ToList();
-
-                            decimal feePerAxle = fallbackFeeResult.Value.FeeAmountUsd / groupAxles.Count;
-
-                            foreach (var groupAxle in groupAxles)
-                            {
-                                groupAxle.FeeUsd = feePerAxle;
-                            }
-
-                            totalFee += fallbackFeeResult.Value.FeeAmountUsd;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Update transaction total fee in the correct currency
-        if (useKes)
-        {
-            transaction.TotalFeeKes = totalFee;
-        }
-        else
-        {
-            transaction.TotalFeeUsd = totalFee;
         }
     }
 

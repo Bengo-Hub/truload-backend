@@ -622,23 +622,66 @@ Seed 5 penalty tiers.
 
 ### Key Implementation Details
 
-1. **Tolerance Logic:**
-   - 5% tolerance for single axle groups (Steering, SingleDrive)
-   - 0% tolerance for grouped axles (Tandem, Tridem)
-   - Operational tolerance of 200kg for auto-release warnings
+1. **Tolerance Logic (DB-driven as of 2026-03-26):**
+   - All axle and GVW tolerances are now read from the `ToleranceSettings` table per legal framework
+   - Configured via Acts & Compliance admin screen (percentage-based or fixed kg)
+   - Operational tolerance of 200kg for auto-release warnings (configurable per organization)
+   - No more hardcoded 5%/0% — tolerance values are fully dynamic
 
 2. **Pavement Damage Factor:**
    - Calculated using Fourth Power Law: `(Actual/Permissible)^4`
    - Rounded to 4 decimal places
 
-3. **Fee Calculation:**
-   - Per-axle-type fees (Steering, SingleDrive, Tandem, Tridem, Quad)
+3. **Fee Calculation (updated 2026-03-26 per KenloadV2 audit):**
+
+   **EAC Act (USD):**
+   - Per-axle-type fees from `AVWoverloadCharges` table (USD flat fee lookup by overload threshold)
+   - GVW fees from `GVWoverloadCharges` table (USD flat fee lookup)
+   - Total fee = MAX(GVW fee, sum of axle fees) — EAC charges the HIGHER of GVW or axle fees
+   - Fees in USD, converted to KES at runtime using `DollarRate`
    - 5 overload bands (0-2000, 2001-5000, 5001-10000, 10001-20000, >20000 kg)
+   - `WeighingAxle.FeeUsd` stores per-axle USD fee
+
+   **Traffic Act (KES native):**
+   - **Charges GVW-only** — does NOT use per-axle fees or MAX(GVW, axle) logic
+   - Total fee = GVW flat fee only (from `trafficoverloadCharges` table)
+   - Per-axle fee calculation is skipped entirely for Traffic Act
+   - Source: KenloadV2 `trafficoverloadCharges` table (native KES, 11 thresholds)
+   - `AxleFeeSchedule` GVW bands: flat KES fees (FeePerKgKes=0, FlatFeeKes=penalty amount)
+   - Fee thresholds: 1000kg→KSh10k, 2000kg→KSh20k, 3000kg→KSh30k, 5000kg→KSh60k, 10000kg→KSh350k, 10001+→KSh400k
+   - `WeighingAxle.FeeKes` stores per-axle KES fee (added 2026-03-26)
+
+   **Currency handling:**
+   - `WeighingAxle` model has both `FeeUsd` and `FeeKes` fields
+   - Service populates the correct field based on act's `ChargingCurrency`
+   - Weight ticket PDF uses currency-aware logic to display correct column
+   - Weighbridge register report uses currency-aware fee display
 
 4. **Demerit Points:**
    - 5 overload bands × 5 violation types = 25 schedules
    - Plus 5 GVW overload schedules
    - 6 penalty tiers (1-3, 4-6, 7-9, 10-13, 14-19, 20+ points)
+
+5. **Frontend Weighing Step 2 Enhancements (2026-03-26):**
+
+   **Tolerance Display (DB-driven, real-time):**
+   - Local `groupResults` computation now fetches tolerance settings from API (`useToleranceSettings`)
+   - GVW tolerance displays correctly BEFORE weight submission (not just after)
+   - Falls back to backend `complianceResult` values after weight confirmation
+   - Eliminated hardcoded 5%/0% tolerance in `mobile/page.tsx` groupResults useMemo
+
+   **Interactive Axle Group Card:**
+   - New `InteractiveAxleGroupGrid` component: 4-column grid (A-D) with click-to-cycle tyre types
+   - New `TyreTypeIcon` component: SVG icons for Single (S), Dual (D), Wide (W) with state colors
+   - Groups built dynamically from weight references (removed hardcoded `AXLE_CONFIGS` map)
+   - Auto-matching: after 2+ groups set, finds matching config from database
+   - Config dropdown kept as fallback for manual selection
+   - Weight references passed through from `useAxleWeightReferences` hook
+
+   **Caching:**
+   - Axle configurations: TanStack Query `QUERY_OPTIONS.static` (30min TTL)
+   - Tolerance settings: TanStack Query `QUERY_OPTIONS.static` (30min TTL)
+   - Backend: TyreTypes and AxleGroups cached in Redis (24hr TTL)
 
 ---
 

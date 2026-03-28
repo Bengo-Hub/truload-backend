@@ -187,8 +187,11 @@ public class AxleFeeScheduleSeeder
             }
         });
 
-        // ===== Traffic Act GVW Fee Bands (KES native — no USD→KES conversion at runtime) =====
-        // Kenya Traffic Act Cap 403 charges in KES. USD columns kept as reference only.
+        // ===== Traffic Act GVW Fee Bands (KES native) =====
+        // Kenya Traffic Act Cap 403 uses flat fee thresholds in KES (NOT per-kg rates).
+        // FeePerKgKes = 0 because Traffic Act uses flat fees, not per-kg.
+        // FlatFeeKes = the actual Traffic Act penalty amount.
+        // USD columns are reference-only estimates for reporting.
         feeSchedules.AddRange(new[]
         {
             new AxleFeeSchedule
@@ -197,30 +200,13 @@ public class AxleFeeScheduleSeeder
                 LegalFramework = "TRAFFIC_ACT",
                 FeeType = "GVW",
                 OverloadMinKg = 1,
-                OverloadMaxKg = 500,
-                FeePerKgKes = 39m,
-                FlatFeeKes = 6_500m,
+                OverloadMaxKg = 1000,
+                FeePerKgKes = 0m,
+                FlatFeeKes = 10_000m,  // trafficoverloadCharges: 1000kg → KSh 10,000
                 FeePerKgUsd = 0.30m,
                 FlatFeeUsd = 50m,
-                DemeritPoints = 0,
-                PenaltyDescription = "Minor GVW overload (1-500 kg) - Traffic Act fine",
-                EffectiveFrom = effectiveFrom,
-                EffectiveTo = null,
-                IsActive = true
-            },
-            new AxleFeeSchedule
-            {
-                Id = Guid.NewGuid(),
-                LegalFramework = "TRAFFIC_ACT",
-                FeeType = "GVW",
-                OverloadMinKg = 501,
-                OverloadMaxKg = 1000,
-                FeePerKgKes = 65m,
-                FlatFeeKes = 13_000m,
-                FeePerKgUsd = 0.50m,
-                FlatFeeUsd = 100m,
-                DemeritPoints = 2,
-                PenaltyDescription = "Moderate GVW overload (501-1000 kg) - Traffic Act fine",
+                DemeritPoints = 1,
+                PenaltyDescription = "Traffic Act GVW overload (1-1000 kg) - KSh 10,000 flat fine",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true
@@ -232,12 +218,12 @@ public class AxleFeeScheduleSeeder
                 FeeType = "GVW",
                 OverloadMinKg = 1001,
                 OverloadMaxKg = 2000,
-                FeePerKgKes = 97.50m,
-                FlatFeeKes = 26_000m,
-                FeePerKgUsd = 0.75m,
-                FlatFeeUsd = 200m,
-                DemeritPoints = 4,
-                PenaltyDescription = "High GVW overload (1001-2000 kg) - Traffic Act fine + prohibition",
+                FeePerKgKes = 0m,
+                FlatFeeKes = 20_000m,  // trafficoverloadCharges: 2000kg → KSh 20,000
+                FeePerKgUsd = 0.50m,
+                FlatFeeUsd = 100m,
+                DemeritPoints = 3,
+                PenaltyDescription = "Traffic Act GVW overload (1001-2000 kg) - KSh 20,000 flat fine",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true
@@ -249,12 +235,12 @@ public class AxleFeeScheduleSeeder
                 FeeType = "GVW",
                 OverloadMinKg = 2001,
                 OverloadMaxKg = 3000,
-                FeePerKgKes = 130m,
-                FlatFeeKes = 65_000m,
-                FeePerKgUsd = 1.00m,
-                FlatFeeUsd = 500m,
-                DemeritPoints = 6,
-                PenaltyDescription = "Severe GVW overload (2001-3000 kg) - Court appearance mandatory",
+                FeePerKgKes = 0m,
+                FlatFeeKes = 30_000m,  // trafficoverloadCharges: 3000kg → KSh 30,000
+                FeePerKgUsd = 0.75m,
+                FlatFeeUsd = 200m,
+                DemeritPoints = 4,
+                PenaltyDescription = "Traffic Act GVW overload (2001-3000 kg) - KSh 30,000 flat fine",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true
@@ -265,13 +251,47 @@ public class AxleFeeScheduleSeeder
                 LegalFramework = "TRAFFIC_ACT",
                 FeeType = "GVW",
                 OverloadMinKg = 3001,
-                OverloadMaxKg = null,
-                FeePerKgKes = 260m,
-                FlatFeeKes = 130_000m,
+                OverloadMaxKg = 5000,
+                FeePerKgKes = 0m,
+                FlatFeeKes = 60_000m,  // trafficoverloadCharges: 5000kg → KSh 60,000
+                FeePerKgUsd = 1.00m,
+                FlatFeeUsd = 500m,
+                DemeritPoints = 6,
+                PenaltyDescription = "Traffic Act GVW overload (3001-5000 kg) - KSh 60,000 flat fine",
+                EffectiveFrom = effectiveFrom,
+                EffectiveTo = null,
+                IsActive = true
+            },
+            new AxleFeeSchedule
+            {
+                Id = Guid.NewGuid(),
+                LegalFramework = "TRAFFIC_ACT",
+                FeeType = "GVW",
+                OverloadMinKg = 5001,
+                OverloadMaxKg = 10000,
+                FeePerKgKes = 0m,
+                FlatFeeKes = 350_000m,  // trafficoverloadCharges: 10000kg → KSh 350,000
                 FeePerKgUsd = 2.00m,
                 FlatFeeUsd = 1000m,
                 DemeritPoints = 10,
-                PenaltyDescription = "Extreme GVW overload (>3000 kg) - Automatic prosecution + vehicle impound",
+                PenaltyDescription = "Traffic Act GVW overload (5001-10000 kg) - KSh 350,000 flat fine",
+                EffectiveFrom = effectiveFrom,
+                EffectiveTo = null,
+                IsActive = true
+            },
+            new AxleFeeSchedule
+            {
+                Id = Guid.NewGuid(),
+                LegalFramework = "TRAFFIC_ACT",
+                FeeType = "GVW",
+                OverloadMinKg = 10001,
+                OverloadMaxKg = null,
+                FeePerKgKes = 0m,
+                FlatFeeKes = 400_000m,  // trafficoverloadCharges: 10001+kg → KSh 400,000 (max)
+                FeePerKgUsd = 3.00m,
+                FlatFeeUsd = 2000m,
+                DemeritPoints = 12,
+                PenaltyDescription = "Traffic Act GVW overload (>10000 kg) - KSh 400,000 max fine + prosecution",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true
