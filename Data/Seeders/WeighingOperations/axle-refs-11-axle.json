@@ -1,0 +1,92 @@
+{
+  "axleWeightReferences": [
+    {
+      "axleCode": "11*S|DD|DDDD|DDDD",
+      "axlePosition": 1,
+      "legalWeightKg": 0,
+      "axleGroupCode": "S1",
+      "axleGrouping": "A",
+      "tyreTypeCode": "S"
+    },
+    {
+      "axleCode": "11*S|DD|DDDD|DDDD",
+      "axlePosition": 2,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "TAG8",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "11*S|DD|DDDD|DDDD",
+      "axlePosition": 3,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "TAG8",
+      "axleGrouping": "B",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "11*S|DD|DDDD|DDDD",
+      "axlePosition": 4,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "QAG16",
+      "axleGrouping": "C",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "11*S|DD|DDDD|DDDD",
+      "axlePosition": 5,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "QAG16",
+      "axleGrouping": "C",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "11*S|DD|DDDD|DDDD",
+      "axlePosition": 6,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "QAG16",
+      "axleGrouping": "C",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "11*S|DD|DDDD|DDDD",
+      "axlePosition": 7,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "QAG16",
+      "axleGrouping": "C",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "11*S|DD|DDDD|DDDD",
+      "axlePosition": 8,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "QAG16",
+      "axleGrouping": "D",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "11*S|DD|DDDD|DDDD",
+      "axlePosition": 9,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "QAG16",
+      "axleGrouping": "D",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "11*S|DD|DDDD|DDDD",
+      "axlePosition": 10,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "QAG16",
+      "axleGrouping": "D",
+      "tyreTypeCode": "D"
+    },
+    {
+      "axleCode": "11*S|DD|DDDD|DDDD",
+      "axlePosition": 11,
+      "legalWeightKg": 9000,
+      "axleGroupCode": "QAG16",
+      "axleGrouping": "D",
+      "tyreTypeCode": "D"
+    }
+  ]
+}

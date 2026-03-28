@@ -214,6 +214,28 @@ public class WeighingTransaction : TenantAwareEntity
     /// Whether tolerance was applied in compliance calculation
     /// </summary>
     public bool ToleranceApplied { get; set; } = false;
+    
+    /// <summary>
+    /// Calculated GVW tolerance in Kg.
+    /// </summary>
+    public int GvwToleranceKg { get; set; }
+
+    /// <summary>
+    /// Formatted GVW tolerance for display (e.g. "5%", "2,000 kg").
+    /// </summary>
+    [MaxLength(50)]
+    public string? GvwToleranceDisplay { get; set; }
+
+    /// <summary>
+    /// Formatted Axle tolerance for display.
+    /// </summary>
+    [MaxLength(50)]
+    public string? AxleToleranceDisplay { get; set; }
+
+    /// <summary>
+    /// Operational allowance (additive) used in this transaction.
+    /// </summary>
+    public int OperationalAllowanceUsed { get; set; }
 
     /// <summary>
     /// Maximum allowed reweigh cycles (default 8 per regulations)

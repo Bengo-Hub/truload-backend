@@ -3,6 +3,7 @@ using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Backend.Migrations
 {
     [DbContext(typeof(TruLoadDbContext))]
-    partial class TruLoadDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260326114103_AddFeeKesToWeighingAxle")]
+    partial class AddFeeKesToWeighingAxle
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -384,15 +387,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("text")
                         .HasColumnName("notes");
 
-                    b.Property<int?>("PermissibleGvwKg")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("ToleranceKg")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal?>("TolerancePercentage")
-                        .HasColumnType("numeric");
-
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -535,12 +529,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
-
-                    b.Property<int?>("ToleranceKg")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal?>("TolerancePercentage")
-                        .HasColumnType("numeric");
 
                     b.Property<Guid?>("TyreTypeId")
                         .HasColumnType("uuid")
@@ -8345,10 +8333,6 @@ namespace TruLoad.Backend.Migrations
                     b.Property<int?>("AutoweighGvwKg")
                         .HasColumnType("integer");
 
-                    b.Property<string>("AxleToleranceDisplay")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
                     b.Property<string>("Bound")
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
@@ -8398,13 +8382,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("gvw_permissible_kg");
 
-                    b.Property<string>("GvwToleranceDisplay")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int>("GvwToleranceKg")
-                        .HasColumnType("integer");
-
                     b.Property<bool>("HasPermit")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -8443,9 +8420,6 @@ namespace TruLoad.Backend.Migrations
                     b.Property<string>("LocationTown")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<int>("OperationalAllowanceUsed")
-                        .HasColumnType("integer");
 
                     b.Property<Guid?>("OriginId")
                         .HasColumnType("uuid");

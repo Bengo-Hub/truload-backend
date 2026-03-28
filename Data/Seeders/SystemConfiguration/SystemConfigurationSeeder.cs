@@ -1076,9 +1076,9 @@ public class SystemConfigurationSeeder
                 Name = "Traffic Act GVW Tolerance",
                 LegalFramework = "TRAFFIC_ACT",
                 TolerancePercentage = 0.0m,
-                ToleranceKg = null,
+                ToleranceKg = 2000,
                 AppliesTo = "GVW",
-                Description = "Zero tolerance for Gross Vehicle Weight under Traffic Act (strict enforcement)",
+                Description = "2,000kg tolerance for Gross Vehicle Weight under Traffic Act (as per regulation)",
                 EffectiveFrom = effectiveDate,
                 EffectiveTo = null,
                 IsActive = true,
@@ -1092,9 +1092,9 @@ public class SystemConfigurationSeeder
                 Name = "Traffic Act Axle Weight Tolerance",
                 LegalFramework = "TRAFFIC_ACT",
                 TolerancePercentage = 0.0m,
-                ToleranceKg = null,
+                ToleranceKg = 0,
                 AppliesTo = "AXLE",
-                Description = "Zero tolerance for individual axle weights under Traffic Act (strict enforcement)",
+                Description = "Strict zero tolerance for axle weights under Traffic Act (charges are GVW-based only)",
                 EffectiveFrom = effectiveDate,
                 EffectiveTo = null,
                 IsActive = true,
@@ -1149,6 +1149,51 @@ public class SystemConfigurationSeeder
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
+            },
+            new ToleranceSetting
+            {
+                Id = Guid.NewGuid(),
+                Code = "STANDARD_LAW_SINGLE",
+                Name = "Standard Law Tolerance - Single Axle",
+                LegalFramework = "GLOBAL",
+                TolerancePercentage = 5.0m,
+                ToleranceKg = null,
+                AppliesTo = "AXLE",
+                Description = "Default 5% tolerance for single axles as per law",
+                EffectiveFrom = effectiveDate,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ToleranceSetting
+            {
+                Id = Guid.NewGuid(),
+                Code = "STANDARD_LAW_GROUP",
+                Name = "Standard Law Tolerance - Groups & GVW",
+                LegalFramework = "GLOBAL",
+                TolerancePercentage = 0.0m,
+                ToleranceKg = null,
+                AppliesTo = "BOTH",
+                Description = "Strict 0% tolerance for grouped axles and GVW as per law",
+                EffectiveFrom = effectiveDate,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ToleranceSetting
+            {
+                Id = Guid.NewGuid(),
+                Code = "OPERATIONAL_ALLOWANCE",
+                Name = "Operational Allowance",
+                LegalFramework = "GLOBAL",
+                TolerancePercentage = 0.0m,
+                ToleranceKg = 200,
+                AppliesTo = "BOTH",
+                Description = "Additional operational allowance added to permissible limits for technical variance",
+                EffectiveFrom = effectiveDate,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             }
         };
 
@@ -1175,11 +1220,14 @@ public class SystemConfigurationSeeder
     {
         var effectiveDate = DateTime.UtcNow.Date;
 
-        // Kenya Traffic Act Cap 403 fee structure - per axle type
-        // Fee bands based on overload ranges with type-specific rates
+        // Kenya Traffic Act Cap 403 fee structure
+        // Source: KenloadV2 trafficoverloadCharges table (native KES flat fees)
+        // NOTE: Traffic Act does NOT differentiate by axle type — all axle types
+        // get the same flat fee per overload band (unlike EAC which uses per-axle-type rates).
+        // USD columns are reference-only estimates for reporting.
         var feeSchedules = new[]
         {
-            // Band 1: 0-2000 kg overload
+            // Band 1: 0-2000 kg overload → KSh 20,000 (trafficoverloadCharges: 2000kg → 20,000)
             new AxleTypeOverloadFeeSchedule
             {
                 OverloadMinKg = 0,
@@ -1189,11 +1237,16 @@ public class SystemConfigurationSeeder
                 TandemAxleFeeUsd = 100.00m,
                 TridemAxleFeeUsd = 125.00m,
                 QuadAxleFeeUsd = 150.00m,
+                SteeringAxleFeeKes = 20_000m,
+                SingleDriveAxleFeeKes = 20_000m,
+                TandemAxleFeeKes = 20_000m,
+                TridemAxleFeeKes = 20_000m,
+                QuadAxleFeeKes = 20_000m,
                 LegalFramework = "TRAFFIC_ACT",
                 EffectiveFrom = effectiveDate,
                 EffectiveTo = null
             },
-            // Band 2: 2001-5000 kg overload
+            // Band 2: 2001-5000 kg overload → KSh 60,000 (trafficoverloadCharges: 5000kg → 60,000)
             new AxleTypeOverloadFeeSchedule
             {
                 OverloadMinKg = 2001,
@@ -1203,11 +1256,16 @@ public class SystemConfigurationSeeder
                 TandemAxleFeeUsd = 200.00m,
                 TridemAxleFeeUsd = 250.00m,
                 QuadAxleFeeUsd = 300.00m,
+                SteeringAxleFeeKes = 60_000m,
+                SingleDriveAxleFeeKes = 60_000m,
+                TandemAxleFeeKes = 60_000m,
+                TridemAxleFeeKes = 60_000m,
+                QuadAxleFeeKes = 60_000m,
                 LegalFramework = "TRAFFIC_ACT",
                 EffectiveFrom = effectiveDate,
                 EffectiveTo = null
             },
-            // Band 3: 5001-10000 kg overload
+            // Band 3: 5001-10000 kg overload → KSh 350,000 (trafficoverloadCharges: 10000kg → 350,000)
             new AxleTypeOverloadFeeSchedule
             {
                 OverloadMinKg = 5001,
@@ -1217,11 +1275,16 @@ public class SystemConfigurationSeeder
                 TandemAxleFeeUsd = 400.00m,
                 TridemAxleFeeUsd = 500.00m,
                 QuadAxleFeeUsd = 600.00m,
+                SteeringAxleFeeKes = 350_000m,
+                SingleDriveAxleFeeKes = 350_000m,
+                TandemAxleFeeKes = 350_000m,
+                TridemAxleFeeKes = 350_000m,
+                QuadAxleFeeKes = 350_000m,
                 LegalFramework = "TRAFFIC_ACT",
                 EffectiveFrom = effectiveDate,
                 EffectiveTo = null
             },
-            // Band 4: 10001-20000 kg overload
+            // Band 4: 10001-20000 kg overload → KSh 400,000 (trafficoverloadCharges: 10001+kg → 400,000)
             new AxleTypeOverloadFeeSchedule
             {
                 OverloadMinKg = 10001,
@@ -1231,11 +1294,16 @@ public class SystemConfigurationSeeder
                 TandemAxleFeeUsd = 800.00m,
                 TridemAxleFeeUsd = 1000.00m,
                 QuadAxleFeeUsd = 1200.00m,
+                SteeringAxleFeeKes = 400_000m,
+                SingleDriveAxleFeeKes = 400_000m,
+                TandemAxleFeeKes = 400_000m,
+                TridemAxleFeeKes = 400_000m,
+                QuadAxleFeeKes = 400_000m,
                 LegalFramework = "TRAFFIC_ACT",
                 EffectiveFrom = effectiveDate,
                 EffectiveTo = null
             },
-            // Band 5: >20000 kg overload (severe)
+            // Band 5: >20000 kg overload (severe) → KSh 400,000 (max penalty per Traffic Act)
             new AxleTypeOverloadFeeSchedule
             {
                 OverloadMinKg = 20001,
@@ -1245,6 +1313,11 @@ public class SystemConfigurationSeeder
                 TandemAxleFeeUsd = 1600.00m,
                 TridemAxleFeeUsd = 2000.00m,
                 QuadAxleFeeUsd = 2400.00m,
+                SteeringAxleFeeKes = 400_000m,
+                SingleDriveAxleFeeKes = 400_000m,
+                TandemAxleFeeKes = 400_000m,
+                TridemAxleFeeKes = 400_000m,
+                QuadAxleFeeKes = 400_000m,
                 LegalFramework = "TRAFFIC_ACT",
                 EffectiveFrom = effectiveDate,
                 EffectiveTo = null

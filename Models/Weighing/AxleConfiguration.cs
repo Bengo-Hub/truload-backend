@@ -75,6 +75,29 @@ public class AxleConfiguration : BaseEntity
     public string? Notes { get; set; }
 
     /// <summary>
+    /// Per-configuration GVW tolerance in kg (from Traffic Act Amendment Rules 2013).
+    /// Each standard config has its own specific tolerance, e.g.:
+    /// 2A = 1,000 kg, 3A = 2,000 kg, 6C = 4,000 kg.
+    /// NULL = use global tolerance from ToleranceSettings table.
+    /// </summary>
+    public int? ToleranceKg { get; set; }
+
+    /// <summary>
+    /// Per-configuration GVW tolerance as percentage.
+    /// e.g., 2A = 6%, 3A = 8%, 5A = 5%.
+    /// NULL = use global tolerance from ToleranceSettings table.
+    /// </summary>
+    public decimal? TolerancePercentage { get; set; }
+
+    /// <summary>
+    /// Permissible GVW including tolerance (GVW + ToleranceKg).
+    /// This is the effective max weight before overload penalties apply.
+    /// e.g., 2A: 18,000 + 1,000 = 19,000 kg.
+    /// NULL = calculated at runtime.
+    /// </summary>
+    public int? PermissibleGvwKg { get; set; }
+
+    /// <summary>
     /// User who created derived configuration (NULL for standard configs)
     /// </summary>
     public Guid? CreatedByUserId { get; set; }

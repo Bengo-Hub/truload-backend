@@ -132,9 +132,24 @@ public class WeighingComplianceResultDto
     public int GvwPermissibleKg { get; set; }
 
     /// <summary>
-    /// GVW overload (kg) - 0% tolerance
+    /// GVW overload (kg) - after tolerance applied
     /// </summary>
     public int GvwOverloadKg { get; set; }
+
+    /// <summary>
+    /// GVW tolerance applied in kg (from DB tolerance settings)
+    /// </summary>
+    public int GvwToleranceKg { get; set; }
+
+    /// <summary>
+    /// GVW effective limit including tolerance (GvwPermissible + GvwTolerance)
+    /// </summary>
+    public int GvwEffectiveLimitKg { get; set; }
+
+    /// <summary>
+    /// Display string for GVW tolerance (e.g. "5%", "2,000 kg", "0% (strict)")
+    /// </summary>
+    public string GvwToleranceDisplay { get; set; } = "0% (strict)";
 
     /// <summary>
     /// Total axle fees (USD)
@@ -185,6 +200,16 @@ public class WeighingComplianceResultDto
     /// Operational tolerance applied for GVW (kg)
     /// </summary>
     public int OperationalToleranceKg { get; set; }
+
+    /// <summary>
+    /// Operational allowance (additive) used (kg)
+    /// </summary>
+    public int OperationalAllowanceUsed { get; set; }
+
+    /// <summary>
+    /// Display string for axle tolerance (e.g. "5%", "0% (strict)")
+    /// </summary>
+    public string AxleToleranceDisplay { get; set; } = "0% (strict)";
 
     /// <summary>
     /// Violation reasons (if any)

@@ -18,6 +18,9 @@ public class WeightTicketDocument : BaseDocument
     private readonly string? _orgLogoFile;
     private readonly bool _isCommercial;
     private readonly int _operationalToleranceKg;
+    private readonly int _gvwToleranceKg;
+    private readonly string _gvwToleranceDisplay;
+    private readonly string _axleToleranceDisplay;
     private readonly string? _primaryColor;
     private readonly string? _secondaryColor;
 
@@ -28,7 +31,10 @@ public class WeightTicketDocument : BaseDocument
         string? orgLogoFile = null,
         int operationalToleranceKg = 200,
         string? primaryColor = null,
-        string? secondaryColor = null)
+        string? secondaryColor = null,
+        int gvwToleranceKg = 0,
+        string? gvwToleranceDisplay = null,
+        string? axleToleranceDisplay = null)
     {
         _transaction = transaction;
         _organizationName = organizationName;
@@ -36,6 +42,9 @@ public class WeightTicketDocument : BaseDocument
         _orgLogoFile = orgLogoFile;
         _isCommercial = string.Equals(tenantType, "CommercialWeighing", StringComparison.OrdinalIgnoreCase);
         _operationalToleranceKg = operationalToleranceKg;
+        _gvwToleranceKg = gvwToleranceKg;
+        _gvwToleranceDisplay = gvwToleranceDisplay ?? "0%";
+        _axleToleranceDisplay = axleToleranceDisplay ?? "0%";
         _primaryColor = primaryColor;
         _secondaryColor = secondaryColor;
     }
@@ -302,9 +311,12 @@ public class WeightTicketDocument : BaseDocument
                     table.Cell().Element(c => CellStyle(c, isEven))
                         .Text($"{axle.PavementDamageFactor:F2}");
 
-                    // Fee
+                    // Fee — use currency-appropriate field
+                    var axleFee = (_transaction.Act?.ChargingCurrency ?? "KES") == "KES" && axle.FeeKes > 0
+                        ? axle.FeeKes
+                        : axle.FeeUsd;
                     table.Cell().Element(c => CellStyle(c, isEven))
-                        .Text(axle.FeeUsd > 0 ? $"{axle.FeeUsd:N2}" : "-");
+                        .Text(axleFee > 0 ? $"{axleFee:N2}" : "-");
                 }
 
                 static IContainer CellStyle(IContainer c, bool isEven) =>
@@ -362,6 +374,14 @@ public class WeightTicketDocument : BaseDocument
                         }
                     });
                     
+                    // Tolerance footnotes
+                    if (_gvwToleranceKg > 0 || _gvwToleranceDisplay != "0%")
+                    {
+                        var effectiveLimit = _transaction.GvwPermissibleKg + _gvwToleranceKg;
+                        c.Item().PaddingTop(2).Text(
+                            $"* Regulatory Tolerance: {_gvwToleranceDisplay} (GVW effective limit: {effectiveLimit:N0} kg, Axle tolerance: {_axleToleranceDisplay})")
+                            .FontSize(6.5f).Italic().FontColor("#4B5563");
+                    }
                     if (_operationalToleranceKg > 0)
                     {
                         c.Item().PaddingTop(2).Text($"* Operational Allowance: {_operationalToleranceKg} kg applied")

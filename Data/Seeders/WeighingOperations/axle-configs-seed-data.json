@@ -8,9 +8,12 @@
     },
     {
       "axleCode": "2A",
-      "axleName": "2A",
+      "axleName": "2A - Rigid body vehicle with 2 axles",
       "axleNumber": 2,
-      "gvw": 18000
+      "gvw": 18000,
+      "toleranceKg": 1000,
+      "tolerancePercentage": 6,
+      "permissibleGvwKg": 18000
     },
     {
       "axleCode": "3*SSD",
@@ -20,9 +23,12 @@
     },
     {
       "axleCode": "3A",
-      "axleName": "3A",
+      "axleName": "3A - Rigid body vehicle with 3 axles",
       "axleNumber": 3,
-      "gvw": 26000
+      "gvw": 26000,
+      "toleranceKg": 2000,
+      "tolerancePercentage": 8,
+      "permissibleGvwKg": 26000
     },
     {
       "axleCode": "4*SDSD",
@@ -34,7 +40,10 @@
       "axleCode": "4D",
       "axleName": "4D",
       "axleNumber": 4,
-      "gvw": 36000
+      "gvw": 36000,
+      "toleranceKg": 2000,
+      "tolerancePercentage": 6,
+      "permissibleGvwKg": 36000
     },
     {
       "axleCode": "5*SSDDD",
@@ -52,13 +61,19 @@
       "axleCode": "5C",
       "axleName": "5C",
       "axleNumber": 5,
-      "gvw": 44000
+      "gvw": 44000,
+      "toleranceKg": 2000,
+      "tolerancePercentage": 5,
+      "permissibleGvwKg": 44000
     },
     {
       "axleCode": "5D",
       "axleName": "5D",
       "axleNumber": 5,
-      "gvw": 42000
+      "gvw": 44000,
+      "toleranceKg": 2000,
+      "tolerancePercentage": 5,
+      "permissibleGvwKg": 44000
     },
     {
       "axleCode": "6*SDDWWW",
@@ -88,37 +103,55 @@
       "axleCode": "6C",
       "axleName": "6C",
       "axleNumber": 6,
-      "gvw": 50000
+      "gvw": 50000,
+      "toleranceKg": 4000,
+      "tolerancePercentage": 8,
+      "permissibleGvwKg": 50000
     },
     {
       "axleCode": "6D",
       "axleName": "6D",
       "axleNumber": 6,
-      "gvw": 50000
+      "gvw": 52000,
+      "toleranceKg": 4000,
+      "tolerancePercentage": 8,
+      "permissibleGvwKg": 52000
     },
     {
       "axleCode": "6E",
       "axleName": "6E",
       "axleNumber": 6,
-      "gvw": 52000
+      "gvw": 46500,
+      "toleranceKg": 2000,
+      "tolerancePercentage": 8,
+      "permissibleGvwKg": 46500
     },
     {
       "axleCode": "6G",
       "axleName": "6G",
       "axleNumber": 6,
-      "gvw": 47750
+      "gvw": 47750,
+      "toleranceKg": 2250,
+      "tolerancePercentage": 8,
+      "permissibleGvwKg": 47750
     },
     {
       "axleCode": "7C",
       "axleName": "7C",
       "axleNumber": 7,
-      "gvw": 56000
+      "gvw": 56000,
+      "toleranceKg": 2000,
+      "tolerancePercentage": 4,
+      "permissibleGvwKg": 58000
     },
     {
       "axleCode": "7D",
       "axleName": "7D",
       "axleNumber": 7,
-      "gvw": 56000
+      "gvw": 56000,
+      "toleranceKg": 2000,
+      "tolerancePercentage": 4,
+      "permissibleGvwKg": 58000
     },
     {
       "axleCode": "7E",
@@ -142,7 +175,7 @@
       "axleCode": "7I",
       "axleName": "7I",
       "axleNumber": 7,
-      "gvw": 54000
+      "gvw": 56000
     },
     {
       "axleCode": "3*S|DD||",
@@ -154,13 +187,13 @@
       "axleCode": "2*S|S||",
       "axleName": "2*S|S||",
       "axleNumber": 2,
-      "gvw": 16000
+      "gvw": 15000
     },
     {
       "axleCode": "3*S|DW||",
       "axleName": "3*S|DW||",
       "axleNumber": 3,
-      "gvw": 25000
+      "gvw": 24500
     },
     {
       "axleCode": "2*S|D||",
@@ -190,7 +223,7 @@
       "axleCode": "4*S|DDD||",
       "axleName": "4*S|DDD||",
       "axleNumber": 4,
-      "gvw": 32000
+      "gvw": 30750
     },
     {
       "axleCode": "3*S|DS||",
@@ -202,7 +235,7 @@
       "axleCode": "6*S|WD|WWW|",
       "axleName": "6*S|WD|WWW|",
       "axleNumber": 6,
-      "gvw": 47500
+      "gvw": 47000
     },
     {
       "axleCode": "5*S|D|WWW|",
@@ -238,7 +271,7 @@
       "axleCode": "7*S|DS|DD|DD",
       "axleName": "7*S|DS|DD|DD",
       "axleNumber": 7,
-      "gvw": 56000
+      "gvw": 59750
     },
     {
       "axleCode": "5*S|SD|DD|",
@@ -250,7 +283,7 @@
       "axleCode": "6*S|WD|DDD|",
       "axleName": "6*S|WD|DDD|",
       "axleNumber": 6,
-      "gvw": 49000
+      "gvw": 48500
     },
     {
       "axleCode": "5*SS|DDW||",
@@ -322,7 +355,7 @@
       "axleCode": "6*S|DW|DDD|",
       "axleName": "6*S|DW|DDD|",
       "axleNumber": 6,
-      "gvw": 48500
+      "gvw": 49000
     },
     {
       "axleCode": "6*S|DW|D|DD",
@@ -400,7 +433,7 @@
       "axleCode": "7*S|DD|DDDD|",
       "axleName": "7*S|DD|DDDD|",
       "axleNumber": 7,
-      "gvw": 54000
+      "gvw": 56000
     },
     {
       "axleCode": "6*S|WW|WWW|",
@@ -454,7 +487,10 @@
       "axleCode": "4A",
       "axleName": "4A",
       "axleNumber": 4,
-      "gvw": 30000
+      "gvw": 30000,
+      "toleranceKg": 2000,
+      "tolerancePercentage": 7,
+      "permissibleGvwKg": 30000
     },
     {
       "axleCode": "5*S|WD|WW|",
@@ -484,7 +520,7 @@
       "axleCode": "5*S|W|WWW|",
       "axleName": "5*S|W|WWW|",
       "axleNumber": 5,
-      "gvw": 38500
+      "gvw": 40000
     },
     {
       "axleCode": "6*S|DD|DDD|",
@@ -508,7 +544,7 @@
       "axleCode": "5*S|WD|DD|",
       "axleName": "5*S|WD|DD|",
       "axleNumber": 5,
-      "gvw": 42500
+      "gvw": 43000
     },
     {
       "axleCode": "4*SD|DD||",
@@ -526,7 +562,7 @@
       "axleCode": "3*S|WD||",
       "axleName": "3*S|WD||",
       "axleNumber": 3,
-      "gvw": 25000
+      "gvw": 24500
     },
     {
       "axleCode": "6*SD|D|WWW|",
@@ -598,7 +634,7 @@
       "axleCode": "7*S|WD|DD|WW",
       "axleName": "7*S|WD|DD|WW",
       "axleNumber": 7,
-      "gvw": 56000
+      "gvw": 59000
     },
     {
       "axleCode": "6*SW|D|DDD|",
@@ -634,7 +670,7 @@
       "axleCode": "6*S|SD|DWD|",
       "axleName": "6*S|SD|DWD|",
       "axleNumber": 6,
-      "gvw": 47750
+      "gvw": 47250
     },
     {
       "axleCode": "5*S||WWWW|",
@@ -748,13 +784,16 @@
       "axleCode": "3B",
       "axleName": "3B",
       "axleNumber": 3,
-      "gvw": 28000
+      "gvw": 28000,
+      "toleranceKg": 2000,
+      "tolerancePercentage": 7,
+      "permissibleGvwKg": 30000
     },
     {
       "axleCode": "4*",
       "axleName": "4*",
       "axleNumber": 4,
-      "gvw": 30000
+      "gvw": 34000
     },
     {
       "axleCode": "4*SDDD",
@@ -784,13 +823,19 @@
       "axleCode": "4B",
       "axleName": "4B",
       "axleNumber": 4,
-      "gvw": 36000
+      "gvw": 36000,
+      "toleranceKg": 2000,
+      "tolerancePercentage": 6,
+      "permissibleGvwKg": 38000
     },
     {
       "axleCode": "4C",
       "axleName": "4C",
       "axleNumber": 4,
-      "gvw": 36000
+      "gvw": 36000,
+      "toleranceKg": 2000,
+      "tolerancePercentage": 6,
+      "permissibleGvwKg": 38000
     },
     {
       "axleCode": "4F",
@@ -808,13 +853,19 @@
       "axleCode": "5A",
       "axleName": "5A",
       "axleNumber": 5,
-      "gvw": 42000
+      "gvw": 42000,
+      "toleranceKg": 2000,
+      "tolerancePercentage": 5,
+      "permissibleGvwKg": 44000
     },
     {
       "axleCode": "5B",
       "axleName": "5B",
       "axleNumber": 5,
-      "gvw": 46000
+      "gvw": 46000,
+      "toleranceKg": 2000,
+      "tolerancePercentage": 5,
+      "permissibleGvwKg": 46000
     },
     {
       "axleCode": "6*",
@@ -892,7 +943,10 @@
       "axleCode": "6A",
       "axleName": "6A",
       "axleNumber": 6,
-      "gvw": 54000
+      "gvw": 54000,
+      "toleranceKg": 2000,
+      "tolerancePercentage": 4,
+      "permissibleGvwKg": 48500
     },
     {
       "axleCode": "6AWWWDDD",
@@ -904,31 +958,10 @@
       "axleCode": "6B",
       "axleName": "6B",
       "axleNumber": 6,
-      "gvw": 48000
-    },
-    {
-      "axleCode": "6C SDSSS",
-      "axleName": "6C SDSSS",
-      "axleNumber": 1,
-      "gvw": 6000
-    },
-    {
-      "axleCode": "6C SDWWW",
-      "axleName": "6C SDWWW",
-      "axleNumber": 1,
-      "gvw": 7500
-    },
-    {
-      "axleCode": "6C WDSSS",
-      "axleName": "6C WDSSS",
-      "axleNumber": 1,
-      "gvw": 6000
-    },
-    {
-      "axleCode": "6C WDWWW",
-      "axleName": "6C WDWWW",
-      "axleNumber": 1,
-      "gvw": 7500
+      "gvw": 48000,
+      "toleranceKg": 2250,
+      "tolerancePercentage": 5,
+      "permissibleGvwKg": 50000
     },
     {
       "axleCode": "6F",
@@ -941,12 +974,6 @@
       "axleName": "6H",
       "axleNumber": 6,
       "gvw": 44000
-    },
-    {
-      "axleCode": "6I",
-      "axleName": "6I",
-      "axleNumber": 1,
-      "gvw": 8000
     },
     {
       "axleCode": "7*",
@@ -1000,7 +1027,7 @@
       "axleCode": "7*S|DD|DDD|D",
       "axleName": "7*S|DD|DDD|D",
       "axleNumber": 7,
-      "gvw": 60000
+      "gvw": 56000
     },
     {
       "axleCode": "4*S|WW|DD||",
@@ -1043,6 +1070,671 @@
       "axleName": "6*S|DD|DD|D|",
       "axleNumber": 6,
       "gvw": 58000
+    },
+    {
+      "axleCode": "2*D|D||",
+      "axleName": "2-Axle: D-D Custom",
+      "axleNumber": 2,
+      "gvw": 18000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "2*D|S||",
+      "axleName": "2-Axle: D-S Custom",
+      "axleNumber": 2,
+      "gvw": 15000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "3*S|D|S|",
+      "axleName": "3-Axle: S-D-S Custom",
+      "axleNumber": 3,
+      "gvw": 25000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "3*S|W|S|",
+      "axleName": "3-Axle: S-W-S Custom",
+      "axleNumber": 3,
+      "gvw": 23000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "3*W|DS||",
+      "axleName": "3-Axle: W-DS Custom",
+      "axleNumber": 3,
+      "gvw": 23750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "3*W|WW||",
+      "axleName": "3-Axle: W-WW Custom",
+      "axleNumber": 3,
+      "gvw": 24000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "3*W|DD||",
+      "axleName": "3-Axle: W-DD Custom",
+      "axleNumber": 3,
+      "gvw": 26000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "3*WW|W||",
+      "axleName": "3-Axle: WW-W Custom",
+      "axleNumber": 3,
+      "gvw": 20000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "3*S|WW||",
+      "axleName": "3-Axle: S-WW Custom",
+      "axleNumber": 3,
+      "gvw": 23000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "3*S|S|S|",
+      "axleName": "3-Axle: S-S-S Custom",
+      "axleNumber": 3,
+      "gvw": 22000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "3*SS|D||",
+      "axleName": "3-Axle: SS-D Custom",
+      "axleNumber": 3,
+      "gvw": 22000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "4*S|SD|W|",
+      "axleName": "4-Axle: S-SD-W Custom",
+      "axleNumber": 4,
+      "gvw": 31750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "4*S|SD|D|",
+      "axleName": "4-Axle: S-SD-D Custom",
+      "axleNumber": 4,
+      "gvw": 33750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "4*S|DD|D|",
+      "axleName": "4-Axle: S-DD-D Custom",
+      "axleNumber": 4,
+      "gvw": 36000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "4*S|D|S|S",
+      "axleName": "4-Axle: S-D-S-S Custom",
+      "axleNumber": 4,
+      "gvw": 32000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "4*S|W|DS|",
+      "axleName": "4-Axle: S-W-DS Custom",
+      "axleNumber": 4,
+      "gvw": 31750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "4*SW|DD||",
+      "axleName": "4-Axle: SW-DD Custom",
+      "axleNumber": 4,
+      "gvw": 30000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "4*WW|DD||",
+      "axleName": "4-Axle: WW-DD Custom",
+      "axleNumber": 4,
+      "gvw": 34000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "4*WW|WW||",
+      "axleName": "4-Axle: WW-WW Custom",
+      "axleNumber": 4,
+      "gvw": 27000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "4*SS|DW||",
+      "axleName": "4-Axle: SS-DW Custom",
+      "axleNumber": 4,
+      "gvw": 29000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*SS|DDS||",
+      "axleName": "5-Axle: SS-DDS Custom",
+      "axleNumber": 5,
+      "gvw": 34750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*SS|DD|D|",
+      "axleName": "5-Axle: SS-DD-D Custom",
+      "axleNumber": 5,
+      "gvw": 40000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*SS|SDD||",
+      "axleName": "5-Axle: SS-SDD Custom",
+      "axleNumber": 5,
+      "gvw": 34750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*WW|DDD||",
+      "axleName": "5-Axle: WW-DDD Custom",
+      "axleNumber": 5,
+      "gvw": 36000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*SW|D|WW|",
+      "axleName": "5-Axle: SW-D-WW Custom",
+      "axleNumber": 5,
+      "gvw": 38000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*SW|D|DD|",
+      "axleName": "5-Axle: SW-D-DD Custom",
+      "axleNumber": 5,
+      "gvw": 40000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*SW|WD|D|",
+      "axleName": "5-Axle: SW-WD-D Custom",
+      "axleNumber": 5,
+      "gvw": 39000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|DD|S|D",
+      "axleName": "5-Axle: S-DD-S-D Custom",
+      "axleNumber": 5,
+      "gvw": 43000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|DD|S|S",
+      "axleName": "5-Axle: S-DD-S-S Custom",
+      "axleNumber": 5,
+      "gvw": 40000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|DD|SS|",
+      "axleName": "5-Axle: S-DD-SS Custom",
+      "axleNumber": 5,
+      "gvw": 39500,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|DD|SD|",
+      "axleName": "5-Axle: S-DD-SD Custom",
+      "axleNumber": 5,
+      "gvw": 41750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|DD||DD",
+      "axleName": "5-Axle: S-DD-DD Custom",
+      "axleNumber": 5,
+      "gvw": 44000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|DS|S|D",
+      "axleName": "5-Axle: S-DS-S-D Custom",
+      "axleNumber": 5,
+      "gvw": 40750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|DS|S|S",
+      "axleName": "5-Axle: S-DS-S-S Custom",
+      "axleNumber": 5,
+      "gvw": 37750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|DS|SS|",
+      "axleName": "5-Axle: S-DS-SS Custom",
+      "axleNumber": 5,
+      "gvw": 37250,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|DS|DD|",
+      "axleName": "5-Axle: S-DS-DD Custom",
+      "axleNumber": 5,
+      "gvw": 41750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|DS|D|D",
+      "axleName": "5-Axle: S-DS-D-D Custom",
+      "axleNumber": 5,
+      "gvw": 43750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|D|SSS|",
+      "axleName": "5-Axle: S-D-SSS Custom",
+      "axleNumber": 5,
+      "gvw": 38250,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|D|SDS|",
+      "axleName": "5-Axle: S-D-SDS Custom",
+      "axleNumber": 5,
+      "gvw": 39500,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|D|SDD|",
+      "axleName": "5-Axle: S-D-SDD Custom",
+      "axleNumber": 5,
+      "gvw": 40750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|D|WDW|",
+      "axleName": "5-Axle: S-D-WDW Custom",
+      "axleNumber": 5,
+      "gvw": 42000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*S|SD|WW|",
+      "axleName": "5-Axle: S-SD-WW Custom",
+      "axleNumber": 5,
+      "gvw": 38750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "5*W|D|WWW|",
+      "axleName": "5-Axle: W-D-WWW Custom",
+      "axleNumber": 5,
+      "gvw": 42000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|DD|DSD|",
+      "axleName": "6-Axle: S-DD-DSD Custom",
+      "axleNumber": 6,
+      "gvw": 48750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|DD|DWD|",
+      "axleName": "6-Axle: S-DD-DWD Custom",
+      "axleNumber": 6,
+      "gvw": 49500,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|DD|SDD|",
+      "axleName": "6-Axle: S-DD-SDD Custom",
+      "axleNumber": 6,
+      "gvw": 48750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|DD|DDW|",
+      "axleName": "6-Axle: S-DD-DDW Custom",
+      "axleNumber": 6,
+      "gvw": 50000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|DD|DD|D",
+      "axleName": "6-Axle: S-DD-DD-D Custom",
+      "axleNumber": 6,
+      "gvw": 54000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|DD|S|DD",
+      "axleName": "6-Axle: S-DD-S-DD Custom",
+      "axleNumber": 6,
+      "gvw": 51000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|SD|DDS|",
+      "axleName": "6-Axle: S-SD-DDS Custom",
+      "axleNumber": 6,
+      "gvw": 46500,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|SD|DSD|",
+      "axleName": "6-Axle: S-SD-DSD Custom",
+      "axleNumber": 6,
+      "gvw": 46500,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|SD|SDD|",
+      "axleName": "6-Axle: S-SD-SDD Custom",
+      "axleNumber": 6,
+      "gvw": 46500,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|SD|DWW|",
+      "axleName": "6-Axle: S-SD-DWW Custom",
+      "axleNumber": 6,
+      "gvw": 46750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|SD|WDW|",
+      "axleName": "6-Axle: S-SD-WDW Custom",
+      "axleNumber": 6,
+      "gvw": 47750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|SD|DDW|",
+      "axleName": "6-Axle: S-SD-DDW Custom",
+      "axleNumber": 6,
+      "gvw": 47750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|SD|SDS|",
+      "axleName": "6-Axle: S-SD-SDS Custom",
+      "axleNumber": 6,
+      "gvw": 45250,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*SS|DD|DD|",
+      "axleName": "6-Axle: SS-DD-DD Custom",
+      "axleNumber": 6,
+      "gvw": 48000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*SS|D|S|DD",
+      "axleName": "6-Axle: SS-D-S-DD Custom",
+      "axleNumber": 6,
+      "gvw": 47000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|WD|DDW|",
+      "axleName": "6-Axle: S-WD-DDW Custom",
+      "axleNumber": 6,
+      "gvw": 49000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|WD|DSD|",
+      "axleName": "6-Axle: S-WD-DSD Custom",
+      "axleNumber": 6,
+      "gvw": 47750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|WD|SDD|",
+      "axleName": "6-Axle: S-WD-SDD Custom",
+      "axleNumber": 6,
+      "gvw": 47750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|WD|DWD|",
+      "axleName": "6-Axle: S-WD-DWD Custom",
+      "axleNumber": 6,
+      "gvw": 49000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|DWD|DD|",
+      "axleName": "6-Axle: S-DWD-DD Custom",
+      "axleNumber": 6,
+      "gvw": 49500,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|WDDD|D|",
+      "axleName": "6-Axle: S-WDDD-D Custom",
+      "axleNumber": 6,
+      "gvw": 49500,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|DW|DWD|",
+      "axleName": "6-Axle: S-DW-DWD Custom",
+      "axleNumber": 6,
+      "gvw": 49000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|D|D|WWW",
+      "axleName": "6-Axle: S-D-D-WWW Custom",
+      "axleNumber": 6,
+      "gvw": 50500,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|D|DD|DD",
+      "axleName": "6-Axle: S-D-DD-DD Custom",
+      "axleNumber": 6,
+      "gvw": 54000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*W|WW|W|WW",
+      "axleName": "6-Axle: W-WW-W-WW Custom",
+      "axleNumber": 6,
+      "gvw": 46000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*W|DD|DDD|",
+      "axleName": "6-Axle: W-DD-DDD Custom",
+      "axleNumber": 6,
+      "gvw": 50000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*W|DD|WWW|",
+      "axleName": "6-Axle: W-DD-WWW Custom",
+      "axleNumber": 6,
+      "gvw": 50000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*W|SD|WWW|",
+      "axleName": "6-Axle: W-SD-WWW Custom",
+      "axleNumber": 6,
+      "gvw": 47750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "6*S|DS|WWW|",
+      "axleName": "6-Axle: S-DS-WWW Custom",
+      "axleNumber": 6,
+      "gvw": 46250,
+      "isStandard": false
+    },
+    {
+      "axleCode": "7*S|DW|DD|DD",
+      "axleName": "7-Axle: S-DW-DD-DD Custom",
+      "axleNumber": 7,
+      "gvw": 56000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "7*WW|DD|D|DD",
+      "axleName": "7-Axle: WW-DD-D-DD Custom",
+      "axleNumber": 7,
+      "gvw": 56000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "7*S|WDD|DDD|",
+      "axleName": "7-Axle: S-WDD-DDD Custom",
+      "axleNumber": 7,
+      "gvw": 56000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "7*SS|DD|D|WW",
+      "axleName": "7-Axle: SS-DD-D-WW Custom",
+      "axleNumber": 7,
+      "gvw": 56000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "7*S|DD|DD|DW",
+      "axleName": "7-Axle: S-DD-DD-DW Custom",
+      "axleNumber": 7,
+      "gvw": 56000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "7*S|DD|SS|SS",
+      "axleName": "7-Axle: S-DD-SS-SS Custom",
+      "axleNumber": 7,
+      "gvw": 53000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "7*S|WD|DDD|D",
+      "axleName": "7-Axle: S-WD-DDD-D Custom",
+      "axleNumber": 7,
+      "gvw": 59000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "7*W|DS|DD|DD",
+      "axleName": "7-Axle: W-DS-DD-DD Custom",
+      "axleNumber": 7,
+      "gvw": 59750,
+      "isStandard": false
+    },
+    {
+      "axleCode": "7*WW|WW|D|DD",
+      "axleName": "7-Axle: WW-WW-D-DD Custom",
+      "axleNumber": 7,
+      "gvw": 56000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "7*SS|DD|W|WW",
+      "axleName": "7-Axle: SS-DD-W-WW Custom",
+      "axleNumber": 7,
+      "gvw": 54000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "8*",
+      "axleName": "8*",
+      "axleNumber": 8,
+      "gvw": 64000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "8*SS|DD|DD|DD",
+      "axleName": "8-Axle: SS-DD-DD-DD Custom",
+      "axleNumber": 8,
+      "gvw": 66000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "8*SS|WW|DD|DD",
+      "axleName": "8-Axle: SS-WW-DD-DD Custom",
+      "axleNumber": 8,
+      "gvw": 64000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "8*S|DD|DDDD|D",
+      "axleName": "8-Axle: S-DD-DDDD-D Custom",
+      "axleNumber": 8,
+      "gvw": 68000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "8*S|DD|DDD|DD",
+      "axleName": "8-Axle: S-DD-DDD-DD Custom",
+      "axleNumber": 8,
+      "gvw": 68000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "8*S|DD|DD|DDD",
+      "axleName": "8-Axle: S-DD-DD-DDD Custom",
+      "axleNumber": 8,
+      "gvw": 68000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "8*S|DD|SS|DDD",
+      "axleName": "8-Axle: S-DD-SS-DDD Custom",
+      "axleNumber": 8,
+      "gvw": 63500,
+      "isStandard": false
+    },
+    {
+      "axleCode": "8*S|DD|WDD|DD",
+      "axleName": "8-Axle: S-DD-WDD-DD Custom",
+      "axleNumber": 8,
+      "gvw": 68000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "9*S|DD|DDD|DDD",
+      "axleName": "9-Axle: S-DD-DDD-DDD Custom",
+      "axleNumber": 9,
+      "gvw": 74000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "9*S|DD|DD|DDDD",
+      "axleName": "9-Axle: S-DD-DD-DDDD Custom",
+      "axleNumber": 9,
+      "gvw": 76000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "9*S|DD|DDDD|DD",
+      "axleName": "9-Axle: S-DD-DDDD-DD Custom",
+      "axleNumber": 9,
+      "gvw": 76000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "10*S|DD|DDDD|DDD",
+      "axleName": "10-Axle: S-DD-DDDD-DDD Custom",
+      "axleNumber": 10,
+      "gvw": 82000,
+      "isStandard": false
+    },
+    {
+      "axleCode": "11*S|DD|DDDD|DDDD",
+      "axleName": "11-Axle: S-DD-DDDD-DDDD Custom",
+      "axleNumber": 11,
+      "gvw": 90000,
+      "isStandard": false
     }
   ]
 }

@@ -298,8 +298,13 @@ public class WeighingResultDto
     public int GvwMeasuredKg { get; set; }
     public int GvwPermissibleKg { get; set; }
     public int GvwOverloadKg { get; set; }
-    
+    public int GvwToleranceKg { get; set; }
+    public int GvwEffectiveLimitKg { get; set; }
+    public string GvwToleranceDisplay { get; set; } = "0% (strict)";
+
     public int OverloadKg { get; set; }
+    /// <summary>Overall compliance status: LEGAL, WARNING, or OVERLOAD</summary>
+    public string? OverallStatus { get; set; }
 
     public bool IsCompliant { get; set; }
     public string ControlStatus { get; set; } = string.Empty;
@@ -313,8 +318,14 @@ public class WeighingResultDto
     public string ChargingCurrency { get; set; } = "KES";
     public bool HasPermit { get; set; }
     public int ReweighCycleNo { get; set; }
+    /// <summary>Operational tolerance in kg (e.g. 200 kg auto-release threshold)</summary>
+    public int OperationalToleranceKg { get; set; }
+    /// <summary>Display string for axle tolerance (e.g. "0% (strict)", "5%")</summary>
+    public string? AxleToleranceDisplay { get; set; }
 
     public List<AxleComplianceDto> AxleCompliance { get; set; } = new();
+    /// <summary>Group-level compliance results with tolerance, fees, and status per axle group</summary>
+    public List<AxleGroupResultDto>? GroupResults { get; set; }
 
     public DateTime WeighedAt { get; set; }
 }

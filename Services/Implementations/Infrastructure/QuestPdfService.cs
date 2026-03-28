@@ -15,10 +15,12 @@ namespace TruLoad.Backend.Services.Implementations.Infrastructure;
 public class QuestPdfService : IPdfService
 {
     private readonly TruLoadDbContext _context;
+    private readonly Repositories.Weighing.Interfaces.IToleranceRepository _toleranceRepository;
 
-    public QuestPdfService(TruLoadDbContext context)
+    public QuestPdfService(TruLoadDbContext context, Repositories.Weighing.Interfaces.IToleranceRepository toleranceRepository)
     {
         _context = context;
+        _toleranceRepository = toleranceRepository;
         // License is registered in Program.cs
     }
 
@@ -52,18 +54,18 @@ public class QuestPdfService : IPdfService
             }
         }
 
-        // Get operational tolerance from settings
-        var toleranceSetting = await _context.ApplicationSettings
-            .Where(s => s.SettingKey == "weighing.operational_tolerance_kg")
-            .Select(s => s.SettingValue)
-            .FirstOrDefaultAsync();
-        int operationalToleranceKg = int.TryParse(toleranceSetting, out var tol) ? tol : 200;
+        // Use persisted compliance results from the transaction (Single Source of Truth)
+        int operationalToleranceKg = transaction.OperationalAllowanceUsed;
+        int gvwToleranceKg = transaction.GvwToleranceKg;
+        string gvwToleranceDisplay = transaction.GvwToleranceDisplay ?? "0%";
+        string axleToleranceDisplay = transaction.AxleToleranceDisplay ?? "0%";
 
         return await Task.Run(() =>
         {
             var document = new WeightTicketDocument(
                 transaction, organizationName, tenantType, orgLogoFile,
-                operationalToleranceKg, primaryColor, secondaryColor);
+                operationalToleranceKg, primaryColor, secondaryColor,
+                gvwToleranceKg, gvwToleranceDisplay, axleToleranceDisplay);
             return document.Generate();
         });
     }

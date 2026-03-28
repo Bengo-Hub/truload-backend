@@ -256,21 +256,43 @@ For each measured axle:
 
 ## Legal Framework Integration
 
-### EAC (East African Community)
-- **Tolerance**: 5% before penalties apply
-- **Fee Tiers**: 
-  - GVW: 1-1000kg ($0.50/kg), 1001-2000kg ($0.75/kg), >2000kg ($1.00/kg)
-  - AXLE: 1-500kg ($0.25/kg), >500kg ($0.50/kg)
-- **Demerit Points**: 3-15 points
-- **Permit Support**: 2A (+3000kg axle, +1000kg GVW), 3A (+3000kg axle, +2000kg GVW)
+### EAC (East African Community) — USD Fees
+- **Tolerance**: DB-driven via ToleranceSetting (default 5% for axle, configurable)
+- **Axle-type fees**: From `AVWoverloadCharges` table — per-axle-type flat USD fees
+  - Steering, SingleDrive, Tandem, Tridem each have different rates at 100kg thresholds
+- **GVW fees**: From `GVWoverloadCharges` table — flat USD fee per threshold
+- **KES conversion**: At runtime using DollarRate
+- **Demerit Points**: 3-15 points per violation type
 
-### Kenya Traffic Act
-- **Tolerance**: NONE for permit holders
-- **Fee Tiers** (converted to USD at ~130:1 rate):
-  - GVW: 1-2000kg ($3.846/kg = KSh 500/100kg), 2001-5000kg ($7.692/kg), >5000kg ($11.538/kg)
-  - AXLE: 1-1000kg ($1.923/kg), >1000kg ($3.846/kg)
-- **Demerit Points**: 5-20 points (higher severity)
-- **Permit Rules**: No tolerance, stricter enforcement
+### Kenya Traffic Act Cap 403 — Native KES Fees
+- **Tolerance**: DB-driven via ToleranceSetting (configurable per-framework)
+- **GVW fee structure**: Flat KES penalties (NOT per-kg rates):
+  - 1,000 kg → KSh 10,000
+  - 2,000 kg → KSh 20,000
+  - 3,000 kg → KSh 30,000
+  - 5,000 kg → KSh 60,000
+  - 10,000 kg → KSh 350,000
+  - 10,001+ kg → KSh 400,000 (max)
+- **Axle-type fees**: Traffic Act does NOT differentiate by axle type — all types get same flat KES fee per band
+- **Source**: KenloadV2 `trafficoverloadCharges` table
+- **Demerit Points**: 1-12 points (per violation type)
+
+### Permissible Weight Limits (Both Acts)
+| Tyre Type | Steering (Group A) | Single Drive | Tandem (per axle) | Description |
+|-----------|-------------------|--------------|-------------------|-------------|
+| S (Single) | 8,000 kg | 7,500 kg | 7,500 kg | Single tyre per axle end |
+| D (Dual) | 10,000 kg | 10,000 kg | 9,000 kg | Dual/twin tyres per axle end |
+| W (Wide) | 8,000 kg | 8,000 kg | 8,000 kg | Wide single super tyre |
+
+### Axle Group Limits
+| Group Type | Axle Count | Max Combined Weight |
+|-----------|-----------|-------------------|
+| Steering (S1) | 1 | 8,000-10,000 kg |
+| Single Drive (SA4) | 1 | 10,000 kg |
+| Tandem (TAG8) | 2 | 18,000 kg |
+| Tridem (TAG12) | 3 | 24,000 kg |
+| Quad (QAG16) | 4 | 32,000 kg |
+| **Max GVW** | — | **56,000 kg** |
 
 ---
 

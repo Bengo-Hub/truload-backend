@@ -181,6 +181,7 @@ public class AxleConfigurationRepository : IAxleConfigurationRepository
             .Include(ac => ac.AxleWeightReferences.OrderBy(wr => wr.AxlePosition))
             .Where(ac => ac.IsStandard && ac.IsActive && ac.AxleNumber == axleCount)
             .OrderByDescending(ac => ac.AxleWeightReferences.Count)
+            .ThenByDescending(ac => !ac.AxleCode.Contains("*") && !ac.AxleCode.Contains("|")) // Prefer clean codes
             .ThenBy(ac => ac.AxleCode.Length)
             .ThenBy(ac => ac.AxleCode)
             .FirstOrDefaultAsync(cancellationToken);

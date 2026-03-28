@@ -47,6 +47,18 @@ public class AxleWeightReference : BaseEntity
     /// NULL if not specified
     /// </summary>
     public Guid? TyreTypeId { get; set; }
+    
+    /// <summary>
+    /// Per-axle specific tolerance in kg.
+    /// NULL = use standard rules (e.g., 5% for single axle).
+    /// </summary>
+    public int? ToleranceKg { get; set; }
+
+    /// <summary>
+    /// Per-axle specific tolerance as percentage.
+    /// NULL = use standard rules.
+    /// </summary>
+    public decimal? TolerancePercentage { get; set; }
 
     // Navigation properties
     public AxleConfiguration AxleConfiguration { get; set; } = null!;

@@ -270,7 +270,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             t.IsCompliant ? "Compliant" : t.ControlStatus,
             t.WeighingType,
             t.ReweighCycleNo > 0 ? t.ReweighCycleNo.ToString() : "-",
-            $"{t.TotalFeeUsd:N2}"
+            $"{(currency.Equals("KES", StringComparison.OrdinalIgnoreCase) && t.TotalFeeKes > 0 ? t.TotalFeeKes : t.TotalFeeUsd):N2}"
         });
 
         if (format == "csv")
@@ -745,7 +745,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             $"{o.OverloadPct:F1}%",
             o.ControlStatus,
             o.IsSentToYard ? "Yes" : "No",
-            $"{o.TotalFeeUsd:N2}"
+            $"{(currency.Equals("KES", StringComparison.OrdinalIgnoreCase) && o.TotalFeeKes > 0 ? o.TotalFeeKes : o.TotalFeeUsd):N2}"
         });
 
         if (format == "csv")
