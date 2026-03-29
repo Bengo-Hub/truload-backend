@@ -545,6 +545,15 @@ Sprint 22.1 (Production Bug Fixes) complete. All Sprint 22 features delivered. F
 - ✅ **Comprehensive Codebase Audit** - 90+ API endpoints verified, 9 document types confirmed
 - ✅ **Sprint Documentation Updated** - 10 of 14 sprints marked complete
 
+### Previous Updates (v4.3 – Frontend Case Management Audit)
+- ✅ **Case Management Navigation Fixed** - List page now routes to `/case-management/[id]` (was incorrectly routing to Case Register detail)
+- ✅ **Workflow Quick-Access Buttons** - Case management list rows have icon buttons for direct access to Subfiles, Hearings, Diary, Warrants, Closure
+- ✅ **Deep-Link Tab Support** - Case management detail supports `?tab=` query param for deep-linking to specific tabs
+- ✅ **Escalation Banner on Case Register** - Escalated cases show prominent banner with link to full Case Management view
+- ✅ **Investigation Diary Tab Enhanced** - Diary tab now shows real Subfile F entries with add/edit/delete, replacing static placeholder
+- ✅ **Case Management Statistics Card** - Overview stats (Total Escalated, Open, Pending, Closed) shown above case list
+- ✅ **Pagination Fix** - Case management list pagination aligned with `PaginationProps` interface
+
 ### Previous Updates (v4.2)
 - ✅ **Court Proceedings Module Complete** - Backend service, controller, and DTOs
 - ✅ **Prosecution Module Complete** - Charge calculation, prosecution case management
