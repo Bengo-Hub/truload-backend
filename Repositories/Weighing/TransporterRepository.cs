@@ -83,6 +83,12 @@ public class TransporterRepository : ITransporterRepository
         transporter.UpdatedAt = DateTime.UtcNow;
         transporter.IsActive = true;
 
+        // Clean up empty strings that should be null to avoid unique constraint violations
+        if (string.IsNullOrWhiteSpace(transporter.RegistrationNo)) transporter.RegistrationNo = null;
+        if (string.IsNullOrWhiteSpace(transporter.Phone)) transporter.Phone = null;
+        if (string.IsNullOrWhiteSpace(transporter.Email)) transporter.Email = null;
+        if (string.IsNullOrWhiteSpace(transporter.NtacNo)) transporter.NtacNo = null;
+
         _context.Transporters.Add(transporter);
         await _context.SaveChangesAsync(cancellationToken);
         return transporter;
@@ -91,6 +97,13 @@ public class TransporterRepository : ITransporterRepository
     public async Task<Transporter> UpdateAsync(Transporter transporter, CancellationToken cancellationToken = default)
     {
         transporter.UpdatedAt = DateTime.UtcNow;
+
+        // Clean up empty strings that should be null to avoid unique constraint violations
+        if (string.IsNullOrWhiteSpace(transporter.RegistrationNo)) transporter.RegistrationNo = null;
+        if (string.IsNullOrWhiteSpace(transporter.Phone)) transporter.Phone = null;
+        if (string.IsNullOrWhiteSpace(transporter.Email)) transporter.Email = null;
+        if (string.IsNullOrWhiteSpace(transporter.NtacNo)) transporter.NtacNo = null;
+
         _context.Transporters.Update(transporter);
         await _context.SaveChangesAsync(cancellationToken);
         return transporter;
