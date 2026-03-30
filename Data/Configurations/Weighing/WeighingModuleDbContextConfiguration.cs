@@ -95,23 +95,19 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
 
                 entity.Property(e => e.RegistrationNo)
                     .HasColumnName("registration_no")
-                    .HasMaxLength(50)
-                    .IsRequired();
+                    .HasMaxLength(50);
 
                 entity.Property(e => e.Phone)
                     .HasColumnName("phone")
-                    .HasMaxLength(20)
-                    .IsRequired();
+                    .HasMaxLength(20);
 
                 entity.Property(e => e.Email)
                     .HasColumnName("email")
-                    .HasMaxLength(200)
-                    .IsRequired();
+                    .HasMaxLength(200);
 
                 entity.Property(e => e.Address)
                     .HasColumnName("address")
-                    .HasMaxLength(500)
-                    .IsRequired();
+                    .HasMaxLength(500);
 
                 entity.Property(e => e.NtacNo)
                     .HasColumnName("ntac_no")
@@ -131,7 +127,7 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
 
                 // Indexes
                 entity.HasIndex(e => e.Code).IsUnique();
-                entity.HasIndex(e => e.RegistrationNo).IsUnique();
+                entity.HasIndex(e => e.RegistrationNo).IsUnique().HasFilter("registration_no IS NOT NULL");
                 entity.HasIndex(e => e.NtacNo).IsUnique().HasFilter("ntac_no IS NOT NULL");
                 entity.HasIndex(e => e.Email);
                 entity.HasIndex(e => e.Phone);
