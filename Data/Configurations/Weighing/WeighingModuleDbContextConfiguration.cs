@@ -58,8 +58,7 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
 
                 entity.Property(e => e.NtacNo)
                     .HasColumnName("ntac_no")
-                    .HasMaxLength(50)
-                    .IsRequired();
+                    .HasMaxLength(50);
 
                 entity.Property(e => e.CreatedAt)
                     .HasColumnName("created_at")
@@ -67,7 +66,7 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
 
                 // Indexes
                 entity.HasIndex(e => e.IdNoOrPassport).IsUnique();
-                entity.HasIndex(e => e.NtacNo).IsUnique();
+                entity.HasIndex(e => e.NtacNo).IsUnique().HasFilter("ntac_no IS NOT NULL");
                 entity.HasIndex(e => e.Email);
                 entity.HasIndex(e => e.Phone);
             });
@@ -116,8 +115,7 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
 
                 entity.Property(e => e.NtacNo)
                     .HasColumnName("ntac_no")
-                    .HasMaxLength(50)
-                    .IsRequired();
+                    .HasMaxLength(50);
 
                 entity.Property(e => e.IsActive)
                     .HasColumnName("is_active")
@@ -134,7 +132,7 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 // Indexes
                 entity.HasIndex(e => e.Code).IsUnique();
                 entity.HasIndex(e => e.RegistrationNo).IsUnique();
-                entity.HasIndex(e => e.NtacNo).IsUnique();
+                entity.HasIndex(e => e.NtacNo).IsUnique().HasFilter("ntac_no IS NOT NULL");
                 entity.HasIndex(e => e.Email);
                 entity.HasIndex(e => e.Phone);
                 entity.HasIndex(e => e.IsActive);
