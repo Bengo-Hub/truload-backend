@@ -30,12 +30,12 @@ public class SpecialReleaseCertificateDocument : BaseDocument
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(1.0f, Unit.Centimetre);
+                page.Margin(0.8f, Unit.Centimetre);
                 page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(9.5f).FontFamily("Inter"));
+                page.DefaultTextStyle(x => x.FontSize(8f).FontFamily("Inter"));
 
                 page.Header().Element(ComposeHeader);
-                page.Content().PaddingVertical(8).Element(ComposeContent);
+                page.Content().PaddingVertical(3).Element(ComposeContent);
                 page.Footer().Element(ComposeOfficialFooter);
             });
         }).GeneratePdf();
@@ -49,40 +49,38 @@ public class SpecialReleaseCertificateDocument : BaseDocument
         {
             col.Item().Row(row =>
             {
-                row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
+                row.ConstantItem(SmallLogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (primaryLogo != null)
-                        logoCol.Item().Height(LogoHeight).Image(primaryLogo, ImageScaling.FitArea);
+                        logoCol.Item().Height(SmallLogoHeight).Image(primaryLogo, ImageScaling.FitArea);
                 });
 
-                row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(center =>
+                row.RelativeItem().AlignCenter().PaddingHorizontal(3).Column(center =>
                 {
-                    center.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
-                        .FontSize(11).SemiBold();
-                    center.Item().AlignCenter().Text(BrandingConstants.Organization.KenyaRoadsAuthority)
-                        .FontSize(9);
-                    center.Item().AlignCenter().Text("VEHICLE LOAD CONTROL UNIT").FontSize(7.5f);
+                    center.Item().AlignCenter().Text($"{BrandingConstants.Organization.RepublicOfKenya} — {BrandingConstants.Organization.KenyaRoadsAuthority}")
+                        .FontSize(8).SemiBold();
+                    center.Item().AlignCenter().Text("VEHICLE LOAD CONTROL UNIT").FontSize(7f);
                 });
 
-                row.ConstantItem(LogoWidth); // No secondary logo for special release
+                row.ConstantItem(SmallLogoWidth); // No secondary logo for special release
             });
 
-            col.Item().PaddingVertical(6).AlignCenter()
+            col.Item().PaddingVertical(2).AlignCenter()
                 .Background(Colors.Orange.Darken2)
-                .Padding(6)
+                .PaddingHorizontal(8).PaddingVertical(3)
                 .Text("SPECIAL RELEASE CERTIFICATE")
-                .FontSize(15)
+                .FontSize(12)
                 .SemiBold()
                 .FontColor(Colors.White);
 
-            col.Item().PaddingVertical(5).Row(row =>
+            col.Item().PaddingVertical(2).Row(row =>
             {
-                row.RelativeItem().Text($"Certificate No: {_specialRelease.CertificateNo}").FontSize(10).SemiBold();
-                row.RelativeItem().AlignCenter().Text($"Case No: {_specialRelease.CaseRegister?.CaseNo ?? "N/A"}").FontSize(10).SemiBold();
-                row.RelativeItem().AlignRight().Text($"Issued: {_specialRelease.IssuedAt:dd/MM/yyyy HH:mm}").FontSize(10);
+                row.RelativeItem().Text($"Certificate No: {_specialRelease.CertificateNo}").FontSize(8).SemiBold();
+                row.RelativeItem().AlignCenter().Text($"Case No: {_specialRelease.CaseRegister?.CaseNo ?? "N/A"}").FontSize(8).SemiBold();
+                row.RelativeItem().AlignRight().Text($"Issued: {_specialRelease.IssuedAt:dd/MM/yyyy HH:mm}").FontSize(8);
             });
 
-            col.Item().LineHorizontal(1.5f).LineColor(Colors.Black);
+            col.Item().LineHorizontal(1f).LineColor(Colors.Black);
         });
     }
 
@@ -90,197 +88,192 @@ public class SpecialReleaseCertificateDocument : BaseDocument
     {
         container.Column(col =>
         {
-            col.Spacing(12);
+            col.Spacing(4);
 
-            // Important Notice Banner
-            col.Item().Background(Colors.Orange.Lighten3).Border(1.5f).BorderColor(Colors.Orange.Darken2).Padding(8).Column(notice =>
-            {
-                notice.Item().AlignCenter().Text("⚠ CONDITIONAL RELEASE NOTICE").FontSize(11).SemiBold().FontColor(Colors.Orange.Darken3);
-                notice.Item().AlignCenter().Text("This is NOT a compliance certificate. Release is granted under special conditions.").FontSize(8.5f).Italic();
-            });
+            // Important Notice Banner - single line
+            col.Item().Background(Colors.Orange.Lighten3).BorderBottom(1).BorderColor(Colors.Orange.Darken2)
+                .PaddingHorizontal(6).PaddingVertical(2).Text(t =>
+                {
+                    t.Span("⚠ CONDITIONAL RELEASE: ").FontSize(7.5f).SemiBold().FontColor(Colors.Orange.Darken3);
+                    t.Span("This is NOT a compliance certificate. Release is granted under special conditions.").FontSize(7).Italic().FontColor(Colors.Orange.Darken3);
+                });
 
-            // Vehicle Information
-            col.Item().Text("VEHICLE DETAILS").FontSize(12).SemiBold().Underline();
-
-            // Note: Vehicle details would be loaded from CaseRegister context
+            // Vehicle Details - compact 2-column
+            col.Item().Text("VEHICLE DETAILS").FontSize(9).SemiBold().Underline();
             col.Item().Row(row =>
             {
                 row.RelativeItem().Column(left =>
                 {
-                    left.Spacing(3);
+                    left.Spacing(1);
                     left.Item().Text(t =>
                     {
-                        t.Span("Case Number: ").FontSize(10);
-                        t.Span(_specialRelease.CaseRegister?.CaseNo ?? "N/A").SemiBold().FontSize(11);
+                        t.Span("Case Number: ").FontSize(8);
+                        t.Span(_specialRelease.CaseRegister?.CaseNo ?? "N/A").SemiBold().FontSize(8);
                     });
                     left.Item().Text(t =>
                     {
-                        t.Span("Release Type: ").FontSize(10);
-                        t.Span(_specialRelease.ReleaseType?.Name ?? "N/A").SemiBold().FontSize(10);
+                        t.Span("Release Type: ").FontSize(8);
+                        t.Span(_specialRelease.ReleaseType?.Name ?? "N/A").SemiBold().FontSize(8);
                     });
                 });
 
-                row.ConstantItem(20);
+                row.ConstantItem(15);
 
                 row.RelativeItem().Column(right =>
                 {
-                    right.Spacing(3);
+                    right.Spacing(1);
                     right.Item().Text(t =>
                     {
-                        t.Span("Certificate No: ").FontSize(10);
-                        t.Span(_specialRelease.CertificateNo).SemiBold().FontSize(10);
+                        t.Span("Certificate No: ").FontSize(8);
+                        t.Span(_specialRelease.CertificateNo).SemiBold().FontSize(8);
                     });
                     right.Item().Text(t =>
                     {
-                        t.Span("Issued At: ").FontSize(10);
-                        t.Span(_specialRelease.IssuedAt.ToString("dd/MM/yyyy HH:mm")).SemiBold().FontSize(10);
+                        t.Span("Issued At: ").FontSize(8);
+                        t.Span(_specialRelease.IssuedAt.ToString("dd/MM/yyyy HH:mm")).SemiBold().FontSize(8);
                     });
                 });
             });
 
-            // Release Type and Reason
-            col.Item().PaddingTop(10).Border(1).BorderColor(KuraBlue).Padding(10).Column(release =>
+            // Release Details - compact box
+            col.Item().Border(0.75f).BorderColor(KuraBlue).Padding(5).Column(release =>
             {
-                release.Spacing(5);
-                release.Item().Text("RELEASE DETAILS").FontSize(11).SemiBold().FontColor(KuraBlue);
+                release.Spacing(2);
+                release.Item().Text("RELEASE DETAILS").FontSize(8.5f).SemiBold().FontColor(KuraBlue);
 
-                release.Item().Row(row =>
+                release.Item().Text(t =>
                 {
-                    row.RelativeItem().Text(t =>
-                    {
-                        t.Span("Release Type: ").FontSize(10);
-                        t.Span(_specialRelease.ReleaseType?.Name ?? "Special Release").SemiBold().FontSize(11).FontColor(KuraBlue);
-                    });
+                    t.Span("Release Type: ").FontSize(8);
+                    t.Span(_specialRelease.ReleaseType?.Name ?? "Special Release").SemiBold().FontSize(8).FontColor(KuraBlue);
                 });
 
                 if (_specialRelease.OverloadKg.HasValue)
                 {
                     release.Item().Text(t =>
                     {
-                        t.Span("Original Overload: ").FontSize(10);
-                        t.Span($"{_specialRelease.OverloadKg:N0} kg").SemiBold().FontSize(11).FontColor(Colors.Red.Darken2);
+                        t.Span("Original Overload: ").FontSize(8);
+                        t.Span($"{_specialRelease.OverloadKg:N0} kg").SemiBold().FontSize(8).FontColor(Colors.Red.Darken2);
                     });
                 }
 
-                release.Item().PaddingTop(5).Column(reason =>
+                release.Item().Column(reason =>
                 {
-                    reason.Item().Text("Reason for Special Release:").FontSize(10).SemiBold();
-                    reason.Item().PaddingLeft(10).Text(_specialRelease.Reason).FontSize(10).Italic();
+                    reason.Item().Text(t =>
+                    {
+                        t.Span("Reason: ").FontSize(8).SemiBold();
+                        t.Span(_specialRelease.Reason).FontSize(8).Italic();
+                    });
                 });
             });
 
-            // Conditions and Requirements
-            col.Item().PaddingTop(10).Column(conditions =>
+            // Conditions of Release - compact numbered list
+            col.Item().Column(conditions =>
             {
-                conditions.Item().Text("CONDITIONS OF RELEASE").FontSize(11).SemiBold().Underline();
+                conditions.Item().Text("CONDITIONS OF RELEASE").FontSize(8.5f).SemiBold().Underline();
 
-                conditions.Item().PaddingLeft(15).Column(items =>
+                conditions.Item().PaddingLeft(8).Column(items =>
                 {
-                    items.Spacing(5);
+                    items.Spacing(2);
 
                     if (_specialRelease.RedistributionAllowed)
                     {
                         ComposeCondition(items.Item(), "1", "REDISTRIBUTION PERMITTED",
-                            "The vehicle is authorized to redistribute the load to achieve compliance. Redistribution must be completed under supervision.");
+                            "Vehicle authorized to redistribute load under supervision.");
                     }
 
                     if (_specialRelease.ReweighRequired)
                     {
                         ComposeCondition(items.Item(), "2", "REWEIGH MANDATORY",
-                            "The vehicle MUST undergo reweighing after redistribution/offloading to verify compliance before proceeding.");
+                            "Vehicle MUST undergo reweighing after redistribution/offloading before proceeding.");
                     }
 
                     ComposeCondition(items.Item(), _specialRelease.RedistributionAllowed || _specialRelease.ReweighRequired ? "3" : "1",
                         "ROUTE RESTRICTIONS",
-                        "Vehicle must proceed directly to the destination or redistribution point via the authorized route only.");
+                        "Proceed directly to destination or redistribution point via authorized route only.");
 
                     ComposeCondition(items.Item(), _specialRelease.RedistributionAllowed || _specialRelease.ReweighRequired ? "4" : "2",
                         "DOCUMENT RETENTION",
-                        "This certificate must be carried in the vehicle at all times and produced on demand to any authorized officer.");
+                        "Certificate must be carried at all times and produced on demand to any authorized officer.");
 
                     ComposeCondition(items.Item(), _specialRelease.RedistributionAllowed || _specialRelease.ReweighRequired ? "5" : "3",
                         "VALIDITY PERIOD",
-                        "This release is valid for 24 hours from issuance. Extension requires new authorization.");
+                        "Valid for 24 hours from issuance. Extension requires new authorization.");
                 });
             });
 
-            // Legal Obligations Box
-            col.Item().PaddingTop(10).Border(1).BorderColor(OfficialRed).Background(Colors.Red.Lighten4).Padding(10).Column(legal =>
+            // Legal Obligations - compact gray box
+            col.Item().Border(0.75f).BorderColor(OfficialRed).Background(Colors.Red.Lighten4).Padding(4).Column(legal =>
             {
-                legal.Item().Text("⚠ LEGAL OBLIGATIONS & WARNINGS").FontSize(10).SemiBold().FontColor(Colors.Red.Darken3);
-                legal.Item().PaddingLeft(10).Column(obligations =>
+                legal.Item().Text("LEGAL OBLIGATIONS & WARNINGS").FontSize(7.5f).SemiBold().FontColor(Colors.Red.Darken3);
+                legal.Item().PaddingLeft(5).Column(obligations =>
                 {
-                    obligations.Spacing(3);
-                    obligations.Item().Text("• Violation of any condition voids this release immediately").FontSize(9);
-                    obligations.Item().Text("• The driver/owner remains liable for all overload penalties and fines").FontSize(9);
-                    obligations.Item().Text("• This release does not constitute an exemption from prosecution").FontSize(9);
-                    obligations.Item().Text("• Misuse or alteration of this document is a criminal offense").FontSize(9);
-                    obligations.Item().Text("• Random inspections may be conducted to verify compliance").FontSize(9);
+                    obligations.Spacing(1);
+                    obligations.Item().Text("• Violation of any condition voids this release immediately").FontSize(7);
+                    obligations.Item().Text("• Driver/owner remains liable for all overload penalties and fines").FontSize(7);
+                    obligations.Item().Text("• This release does not constitute an exemption from prosecution").FontSize(7);
+                    obligations.Item().Text("• Misuse or alteration of this document is a criminal offense").FontSize(7);
+                    obligations.Item().Text("• Random inspections may be conducted to verify compliance").FontSize(7);
                 });
             });
 
-            // Reweigh Status (if applicable)
+            // Reweigh Status (if applicable) - compact
             if (_specialRelease.ReweighWeighingId.HasValue)
             {
-                col.Item().PaddingTop(10).Border(1).BorderColor(Colors.Green.Medium).Background(Colors.Green.Lighten4).Padding(8).Column(reweigh =>
+                col.Item().Border(0.75f).BorderColor(Colors.Green.Medium).Background(Colors.Green.Lighten4).PaddingHorizontal(5).PaddingVertical(3).Column(reweigh =>
                 {
-                    reweigh.Item().Text("REWEIGH STATUS").FontSize(10).SemiBold().FontColor(Colors.Green.Darken3);
                     reweigh.Item().Text(t =>
                     {
-                        t.Span("Reweigh Completed: ").FontSize(9);
-                        t.Span(_specialRelease.ComplianceAchieved ? "✓ YES" : "✗ NO").SemiBold().FontSize(9)
+                        t.Span("REWEIGH STATUS: ").FontSize(7.5f).SemiBold().FontColor(Colors.Green.Darken3);
+                        t.Span(_specialRelease.ComplianceAchieved ? "✓ Completed" : "✗ Not Completed").SemiBold().FontSize(7.5f)
                             .FontColor(_specialRelease.ComplianceAchieved ? Colors.Green.Darken3 : Colors.Red.Darken3);
+                        if (_specialRelease.ComplianceAchieved)
+                            t.Span(" — Vehicle has achieved compliance and may proceed.").FontSize(7).Italic();
                     });
-                    if (_specialRelease.ComplianceAchieved)
-                    {
-                        reweigh.Item().Text("Vehicle has achieved compliance and may proceed.").FontSize(8).Italic();
-                    }
                 });
             }
 
-            // Authorization Section
-            col.Item().PaddingTop(15).Row(row =>
+            // Authorization Section - 2-column compact
+            col.Item().PaddingTop(6).Row(row =>
             {
                 row.RelativeItem().Element(c => ComposeSignatureBlock(c, "Authorized Supervisor"));
-                row.ConstantItem(30);
+                row.ConstantItem(20);
                 row.RelativeItem().Column(ack =>
                 {
-                    ack.Spacing(3);
-                    ack.Item().Text("_______________________________").FontSize(9);
-                    ack.Item().Text("DRIVER/OWNER ACKNOWLEDGMENT").SemiBold().FontSize(8);
-                    ack.Item().Text("I acknowledge receipt of this Special Release Certificate").FontSize(7);
-                    ack.Item().Text("and agree to comply with all stated conditions.").FontSize(7);
-                    ack.Item().PaddingTop(3).Text("Signature & Date: _______________").FontSize(7);
+                    ack.Spacing(2);
+                    ack.Item().Text("_______________________________").FontSize(8);
+                    ack.Item().Text("DRIVER/OWNER ACKNOWLEDGMENT").SemiBold().FontSize(7);
+                    ack.Item().Text("I acknowledge receipt and agree to comply with all stated conditions.").FontSize(6.5f);
+                    ack.Item().PaddingTop(2).Text("Signature & Date: _______________").FontSize(6.5f);
                 });
             });
 
-            // Verification Code
-            col.Item().PaddingTop(15).AlignCenter().Border(1).BorderColor(Colors.Grey.Medium).Padding(8).Column(verify =>
+            // Verification Code - compact
+            col.Item().PaddingTop(4).AlignCenter().Border(0.75f).BorderColor(Colors.Grey.Medium).PaddingHorizontal(6).PaddingVertical(3).Column(verify =>
             {
-                verify.Item().AlignCenter().Text("VERIFICATION CODE").FontSize(8).SemiBold();
-                verify.Item().AlignCenter().Text(_specialRelease.Id.ToString().ToUpper().Substring(0, 8)).FontSize(10).SemiBold().FontFamily("Courier New");
-                verify.Item().AlignCenter().Text("Use this code to verify authenticity online or via SMS").FontSize(7).Italic();
+                verify.Item().AlignCenter().Text(t =>
+                {
+                    t.Span("VERIFICATION CODE: ").FontSize(7).SemiBold();
+                    t.Span(_specialRelease.Id.ToString().ToUpper().Substring(0, 8)).FontSize(8).SemiBold().FontFamily("Courier New");
+                    t.Span("  —  Verify authenticity online or via SMS").FontSize(6).Italic();
+                });
             });
 
-            // Disclaimer
-            col.Item().PaddingTop(10).AlignCenter().Background(Colors.Grey.Lighten4).Padding(5)
+            // Disclaimer - compact
+            col.Item().PaddingTop(2).AlignCenter().Background(Colors.Grey.Lighten4).PaddingHorizontal(4).PaddingVertical(2)
                 .Text("This certificate is issued under administrative discretion and does not absolve the driver/owner from compliance obligations or legal liability.")
-                .FontSize(7).Italic();
+                .FontSize(6).Italic();
         });
     }
 
     private void ComposeCondition(IContainer container, string number, string title, string description)
     {
-        container.Column(col =>
+        container.Row(row =>
         {
-            col.Item().Row(row =>
+            row.ConstantItem(15).Text($"{number}.").SemiBold().FontSize(7.5f);
+            row.RelativeItem().Text(t =>
             {
-                row.ConstantItem(25).Text($"{number}.").SemiBold().FontSize(10);
-                row.RelativeItem().Column(content =>
-                {
-                    content.Item().Text(title).SemiBold().FontSize(10).FontColor(Colors.Orange.Darken3);
-                    content.Item().Text(description).FontSize(9);
-                });
+                t.Span($"{title}: ").SemiBold().FontSize(7.5f).FontColor(Colors.Orange.Darken3);
+                t.Span(description).FontSize(7.5f);
             });
         });
     }

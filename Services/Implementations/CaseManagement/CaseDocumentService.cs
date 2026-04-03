@@ -50,6 +50,28 @@ public class CaseDocumentService : ICaseDocumentService
             }
         }
 
+        // 1b. Prohibition Order
+        if (caseRegister.ProhibitionOrderId.HasValue)
+        {
+            var prohibition = await _context.ProhibitionOrders
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == caseRegister.ProhibitionOrderId && p.DeletedAt == null, ct);
+
+            if (prohibition != null)
+            {
+                documents.Add(new CaseDocumentDto
+                {
+                    Id = prohibition.Id,
+                    DocumentType = "ProhibitionOrder",
+                    DisplayName = $"Prohibition Order - {prohibition.ProhibitionNo}",
+                    ReferenceNo = prohibition.ProhibitionNo,
+                    DownloadUrl = $"/api/v1/weighing/prohibition-orders/{prohibition.Id}/pdf",
+                    Status = prohibition.Status ?? "Open",
+                    CreatedAt = prohibition.IssuedAt
+                });
+            }
+        }
+
         // 2. Prosecution Charge Sheet
         var prosecution = await _context.ProsecutionCases
             .AsNoTracking()
@@ -219,6 +241,7 @@ public class CaseDocumentService : ICaseDocumentService
             CoverPages = docs.Count(d => d.DocumentType == "CoverPage"),
             OBExtracts = docs.Count(d => d.DocumentType == "OBExtract"),
             Subfiles = docs.Count(d => d.DocumentType == "Subfile"),
+            ProhibitionOrders = docs.Count(d => d.DocumentType == "ProhibitionOrder"),
         };
     }
 }

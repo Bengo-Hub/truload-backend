@@ -31,4 +31,5 @@ public record CaseDocumentSummaryDto
     public int CoverPages { get; init; }
     public int OBExtracts { get; init; }
     public int Subfiles { get; init; }
+    public int ProhibitionOrders { get; init; }
 }

@@ -197,7 +197,7 @@ public class AxleFeeScheduleSeeder
             }
         });
 
-        // ===== EAC GVW Fee Bands (2nd conviction - 5× penalty per Section 20(1)(a)) =====
+        // ===== EAC GVW Fee Bands (2nd conviction - 2× penalty per Section 20 EAC VLC Act) =====
         feeSchedules.AddRange(new[]
         {
             new AxleFeeSchedule
@@ -207,11 +207,11 @@ public class AxleFeeScheduleSeeder
                 FeeType = "GVW",
                 OverloadMinKg = 1,
                 OverloadMaxKg = 500,
-                FeePerKgUsd = 2.50m, // 5× of 0.50
+                FeePerKgUsd = 1.00m, // 2× of 0.50
                 FlatFeeUsd = 0,
                 ConvictionNumber = 2,
                 DemeritPoints = 2,
-                PenaltyDescription = "EAC 2nd conviction GVW (1-500 kg) - 5× penalty",
+                PenaltyDescription = "EAC 2nd conviction GVW (1-500 kg) - 2x penalty per Section 20 EAC VLC Act",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true
@@ -223,11 +223,11 @@ public class AxleFeeScheduleSeeder
                 FeeType = "GVW",
                 OverloadMinKg = 501,
                 OverloadMaxKg = 1000,
-                FeePerKgUsd = 3.75m, // 5× of 0.75
+                FeePerKgUsd = 1.50m, // 2× of 0.75
                 FlatFeeUsd = 0,
                 ConvictionNumber = 2,
                 DemeritPoints = 4,
-                PenaltyDescription = "EAC 2nd conviction GVW (501-1000 kg) - 5× penalty",
+                PenaltyDescription = "EAC 2nd conviction GVW (501-1000 kg) - 2x penalty per Section 20 EAC VLC Act",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true
@@ -239,11 +239,11 @@ public class AxleFeeScheduleSeeder
                 FeeType = "GVW",
                 OverloadMinKg = 1001,
                 OverloadMaxKg = 1500,
-                FeePerKgUsd = 5.00m, // 5× of 1.00
+                FeePerKgUsd = 2.00m, // 2× of 1.00
                 FlatFeeUsd = 0,
                 ConvictionNumber = 2,
                 DemeritPoints = 6,
-                PenaltyDescription = "EAC 2nd conviction GVW (1001-1500 kg) - 5× penalty",
+                PenaltyDescription = "EAC 2nd conviction GVW (1001-1500 kg) - 2x penalty per Section 20 EAC VLC Act",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true
@@ -255,11 +255,11 @@ public class AxleFeeScheduleSeeder
                 FeeType = "GVW",
                 OverloadMinKg = 1501,
                 OverloadMaxKg = 3000,
-                FeePerKgUsd = 12.50m, // 5× of 2.50
+                FeePerKgUsd = 5.00m, // 2× of 2.50
                 FlatFeeUsd = 0,
                 ConvictionNumber = 2,
                 DemeritPoints = 8,
-                PenaltyDescription = "EAC 2nd conviction GVW (1501-3000 kg) - 5× penalty",
+                PenaltyDescription = "EAC 2nd conviction GVW (1501-3000 kg) - 2x penalty per Section 20 EAC VLC Act",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true
@@ -271,18 +271,18 @@ public class AxleFeeScheduleSeeder
                 FeeType = "GVW",
                 OverloadMinKg = 3001,
                 OverloadMaxKg = null,
-                FeePerKgUsd = 25.00m, // 5× of 5.00
-                FlatFeeUsd = 2500m, // 5× of 500
+                FeePerKgUsd = 10.00m, // 2× of 5.00
+                FlatFeeUsd = 1000m, // 2× of 500
                 ConvictionNumber = 2,
                 DemeritPoints = 15,
-                PenaltyDescription = "EAC 2nd conviction GVW (>3000 kg) - 5× penalty",
+                PenaltyDescription = "EAC 2nd conviction GVW (>3000 kg) - 2x penalty per Section 20 EAC VLC Act",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true
             }
         });
 
-        // ===== EAC Axle Fee Bands (2nd conviction - 5× penalty per Section 20(1)(a)) =====
+        // ===== EAC Axle Fee Bands (2nd conviction - 2× penalty per Section 20 EAC VLC Act) =====
         feeSchedules.AddRange(new[]
         {
             new AxleFeeSchedule
@@ -292,11 +292,11 @@ public class AxleFeeScheduleSeeder
                 FeeType = "AXLE",
                 OverloadMinKg = 1,
                 OverloadMaxKg = 200,
-                FeePerKgUsd = 2.00m, // 5× of 0.40
+                FeePerKgUsd = 0.80m, // 2× of 0.40
                 FlatFeeUsd = 0,
                 ConvictionNumber = 2,
                 DemeritPoints = 2,
-                PenaltyDescription = "EAC 2nd conviction Axle (1-200 kg) - 5× penalty",
+                PenaltyDescription = "EAC 2nd conviction Axle (1-200 kg) - 2x penalty per Section 20 EAC VLC Act",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true
@@ -308,11 +308,11 @@ public class AxleFeeScheduleSeeder
                 FeeType = "AXLE",
                 OverloadMinKg = 201,
                 OverloadMaxKg = 500,
-                FeePerKgUsd = 3.00m, // 5× of 0.60
+                FeePerKgUsd = 1.20m, // 2× of 0.60
                 FlatFeeUsd = 0,
                 ConvictionNumber = 2,
                 DemeritPoints = 4,
-                PenaltyDescription = "EAC 2nd conviction Axle (201-500 kg) - 5× penalty",
+                PenaltyDescription = "EAC 2nd conviction Axle (201-500 kg) - 2x penalty per Section 20 EAC VLC Act",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true
@@ -324,11 +324,11 @@ public class AxleFeeScheduleSeeder
                 FeeType = "AXLE",
                 OverloadMinKg = 501,
                 OverloadMaxKg = 1000,
-                FeePerKgUsd = 5.00m, // 5× of 1.00
+                FeePerKgUsd = 2.00m, // 2× of 1.00
                 FlatFeeUsd = 0,
                 ConvictionNumber = 2,
                 DemeritPoints = 6,
-                PenaltyDescription = "EAC 2nd conviction Axle (501-1000 kg) - 5× penalty",
+                PenaltyDescription = "EAC 2nd conviction Axle (501-1000 kg) - 2x penalty per Section 20 EAC VLC Act",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true
@@ -340,11 +340,11 @@ public class AxleFeeScheduleSeeder
                 FeeType = "AXLE",
                 OverloadMinKg = 1001,
                 OverloadMaxKg = 1500,
-                FeePerKgUsd = 7.50m, // 5× of 1.50
+                FeePerKgUsd = 3.00m, // 2× of 1.50
                 FlatFeeUsd = 0,
                 ConvictionNumber = 2,
                 DemeritPoints = 7,
-                PenaltyDescription = "EAC 2nd conviction Axle (1001-1500 kg) - 5× penalty",
+                PenaltyDescription = "EAC 2nd conviction Axle (1001-1500 kg) - 2x penalty per Section 20 EAC VLC Act",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true
@@ -356,11 +356,11 @@ public class AxleFeeScheduleSeeder
                 FeeType = "AXLE",
                 OverloadMinKg = 1501,
                 OverloadMaxKg = null,
-                FeePerKgUsd = 15.00m, // 5× of 3.00
-                FlatFeeUsd = 1000m, // 5× of 200
+                FeePerKgUsd = 6.00m, // 2× of 3.00
+                FlatFeeUsd = 400m, // 2× of 200
                 ConvictionNumber = 2,
                 DemeritPoints = 12,
-                PenaltyDescription = "EAC 2nd conviction Axle (>1500 kg) - 5× penalty",
+                PenaltyDescription = "EAC 2nd conviction Axle (>1500 kg) - 2x penalty per Section 20 EAC VLC Act",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true
