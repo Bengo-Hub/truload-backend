@@ -74,11 +74,34 @@ public class ArrestWarrant : TenantAwareEntity
     public string? ExecutionDetails { get; set; }
 
     /// <summary>
-    /// Drop reason
+    /// Drop/lift reason
     /// </summary>
     public string? DroppedReason { get; set; }
+
+    /// <summary>
+    /// Date the warrant was issued by the court (distinct from IssuedAt which is when recorded in system)
+    /// </summary>
+    [Required]
+    public DateTime IssuedDate { get; set; }
+
+    /// <summary>
+    /// Date the warrant was physically executed (null if not yet executed)
+    /// </summary>
+    public DateTime? ExecutionDate { get; set; }
+
+    /// <summary>
+    /// URL to the uploaded warrant document file
+    /// </summary>
+    [MaxLength(500)]
+    public string? WarrantFileUrl { get; set; }
+
+    /// <summary>
+    /// FK to the case party (defendant) this warrant is linked to
+    /// </summary>
+    public Guid? CasePartyId { get; set; }
 
     // Navigation properties
     public virtual CaseRegister CaseRegister { get; set; } = null!;
     public virtual WarrantStatus WarrantStatus { get; set; } = null!;
+    public virtual CaseParty? CaseParty { get; set; }
 }

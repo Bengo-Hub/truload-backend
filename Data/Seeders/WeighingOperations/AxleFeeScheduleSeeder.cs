@@ -188,117 +188,87 @@ public class AxleFeeScheduleSeeder
         });
 
         // ===== Traffic Act GVW Fee Bands (KES native) =====
-        // Kenya Traffic Act Cap 403 uses flat fee thresholds in KES (NOT per-kg rates).
-        // FeePerKgKes = 0 because Traffic Act uses flat fees, not per-kg.
-        // FlatFeeKes = the actual Traffic Act penalty amount.
-        // USD columns are reference-only estimates for reporting.
-        feeSchedules.AddRange(new[]
-        {
-            new AxleFeeSchedule
-            {
-                Id = Guid.NewGuid(),
-                LegalFramework = "TRAFFIC_ACT",
-                FeeType = "GVW",
-                OverloadMinKg = 1,
-                OverloadMaxKg = 1000,
-                FeePerKgKes = 0m,
-                FlatFeeKes = 10_000m,  // trafficoverloadCharges: 1000kg → KSh 10,000
-                FeePerKgUsd = 0.30m,
-                FlatFeeUsd = 50m,
-                DemeritPoints = 1,
-                PenaltyDescription = "Traffic Act GVW overload (1-1000 kg) - KSh 10,000 flat fine",
-                EffectiveFrom = effectiveFrom,
-                EffectiveTo = null,
-                IsActive = true
-            },
-            new AxleFeeSchedule
-            {
-                Id = Guid.NewGuid(),
-                LegalFramework = "TRAFFIC_ACT",
-                FeeType = "GVW",
-                OverloadMinKg = 1001,
-                OverloadMaxKg = 2000,
-                FeePerKgKes = 0m,
-                FlatFeeKes = 20_000m,  // trafficoverloadCharges: 2000kg → KSh 20,000
-                FeePerKgUsd = 0.50m,
-                FlatFeeUsd = 100m,
-                DemeritPoints = 3,
-                PenaltyDescription = "Traffic Act GVW overload (1001-2000 kg) - KSh 20,000 flat fine",
-                EffectiveFrom = effectiveFrom,
-                EffectiveTo = null,
-                IsActive = true
-            },
-            new AxleFeeSchedule
-            {
-                Id = Guid.NewGuid(),
-                LegalFramework = "TRAFFIC_ACT",
-                FeeType = "GVW",
-                OverloadMinKg = 2001,
-                OverloadMaxKg = 3000,
-                FeePerKgKes = 0m,
-                FlatFeeKes = 30_000m,  // trafficoverloadCharges: 3000kg → KSh 30,000
-                FeePerKgUsd = 0.75m,
-                FlatFeeUsd = 200m,
-                DemeritPoints = 4,
-                PenaltyDescription = "Traffic Act GVW overload (2001-3000 kg) - KSh 30,000 flat fine",
-                EffectiveFrom = effectiveFrom,
-                EffectiveTo = null,
-                IsActive = true
-            },
-            new AxleFeeSchedule
-            {
-                Id = Guid.NewGuid(),
-                LegalFramework = "TRAFFIC_ACT",
-                FeeType = "GVW",
-                OverloadMinKg = 3001,
-                OverloadMaxKg = 5000,
-                FeePerKgKes = 0m,
-                FlatFeeKes = 60_000m,  // trafficoverloadCharges: 5000kg → KSh 60,000
-                FeePerKgUsd = 1.00m,
-                FlatFeeUsd = 500m,
-                DemeritPoints = 6,
-                PenaltyDescription = "Traffic Act GVW overload (3001-5000 kg) - KSh 60,000 flat fine",
-                EffectiveFrom = effectiveFrom,
-                EffectiveTo = null,
-                IsActive = true
-            },
-            new AxleFeeSchedule
-            {
-                Id = Guid.NewGuid(),
-                LegalFramework = "TRAFFIC_ACT",
-                FeeType = "GVW",
-                OverloadMinKg = 5001,
-                OverloadMaxKg = 10000,
-                FeePerKgKes = 0m,
-                FlatFeeKes = 350_000m,  // trafficoverloadCharges: 10000kg → KSh 350,000
-                FeePerKgUsd = 2.00m,
-                FlatFeeUsd = 1000m,
-                DemeritPoints = 10,
-                PenaltyDescription = "Traffic Act GVW overload (5001-10000 kg) - KSh 350,000 flat fine",
-                EffectiveFrom = effectiveFrom,
-                EffectiveTo = null,
-                IsActive = true
-            },
-            new AxleFeeSchedule
-            {
-                Id = Guid.NewGuid(),
-                LegalFramework = "TRAFFIC_ACT",
-                FeeType = "GVW",
-                OverloadMinKg = 10001,
-                OverloadMaxKg = null,
-                FeePerKgKes = 0m,
-                FlatFeeKes = 400_000m,  // trafficoverloadCharges: 10001+kg → KSh 400,000 (max)
-                FeePerKgUsd = 3.00m,
-                FlatFeeUsd = 2000m,
-                DemeritPoints = 12,
-                PenaltyDescription = "Traffic Act GVW overload (>10000 kg) - KSh 400,000 max fine + prosecution",
-                EffectiveFrom = effectiveFrom,
-                EffectiveTo = null,
-                IsActive = true
-            }
-        });
+        // Rule 41(2) of the Traffic Amendment Rules, 2008 - Traffic Act Cap 403 Laws of Kenya
+        // "Excess Axle Load Weights Fine Schedule"
+        // Uses flat fees in KES (NOT per-kg rates). No USD equivalent needed.
+        // Separate bands for 1st and 2nd conviction as mandated by Rule 41(2).
+        feeSchedules.AddRange(CreateTrafficActBands(effectiveFrom));
 
         await _context.AxleFeeSchedules.AddRangeAsync(feeSchedules);
         await _context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Creates Traffic Act Cap 403 fee bands per Rule 41(2) of the Traffic Amendment Rules, 2008.
+    /// 11 bands for 1st conviction, 11 bands for 2nd conviction (22 total).
+    /// 2nd conviction fines are exactly 2× the 1st conviction values.
+    /// </summary>
+    private static List<AxleFeeSchedule> CreateTrafficActBands(DateTime effectiveFrom)
+    {
+        // Rule 41(2) fine schedule: (minKg, maxKg, 1stConvictionKes, demeritPoints)
+        var bands = new (int Min, int? Max, decimal FirstFine, int Demerit)[]
+        {
+            (1,    999,    5_000m,  1),
+            (1000, 1999,  10_000m,  2),
+            (2000, 2999,  15_000m,  3),
+            (3000, 3999,  20_000m,  4),
+            (4000, 4999,  30_000m,  5),
+            (5000, 5999,  50_000m,  6),
+            (6000, 6999,  75_000m,  7),
+            (7000, 7999, 100_000m,  8),
+            (8000, 8999, 150_000m,  9),
+            (9000, 9999, 175_000m, 10),
+            (10000, null, 200_000m, 12),
+        };
+
+        var result = new List<AxleFeeSchedule>();
+
+        foreach (var (min, max, firstFine, demerit) in bands)
+        {
+            var rangeLabel = max.HasValue ? $"{min}-{max} kg" : $"≥{min} kg";
+
+            // 1st conviction
+            result.Add(new AxleFeeSchedule
+            {
+                Id = Guid.NewGuid(),
+                LegalFramework = "TRAFFIC_ACT",
+                FeeType = "GVW",
+                OverloadMinKg = min,
+                OverloadMaxKg = max,
+                FeePerKgKes = 0m,
+                FlatFeeKes = firstFine,
+                FeePerKgUsd = 0m,
+                FlatFeeUsd = 0m,
+                ConvictionNumber = 1,
+                DemeritPoints = demerit,
+                PenaltyDescription = $"Traffic Act Rule 41(2) 1st conviction ({rangeLabel}) - KSh {firstFine:N0}",
+                EffectiveFrom = effectiveFrom,
+                EffectiveTo = null,
+                IsActive = true
+            });
+
+            // 2nd conviction (exactly 2× the 1st conviction fine)
+            var secondFine = firstFine * 2;
+            result.Add(new AxleFeeSchedule
+            {
+                Id = Guid.NewGuid(),
+                LegalFramework = "TRAFFIC_ACT",
+                FeeType = "GVW",
+                OverloadMinKg = min,
+                OverloadMaxKg = max,
+                FeePerKgKes = 0m,
+                FlatFeeKes = secondFine,
+                FeePerKgUsd = 0m,
+                FlatFeeUsd = 0m,
+                ConvictionNumber = 2,
+                DemeritPoints = demerit + 2, // Higher demerit for repeat offender
+                PenaltyDescription = $"Traffic Act Rule 41(2) 2nd conviction ({rangeLabel}) - KSh {secondFine:N0}",
+                EffectiveFrom = effectiveFrom,
+                EffectiveTo = null,
+                IsActive = true
+            });
+        }
+
+        return result;
     }
 }

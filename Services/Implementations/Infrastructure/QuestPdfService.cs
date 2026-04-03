@@ -194,6 +194,104 @@ public class QuestPdfService : IPdfService
         return document.Generate();
     }
 
+    public async Task<byte[]> GenerateCoverPageAsync(Guid caseRegisterId, CancellationToken ct = default)
+    {
+        var caseRegister = await _context.CaseRegisters
+            .Include(c => c.Weighing)
+                .ThenInclude(w => w!.Station)
+            .Include(c => c.ComplainantOfficer)
+            .Include(c => c.DetentionStation)
+            .Include(c => c.CourtHearings)
+                .ThenInclude(h => h.HearingType)
+            .FirstOrDefaultAsync(c => c.Id == caseRegisterId && c.DeletedAt == null, ct)
+            ?? throw new InvalidOperationException($"Case register {caseRegisterId} not found");
+
+        // Resolve court name
+        var courtName = caseRegister.CourtId.HasValue
+            ? await _context.Set<Models.CaseManagement.Court>()
+                .Where(c => c.Id == caseRegister.CourtId.Value)
+                .Select(c => c.Name)
+                .FirstOrDefaultAsync(ct) ?? "N/A"
+            : "N/A";
+
+        // Resolve investigating officer
+        var investigatingOfficer = caseRegister.InvestigatingOfficerId.HasValue
+            ? await _context.Users
+                .Where(u => u.Id == caseRegister.InvestigatingOfficerId.Value)
+                .Select(u => new { u.FullName })
+                .FirstOrDefaultAsync(ct)
+            : null;
+
+        // Resolve driver (accused) info
+        var driver = caseRegister.DriverId.HasValue
+            ? await _context.Set<Models.Weighing.Driver>()
+                .Where(d => d.Id == caseRegister.DriverId.Value)
+                .Select(d => new { d.FullNames, d.Surname })
+                .FirstOrDefaultAsync(ct)
+            : null;
+        var accusedName = driver != null ? $"{driver.FullNames} {driver.Surname}".Trim() : string.Empty;
+
+        // Resolve prosecution case for charge details
+        var prosecutionCase = await _context.ProsecutionCases
+            .Include(p => p.Act)
+            .Include(p => p.ProsecutionOfficer)
+            .FirstOrDefaultAsync(p => p.CaseRegisterId == caseRegisterId && p.DeletedAt == null, ct);
+
+        // Build hearing entries
+        var hearings = caseRegister.CourtHearings
+            .OrderBy(h => h.HearingDate)
+            .Select(h => new CoverPageHearing
+            {
+                Date = h.HearingDate,
+                Time = h.HearingTime,
+                TypeCode = MapHearingTypeCode(h.HearingType?.Code),
+                Comments = h.MinuteNotes ?? string.Empty
+            })
+            .ToList();
+
+        var stationName = caseRegister.DetentionStation?.Name
+            ?? caseRegister.Weighing?.Station?.Name
+            ?? "N/A";
+
+        var data = new CoverPageData
+        {
+            PoliceCaseFileNo = caseRegister.PoliceCaseFileNo ?? "N/A",
+            ObNo = caseRegister.ObNo ?? "N/A",
+            CourtFileNo = caseRegister.CourtCaseNo ?? "N/A",
+            CourtName = courtName,
+            PoliceStation = stationName,
+            Division = string.Empty,
+            Province = string.Empty,
+            Hearings = hearings,
+            ComplainantName = caseRegister.ComplainantOfficer?.FullName ?? string.Empty,
+            AccusedName = accusedName,
+            ChargeAndSection = prosecutionCase?.Act?.Name ?? caseRegister.ViolationDetails ?? "N/A",
+            ResultOfCase = caseRegister.ClosingReason ?? string.Empty,
+            InvestigatingOfficerName = investigatingOfficer?.FullName ?? string.Empty,
+            CourtProsecutor = prosecutionCase?.ProsecutionOfficer?.FullName ?? string.Empty,
+        };
+
+        var document = new CoverPageDocument(data);
+        return document.Generate();
+    }
+
+    /// <summary>
+    /// Maps hearing type codes to cover page abbreviations.
+    /// M = Mention, H = Hearing, POG = Plea of Guilty, PONGE = Plea of Not Guilty
+    /// </summary>
+    private static string MapHearingTypeCode(string? code)
+    {
+        if (string.IsNullOrEmpty(code)) return string.Empty;
+        return code.ToUpperInvariant() switch
+        {
+            "MENTION" => "M",
+            "HEARING" => "H",
+            "PLEA_OF_GUILTY" or "POG" => "POG",
+            "PLEA_OF_NOT_GUILTY" or "PONGE" => "PONGE",
+            _ => code
+        };
+    }
+
     public async Task<byte[]> GenerateInvoiceAsync(Guid invoiceId, CancellationToken ct = default)
     {
         var invoice = await _context.Invoices

@@ -49,7 +49,19 @@ public class AxleFeeScheduleTypeConfiguration : IEntityTypeConfiguration<AxleFee
             .HasPrecision(18, 2)
             .HasDefaultValue(0m)
             .IsRequired();
-            
+
+        builder.Property(x => x.FeePerKgKes)
+            .HasColumnName("fee_per_kg_kes")
+            .HasPrecision(18, 4)
+            .HasDefaultValue(0m)
+            .IsRequired();
+
+        builder.Property(x => x.FlatFeeKes)
+            .HasColumnName("flat_fee_kes")
+            .HasPrecision(18, 2)
+            .HasDefaultValue(0m)
+            .IsRequired();
+
         builder.Property(x => x.DemeritPoints)
             .HasColumnName("demerit_points")
             .HasDefaultValue(0)
@@ -67,6 +79,11 @@ public class AxleFeeScheduleTypeConfiguration : IEntityTypeConfiguration<AxleFee
         builder.Property(x => x.EffectiveTo)
             .HasColumnName("effective_to");
             
+        builder.Property(x => x.ConvictionNumber)
+            .HasColumnName("conviction_number")
+            .HasDefaultValue(1)
+            .IsRequired();
+
         builder.Property(x => x.IsActive)
             .HasColumnName("is_active")
             .HasDefaultValue(true)
@@ -91,7 +108,7 @@ public class AxleFeeScheduleTypeConfiguration : IEntityTypeConfiguration<AxleFee
         builder.HasIndex(x => x.FeeType)
             .HasDatabaseName("IX_axle_fee_schedules_fee_type");
             
-        builder.HasIndex(x => new { x.LegalFramework, x.FeeType, x.OverloadMinKg, x.OverloadMaxKg })
+        builder.HasIndex(x => new { x.LegalFramework, x.FeeType, x.ConvictionNumber, x.OverloadMinKg, x.OverloadMaxKg })
             .HasDatabaseName("IX_axle_fee_schedules_lookup");
             
         builder.HasIndex(x => x.IsActive)

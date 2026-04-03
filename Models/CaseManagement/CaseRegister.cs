@@ -107,6 +107,23 @@ public class CaseRegister : TenantAwareEntity
     public string? ObNo { get; set; }
 
     /// <summary>
+    /// URL to uploaded OB extract document
+    /// </summary>
+    public string? ObExtractFileUrl { get; set; }
+
+    /// <summary>
+    /// Court case file number (e.g., MCTR/E889/2025)
+    /// </summary>
+    [MaxLength(50)]
+    public string? CourtCaseNo { get; set; }
+
+    /// <summary>
+    /// Police case file number (e.g., TCR 851/2025)
+    /// </summary>
+    [MaxLength(50)]
+    public string? PoliceCaseFileNo { get; set; }
+
+    /// <summary>
     /// Assigned court
     /// </summary>
     public Guid? CourtId { get; set; }

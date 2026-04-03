@@ -86,6 +86,17 @@ public static class CoreCaseEntitiesConfiguration
                 .HasColumnName("ob_no")
                 .HasMaxLength(50);
 
+            entity.Property(e => e.ObExtractFileUrl)
+                .HasColumnName("ob_extract_file_url");
+
+            entity.Property(e => e.CourtCaseNo)
+                .HasColumnName("court_case_no")
+                .HasMaxLength(50);
+
+            entity.Property(e => e.PoliceCaseFileNo)
+                .HasColumnName("police_case_file_no")
+                .HasMaxLength(50);
+
             entity.Property(e => e.CourtId)
                 .HasColumnName("court_id");
 
@@ -521,6 +532,22 @@ public static class CoreCaseEntitiesConfiguration
                 .HasColumnName("dropped_reason")
                 .HasColumnType("text");
 
+            entity.Property(e => e.IssuedDate)
+                .HasColumnName("issued_date")
+                .HasColumnType("timestamp with time zone")
+                .IsRequired();
+
+            entity.Property(e => e.ExecutionDate)
+                .HasColumnName("execution_date")
+                .HasColumnType("timestamp with time zone");
+
+            entity.Property(e => e.WarrantFileUrl)
+                .HasColumnName("warrant_file_url")
+                .HasMaxLength(500);
+
+            entity.Property(e => e.CasePartyId)
+                .HasColumnName("case_party_id");
+
             entity.Property(e => e.CreatedAt)
                 .HasColumnName("created_at")
                 .HasColumnType("timestamp with time zone")
@@ -559,6 +586,11 @@ public static class CoreCaseEntitiesConfiguration
                 .WithMany(ws => ws.ArrestWarrants)
                 .HasForeignKey(e => e.WarrantStatusId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.CaseParty)
+                .WithMany()
+                .HasForeignKey(e => e.CasePartyId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 

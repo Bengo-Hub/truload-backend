@@ -118,6 +118,26 @@ public class ArrestWarrantController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Lift a warrant (court has lifted the warrant)
+    /// </summary>
+    [HttpPost("api/v1/case/warrants/{id}/lift")]
+    [HasPermission("case.arrest_warrant")]
+    public async Task<IActionResult> Lift(Guid id, [FromBody] LiftWarrantRequest request, CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        try
+        {
+            var warrant = await _arrestWarrantService.LiftAsync(id, request, ct);
+            return Ok(warrant);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(ex.Message);
+        }
+    }
+
     private Guid GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

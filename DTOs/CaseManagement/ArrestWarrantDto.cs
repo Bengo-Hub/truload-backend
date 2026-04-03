@@ -22,11 +22,37 @@ public class ArrestWarrantDto
     public DateTime? DroppedAt { get; set; }
     public string? ExecutionDetails { get; set; }
     public string? DroppedReason { get; set; }
+
+    /// <summary>
+    /// Date the warrant was issued by the court
+    /// </summary>
+    public DateTime IssuedDate { get; set; }
+
+    /// <summary>
+    /// Date the warrant was physically executed (null if not yet executed)
+    /// </summary>
+    public DateTime? ExecutionDate { get; set; }
+
+    /// <summary>
+    /// URL to uploaded warrant document
+    /// </summary>
+    public string? WarrantFileUrl { get; set; }
+
+    /// <summary>
+    /// Linked case party (defendant) ID
+    /// </summary>
+    public Guid? CasePartyId { get; set; }
+
+    /// <summary>
+    /// Display name of the linked defendant
+    /// </summary>
+    public string? CasePartyName { get; set; }
+
     public DateTime CreatedAt { get; set; }
 }
 
 /// <summary>
-/// Create Arrest Warrant Request
+/// Create/Track Arrest Warrant Request
 /// </summary>
 public class CreateArrestWarrantRequest
 {
@@ -35,6 +61,26 @@ public class CreateArrestWarrantRequest
     public string? AccusedIdNo { get; set; }
     public string? OffenceDescription { get; set; }
     public string? IssuedBy { get; set; }
+
+    /// <summary>
+    /// Date the warrant was issued by the court (required)
+    /// </summary>
+    public DateTime IssuedDate { get; set; }
+
+    /// <summary>
+    /// Date the warrant was executed (optional - null means not yet executed)
+    /// </summary>
+    public DateTime? ExecutionDate { get; set; }
+
+    /// <summary>
+    /// URL to uploaded warrant document file
+    /// </summary>
+    public string? WarrantFileUrl { get; set; }
+
+    /// <summary>
+    /// FK to case party (defendant) this warrant targets
+    /// </summary>
+    public Guid? CasePartyId { get; set; }
 }
 
 /// <summary>
@@ -43,10 +89,23 @@ public class CreateArrestWarrantRequest
 public class ExecuteWarrantRequest
 {
     public string ExecutionDetails { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Date the warrant was physically executed
+    /// </summary>
+    public DateTime? ExecutionDate { get; set; }
 }
 
 /// <summary>
-/// Drop Warrant Request
+/// Lift Warrant Request (formerly Drop)
+/// </summary>
+public class LiftWarrantRequest
+{
+    public string LiftedReason { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Drop Warrant Request (kept for backward compatibility)
 /// </summary>
 public class DropWarrantRequest
 {

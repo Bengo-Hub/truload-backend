@@ -28,5 +28,7 @@ public record CaseDocumentSummaryDto
     public int Receipts { get; init; }
     public int CourtMinutes { get; init; }
     public int SpecialReleaseCertificates { get; init; }
+    public int CoverPages { get; init; }
+    public int OBExtracts { get; init; }
     public int Subfiles { get; init; }
 }

@@ -29,6 +29,12 @@ public class CaseRegisterDto
     /// <summary>Transporter name (from linked weighing when available).</summary>
     public string? TransporterName { get; set; }
     public string? ObNo { get; set; }
+    /// <summary>URL to uploaded OB extract document.</summary>
+    public string? ObExtractFileUrl { get; set; }
+    /// <summary>Court case file number (e.g., MCTR/E889/2025).</summary>
+    public string? CourtCaseNo { get; set; }
+    /// <summary>Police case file number (e.g., TCR 851/2025).</summary>
+    public string? PoliceCaseFileNo { get; set; }
     public Guid? CourtId { get; set; }
     public string? CourtName { get; set; }
     public Guid? DispositionTypeId { get; set; }
@@ -86,6 +92,12 @@ public class UpdateCaseRegisterRequest
     /// <summary>Transporter/owner NTAC for this case (mandatory only when escalating to case manager; optional for prosecution).</summary>
     public string? TransporterNtacNo { get; set; }
     public string? ObNo { get; set; }
+    /// <summary>URL to uploaded OB extract document.</summary>
+    public string? ObExtractFileUrl { get; set; }
+    /// <summary>Court case file number (e.g., MCTR/E889/2025).</summary>
+    public string? CourtCaseNo { get; set; }
+    /// <summary>Police case file number (e.g., TCR 851/2025).</summary>
+    public string? PoliceCaseFileNo { get; set; }
     public Guid? CourtId { get; set; }
     public Guid? DispositionTypeId { get; set; }
     public Guid? CaseManagerId { get; set; }

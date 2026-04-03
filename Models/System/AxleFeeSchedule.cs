@@ -70,6 +70,13 @@ public class AxleFeeSchedule
     public DateTime? EffectiveTo { get; set; }
     
     /// <summary>
+    /// Conviction number (1 = first conviction, 2 = second conviction).
+    /// Used by Traffic Act for differentiated fine schedules per Rule 41(2).
+    /// EAC Act uses multiplier-based repeat offender logic instead.
+    /// </summary>
+    public int ConvictionNumber { get; set; } = 1;
+
+    /// <summary>
     /// Active status
     /// </summary>
     public bool IsActive { get; set; } = true;

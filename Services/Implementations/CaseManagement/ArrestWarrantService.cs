@@ -8,7 +8,7 @@ namespace TruLoad.Backend.Services.Implementations.CaseManagement;
 
 /// <summary>
 /// Service implementation for arrest warrant management.
-/// Handles issuance, execution, and dropping of warrants.
+/// Handles tracking, execution, and lifting of warrants.
 /// </summary>
 public class ArrestWarrantService : IArrestWarrantService
 {
@@ -24,6 +24,7 @@ public class ArrestWarrantService : IArrestWarrantService
         var warrant = await _context.ArrestWarrants
             .Include(w => w.CaseRegister)
             .Include(w => w.WarrantStatus)
+            .Include(w => w.CaseParty)
             .FirstOrDefaultAsync(w => w.Id == id && w.DeletedAt == null, ct);
 
         return warrant == null ? null : MapToDto(warrant);
@@ -34,6 +35,7 @@ public class ArrestWarrantService : IArrestWarrantService
         var warrants = await _context.ArrestWarrants
             .Include(w => w.CaseRegister)
             .Include(w => w.WarrantStatus)
+            .Include(w => w.CaseParty)
             .Where(w => w.CaseRegisterId == caseRegisterId && w.DeletedAt == null)
             .OrderByDescending(w => w.IssuedAt)
             .ToListAsync(ct);
@@ -46,6 +48,7 @@ public class ArrestWarrantService : IArrestWarrantService
         var query = _context.ArrestWarrants
             .Include(w => w.CaseRegister)
             .Include(w => w.WarrantStatus)
+            .Include(w => w.CaseParty)
             .Where(w => w.DeletedAt == null)
             .AsQueryable();
 
@@ -79,10 +82,23 @@ public class ArrestWarrantService : IArrestWarrantService
         var caseRegister = await _context.CaseRegisters.FindAsync(new object[] { request.CaseRegisterId }, ct)
             ?? throw new InvalidOperationException($"Case {request.CaseRegisterId} not found");
 
-        // Look up ISSUED warrant status
-        var issuedStatus = await _context.WarrantStatuses
-            .FirstOrDefaultAsync(s => s.Code == "ISSUED", ct)
-            ?? throw new InvalidOperationException("ISSUED warrant status not found");
+        // Determine initial status based on whether execution date is provided
+        WarrantStatus initialStatus;
+        if (request.ExecutionDate.HasValue)
+        {
+            initialStatus = await _context.WarrantStatuses
+                .FirstOrDefaultAsync(s => s.Code == "EXECUTED", ct)
+                ?? throw new InvalidOperationException("EXECUTED warrant status not found");
+        }
+        else
+        {
+            // Try IN_FORCE first, fall back to ISSUED for backward compatibility
+            initialStatus = await _context.WarrantStatuses
+                .FirstOrDefaultAsync(s => s.Code == "IN_FORCE", ct)
+                ?? await _context.WarrantStatuses
+                    .FirstOrDefaultAsync(s => s.Code == "ISSUED", ct)
+                ?? throw new InvalidOperationException("IN_FORCE/ISSUED warrant status not found");
+        }
 
         // Auto-generate warrant number: WAR-{year}-{sequence}
         var year = DateTime.UtcNow.Year;
@@ -104,8 +120,13 @@ public class ArrestWarrantService : IArrestWarrantService
             AccusedName = request.AccusedName,
             AccusedIdNo = request.AccusedIdNo,
             OffenceDescription = request.OffenceDescription,
-            WarrantStatusId = issuedStatus.Id,
+            WarrantStatusId = initialStatus.Id,
             IssuedAt = DateTime.UtcNow,
+            IssuedDate = request.IssuedDate,
+            ExecutionDate = request.ExecutionDate,
+            ExecutedAt = request.ExecutionDate.HasValue ? DateTime.UtcNow : null,
+            WarrantFileUrl = request.WarrantFileUrl,
+            CasePartyId = request.CasePartyId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -132,6 +153,7 @@ public class ArrestWarrantService : IArrestWarrantService
 
         warrant.WarrantStatusId = executedStatus.Id;
         warrant.ExecutedAt = DateTime.UtcNow;
+        warrant.ExecutionDate = request.ExecutionDate ?? DateTime.UtcNow;
         warrant.ExecutionDetails = request.ExecutionDetails;
         warrant.UpdatedAt = DateTime.UtcNow;
 
@@ -163,7 +185,32 @@ public class ArrestWarrantService : IArrestWarrantService
         return (await GetByIdAsync(id, ct))!;
     }
 
-    private ArrestWarrantDto MapToDto(ArrestWarrant warrant)
+    public async Task<ArrestWarrantDto> LiftAsync(Guid id, LiftWarrantRequest request, CancellationToken ct = default)
+    {
+        var warrant = await _context.ArrestWarrants.FindAsync(new object[] { id }, ct)
+            ?? throw new InvalidOperationException($"Warrant {id} not found");
+
+        if (warrant.DeletedAt != null)
+            throw new InvalidOperationException("Cannot lift a deleted warrant");
+
+        // Look up LIFTED status, fall back to DROPPED for backward compatibility
+        var liftedStatus = await _context.WarrantStatuses
+            .FirstOrDefaultAsync(s => s.Code == "LIFTED", ct)
+            ?? await _context.WarrantStatuses
+                .FirstOrDefaultAsync(s => s.Code == "DROPPED", ct)
+            ?? throw new InvalidOperationException("LIFTED/DROPPED warrant status not found");
+
+        warrant.WarrantStatusId = liftedStatus.Id;
+        warrant.DroppedAt = DateTime.UtcNow;
+        warrant.DroppedReason = request.LiftedReason;
+        warrant.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(ct);
+
+        return (await GetByIdAsync(id, ct))!;
+    }
+
+    private static ArrestWarrantDto MapToDto(ArrestWarrant warrant)
     {
         return new ArrestWarrantDto
         {
@@ -182,7 +229,18 @@ public class ArrestWarrantService : IArrestWarrantService
             DroppedAt = warrant.DroppedAt,
             ExecutionDetails = warrant.ExecutionDetails,
             DroppedReason = warrant.DroppedReason,
+            IssuedDate = warrant.IssuedDate,
+            ExecutionDate = warrant.ExecutionDate,
+            WarrantFileUrl = warrant.WarrantFileUrl,
+            CasePartyId = warrant.CasePartyId,
+            CasePartyName = ResolveCasePartyName(warrant.CaseParty),
             CreatedAt = warrant.CreatedAt
         };
+    }
+
+    private static string? ResolveCasePartyName(CaseParty? party)
+    {
+        if (party == null) return null;
+        return !string.IsNullOrEmpty(party.ExternalName) ? party.ExternalName : null;
     }
 }

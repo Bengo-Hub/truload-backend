@@ -152,7 +152,37 @@ public class CaseDocumentService : ICaseDocumentService
             });
         }
 
-        // 7. Subfiles (uploaded documents)
+        // 7. Cover Page (court-escalated cases)
+        if (!string.IsNullOrEmpty(caseRegister.CourtCaseNo) || !string.IsNullOrEmpty(caseRegister.PoliceCaseFileNo))
+        {
+            documents.Add(new CaseDocumentDto
+            {
+                Id = caseRegister.Id,
+                DocumentType = "CoverPage",
+                DisplayName = $"Case Cover Page - {caseRegister.CaseNo}",
+                ReferenceNo = caseRegister.PoliceCaseFileNo ?? caseRegister.CourtCaseNo,
+                DownloadUrl = $"/api/v1/case/{caseRegisterId}/cover-page/pdf",
+                Status = "Generated",
+                CreatedAt = caseRegister.CreatedAt
+            });
+        }
+
+        // 8. OB Extract
+        if (!string.IsNullOrEmpty(caseRegister.ObExtractFileUrl))
+        {
+            documents.Add(new CaseDocumentDto
+            {
+                Id = caseRegister.Id,
+                DocumentType = "OBExtract",
+                DisplayName = $"OB Extract - {caseRegister.ObNo ?? caseRegister.CaseNo}",
+                ReferenceNo = caseRegister.ObNo,
+                DownloadUrl = caseRegister.ObExtractFileUrl,
+                Status = "Uploaded",
+                CreatedAt = caseRegister.CreatedAt
+            });
+        }
+
+        // 9. Subfiles (uploaded documents)
         var subfiles = await _context.CaseSubfiles
             .AsNoTracking()
             .Where(s => s.CaseRegisterId == caseRegisterId && s.DeletedAt == null)
@@ -186,6 +216,8 @@ public class CaseDocumentService : ICaseDocumentService
             Receipts = docs.Count(d => d.DocumentType == "Receipt"),
             CourtMinutes = docs.Count(d => d.DocumentType == "CourtMinutes"),
             SpecialReleaseCertificates = docs.Count(d => d.DocumentType == "SpecialReleaseCertificate"),
+            CoverPages = docs.Count(d => d.DocumentType == "CoverPage"),
+            OBExtracts = docs.Count(d => d.DocumentType == "OBExtract"),
             Subfiles = docs.Count(d => d.DocumentType == "Subfile"),
         };
     }

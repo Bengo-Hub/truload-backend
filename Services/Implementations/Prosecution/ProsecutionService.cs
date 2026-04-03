@@ -130,10 +130,28 @@ public class ProsecutionService : IProsecutionService
         var currentRateResponse = await _currencyService.GetCurrentRateAsync("USD", "KES", ct);
         var forexRate = currentRateResponse.Rate;
 
-        // Calculate GVW-based fee
+        // Check for repeat offender (within 12 months) — need conviction number before fee lookup
+        var (isRepeatOffender, priorOffenseCount, convictionNumber, multiplier) =
+            await CheckRepeatOffenderAsync(weighing.VehicleId, legalFramework, ct);
+
+        // Calculate GVW-based fee (returns native currency amounts)
         var gvwOverloadKg = weighing.OverloadKg;
-        var gvwFeeUsd = await CalculateGvwFeeAsync(gvwOverloadKg, legalFramework, ct);
-        var gvwFeeKes = gvwFeeUsd * forexRate;
+        var (gvwFeeUsdRaw, gvwFeeKesRaw) = await CalculateGvwFeeAsync(gvwOverloadKg, legalFramework, convictionNumber, ct);
+
+        // Resolve cross-currency values for reporting
+        decimal gvwFeeUsd, gvwFeeKes;
+        if (legalFramework == "TRAFFIC_ACT")
+        {
+            // Traffic Act: native fee is KES; derive USD for reporting
+            gvwFeeKes = gvwFeeKesRaw;
+            gvwFeeUsd = forexRate > 0 ? gvwFeeKesRaw / forexRate : 0m;
+        }
+        else
+        {
+            // EAC: native fee is USD; derive KES for reporting
+            gvwFeeUsd = gvwFeeUsdRaw;
+            gvwFeeKes = gvwFeeUsdRaw * forexRate;
+        }
 
         // Get axle-based fees from compliance results
         var maxAxleOverloadKg = compliance.GroupResults.Any() ? compliance.GroupResults.Max(g => g.OverloadKg) : 0;
@@ -144,9 +162,7 @@ public class ProsecutionService : IProsecutionService
         var bestChargeBasis = gvwFeeUsd >= totalAxleFeeUsd ? "gvw" : "axle";
         var baseFeeUsd = bestChargeBasis == "gvw" ? gvwFeeUsd : totalAxleFeeUsd;
 
-        // Check for repeat offender (within 12 months)
-        var (isRepeatOffender, priorOffenseCount, multiplier) = await CheckRepeatOffenderAsync(weighing.VehicleId, ct);
-
+        // Apply multiplier (1.0 for Traffic Act, 5.0 for EAC repeat offenders)
         var totalFeeUsd = baseFeeUsd * multiplier;
         var totalFeeKes = totalFeeUsd * forexRate;
 
@@ -345,25 +361,30 @@ public class ProsecutionService : IProsecutionService
         return $"PROS-{year}-{(count + 1):D6}";
     }
 
-    private async Task<decimal> CalculateGvwFeeAsync(int overloadKg, string legalFramework, CancellationToken ct)
+    private async Task<(decimal FeeUsd, decimal FeeKes)> CalculateGvwFeeAsync(
+        int overloadKg, string legalFramework, int convictionNumber, CancellationToken ct)
     {
         if (overloadKg <= 0)
-            return 0m;
+            return (0m, 0m);
 
-        // Get fee from GVW fee schedule
         var feeSchedule = await _context.AxleFeeSchedules
             .Where(f => f.LegalFramework == legalFramework && f.FeeType == "GVW")
+            .Where(f => f.ConvictionNumber == convictionNumber)
             .Where(f => overloadKg >= f.OverloadMinKg && (f.OverloadMaxKg == null || overloadKg <= f.OverloadMaxKg))
             .FirstOrDefaultAsync(ct);
 
-        if (feeSchedule != null)
-            return feeSchedule.FeePerKgUsd * overloadKg + feeSchedule.FlatFeeUsd;
+        if (feeSchedule == null)
+            return (overloadKg * 0.50m, 0m); // fallback
 
-        // Default fallback rate
-        return overloadKg * 0.50m; // $0.50 per kg
+        if (legalFramework == "TRAFFIC_ACT")
+            return (0m, feeSchedule.FlatFeeKes); // Traffic Act: native KES flat fee
+
+        // EAC: per-kg USD calculation
+        return (feeSchedule.FeePerKgUsd * overloadKg + feeSchedule.FlatFeeUsd, 0m);
     }
 
-    private async Task<(bool IsRepeatOffender, int PriorOffenseCount, decimal Multiplier)> CheckRepeatOffenderAsync(Guid vehicleId, CancellationToken ct)
+    private async Task<(bool IsRepeatOffender, int PriorOffenseCount, int ConvictionNumber, decimal Multiplier)>
+        CheckRepeatOffenderAsync(Guid vehicleId, string legalFramework, CancellationToken ct)
     {
         var twelveMonthsAgo = DateTime.UtcNow.AddMonths(-12);
 
@@ -376,11 +397,16 @@ public class ProsecutionService : IProsecutionService
                 && x.Prosecution.CreatedAt >= twelveMonthsAgo
                 && x.Prosecution.DeletedAt == null, ct);
 
-        if (priorCount == 0)
-            return (false, 0, 1.0m);
+        if (legalFramework == "TRAFFIC_ACT")
+        {
+            // Traffic Act: conviction number selects the fee band; no blanket multiplier
+            var convictionNumber = priorCount >= 1 ? 2 : 1;
+            return (priorCount > 0, priorCount, convictionNumber, 1.0m);
+        }
 
-        // 5x multiplier for repeat offenders
-        return (true, priorCount, 5.0m);
+        // EAC: single conviction band, 5x multiplier for repeat offenders
+        var eacMultiplier = priorCount > 0 ? 5.0m : 1.0m;
+        return (priorCount > 0, priorCount, 1, eacMultiplier);
     }
 
     private async Task<string> GetLegalFrameworkCodeAsync(Guid actId, CancellationToken ct)

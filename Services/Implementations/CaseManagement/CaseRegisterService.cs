@@ -242,6 +242,15 @@ public class CaseRegisterService : ICaseRegisterService
         if (!string.IsNullOrWhiteSpace(request.ObNo))
             caseRegister.ObNo = request.ObNo;
 
+        if (!string.IsNullOrWhiteSpace(request.ObExtractFileUrl))
+            caseRegister.ObExtractFileUrl = request.ObExtractFileUrl;
+
+        if (!string.IsNullOrWhiteSpace(request.CourtCaseNo))
+            caseRegister.CourtCaseNo = request.CourtCaseNo;
+
+        if (!string.IsNullOrWhiteSpace(request.PoliceCaseFileNo))
+            caseRegister.PoliceCaseFileNo = request.PoliceCaseFileNo;
+
         if (request.CourtId.HasValue)
             caseRegister.CourtId = request.CourtId;
 
@@ -518,6 +527,9 @@ public class CaseRegisterService : ICaseRegisterService
             TransporterNtacNo = caseRegister.TransporterNtacNo,
             TransporterName = transporterName,
             ObNo = caseRegister.ObNo,
+            ObExtractFileUrl = caseRegister.ObExtractFileUrl,
+            CourtCaseNo = caseRegister.CourtCaseNo,
+            PoliceCaseFileNo = caseRegister.PoliceCaseFileNo,
             CourtId = caseRegister.CourtId,
             CourtName = courtName,
             DispositionTypeId = caseRegister.DispositionTypeId,

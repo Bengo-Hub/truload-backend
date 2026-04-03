@@ -19,6 +19,9 @@ public interface IPdfService
     Task<byte[]> GenerateChargeSheetAsync(Guid prosecutionCaseId, CancellationToken ct = default);
     Task<byte[]> GenerateCourtMinutesAsync(Guid hearingId, CancellationToken ct = default);
 
+    // Case file documents
+    Task<byte[]> GenerateCoverPageAsync(Guid caseRegisterId, CancellationToken ct = default);
+
     // Financial documents
     Task<byte[]> GenerateInvoiceAsync(Guid invoiceId, CancellationToken ct = default);
     Task<byte[]> GenerateReceiptAsync(Guid receiptId, CancellationToken ct = default);

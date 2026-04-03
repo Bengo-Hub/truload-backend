@@ -358,8 +358,6 @@ public static class CaseManagementTaxonomySeeder
 
     private static async Task SeedHearingTypesAsync(TruLoadDbContext context)
     {
-        if (await context.HearingTypes.AnyAsync()) return;
-
         var hearingTypes = new List<HearingType>
         {
             new()
@@ -410,11 +408,85 @@ public static class CaseManagementTaxonomySeeder
                 Name = "Review Hearing",
                 Description = "Periodic case review for progress assessment and directive issuance.",
                 IsActive = true
+            },
+            new()
+            {
+                Code = "CONVICTION",
+                Name = "Conviction",
+                Description = "Court proceeding for formal conviction and recording of guilty verdict.",
+                IsActive = true
+            },
+            new()
+            {
+                Code = "WARRANT_EXECUTION",
+                Name = "Execution of Arrest Warrant",
+                Description = "Hearing following execution of an arrest warrant against the defendant.",
+                IsActive = true
+            },
+            new()
+            {
+                Code = "WARRANT_ISSUED",
+                Name = "Warrant of Arrest Issued",
+                Description = "Court session where a warrant of arrest is issued against the defendant.",
+                IsActive = true
+            },
+            new()
+            {
+                Code = "PLEA_GUILTY",
+                Name = "Plea of Guilty",
+                Description = "Hearing where defendant enters a formal plea of guilty.",
+                IsActive = true
+            },
+            new()
+            {
+                Code = "PLEA_NOT_GUILTY",
+                Name = "Plea of Not Guilty",
+                Description = "Hearing where defendant enters a formal plea of not guilty.",
+                IsActive = true
+            },
+            new()
+            {
+                Code = "HEARING",
+                Name = "Hearing",
+                Description = "Generic hearing type for general court proceedings not categorized elsewhere.",
+                IsActive = true
+            },
+            new()
+            {
+                Code = "PRE_TRIAL",
+                Name = "Pre-Trial",
+                Description = "Pre-trial conference for case management, disclosure, and trial preparation.",
+                IsActive = true
+            },
+            new()
+            {
+                Code = "DEFENSE",
+                Name = "Defense Hearing",
+                Description = "Hearing for presentation of defense case, evidence, and witnesses.",
+                IsActive = true
+            },
+            new()
+            {
+                Code = "JUDGMENT",
+                Name = "Judgment",
+                Description = "Court session for delivery of final judgment on the case.",
+                IsActive = true
             }
         };
 
-        await context.HearingTypes.AddRangeAsync(hearingTypes);
-        await context.SaveChangesAsync();
+        var existingCodes = await context.HearingTypes
+            .Select(h => h.Code)
+            .ToListAsync();
+
+        var newTypes = hearingTypes
+            .Where(h => !existingCodes.Contains(h.Code))
+            .ToList();
+
+        if (newTypes.Count > 0)
+        {
+            await context.HearingTypes.AddRangeAsync(newTypes);
+            await context.SaveChangesAsync();
+        }
     }
 
     private static async Task SeedHearingStatusesAsync(TruLoadDbContext context)
@@ -642,15 +714,13 @@ public static class CaseManagementTaxonomySeeder
 
     private static async Task SeedWarrantStatusesAsync(TruLoadDbContext context)
     {
-        if (await context.WarrantStatuses.AnyAsync()) return;
-
         var statuses = new List<WarrantStatus>
         {
             new()
             {
-                Code = "ISSUED",
-                Name = "Issued",
-                Description = "Warrant issued by court. Active and enforceable.",
+                Code = "IN_FORCE",
+                Name = "In Force",
+                Description = "Warrant is active and enforceable.",
                 IsActive = true
             },
             new()
@@ -680,10 +750,41 @@ public static class CaseManagementTaxonomySeeder
                 Name = "Pending Execution",
                 Description = "Warrant issued but not yet executed. Law enforcement actively pursuing.",
                 IsActive = true
+            },
+            new()
+            {
+                Code = "LIFTED",
+                Name = "Lifted",
+                Description = "Court has lifted the warrant.",
+                IsActive = true
             }
         };
 
-        await context.WarrantStatuses.AddRangeAsync(statuses);
+        var existingCodes = await context.WarrantStatuses
+            .Select(w => w.Code)
+            .ToListAsync();
+
+        // Update legacy ISSUED status to IN_FORCE if it exists
+        var issuedStatus = await context.WarrantStatuses
+            .FirstOrDefaultAsync(w => w.Code == "ISSUED");
+        if (issuedStatus != null)
+        {
+            issuedStatus.Code = "IN_FORCE";
+            issuedStatus.Name = "In Force";
+            issuedStatus.Description = "Warrant is active and enforceable.";
+            existingCodes.Remove("ISSUED");
+            existingCodes.Add("IN_FORCE");
+        }
+
+        var newStatuses = statuses
+            .Where(s => !existingCodes.Contains(s.Code))
+            .ToList();
+
+        if (newStatuses.Count > 0)
+        {
+            await context.WarrantStatuses.AddRangeAsync(newStatuses);
+        }
+
         await context.SaveChangesAsync();
     }
 }

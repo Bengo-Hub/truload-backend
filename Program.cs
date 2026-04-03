@@ -178,8 +178,19 @@ builder.Services.Configure<MediaUploadOptions>(options =>
 });
 
 // Database (PostgreSQL)
+// Apply connection pool limits to prevent exhaustion on shared PG (max_connections=100).
+// Npgsql defaults to MaxPoolSize=100 which is far too high for a shared instance.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+var csBuilder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+if (!csBuilder.ConnectionString.Contains("MaxPoolSize", StringComparison.OrdinalIgnoreCase))
+{
+    csBuilder.MaxPoolSize = int.Parse(builder.Configuration["Database:MaxPoolSize"] ?? "6");
+    csBuilder.MinPoolSize = int.Parse(builder.Configuration["Database:MinPoolSize"] ?? "2");
+    csBuilder.ConnectionIdleLifetime = int.Parse(builder.Configuration["Database:ConnectionIdleLifetime"] ?? "60");
+    connectionString = csBuilder.ConnectionString;
+}
 
 builder.Services.AddDbContext<TruLoadDbContext>(options =>
     options.UseNpgsql(connectionString, npgsqlOptions =>
@@ -472,9 +483,10 @@ builder.Services.AddScoped<IModuleReportGenerator, YardReportGenerator>();
 builder.Services.AddScoped<IModuleReportGenerator, SecurityReportGenerator>();
 
 // ===== Hangfire Background Jobs =====
+// Reuse the pool-limited connection string for Hangfire too
 builder.Services.AddHangfire(config =>
     config.UsePostgreSqlStorage(c =>
-        c.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")))
+        c.UseNpgsqlConnection(connectionString))
     .WithJobExpirationTimeout(TimeSpan.FromHours(48)));
 
 builder.Services.AddHangfireServer(options =>
