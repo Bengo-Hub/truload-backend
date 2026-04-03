@@ -172,3 +172,36 @@ public class UpdateProsecutionDefaultsRequest
     public string? DefaultSubcountyId { get; set; }
     public string? DefaultRoadId { get; set; }
 }
+
+/// <summary>
+/// Single conviction record in a vehicle's conviction history
+/// </summary>
+public class ConvictionRecordDto
+{
+    public Guid ProsecutionCaseId { get; set; }
+    public string CaseNo { get; set; } = string.Empty;
+    public string VehicleRegNumber { get; set; } = string.Empty;
+    public string? DriverName { get; set; }
+    public int OverloadKg { get; set; }
+    public decimal ChargeAmountKes { get; set; }
+    public decimal ChargeAmountUsd { get; set; }
+    public string LegalFramework { get; set; } = string.Empty;
+    public DateTime ConvictionDate { get; set; }
+    /// <summary>Ordinal position: 1 = first conviction, 2 = second, etc.</summary>
+    public int ConvictionNumber { get; set; }
+    public string Status { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Summary of a habitual offender vehicle
+/// </summary>
+public class HabitualOffenderDto
+{
+    public Guid VehicleId { get; set; }
+    public string VehicleRegNumber { get; set; } = string.Empty;
+    public int TotalConvictions { get; set; }
+    public DateTime FirstConvictionDate { get; set; }
+    public DateTime LastConvictionDate { get; set; }
+    public decimal TotalFinesKes { get; set; }
+    public decimal TotalFinesUsd { get; set; }
+}

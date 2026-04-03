@@ -332,6 +332,35 @@ public class ProsecutionController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Get conviction history for a vehicle (ordered chronologically)
+    /// </summary>
+    [HttpGet("conviction-history/{vehicleId}")]
+    [HasPermission("prosecution.read")]
+    public async Task<IActionResult> GetConvictionHistory(Guid vehicleId, CancellationToken ct)
+    {
+        var history = await _prosecutionService.GetConvictionHistoryAsync(vehicleId, ct);
+        return Ok(history);
+    }
+
+    /// <summary>
+    /// Get habitual offenders report (vehicles with multiple prosecutions)
+    /// </summary>
+    [HttpGet("habitual-offenders")]
+    [HasPermission("prosecution.read")]
+    public async Task<IActionResult> GetHabitualOffenders(
+        [FromQuery] int minConvictions = 2,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var result = await _prosecutionService.GetHabitualOffendersAsync(
+            minConvictions, fromDate, toDate, pageNumber, pageSize, ct);
+        return Ok(result);
+    }
+
     private Guid GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

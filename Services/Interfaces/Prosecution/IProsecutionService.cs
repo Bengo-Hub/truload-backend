@@ -53,4 +53,20 @@ public interface IProsecutionService
     /// Generate certificate number for prosecution
     /// </summary>
     Task<string> GenerateCertificateNumberAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Get conviction history for a vehicle, ordered chronologically
+    /// </summary>
+    Task<List<ConvictionRecordDto>> GetConvictionHistoryAsync(Guid vehicleId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Get habitual offenders (vehicles with multiple prosecutions) with pagination
+    /// </summary>
+    Task<PagedResponse<HabitualOffenderDto>> GetHabitualOffendersAsync(
+        int minConvictions,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int pageNumber,
+        int pageSize,
+        CancellationToken ct = default);
 }

@@ -27,7 +27,7 @@ public class AxleFeeScheduleSeeder
         var effectiveFrom = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var feeSchedules = new List<AxleFeeSchedule>();
 
-        // ===== EAC GVW Fee Bands =====
+        // ===== EAC GVW Fee Bands (1st conviction) =====
         feeSchedules.AddRange(new[]
         {
             new AxleFeeSchedule
@@ -39,6 +39,7 @@ public class AxleFeeScheduleSeeder
                 OverloadMaxKg = 500,
                 FeePerKgUsd = 0.50m,
                 FlatFeeUsd = 0,
+                ConvictionNumber = 1,
                 DemeritPoints = 0,
                 PenaltyDescription = "Minor GVW overload (1-500 kg) - redistributable",
                 EffectiveFrom = effectiveFrom,
@@ -54,6 +55,7 @@ public class AxleFeeScheduleSeeder
                 OverloadMaxKg = 1000,
                 FeePerKgUsd = 0.75m,
                 FlatFeeUsd = 0,
+                ConvictionNumber = 1,
                 DemeritPoints = 2,
                 PenaltyDescription = "Moderate GVW overload (501-1000 kg) - redistributable",
                 EffectiveFrom = effectiveFrom,
@@ -69,6 +71,7 @@ public class AxleFeeScheduleSeeder
                 OverloadMaxKg = 1500,
                 FeePerKgUsd = 1.00m,
                 FlatFeeUsd = 0,
+                ConvictionNumber = 1,
                 DemeritPoints = 4,
                 PenaltyDescription = "High GVW overload (1001-1500 kg) - redistributable",
                 EffectiveFrom = effectiveFrom,
@@ -84,6 +87,7 @@ public class AxleFeeScheduleSeeder
                 OverloadMaxKg = 3000,
                 FeePerKgUsd = 2.50m, // 5× multiplier (non-redistributable)
                 FlatFeeUsd = 0,
+                ConvictionNumber = 1,
                 DemeritPoints = 6,
                 PenaltyDescription = "Severe GVW overload (1501-3000 kg) - non-redistributable, 5× penalty",
                 EffectiveFrom = effectiveFrom,
@@ -99,6 +103,7 @@ public class AxleFeeScheduleSeeder
                 OverloadMaxKg = null, // No upper limit
                 FeePerKgUsd = 5.00m, // 10× multiplier (extreme overload)
                 FlatFeeUsd = 500m,
+                ConvictionNumber = 1,
                 DemeritPoints = 10,
                 PenaltyDescription = "Extreme GVW overload (>3000 kg) - vehicle prohibition mandatory",
                 EffectiveFrom = effectiveFrom,
@@ -107,7 +112,7 @@ public class AxleFeeScheduleSeeder
             }
         });
 
-        // ===== EAC Axle Fee Bands =====
+        // ===== EAC Axle Fee Bands (1st conviction) =====
         feeSchedules.AddRange(new[]
         {
             new AxleFeeSchedule
@@ -119,6 +124,7 @@ public class AxleFeeScheduleSeeder
                 OverloadMaxKg = 200,
                 FeePerKgUsd = 0.40m,
                 FlatFeeUsd = 0,
+                ConvictionNumber = 1,
                 DemeritPoints = 0,
                 PenaltyDescription = "Minor axle overload (1-200 kg) - redistributable",
                 EffectiveFrom = effectiveFrom,
@@ -134,6 +140,7 @@ public class AxleFeeScheduleSeeder
                 OverloadMaxKg = 500,
                 FeePerKgUsd = 0.60m,
                 FlatFeeUsd = 0,
+                ConvictionNumber = 1,
                 DemeritPoints = 2,
                 PenaltyDescription = "Moderate axle overload (201-500 kg) - redistributable",
                 EffectiveFrom = effectiveFrom,
@@ -149,6 +156,7 @@ public class AxleFeeScheduleSeeder
                 OverloadMaxKg = 1000,
                 FeePerKgUsd = 1.00m,
                 FlatFeeUsd = 0,
+                ConvictionNumber = 1,
                 DemeritPoints = 4,
                 PenaltyDescription = "High axle overload (501-1000 kg) - redistributable",
                 EffectiveFrom = effectiveFrom,
@@ -164,6 +172,7 @@ public class AxleFeeScheduleSeeder
                 OverloadMaxKg = 1500,
                 FeePerKgUsd = 1.50m,
                 FlatFeeUsd = 0,
+                ConvictionNumber = 1,
                 DemeritPoints = 5,
                 PenaltyDescription = "Severe axle overload (1001-1500 kg) - mandatory reweigh",
                 EffectiveFrom = effectiveFrom,
@@ -179,8 +188,179 @@ public class AxleFeeScheduleSeeder
                 OverloadMaxKg = null,
                 FeePerKgUsd = 3.00m, // 5× multiplier (non-redistributable)
                 FlatFeeUsd = 200m,
+                ConvictionNumber = 1,
                 DemeritPoints = 8,
                 PenaltyDescription = "Extreme axle overload (>1500 kg) - non-redistributable, 5× penalty",
+                EffectiveFrom = effectiveFrom,
+                EffectiveTo = null,
+                IsActive = true
+            }
+        });
+
+        // ===== EAC GVW Fee Bands (2nd conviction - 5× penalty per Section 20(1)(a)) =====
+        feeSchedules.AddRange(new[]
+        {
+            new AxleFeeSchedule
+            {
+                Id = Guid.NewGuid(),
+                LegalFramework = "EAC",
+                FeeType = "GVW",
+                OverloadMinKg = 1,
+                OverloadMaxKg = 500,
+                FeePerKgUsd = 2.50m, // 5× of 0.50
+                FlatFeeUsd = 0,
+                ConvictionNumber = 2,
+                DemeritPoints = 2,
+                PenaltyDescription = "EAC 2nd conviction GVW (1-500 kg) - 5× penalty",
+                EffectiveFrom = effectiveFrom,
+                EffectiveTo = null,
+                IsActive = true
+            },
+            new AxleFeeSchedule
+            {
+                Id = Guid.NewGuid(),
+                LegalFramework = "EAC",
+                FeeType = "GVW",
+                OverloadMinKg = 501,
+                OverloadMaxKg = 1000,
+                FeePerKgUsd = 3.75m, // 5× of 0.75
+                FlatFeeUsd = 0,
+                ConvictionNumber = 2,
+                DemeritPoints = 4,
+                PenaltyDescription = "EAC 2nd conviction GVW (501-1000 kg) - 5× penalty",
+                EffectiveFrom = effectiveFrom,
+                EffectiveTo = null,
+                IsActive = true
+            },
+            new AxleFeeSchedule
+            {
+                Id = Guid.NewGuid(),
+                LegalFramework = "EAC",
+                FeeType = "GVW",
+                OverloadMinKg = 1001,
+                OverloadMaxKg = 1500,
+                FeePerKgUsd = 5.00m, // 5× of 1.00
+                FlatFeeUsd = 0,
+                ConvictionNumber = 2,
+                DemeritPoints = 6,
+                PenaltyDescription = "EAC 2nd conviction GVW (1001-1500 kg) - 5× penalty",
+                EffectiveFrom = effectiveFrom,
+                EffectiveTo = null,
+                IsActive = true
+            },
+            new AxleFeeSchedule
+            {
+                Id = Guid.NewGuid(),
+                LegalFramework = "EAC",
+                FeeType = "GVW",
+                OverloadMinKg = 1501,
+                OverloadMaxKg = 3000,
+                FeePerKgUsd = 12.50m, // 5× of 2.50
+                FlatFeeUsd = 0,
+                ConvictionNumber = 2,
+                DemeritPoints = 8,
+                PenaltyDescription = "EAC 2nd conviction GVW (1501-3000 kg) - 5× penalty",
+                EffectiveFrom = effectiveFrom,
+                EffectiveTo = null,
+                IsActive = true
+            },
+            new AxleFeeSchedule
+            {
+                Id = Guid.NewGuid(),
+                LegalFramework = "EAC",
+                FeeType = "GVW",
+                OverloadMinKg = 3001,
+                OverloadMaxKg = null,
+                FeePerKgUsd = 25.00m, // 5× of 5.00
+                FlatFeeUsd = 2500m, // 5× of 500
+                ConvictionNumber = 2,
+                DemeritPoints = 15,
+                PenaltyDescription = "EAC 2nd conviction GVW (>3000 kg) - 5× penalty",
+                EffectiveFrom = effectiveFrom,
+                EffectiveTo = null,
+                IsActive = true
+            }
+        });
+
+        // ===== EAC Axle Fee Bands (2nd conviction - 5× penalty per Section 20(1)(a)) =====
+        feeSchedules.AddRange(new[]
+        {
+            new AxleFeeSchedule
+            {
+                Id = Guid.NewGuid(),
+                LegalFramework = "EAC",
+                FeeType = "AXLE",
+                OverloadMinKg = 1,
+                OverloadMaxKg = 200,
+                FeePerKgUsd = 2.00m, // 5× of 0.40
+                FlatFeeUsd = 0,
+                ConvictionNumber = 2,
+                DemeritPoints = 2,
+                PenaltyDescription = "EAC 2nd conviction Axle (1-200 kg) - 5× penalty",
+                EffectiveFrom = effectiveFrom,
+                EffectiveTo = null,
+                IsActive = true
+            },
+            new AxleFeeSchedule
+            {
+                Id = Guid.NewGuid(),
+                LegalFramework = "EAC",
+                FeeType = "AXLE",
+                OverloadMinKg = 201,
+                OverloadMaxKg = 500,
+                FeePerKgUsd = 3.00m, // 5× of 0.60
+                FlatFeeUsd = 0,
+                ConvictionNumber = 2,
+                DemeritPoints = 4,
+                PenaltyDescription = "EAC 2nd conviction Axle (201-500 kg) - 5× penalty",
+                EffectiveFrom = effectiveFrom,
+                EffectiveTo = null,
+                IsActive = true
+            },
+            new AxleFeeSchedule
+            {
+                Id = Guid.NewGuid(),
+                LegalFramework = "EAC",
+                FeeType = "AXLE",
+                OverloadMinKg = 501,
+                OverloadMaxKg = 1000,
+                FeePerKgUsd = 5.00m, // 5× of 1.00
+                FlatFeeUsd = 0,
+                ConvictionNumber = 2,
+                DemeritPoints = 6,
+                PenaltyDescription = "EAC 2nd conviction Axle (501-1000 kg) - 5× penalty",
+                EffectiveFrom = effectiveFrom,
+                EffectiveTo = null,
+                IsActive = true
+            },
+            new AxleFeeSchedule
+            {
+                Id = Guid.NewGuid(),
+                LegalFramework = "EAC",
+                FeeType = "AXLE",
+                OverloadMinKg = 1001,
+                OverloadMaxKg = 1500,
+                FeePerKgUsd = 7.50m, // 5× of 1.50
+                FlatFeeUsd = 0,
+                ConvictionNumber = 2,
+                DemeritPoints = 7,
+                PenaltyDescription = "EAC 2nd conviction Axle (1001-1500 kg) - 5× penalty",
+                EffectiveFrom = effectiveFrom,
+                EffectiveTo = null,
+                IsActive = true
+            },
+            new AxleFeeSchedule
+            {
+                Id = Guid.NewGuid(),
+                LegalFramework = "EAC",
+                FeeType = "AXLE",
+                OverloadMinKg = 1501,
+                OverloadMaxKg = null,
+                FeePerKgUsd = 15.00m, // 5× of 3.00
+                FlatFeeUsd = 1000m, // 5× of 200
+                ConvictionNumber = 2,
+                DemeritPoints = 12,
+                PenaltyDescription = "EAC 2nd conviction Axle (>1500 kg) - 5× penalty",
                 EffectiveFrom = effectiveFrom,
                 EffectiveTo = null,
                 IsActive = true

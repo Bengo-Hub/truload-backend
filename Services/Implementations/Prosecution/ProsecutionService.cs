@@ -162,7 +162,7 @@ public class ProsecutionService : IProsecutionService
         var bestChargeBasis = gvwFeeUsd >= totalAxleFeeUsd ? "gvw" : "axle";
         var baseFeeUsd = bestChargeBasis == "gvw" ? gvwFeeUsd : totalAxleFeeUsd;
 
-        // Apply multiplier (1.0 for Traffic Act, 5.0 for EAC repeat offenders)
+        // Apply multiplier (always 1.0 — repeat-offender penalties are encoded in conviction-specific fee bands)
         var totalFeeUsd = baseFeeUsd * multiplier;
         var totalFeeKes = totalFeeUsd * forexRate;
 
@@ -404,9 +404,9 @@ public class ProsecutionService : IProsecutionService
             return (priorCount > 0, priorCount, convictionNumber, 1.0m);
         }
 
-        // EAC: single conviction band, 5x multiplier for repeat offenders
-        var eacMultiplier = priorCount > 0 ? 5.0m : 1.0m;
-        return (priorCount > 0, priorCount, 1, eacMultiplier);
+        // EAC: conviction number selects the fee band with 5× rates; no blanket multiplier
+        var eacConvictionNumber = priorCount >= 1 ? 2 : 1;
+        return (priorCount > 0, priorCount, eacConvictionNumber, 1.0m);
     }
 
     private async Task<string> GetLegalFrameworkCodeAsync(Guid actId, CancellationToken ct)
@@ -428,6 +428,141 @@ public class ProsecutionService : IProsecutionService
                 (legalFramework == "TRAFFIC_ACT" && a.ActType == "Traffic"))
                 && a.IsActive && a.DeletedAt == null, ct);
         return act?.ChargingCurrency ?? "KES";
+    }
+
+    public async Task<List<ConvictionRecordDto>> GetConvictionHistoryAsync(Guid vehicleId, CancellationToken ct = default)
+    {
+        var records = await _context.ProsecutionCases
+            .Join(_context.CaseRegisters,
+                p => p.CaseRegisterId,
+                c => c.Id,
+                (p, c) => new { Prosecution = p, Case = c })
+            .Where(x => x.Case.VehicleId == vehicleId && x.Prosecution.DeletedAt == null)
+            .OrderBy(x => x.Prosecution.CreatedAt)
+            .Select(x => new
+            {
+                x.Prosecution.Id,
+                x.Case.CaseNo,
+                x.Case.VehicleId,
+                x.Prosecution.GvwOverloadKg,
+                x.Prosecution.TotalFeeKes,
+                x.Prosecution.TotalFeeUsd,
+                x.Prosecution.ActId,
+                x.Prosecution.CreatedAt,
+                x.Prosecution.Status,
+            })
+            .ToListAsync(ct);
+
+        // Resolve vehicle reg number
+        var vehicleRegNumber = string.Empty;
+        if (records.Count > 0)
+        {
+            var vehicleInfo = await _context.CaseRegisters
+                .Where(c => c.VehicleId == vehicleId && c.DeletedAt == null && c.WeighingId != null)
+                .Join(_context.WeighingTransactions,
+                    c => c.WeighingId,
+                    w => w.Id,
+                    (c, w) => new { w.VehicleRegNumber })
+                .FirstOrDefaultAsync(ct);
+
+            vehicleRegNumber = vehicleInfo?.VehicleRegNumber ?? string.Empty;
+        }
+
+        // Resolve act names for legal framework
+        var actIds = records.Select(r => r.ActId).Distinct().ToList();
+        var acts = await _context.ActDefinitions
+            .Where(a => actIds.Contains(a.Id))
+            .ToDictionaryAsync(a => a.Id, a => a.Name, ct);
+
+        return records.Select((r, index) => new ConvictionRecordDto
+        {
+            ProsecutionCaseId = r.Id,
+            CaseNo = r.CaseNo,
+            VehicleRegNumber = vehicleRegNumber,
+            DriverName = null,
+            OverloadKg = r.GvwOverloadKg,
+            ChargeAmountKes = r.TotalFeeKes,
+            ChargeAmountUsd = r.TotalFeeUsd,
+            LegalFramework = acts.TryGetValue(r.ActId, out var actName) ? actName : "Unknown",
+            ConvictionDate = r.CreatedAt,
+            ConvictionNumber = index + 1,
+            Status = r.Status,
+        }).ToList();
+    }
+
+    public async Task<PagedResponse<HabitualOffenderDto>> GetHabitualOffendersAsync(
+        int minConvictions,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int pageNumber,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        var query = _context.ProsecutionCases
+            .Join(_context.CaseRegisters,
+                p => p.CaseRegisterId,
+                c => c.Id,
+                (p, c) => new { Prosecution = p, Case = c })
+            .Where(x => x.Prosecution.DeletedAt == null);
+
+        if (fromDate.HasValue)
+        {
+            var from = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+            query = query.Where(x => x.Prosecution.CreatedAt >= from);
+        }
+
+        if (toDate.HasValue)
+        {
+            var to = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+            query = query.Where(x => x.Prosecution.CreatedAt <= to);
+        }
+
+        var grouped = query
+            .GroupBy(x => x.Case.VehicleId)
+            .Select(g => new
+            {
+                VehicleId = g.Key,
+                TotalConvictions = g.Count(),
+                FirstConvictionDate = g.Min(x => x.Prosecution.CreatedAt),
+                LastConvictionDate = g.Max(x => x.Prosecution.CreatedAt),
+                TotalFinesKes = g.Sum(x => x.Prosecution.TotalFeeKes),
+                TotalFinesUsd = g.Sum(x => x.Prosecution.TotalFeeUsd),
+            })
+            .Where(g => g.TotalConvictions >= minConvictions);
+
+        var totalCount = await grouped.CountAsync(ct);
+
+        var items = await grouped
+            .OrderByDescending(g => g.TotalConvictions)
+            .ThenByDescending(g => g.LastConvictionDate)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        // Resolve vehicle registration numbers
+        var vehicleIds = items.Select(i => i.VehicleId).ToList();
+        var vehicleRegs = await _context.CaseRegisters
+            .Where(c => vehicleIds.Contains(c.VehicleId) && c.DeletedAt == null && c.WeighingId != null)
+            .Join(_context.WeighingTransactions,
+                c => c.WeighingId,
+                w => w.Id,
+                (c, w) => new { c.VehicleId, w.VehicleRegNumber })
+            .GroupBy(x => x.VehicleId)
+            .Select(g => new { VehicleId = g.Key, VehicleRegNumber = g.First().VehicleRegNumber })
+            .ToDictionaryAsync(x => x.VehicleId, x => x.VehicleRegNumber, ct);
+
+        var dtos = items.Select(i => new HabitualOffenderDto
+        {
+            VehicleId = i.VehicleId,
+            VehicleRegNumber = vehicleRegs.TryGetValue(i.VehicleId, out var reg) ? reg : "Unknown",
+            TotalConvictions = i.TotalConvictions,
+            FirstConvictionDate = i.FirstConvictionDate,
+            LastConvictionDate = i.LastConvictionDate,
+            TotalFinesKes = i.TotalFinesKes,
+            TotalFinesUsd = i.TotalFinesUsd,
+        }).ToList();
+
+        return PagedResponse<HabitualOffenderDto>.Create(dtos, totalCount, pageNumber, pageSize);
     }
 
     private ProsecutionCaseDto MapToDto(ProsecutionCase p)
