@@ -23,7 +23,7 @@ public class ToleranceRepository : IToleranceRepository
         CancellationToken cancellationToken = default)
     {
         return await _context.ToleranceSettings
-            .Where(t => t.LegalFramework == legalFramework.ToUpper() || t.LegalFramework == "BOTH")
+            .Where(t => t.LegalFramework == legalFramework.ToUpper() || t.LegalFramework == "BOTH" || t.LegalFramework == "GLOBAL")
             .Where(t => t.IsActive)
             .OrderBy(t => t.AppliesTo)
             .ToListAsync(cancellationToken);
@@ -50,13 +50,13 @@ public class ToleranceRepository : IToleranceRepository
         var upperAppliesTo = appliesTo.ToUpper();
 
         return await _context.ToleranceSettings
-            .Where(t => (t.LegalFramework == upperFramework || t.LegalFramework == "BOTH"))
+            .Where(t => t.LegalFramework == upperFramework || t.LegalFramework == "BOTH" || t.LegalFramework == "GLOBAL")
             .Where(t => t.AppliesTo == upperAppliesTo || t.AppliesTo == "BOTH")
             .Where(t => t.IsActive)
             .Where(t => t.EffectiveFrom <= now && (t.EffectiveTo == null || t.EffectiveTo >= now))
-            // Prefer exact legal-framework match over "BOTH" wildcard,
-            // then exact appliesTo match over "BOTH", then most recent effective date
-            .OrderByDescending(t => t.LegalFramework == upperFramework ? 1 : 0)
+            // Priority: exact framework > BOTH wildcard > GLOBAL universal,
+            // then exact appliesTo > BOTH, then most recent effective date
+            .OrderByDescending(t => t.LegalFramework == upperFramework ? 2 : t.LegalFramework == "BOTH" ? 1 : 0)
             .ThenByDescending(t => t.AppliesTo == upperAppliesTo ? 1 : 0)
             .ThenByDescending(t => t.EffectiveFrom)
             .FirstOrDefaultAsync(cancellationToken);

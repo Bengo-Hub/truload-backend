@@ -224,7 +224,7 @@ public class ActConfigurationService : IActConfigurationService
         var tolerances = await _context.ToleranceSettings
             .AsNoTracking()
             .Where(t => t.IsActive &&
-                (t.LegalFramework == legalFramework || t.LegalFramework == BrandingConstants.LegalFramework.Both))
+                (t.LegalFramework == legalFramework || t.LegalFramework == BrandingConstants.LegalFramework.Both || t.LegalFramework == "GLOBAL"))
             .OrderBy(t => t.Code)
             .Select(t => new ToleranceSettingDto
             {
@@ -266,8 +266,9 @@ public class ActConfigurationService : IActConfigurationService
         entity.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync(ct);
 
-        // Invalidate tolerance caches for this framework and BOTH
-        var frameworks = new[] { entity.LegalFramework, BrandingConstants.LegalFramework.Both };
+        // Invalidate tolerance caches for this framework, BOTH, GLOBAL, and all known frameworks
+        // GLOBAL settings (OPERATIONAL_ALLOWANCE, STANDARD_LAW_*) are included in all framework queries
+        var frameworks = new[] { entity.LegalFramework, BrandingConstants.LegalFramework.Both, "GLOBAL", "TRAFFIC_ACT", "EAC" };
         foreach (var fw in frameworks.Distinct())
         {
             _cache.Remove($"{CacheKeyPrefix}Tolerances_{fw}");

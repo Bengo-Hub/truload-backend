@@ -401,7 +401,11 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
 
     /// <summary>
     /// Calculate tolerance for an axle group using DB-driven tolerance settings.
-    /// Fallback chain: Act-specific → AxleConfig-specific → 0% (strict).
+    /// Fallback chain:
+    ///   1. Act-specific (e.g. EAC_AXLE_TOLERANCE = 5%)
+    ///   2. Standard law by axle type (STANDARD_LAW_SINGLE = 5% for singles, STANDARD_LAW_GROUP = 0% for groups)
+    ///   3. Config-specific (per AxleConfiguration.ToleranceKg/Percentage)
+    ///   4. 0% (strict)
     /// No hardcoded percentage fallbacks — the DB is the single source of truth.
     /// </summary>
     private async Task<int> CalculateGroupToleranceAsync(List<WeighingAxle> axles, int groupPermissibleKg, string legalFramework)
@@ -413,7 +417,21 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
         if (toleranceKg > 0)
             return toleranceKg;
 
-        // 2. Config-Specific Tolerance (per-axle configuration overrides)
+        // 2. Standard Law Tolerance by axle type
+        //    Single axles (Steering/SingleDrive) → STANDARD_LAW_SINGLE (5%)
+        //    Grouped axles (Tandem/Tridem/Quad) → STANDARD_LAW_GROUP (0%)
+        bool isSingleAxle = axles.Count <= 1;
+        var standardCode = isSingleAxle ? "STANDARD_LAW_SINGLE" : "STANDARD_LAW_GROUP";
+        var standardSetting = await _toleranceRepository.GetByCodeAsync(standardCode);
+        if (standardSetting != null)
+        {
+            if (standardSetting.ToleranceKg.HasValue && standardSetting.ToleranceKg.Value > 0)
+                return standardSetting.ToleranceKg.Value;
+            if (standardSetting.TolerancePercentage > 0)
+                return (int)Math.Round(groupPermissibleKg * (standardSetting.TolerancePercentage / 100m));
+        }
+
+        // 3. Config-Specific Tolerance (per-axle configuration overrides)
         //    If multiple axles in group have different tolerances, use the MAX
         var configTolerances = axles
             .Select(a => {
@@ -427,7 +445,7 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
         if (configTolerances.Any(t => t > 0))
             return configTolerances.Max();
 
-        // 3. Strict (0%) — no tolerance found from Act or Config
+        // 4. Strict (0%) — no tolerance found
         return 0;
     }
 
