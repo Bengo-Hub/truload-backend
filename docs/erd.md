@@ -596,7 +596,7 @@ Tolerance thresholds for regulatory compliance (EAC Act 2016 & Traffic Act Cap 4
 - EAC_AXLE_TOLERANCE (5% for axle groups)
 - TRAFFIC_ACT_GVW_TOLERANCE (0% for GVW)
 - TRAFFIC_ACT_AXLE_TOLERANCE (5% for axle groups)
-- OPERATIONAL_TOLERANCE (200kg fixed)
+- OPERATIONAL_ALLOWANCE (200kg fixed — operational tolerance for minor overloads)
 - PERMIT_TOLERANCE (permit-specific)
 
 **Regulatory Compliance:**

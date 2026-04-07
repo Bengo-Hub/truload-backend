@@ -1133,23 +1133,7 @@ public class SystemConfigurationSeeder
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             },
-            // Operational tolerance for auto-release warning (200kg default)
-            new ToleranceSetting
-            {
-                Id = Guid.NewGuid(),
-                Code = "OPERATIONAL_TOLERANCE",
-                Name = "Operational Auto-Release Tolerance",
-                LegalFramework = "BOTH",
-                TolerancePercentage = 0.0m,
-                ToleranceKg = 200,
-                AppliesTo = "OPERATIONAL",
-                Description = "Operational tolerance (200kg) for minor overloads - auto-release with warning, no yard detention",
-                EffectiveFrom = effectiveDate,
-                EffectiveTo = null,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            },
+            // NOTE: OPERATIONAL_TOLERANCE removed — consolidated into OPERATIONAL_ALLOWANCE below
             new ToleranceSetting
             {
                 Id = Guid.NewGuid(),
@@ -1189,7 +1173,7 @@ public class SystemConfigurationSeeder
                 TolerancePercentage = 0.0m,
                 ToleranceKg = 200,
                 AppliesTo = "BOTH",
-                Description = "Additional operational allowance added to permissible limits for technical variance",
+                Description = "Operational allowance (200kg default) for minor overloads — used for both warning threshold and auto-release. Set to 0 to disable.",
                 EffectiveFrom = effectiveDate,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
@@ -1201,12 +1185,22 @@ public class SystemConfigurationSeeder
         {
             var existing = await _context.ToleranceSettings
                 .FirstOrDefaultAsync(ts => ts.Code == setting.Code);
-            
+
             if (existing == null)
             {
                 await _context.ToleranceSettings.AddAsync(setting);
                 Console.WriteLine($"✓ Seeded tolerance setting: {setting.Name} ({setting.Code})");
             }
+        }
+
+        // Deactivate deprecated OPERATIONAL_TOLERANCE (consolidated into OPERATIONAL_ALLOWANCE)
+        var deprecatedOpTol = await _context.ToleranceSettings
+            .FirstOrDefaultAsync(ts => ts.Code == "OPERATIONAL_TOLERANCE");
+        if (deprecatedOpTol != null && deprecatedOpTol.IsActive)
+        {
+            deprecatedOpTol.IsActive = false;
+            deprecatedOpTol.Description = "DEPRECATED: Consolidated into OPERATIONAL_ALLOWANCE";
+            Console.WriteLine("✓ Deactivated deprecated OPERATIONAL_TOLERANCE (use OPERATIONAL_ALLOWANCE instead)");
         }
 
         await _context.SaveChangesAsync();

@@ -210,30 +210,27 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
         // Determine charging currency from the act
         string chargingCurrency = transaction.Act?.ChargingCurrency ?? "KES";
 
-        // Get operational tolerance settings
+        // Get operational tolerance (single setting: OPERATIONAL_ALLOWANCE)
         var opAllowanceSetting = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_ALLOWANCE");
-        int operationalAllowanceKg = opAllowanceSetting?.ToleranceKg ?? 200;
-
-        var opWarningSetting = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_TOLERANCE");
-        int operationalWarningKg = opWarningSetting?.ToleranceKg ?? 200;
+        int operationalToleranceKg = opAllowanceSetting?.ToleranceKg ?? 200;
 
         // Aggregate axle groups with currency-aware fee calculation
         var groupResults = await AggregateAxleGroupsAsync(
             transaction.WeighingAxles.ToList(),
             legalFramework,
-            operationalAllowanceKg, // Used as additive buffer in AggregateAxleGroupsAsync? 
+            operationalToleranceKg,
             chargingCurrency);
 
-        // Update results to use the Warning threshold for status
+        // Update results with the operational tolerance for status and display
         foreach (var gr in groupResults)
         {
-            gr.Status = DetermineStatus(gr.OverloadKg, operationalWarningKg);
-            gr.OperationalToleranceKg = operationalWarningKg;
+            gr.Status = DetermineStatus(gr.OverloadKg, operationalToleranceKg);
+            gr.OperationalToleranceKg = operationalToleranceKg;
         }
 
         result.GroupResults = groupResults;
-        result.OperationalToleranceKg = operationalWarningKg;
-        result.OperationalAllowanceUsed = operationalAllowanceKg;
+        result.OperationalToleranceKg = operationalToleranceKg;
+        result.OperationalAllowanceUsed = operationalToleranceKg;
         result.ChargingCurrency = chargingCurrency;
 
         // Calculate GVW compliance with DB-driven tolerance

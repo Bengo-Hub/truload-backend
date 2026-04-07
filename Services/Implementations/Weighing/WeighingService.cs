@@ -684,7 +684,7 @@ public class WeighingService : IWeighingService
 
                     if (toleranceReleaseType != null)
                     {
-                        var opTolerance = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_TOLERANCE");
+                        var opTolerance = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_ALLOWANCE");
                         int opToleranceKg = opTolerance?.ToleranceKg ?? 200;
 
                         var year = DateTime.UtcNow.Year;
