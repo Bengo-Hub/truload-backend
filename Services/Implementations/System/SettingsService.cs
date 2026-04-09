@@ -126,6 +126,13 @@ public class SettingsService : ISettingsService
             throw new InvalidOperationException($"Setting '{key}' is not editable");
         }
 
+        // Skip empty/null values to avoid overwriting existing settings with blanks
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            _logger.LogWarning("Setting {Key} update skipped: empty value would overwrite existing", key);
+            return MapToDto(setting);
+        }
+
         setting.SettingValue = value;
         setting.UpdatedAt = DateTime.UtcNow;
 
@@ -160,6 +167,14 @@ public class SettingsService : ISettingsService
             if (!setting.IsEditable)
             {
                 _logger.LogWarning("Setting {Key} is not editable, skipping", request.SettingKey);
+                continue;
+            }
+
+            // Skip empty/null values to preserve existing settings
+            if (string.IsNullOrWhiteSpace(request.SettingValue))
+            {
+                _logger.LogWarning("Setting {Key} skipped: empty value would overwrite existing", request.SettingKey);
+                results.Add(MapToDto(setting));
                 continue;
             }
 
