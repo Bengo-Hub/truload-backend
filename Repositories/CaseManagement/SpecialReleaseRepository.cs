@@ -21,6 +21,8 @@ public class SpecialReleaseRepository : ISpecialReleaseRepository
                 .ThenInclude(cr => cr.ViolationType)
             .Include(sr => sr.CaseRegister)
                 .ThenInclude(cr => cr.CaseStatus)
+            .Include(sr => sr.CaseRegister)
+                .ThenInclude(cr => cr.Weighing)
             .Include(sr => sr.ReleaseType)
             .FirstOrDefaultAsync(sr => sr.Id == id);
     }
