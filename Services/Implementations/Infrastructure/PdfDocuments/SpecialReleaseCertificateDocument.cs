@@ -107,11 +107,6 @@ public class SpecialReleaseCertificateDocument : BaseDocument
                     left.Spacing(1);
                     left.Item().Text(t =>
                     {
-                        t.Span("Vehicle Registration: ").FontSize(8);
-                        t.Span(_specialRelease.CaseRegister?.Weighing?.VehicleRegNumber ?? "N/A").SemiBold().FontSize(8);
-                    });
-                    left.Item().Text(t =>
-                    {
                         t.Span("Case Number: ").FontSize(8);
                         t.Span(_specialRelease.CaseRegister?.CaseNo ?? "N/A").SemiBold().FontSize(8);
                     });
