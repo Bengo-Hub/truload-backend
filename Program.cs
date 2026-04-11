@@ -178,7 +178,7 @@ builder.Services.Configure<MediaUploadOptions>(options =>
 });
 
 // Database (PostgreSQL)
-// Apply connection pool limits to prevent exhaustion on shared PG (max_connections=100).
+// Apply connection pool limits to prevent exhaustion on shared PG (max_connections=200).
 // Npgsql defaults to MaxPoolSize=100 which is far too high for a shared instance.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
