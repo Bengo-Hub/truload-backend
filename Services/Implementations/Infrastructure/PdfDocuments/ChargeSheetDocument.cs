@@ -233,7 +233,7 @@ public class ChargeSheetDocument : BaseDocument
 
                 // Total
                 table.Cell().Element(TotalStyle).Text("TOTAL CHARGE");
-                table.Cell().Element(TotalStyle).AlignRight().Text($"${_prosecution.TotalFeeUsd:N2}");
+                table.Cell().Element(TotalStyle).AlignRight().Text($"USD {_prosecution.TotalFeeUsd:N2}");
                 table.Cell().Element(TotalStyle).AlignRight().Text($"KES {_prosecution.TotalFeeKes:N2}");
 
                 static IContainer CellStyle(IContainer c) =>

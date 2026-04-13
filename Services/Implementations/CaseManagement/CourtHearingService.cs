@@ -272,7 +272,7 @@ public class CourtHearingService : ICourtHearingService
 
             if (request.FineAmount.HasValue)
             {
-                hearing.MinuteNotes += $"\nFine Amount: {request.FineAmount.Value:C}";
+                hearing.MinuteNotes += $"\nFine Amount: {request.FineAmount.Value:N2}";
             }
         }
 

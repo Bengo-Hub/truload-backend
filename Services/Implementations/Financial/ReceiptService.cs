@@ -118,7 +118,11 @@ public class ReceiptService : IReceiptService
         var remaining = invoice.AmountDue - currentPaid;
 
         if (request.AmountPaid > remaining)
-            throw new InvalidOperationException($"Payment amount ({request.AmountPaid:C}) exceeds remaining balance ({remaining:C})");
+        {
+            var currency = string.IsNullOrWhiteSpace(invoice.Currency) ? request.Currency : invoice.Currency;
+            throw new InvalidOperationException(
+                $"Payment amount ({currency} {request.AmountPaid:N2}) exceeds remaining balance ({currency} {remaining:N2})");
+        }
 
         var receiptNo = await GenerateReceiptNumberAsync(ct);
 
