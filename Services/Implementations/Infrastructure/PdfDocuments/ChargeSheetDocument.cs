@@ -191,12 +191,17 @@ public class ChargeSheetDocument : BaseDocument
                     columns.RelativeColumn();
                 });
 
+                var chargingCurrency = _prosecution.Act?.ChargingCurrency ?? "KES";
+                var isKes = chargingCurrency == "KES";
+                var primaryHeader = $"Amount ({chargingCurrency})";
+                var altHeader = isKes ? "Amount (USD)" : "Amount (KES)";
+
                 // Header
                 table.Header(header =>
                 {
                     header.Cell().Element(HeaderStyle).Text("Description");
-                    header.Cell().Element(HeaderStyle).AlignRight().Text("Amount (USD)");
-                    header.Cell().Element(HeaderStyle).AlignRight().Text("Amount (KES)");
+                    header.Cell().Element(HeaderStyle).AlignRight().Text(primaryHeader);
+                    header.Cell().Element(HeaderStyle).AlignRight().Text(altHeader);
 
                     static IContainer HeaderStyle(IContainer c) =>
                         c.DefaultTextStyle(x => x.SemiBold().FontSize(9))
@@ -209,13 +214,13 @@ public class ChargeSheetDocument : BaseDocument
 
                 // GVW Fee
                 table.Cell().Element(CellStyle).Text($"GVW Overload Fee ({_prosecution.GvwOverloadKg:N0} kg)");
-                table.Cell().Element(CellStyle).AlignRight().Text($"{_prosecution.GvwFeeUsd:N2}");
-                table.Cell().Element(CellStyle).AlignRight().Text($"{_prosecution.GvwFeeKes:N2}");
+                table.Cell().Element(CellStyle).AlignRight().Text($"{(isKes ? _prosecution.GvwFeeKes : _prosecution.GvwFeeUsd):N2}");
+                table.Cell().Element(CellStyle).AlignRight().Text($"{(isKes ? _prosecution.GvwFeeUsd : _prosecution.GvwFeeKes):N2}");
 
                 // Max Axle Fee
                 table.Cell().Element(CellStyle).Text($"Axle Overload Fee ({_prosecution.MaxAxleOverloadKg:N0} kg)");
-                table.Cell().Element(CellStyle).AlignRight().Text($"{_prosecution.MaxAxleFeeUsd:N2}");
-                table.Cell().Element(CellStyle).AlignRight().Text($"{_prosecution.MaxAxleFeeKes:N2}");
+                table.Cell().Element(CellStyle).AlignRight().Text($"{(isKes ? _prosecution.MaxAxleFeeKes : _prosecution.MaxAxleFeeUsd):N2}");
+                table.Cell().Element(CellStyle).AlignRight().Text($"{(isKes ? _prosecution.MaxAxleFeeUsd : _prosecution.MaxAxleFeeKes):N2}");
 
                 // Best Charge Basis
                 var basisLabel = _prosecution.BestChargeBasis == "gvw" ? "GVW" : "Axle";
@@ -232,9 +237,13 @@ public class ChargeSheetDocument : BaseDocument
                 }
 
                 // Total
+                var primarySymbol = isKes ? "KES " : "$";
+                var altSymbol = isKes ? "$" : "KES ";
+                var primaryTotal = isKes ? _prosecution.TotalFeeKes : _prosecution.TotalFeeUsd;
+                var altTotal = isKes ? _prosecution.TotalFeeUsd : _prosecution.TotalFeeKes;
                 table.Cell().Element(TotalStyle).Text("TOTAL CHARGE");
-                table.Cell().Element(TotalStyle).AlignRight().Text($"${_prosecution.TotalFeeUsd:N2}");
-                table.Cell().Element(TotalStyle).AlignRight().Text($"KES {_prosecution.TotalFeeKes:N2}");
+                table.Cell().Element(TotalStyle).AlignRight().Text($"{primarySymbol}{primaryTotal:N2}");
+                table.Cell().Element(TotalStyle).AlignRight().Text($"{altSymbol}{altTotal:N2}");
 
                 static IContainer CellStyle(IContainer c) =>
                     c.PaddingVertical(3)

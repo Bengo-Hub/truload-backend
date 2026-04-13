@@ -166,8 +166,8 @@ public class InvoiceDocument : BaseDocument
             {
                 header.Cell().Element(HeaderStyle).Text("Description");
                 header.Cell().Element(HeaderStyle).AlignRight().Text("Qty/Kg");
-                header.Cell().Element(HeaderStyle).AlignRight().Text("Amount (USD)");
-                header.Cell().Element(HeaderStyle).AlignRight().Text("Amount (KES)");
+                header.Cell().Element(HeaderStyle).AlignRight().Text($"Amount ({_invoice.Currency})");
+                header.Cell().Element(HeaderStyle).AlignRight().Text($"Amount ({AltCurrency})");
 
                 static IContainer HeaderStyle(IContainer c) =>
                     c.DefaultTextStyle(x => x.SemiBold().FontSize(9).FontColor(Colors.White))
@@ -184,8 +184,8 @@ public class InvoiceDocument : BaseDocument
                 {
                     table.Cell().Element(CellStyle).Text("GVW Overload Charge");
                     table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.GvwOverloadKg:N0}");
-                    table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.GvwFeeUsd:N2}");
-                    table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.GvwFeeKes:N2}");
+                    table.Cell().Element(CellStyle).AlignRight().Text($"{PrimaryFee(prosecution.GvwFeeUsd, prosecution.GvwFeeKes):N2}");
+                    table.Cell().Element(CellStyle).AlignRight().Text($"{AltFee(prosecution.GvwFeeUsd, prosecution.GvwFeeKes):N2}");
                 }
 
                 // Axle Overload Charge
@@ -193,8 +193,8 @@ public class InvoiceDocument : BaseDocument
                 {
                     table.Cell().Element(CellStyle).Text("Axle Overload Charge");
                     table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.MaxAxleOverloadKg:N0}");
-                    table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.MaxAxleFeeUsd:N2}");
-                    table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.MaxAxleFeeKes:N2}");
+                    table.Cell().Element(CellStyle).AlignRight().Text($"{PrimaryFee(prosecution.MaxAxleFeeUsd, prosecution.MaxAxleFeeKes):N2}");
+                    table.Cell().Element(CellStyle).AlignRight().Text($"{AltFee(prosecution.MaxAxleFeeUsd, prosecution.MaxAxleFeeKes):N2}");
                 }
 
                 // Best Charge Basis Note
@@ -228,24 +228,33 @@ public class InvoiceDocument : BaseDocument
 
     private void ComposePaymentSummary(IContainer container)
     {
+        var currency = _invoice.Currency ?? "USD";
+        var isKes = currency == "KES";
+        var forexRate = _invoice.ProsecutionCase?.ForexRate ?? 130m;
+
         container.Border(1).BorderColor(Colors.Black).Column(col =>
         {
             col.Item().Background(Colors.Grey.Lighten4).Padding(5).Row(r =>
             {
-                r.RelativeItem().Text("Subtotal (USD):").SemiBold();
-                r.ConstantItem(80).AlignRight().Text($"${_invoice.AmountDue:N2}");
+                r.RelativeItem().Text($"Subtotal ({currency}):").SemiBold();
+                r.ConstantItem(100).AlignRight().Text($"{CurrencySymbol}{_invoice.AmountDue:N2}");
             });
 
             col.Item().Padding(5).Row(r =>
             {
                 r.RelativeItem().Text($"Exchange Rate (1 USD):").FontSize(9);
-                r.ConstantItem(80).AlignRight().Text($"KES {_invoice.ProsecutionCase?.ForexRate:N2}").FontSize(9);
+                r.ConstantItem(100).AlignRight().Text($"KES {forexRate:N2}").FontSize(9);
             });
 
             col.Item().Padding(5).Row(r =>
             {
-                r.RelativeItem().Text("Amount Due (KES):").SemiBold();
-                r.ConstantItem(80).AlignRight().Text($"KES {_invoice.AmountDue * (_invoice.ProsecutionCase?.ForexRate ?? 130m):N2}").SemiBold();
+                var altLabel = isKes ? "Equivalent (USD):" : "Amount Due (KES):";
+                var altAmount = isKes
+                    ? (forexRate > 0 ? _invoice.AmountDue / forexRate : 0m)
+                    : _invoice.AmountDue * forexRate;
+                var altSymbol = isKes ? "$" : "KES ";
+                r.RelativeItem().Text(altLabel).SemiBold();
+                r.ConstantItem(100).AlignRight().Text($"{altSymbol}{altAmount:N2}").SemiBold();
             });
 
             // If partial payment made
@@ -255,22 +264,22 @@ public class InvoiceDocument : BaseDocument
                 col.Item().Background(Colors.Green.Lighten4).Padding(5).Row(r =>
                 {
                     r.RelativeItem().Text("Amount Paid:").FontColor(Colors.Green.Darken2);
-                    r.ConstantItem(80).AlignRight().Text($"${amountPaid:N2}").FontColor(Colors.Green.Darken2);
+                    r.ConstantItem(100).AlignRight().Text($"{CurrencySymbol}{amountPaid:N2}").FontColor(Colors.Green.Darken2);
                 });
 
                 var balance = _invoice.AmountDue - amountPaid;
                 col.Item().Background(balance > 0 ? Colors.Orange.Lighten4 : Colors.Green.Lighten3).Padding(5).Row(r =>
                 {
                     r.RelativeItem().Text("BALANCE DUE:").Bold();
-                    r.ConstantItem(80).AlignRight().Text($"${balance:N2}").Bold();
+                    r.ConstantItem(100).AlignRight().Text($"{CurrencySymbol}{balance:N2}").Bold();
                 });
             }
             else
             {
                 col.Item().Background(Colors.Blue.Lighten4).Padding(5).Row(r =>
                 {
-                    r.RelativeItem().Text("TOTAL DUE (USD):").Bold().FontSize(11);
-                    r.ConstantItem(80).AlignRight().Text($"${_invoice.AmountDue:N2}").Bold().FontSize(11);
+                    r.RelativeItem().Text($"TOTAL DUE ({currency}):").Bold().FontSize(11);
+                    r.ConstantItem(100).AlignRight().Text($"{CurrencySymbol}{_invoice.AmountDue:N2}").Bold().FontSize(11);
                 });
             }
         });
@@ -347,4 +356,15 @@ public class InvoiceDocument : BaseDocument
         if (_invoice.DueDate < DateTime.UtcNow.AddDays(3)) return Colors.Orange.Medium;
         return Colors.Black;
     }
+
+    // ── Currency helpers ──────────────────────────────────────────────
+    private bool IsKes => (_invoice.Currency ?? "USD") == "KES";
+    private string AltCurrency => IsKes ? "USD" : "KES";
+    private string CurrencySymbol => IsKes ? "KES " : "$";
+
+    /// <summary>Returns the fee amount in the invoice's native currency.</summary>
+    private decimal PrimaryFee(decimal feeUsd, decimal feeKes) => IsKes ? feeKes : feeUsd;
+
+    /// <summary>Returns the fee amount in the alternate currency.</summary>
+    private decimal AltFee(decimal feeUsd, decimal feeKes) => IsKes ? feeUsd : feeKes;
 }

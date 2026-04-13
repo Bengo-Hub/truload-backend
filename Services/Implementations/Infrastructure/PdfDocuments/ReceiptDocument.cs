@@ -151,15 +151,16 @@ public class ReceiptDocument : BaseDocument
 
                         var totalPaid = _receipt.Invoice.Receipts?.Where(r => r.DeletedAt == null).Sum(r => r.AmountPaid) ?? 0;
                         var balance = _receipt.Invoice.AmountDue - totalPaid;
+                        var sym = _receipt.Currency == "KES" ? "KES " : "$";
 
                         table.Cell().Text("Invoice Amount:").FontSize(8);
-                        table.Cell().AlignRight().Text($"${_receipt.Invoice.AmountDue:N2}").FontSize(8);
+                        table.Cell().AlignRight().Text($"{sym}{_receipt.Invoice.AmountDue:N2}").FontSize(8);
 
                         table.Cell().Text("Total Paid:").FontSize(8);
-                        table.Cell().AlignRight().Text($"${totalPaid:N2}").FontSize(8).FontColor(Colors.Green.Medium);
+                        table.Cell().AlignRight().Text($"{sym}{totalPaid:N2}").FontSize(8).FontColor(Colors.Green.Medium);
 
                         table.Cell().Text("Balance Due:").FontSize(8).SemiBold();
-                        table.Cell().AlignRight().Text($"${balance:N2}").FontSize(8).SemiBold()
+                        table.Cell().AlignRight().Text($"{sym}{balance:N2}").FontSize(8).SemiBold()
                             .FontColor(balance > 0 ? Colors.Red.Medium : Colors.Green.Medium);
                     });
 

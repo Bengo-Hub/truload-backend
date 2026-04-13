@@ -28,6 +28,7 @@ public class YardService : IYardService
         var entry = await _context.YardEntries
             .Include(y => y.Station)
             .Include(y => y.Weighing)
+                .ThenInclude(w => w!.Act)
             .FirstOrDefaultAsync(y => y.Id == id && y.DeletedAt == null, ct);
 
         if (entry == null) return null;
@@ -40,6 +41,7 @@ public class YardService : IYardService
         var entry = await _context.YardEntries
             .Include(y => y.Station)
             .Include(y => y.Weighing)
+                .ThenInclude(w => w!.Act)
             .FirstOrDefaultAsync(y => y.WeighingId == weighingId && y.DeletedAt == null, ct);
 
         if (entry == null) return null;
@@ -52,6 +54,7 @@ public class YardService : IYardService
         var query = _context.YardEntries
             .Include(y => y.Station)
             .Include(y => y.Weighing)
+                .ThenInclude(w => w!.Act)
             .Where(y => y.DeletedAt == null)
             .AsQueryable();
 
@@ -159,6 +162,7 @@ public class YardService : IYardService
         var entry = await _context.YardEntries
             .Include(y => y.Station)
             .Include(y => y.Weighing)
+                .ThenInclude(w => w!.Act)
             .FirstOrDefaultAsync(y => y.Id == id && y.DeletedAt == null, ct)
             ?? throw new KeyNotFoundException($"Yard entry {id} not found");
 
@@ -288,6 +292,8 @@ public class YardService : IYardService
             GvwPermissibleKg = entry.Weighing?.GvwPermissibleKg,
             OverloadKg = entry.Weighing?.OverloadKg,
             TotalFeeUsd = entry.Weighing?.TotalFeeUsd,
+            TotalFeeKes = entry.Weighing?.TotalFeeKes,
+            ChargingCurrency = entry.Weighing?.Act?.ChargingCurrency ?? "KES",
             CreatedAt = entry.CreatedAt,
             UpdatedAt = entry.UpdatedAt,
             IsCaseClosed = isCaseClosed
