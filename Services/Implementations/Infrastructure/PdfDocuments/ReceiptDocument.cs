@@ -21,7 +21,7 @@ public class ReceiptDocument : BaseDocument
     public ReceiptDocument(Receipt receipt, string? organizationName = null, string? organizationAddress = null, string? orgLogoFile = null, bool showSecondaryLogo = true)
     {
         _receipt = receipt;
-        _organizationName = organizationName ?? "Kenya Roads Authority (KURA)";
+        _organizationName = organizationName ?? "Kenya Urban Roads Authority (KURA)";
         _organizationAddress = organizationAddress ?? "P.O. Box 00100-1234, Nairobi, Kenya";
         _orgLogoFile = ResolveOrgLogo(orgLogoFile);
         _showSecondaryLogo = showSecondaryLogo;

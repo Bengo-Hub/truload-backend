@@ -21,7 +21,7 @@ public class InvoiceDocument : BaseDocument
     public InvoiceDocument(Invoice invoice, string? organizationName = null, string? organizationAddress = null, string? orgLogoFile = null, bool showSecondaryLogo = true)
     {
         _invoice = invoice;
-        _organizationName = organizationName ?? "Kenya Roads Authority (KURA)";
+        _organizationName = organizationName ?? "Kenya Urban Roads Authority (KURA)";
         _organizationAddress = organizationAddress ?? "P.O. Box 00100-1234, Nairobi, Kenya";
         _orgLogoFile = ResolveOrgLogo(orgLogoFile);
         _showSecondaryLogo = showSecondaryLogo;

@@ -573,6 +573,7 @@ public class ECitizenService : IECitizenService
 
         if (invoice.Status == "paid")
         {
+            await EnsureCaseClosedForPaidInvoiceAsync(invoice, Guid.Empty, ct);
             _logger.LogInformation("Invoice {InvoiceNo} is already paid", invoice.InvoiceNo);
             return true;
         }
@@ -627,6 +628,7 @@ public class ECitizenService : IECitizenService
                     invoice.PesaflowPaymentReference = effectiveReference;
                     invoice.Status = "paid";
                     invoice.UpdatedAt = DateTime.UtcNow;
+                    await EnsureCaseClosedForPaidInvoiceAsync(invoice, Guid.Empty, ct);
                     await _context.SaveChangesAsync(ct);
 
                     _logger.LogInformation("Successfully reconciled invoice {InvoiceNo} manually", invoice.InvoiceNo);
@@ -639,6 +641,7 @@ public class ECitizenService : IECitizenService
                     {
                         invoice.Status = "paid";
                         invoice.UpdatedAt = DateTime.UtcNow;
+                        await EnsureCaseClosedForPaidInvoiceAsync(invoice, Guid.Empty, ct);
                         await _context.SaveChangesAsync(ct);
                     }
                     return true;
@@ -736,5 +739,45 @@ public class ECitizenService : IECitizenService
         AddIfPresent(invoice.InvoiceNo);
 
         return refs;
+    }
+
+    private async Task EnsureCaseClosedForPaidInvoiceAsync(
+        TruLoad.Backend.Models.Financial.Invoice invoice,
+        Guid userId,
+        CancellationToken ct)
+    {
+        if (!invoice.CaseRegisterId.HasValue)
+            return;
+
+        var caseRegister = await _context.CaseRegisters
+            .Include(c => c.CaseStatus)
+            .FirstOrDefaultAsync(c => c.Id == invoice.CaseRegisterId.Value && c.DeletedAt == null, ct);
+        if (caseRegister == null || caseRegister.ClosedAt.HasValue)
+            return;
+
+        var statusCode = caseRegister.CaseStatus?.Code;
+        var closableStates = new[] { "OPEN", "INVESTIGATION", "ESCALATED" };
+        if (string.IsNullOrWhiteSpace(statusCode) || !closableStates.Contains(statusCode))
+            return;
+
+        var closedStatusId = await _context.CaseStatuses
+            .Where(cs => cs.Code == "CLOSED")
+            .Select(cs => cs.Id)
+            .FirstOrDefaultAsync(ct);
+        var paidDispositionId = await _context.DispositionTypes
+            .Where(dt => dt.Code == "PAID")
+            .Select(dt => dt.Id)
+            .FirstOrDefaultAsync(ct);
+        if (closedStatusId == Guid.Empty || paidDispositionId == Guid.Empty)
+            return;
+
+        caseRegister.CaseStatusId = closedStatusId;
+        caseRegister.DispositionTypeId = paidDispositionId;
+        caseRegister.ClosingReason =
+            $"Case auto-closed after invoice reconciliation. Invoice: {invoice.InvoiceNo}; " +
+            $"Pesaflow reference: {invoice.PesaflowPaymentReference ?? "N/A"}.";
+        caseRegister.ClosedAt = DateTime.UtcNow;
+        caseRegister.ClosedById = userId == Guid.Empty ? null : userId;
+        caseRegister.UpdatedAt = DateTime.UtcNow;
     }
 }

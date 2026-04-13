@@ -190,6 +190,9 @@ public class VersionService : IVersionService
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Trim());
             }
 
+            var candidateTags = new List<string>();
+
+            // 1) Prefer explicit latest release when available.
             var latestReleaseUrl = $"{apiBaseUrl.TrimEnd('/')}/repos/{repository}/releases/latest";
             using var releaseResponse = client.GetAsync(latestReleaseUrl).GetAwaiter().GetResult();
             if (releaseResponse.IsSuccessStatusCode)
@@ -198,16 +201,55 @@ public class VersionService : IVersionService
                     .GetAwaiter().GetResult();
                 if (!string.IsNullOrWhiteSpace(latestRelease?.TagName))
                 {
-                    return latestRelease.TagName;
+                    candidateTags.Add(latestRelease.TagName.Trim());
                 }
             }
 
-            var tagsUrl = $"{apiBaseUrl.TrimEnd('/')}/repos/{repository}/tags?per_page=1";
-            var tags = client.GetFromJsonAsync<List<GitHubTagResponse>>(tagsUrl).GetAwaiter().GetResult();
-            var latestTag = tags?.FirstOrDefault()?.Name;
-            if (!string.IsNullOrWhiteSpace(latestTag))
+            // 2) Add recent releases (helps when /releases/latest lags or misses non-latest semantics).
+            var releasesUrl = $"{apiBaseUrl.TrimEnd('/')}/repos/{repository}/releases?per_page=50";
+            var releases = client.GetFromJsonAsync<List<GitHubReleaseResponse>>(releasesUrl).GetAwaiter().GetResult();
+            if (releases != null)
             {
-                return latestTag;
+                foreach (var release in releases)
+                {
+                    if (!string.IsNullOrWhiteSpace(release.TagName))
+                    {
+                        candidateTags.Add(release.TagName.Trim());
+                    }
+                }
+            }
+
+            // 3) Add repository tags and choose highest semantic version.
+            var tagsUrl = $"{apiBaseUrl.TrimEnd('/')}/repos/{repository}/tags?per_page=100";
+            var tags = client.GetFromJsonAsync<List<GitHubTagResponse>>(tagsUrl).GetAwaiter().GetResult();
+            if (tags != null)
+            {
+                foreach (var tag in tags)
+                {
+                    if (!string.IsNullOrWhiteSpace(tag.Name))
+                    {
+                        candidateTags.Add(tag.Name.Trim());
+                    }
+                }
+            }
+
+            var bestSemanticTag = candidateTags
+                .Select(tag => new { Tag = tag, Parsed = ParseSemVerOrNull(tag) })
+                .Where(x => x.Parsed != null)
+                .OrderByDescending(x => x.Parsed)
+                .Select(x => x.Tag)
+                .FirstOrDefault();
+
+            if (!string.IsNullOrWhiteSpace(bestSemanticTag))
+            {
+                return bestSemanticTag;
+            }
+
+            // Fallback to first non-empty candidate if no semantic version could be parsed.
+            var fallbackTag = candidateTags.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t));
+            if (!string.IsNullOrWhiteSpace(fallbackTag))
+            {
+                return fallbackTag;
             }
         }
         catch (Exception ex)
@@ -216,6 +258,17 @@ public class VersionService : IVersionService
         }
 
         return null;
+    }
+
+    private static Version? ParseSemVerOrNull(string rawTag)
+    {
+        if (string.IsNullOrWhiteSpace(rawTag))
+            return null;
+
+        var normalized = StripVersionPrefix(rawTag);
+        var core = normalized.Split('-', '+')[0];
+
+        return Version.TryParse(core, out var parsed) ? parsed : null;
     }
 
     private string GetGitCommit()
