@@ -228,24 +228,31 @@ public class InvoiceDocument : BaseDocument
 
     private void ComposePaymentSummary(IContainer container)
     {
+        var invoiceCurrency = string.IsNullOrWhiteSpace(_invoice.Currency) ? "KES" : _invoice.Currency;
+        var forexRate = _invoice.ProsecutionCase?.ForexRate ?? 130m;
+        var equivalentCurrency = string.Equals(invoiceCurrency, "USD", StringComparison.OrdinalIgnoreCase) ? "KES" : "USD";
+        var equivalentAmount = string.Equals(invoiceCurrency, "USD", StringComparison.OrdinalIgnoreCase)
+            ? _invoice.AmountDue * forexRate
+            : forexRate > 0 ? _invoice.AmountDue / forexRate : 0m;
+
         container.Border(1).BorderColor(Colors.Black).Column(col =>
         {
             col.Item().Background(Colors.Grey.Lighten4).Padding(5).Row(r =>
             {
-                r.RelativeItem().Text("Subtotal (USD):").SemiBold();
-                r.ConstantItem(80).AlignRight().Text($"${_invoice.AmountDue:N2}");
+                r.RelativeItem().Text($"Subtotal ({invoiceCurrency}):").SemiBold();
+                r.ConstantItem(80).AlignRight().Text($"{invoiceCurrency} {_invoice.AmountDue:N2}");
             });
 
             col.Item().Padding(5).Row(r =>
             {
                 r.RelativeItem().Text($"Exchange Rate (1 USD):").FontSize(9);
-                r.ConstantItem(80).AlignRight().Text($"KES {_invoice.ProsecutionCase?.ForexRate:N2}").FontSize(9);
+                r.ConstantItem(80).AlignRight().Text($"KES {forexRate:N2}").FontSize(9);
             });
 
             col.Item().Padding(5).Row(r =>
             {
-                r.RelativeItem().Text("Amount Due (KES):").SemiBold();
-                r.ConstantItem(80).AlignRight().Text($"KES {_invoice.AmountDue * (_invoice.ProsecutionCase?.ForexRate ?? 130m):N2}").SemiBold();
+                r.RelativeItem().Text($"Amount Due ({equivalentCurrency}):").SemiBold();
+                r.ConstantItem(80).AlignRight().Text($"{equivalentCurrency} {equivalentAmount:N2}").SemiBold();
             });
 
             // If partial payment made
@@ -255,22 +262,22 @@ public class InvoiceDocument : BaseDocument
                 col.Item().Background(Colors.Green.Lighten4).Padding(5).Row(r =>
                 {
                     r.RelativeItem().Text("Amount Paid:").FontColor(Colors.Green.Darken2);
-                    r.ConstantItem(80).AlignRight().Text($"${amountPaid:N2}").FontColor(Colors.Green.Darken2);
+                    r.ConstantItem(80).AlignRight().Text($"{invoiceCurrency} {amountPaid:N2}").FontColor(Colors.Green.Darken2);
                 });
 
                 var balance = _invoice.AmountDue - amountPaid;
                 col.Item().Background(balance > 0 ? Colors.Orange.Lighten4 : Colors.Green.Lighten3).Padding(5).Row(r =>
                 {
                     r.RelativeItem().Text("BALANCE DUE:").Bold();
-                    r.ConstantItem(80).AlignRight().Text($"${balance:N2}").Bold();
+                    r.ConstantItem(80).AlignRight().Text($"{invoiceCurrency} {balance:N2}").Bold();
                 });
             }
             else
             {
                 col.Item().Background(Colors.Blue.Lighten4).Padding(5).Row(r =>
                 {
-                    r.RelativeItem().Text("TOTAL DUE (USD):").Bold().FontSize(11);
-                    r.ConstantItem(80).AlignRight().Text($"${_invoice.AmountDue:N2}").Bold().FontSize(11);
+                    r.RelativeItem().Text($"TOTAL DUE ({invoiceCurrency}):").Bold().FontSize(11);
+                    r.ConstantItem(80).AlignRight().Text($"{invoiceCurrency} {_invoice.AmountDue:N2}").Bold().FontSize(11);
                 });
             }
         });
