@@ -306,10 +306,20 @@ public class ECitizenService : IECitizenService
         using var doc = JsonDocument.Parse(responseBody);
         var root = doc.RootElement;
 
+        // Parse amount_paid - Pesaflow may return as string or number
+        decimal amountPaid = 0;
+        if (root.TryGetProperty("amount_paid", out var ap))
+        {
+            if (ap.ValueKind == JsonValueKind.Number)
+                amountPaid = ap.GetDecimal();
+            else if (ap.ValueKind == JsonValueKind.String)
+                decimal.TryParse(ap.GetString(), out amountPaid);
+        }
+
         return new PesaflowPaymentStatusResponse
         {
             Status = root.TryGetProperty("status", out var s) ? s.GetString() : null,
-            AmountPaid = root.TryGetProperty("amount_paid", out var ap) ? ap.GetDecimal() : 0,
+            AmountPaid = amountPaid,
             PaymentReference = root.TryGetProperty("payment_reference", out var pr) ? pr.GetString() : null,
             PaymentChannel = root.TryGetProperty("payment_channel", out var pc) ? pc.GetString() : null,
             PaymentDate = root.TryGetProperty("payment_date", out var pd) && pd.ValueKind != JsonValueKind.Null
