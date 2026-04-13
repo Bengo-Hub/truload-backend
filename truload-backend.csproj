@@ -17,6 +17,9 @@
     <Compile Remove="Tests/**" />
     <Content Remove="Tests/**" />
     <None Remove="Tests/**" />
+    <Compile Remove="UpdateInvoice/**" />
+    <Content Remove="UpdateInvoice/**" />
+    <None Remove="UpdateInvoice/**" />
   </ItemGroup>
 
   <ItemGroup>
