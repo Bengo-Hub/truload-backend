@@ -132,7 +132,9 @@ public class ReceiptService : IReceiptService
             PaymentMethod = request.PaymentMethod,
             TransactionReference = request.TransactionReference,
             IdempotencyKey = request.IdempotencyKey,
-            ReceivedById = userId,
+            // System-driven flows (webhook/reconcile jobs) may not have an authenticated officer context.
+            // Persist null instead of Guid.Empty to avoid FK violations on asp_net_users.
+            ReceivedById = userId == Guid.Empty ? null : userId,
             PaymentDate = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
