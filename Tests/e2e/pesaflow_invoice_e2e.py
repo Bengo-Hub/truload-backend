@@ -28,6 +28,7 @@ from pathlib import Path
 import io
 
 from test_credentials import LOGIN_EMAIL_DEFAULT, LOGIN_PASSWORD_DEFAULT
+from auth_cache import get_login_data
 
 # ─── Defaults ─────────────────────────────────────────────────────────────
 
@@ -112,41 +113,25 @@ def step_1_authenticate(base_url: str, email: str, password: str) -> str | None:
     print_sep("STEP 1: Authenticate with Backend")
 
     url = f"{base_url}/api/v1/auth/login"
-    payload = {"email": email, "password": password}
-
     print(f"  URL:      {url}")
     print(f"  Email:    {email}")
     print(f"  Password: {'*' * len(password)}")
     print()
-
-    status, body, _ = http_request("POST", url, body=payload)
-
-    print(f"  HTTP Status: {status}")
-
-    if status == 200:
-        try:
-            data = json.loads(body)
-            token = data.get("token") or data.get("accessToken")
-            user = data.get("user", {})
-            is_super = data.get("isSuperUser", user.get("isSuperUser", "N/A"))
-
-            print(f"\n  [PASS] Login successful")
-            print(f"         User:        {user.get('fullName', 'N/A')} ({user.get('email', email)})")
-            print(f"         isSuperUser: {is_super}")
-            print(f"         Token:       {token[:50]}..." if token else "         Token: MISSING")
-
-            if token:
-                return token
-            else:
-                print(f"\n  [FAIL] No token in response. Keys: {list(data.keys())}")
-                print_json("Full response", data)
-                return None
-        except json.JSONDecodeError:
-            print(f"\n  [FAIL] Response is not JSON: {body[:300]}")
-            return None
-    else:
-        print(f"\n  [FAIL] Login failed with HTTP {status}")
-        print(f"         Body: {body[:500]}")
+    try:
+        data, from_cache = get_login_data(base_url, email, password)
+        token = data.get("token") or data.get("accessToken")
+        user = data.get("user", {})
+        is_super = data.get("isSuperUser", user.get("isSuperUser", "N/A"))
+        print(f"  HTTP Status: {'CACHE' if from_cache else '200'}")
+        print(f"\n  [PASS] Login successful")
+        print(f"         User:        {user.get('fullName', 'N/A')} ({user.get('email', email)})")
+        print(f"         isSuperUser: {is_super}")
+        print(f"         Token:       {token[:50]}..." if token else "         Token: MISSING")
+        return token
+    except Exception as exc:
+        print(f"  HTTP Status: FAIL")
+        print(f"\n  [FAIL] Login failed")
+        print(f"         Body: {str(exc)[:500]}")
         return None
 
 
@@ -185,9 +170,20 @@ def step_2_find_invoice(base_url: str, token: str) -> dict | None:
                 print(f"\n  [WARN] No invoices found in database")
                 return None
 
-            # Prefer invoices that haven't been synced yet
-            pending = [i for i in items if i.get("pesaflowSyncStatus") in ("pending", "failed", None)]
-            target = pending[0] if pending else items[0]
+            # Prefer invoices eligible for push:
+            # - not already paid
+            # - not successfully synced to Pesaflow
+            def eligible(invoice: dict) -> bool:
+                status = str(invoice.get("status", "")).lower()
+                sync_status = str(invoice.get("pesaflowSyncStatus", "")).lower()
+                already_paid = status in {"paid", "settled", "completed"}
+                sync_done = sync_status in {"success", "synced", "completed"}
+                return not already_paid and not sync_done
+
+            eligible_items = [i for i in items if eligible(i)]
+            target = eligible_items[0] if eligible_items else items[0]
+            if not eligible_items:
+                print("  [WARN] No clearly eligible unpaid invoice found; using most recent invoice.")
 
             print(f"\n  Selected invoice:")
             print(f"    ID:               {target.get('id')}")

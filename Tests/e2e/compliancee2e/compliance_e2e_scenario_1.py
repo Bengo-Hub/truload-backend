@@ -39,6 +39,7 @@ if str(E2E_ROOT) not in sys.path:
     sys.path.append(str(E2E_ROOT))
 
 from test_credentials import LOGIN_EMAIL_DEFAULT, LOGIN_PASSWORD_DEFAULT
+from auth_cache import get_login_data
 
 # ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -118,15 +119,8 @@ class ComplianceE2ETest:
 
     def step_01_login(self):
         """Authenticate and get JWT token + user info."""
-        r = requests.post(
-            self._url("auth/login"),
-            headers=self.headers,
-            json={"email": LOGIN_EMAIL, "password": LOGIN_PASSWORD},
-            timeout=60,
-        )
-        print(f"    POST /auth/login -> {r.status_code}")
-        assert r.status_code == 200, f"Login failed: {r.status_code} {r.text[:200]}"
-        data = r.json()
+        data, from_cache = get_login_data(self.base_url, LOGIN_EMAIL, LOGIN_PASSWORD)
+        print(f"    POST /auth/login -> {'CACHE' if from_cache else '200'}")
 
         self.token = data.get("accessToken") or data.get("token")
         assert self.token, f"No token in response: {list(data.keys())}"

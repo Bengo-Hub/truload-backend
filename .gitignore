@@ -69,3 +69,4 @@ Tests/e2e/compliancee2e/TEST_TRACE.md
 Tests/e2e/compliancee2e/TEST_CRITICAL.md
 Tests/e2e/compliancee2e/TEST_FATAL.md
 Tests/e2e/test_credentials.py
+Tests/e2e/.truload_auth_cache.json
