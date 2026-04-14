@@ -265,7 +265,7 @@ public class SettingsService : ISettingsService
             Enabled = await GetSettingValueAsync(SettingKeys.BackupEnabled, true, ct),
             ScheduleCron = await GetSettingValueAsync(SettingKeys.BackupScheduleCron, "0 2 * * *", ct),
             RetentionDays = await GetSettingValueAsync(SettingKeys.BackupRetentionDays, 30, ct),
-            StoragePath = await GetSettingValueAsync(SettingKeys.BackupStoragePath, "./backups", ct),
+            StoragePath = await GetSettingValueAsync(SettingKeys.BackupStoragePath, "/app/backups/truload", ct),
         };
     }
 
