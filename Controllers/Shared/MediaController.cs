@@ -8,11 +8,18 @@ namespace TruLoad.Backend.Controllers.Shared;
 /// <summary>
 /// File upload for organisation branding (logos, login page image). Files are stored in configurable media path (production: tuload-backend-media).
 /// </summary>
+[NonController]
 [ApiController]
 [Route("api/v1/[controller]")]
 [Authorize]
 public class MediaController : ControllerBase
 {
+    public sealed class MediaUploadRequest
+    {
+        public IFormFile? File { get; set; }
+        public string Folder { get; set; } = "organisation-branding";
+    }
+
     private readonly IWebHostEnvironment _env;
     private readonly MediaUploadOptions _options;
     private readonly ILogger<MediaController> _logger;
@@ -44,10 +51,12 @@ public class MediaController : ControllerBase
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Upload(
-        [FromForm] IFormFile? file,
-        [FromForm] string folder = "organisation-branding",
+        [FromForm] MediaUploadRequest request,
         CancellationToken cancellationToken = default)
     {
+        var file = request.File;
+        var folder = request.Folder;
+
         if (file == null || file.Length == 0)
             return BadRequest(new { message = "No file provided" });
 

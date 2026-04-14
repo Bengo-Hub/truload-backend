@@ -27,11 +27,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 import io
 
+from test_credentials import LOGIN_EMAIL_DEFAULT, LOGIN_PASSWORD_DEFAULT
+
 # ─── Defaults ─────────────────────────────────────────────────────────────
 
 BACKEND_BASE_URL = "http://localhost:4000"
-DEFAULT_EMAIL = "gadmin@masterspace.co.ke"
-DEFAULT_PASSWORD = "ChangeMe123!"
+DEFAULT_EMAIL = LOGIN_EMAIL_DEFAULT
+DEFAULT_PASSWORD = LOGIN_PASSWORD_DEFAULT
 
 LOG_FILE = Path(__file__).parent / "pesaflow_invoice_e2e.md"
 

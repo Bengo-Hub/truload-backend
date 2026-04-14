@@ -9,6 +9,15 @@ import os
 import pytest
 import requests
 
+from pathlib import Path
+import sys
+
+E2E_ROOT = Path(__file__).resolve().parent.parent
+if str(E2E_ROOT) not in sys.path:
+    sys.path.append(str(E2E_ROOT))
+
+from test_credentials import LOGIN_EMAIL_DEFAULT, LOGIN_PASSWORD_DEFAULT
+
 # ============================================================================
 # Configuration
 # ============================================================================
@@ -20,8 +29,8 @@ SUPERSET_USERNAME = os.getenv("SUPERSET_USERNAME", "admin")
 SUPERSET_PASSWORD = os.getenv("SUPERSET_PASSWORD", "admin123")
 
 # TruLoad test credentials (from UserSeeder)
-TRULOAD_EMAIL = os.getenv("TRULOAD_EMAIL", "gadmin@masterspace.co.ke")
-TRULOAD_PASSWORD = os.getenv("TRULOAD_PASSWORD", "ChangeMe123!")
+TRULOAD_EMAIL = LOGIN_EMAIL_DEFAULT
+TRULOAD_PASSWORD = LOGIN_PASSWORD_DEFAULT
 
 
 # ============================================================================

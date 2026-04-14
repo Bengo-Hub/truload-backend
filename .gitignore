@@ -55,3 +55,17 @@ KubeSecrets/*.bak
 *.tmp
 *.temp
 /Logs
+
+# E2E test results
+Tests/e2e/compliancee2e/test_credentials.py
+Tests/e2e/compliancee2e/TEST_RESULTS.md
+Tests/e2e/compliancee2e/TEST_SUMMARY.md
+Tests/e2e/compliancee2e/TEST_LOGS.md
+Tests/e2e/compliancee2e/TEST_ERRORS.md
+Tests/e2e/compliancee2e/TEST_WARNINGS.md
+Tests/e2e/compliancee2e/TEST_INFO.md
+Tests/e2e/compliancee2e/TEST_DEBUG.md
+Tests/e2e/compliancee2e/TEST_TRACE.md
+Tests/e2e/compliancee2e/TEST_CRITICAL.md
+Tests/e2e/compliancee2e/TEST_FATAL.md
+Tests/e2e/test_credentials.py

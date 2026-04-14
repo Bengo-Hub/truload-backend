@@ -389,3 +389,144 @@
   [PASS] save_local_invoice: PASS
   [TEST] payment_status: TESTED
 ======================================================================
+======================================================================
+  PESAFLOW API DIRECT TEST
+  Base URL:      https://test.pesaflow.com
+  API Client ID: 588
+  API Key:       hkW0lc/+xu9GA5Di
+  API Secret:    tgia2h6QEc...
+  Retries:       1
+  Token cache:   D:\Projects\Codevertex\TruLoad\truload-backend\Tests\e2e\.pesaflow_token_cache.json
+  Timestamp:     2026-04-14T16:14:00.074460+00:00
+======================================================================
+
+======================================================================
+  STEP 1: Get Pesaflow OAuth Token
+======================================================================
+  [CACHE] Cached token expired, requesting new one
+  URL:          https://test.pesaflow.com/api/oauth/generate/token
+  Method:       POST (JSON body)
+  ApiKey:       hkW0lc/+xu9GA5Di
+  ApiSecret:    tgia2h6QEc...
+  Payload:      {"key": "hkW0lc/+xu9GA5Di", "secret": "tgia2h6QEcwqPmJ1Uxv3V9I7cqf6Ub7X"}
+
+  HTTP Status:  200
+  Response:     {"token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6IjU4ODIwMjYwNDE0MTYwNDE3NzYxODMyNDAifQ.L9mN3DusIwMvsazUX1BXwa8DE5-HQ6lEW_rBFCXmJZE","expiry":3599}
+
+  [PASS] Token obtained successfully
+         Token:      eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6IjU4O...
+         Expires in: 3599s
+  [CACHE] Token cached to .pesaflow_token_cache.json (valid for 3539s)
+
+======================================================================
+  STEP 2: Create Invoice via Pesaflow iframe endpoint
+======================================================================
+  URL:        https://test.pesaflow.com/PaymentAPI/iframev2.1.php
+  Invoice Ref: TEST-20260414161400
+  Amount:      100.00 KES
+  Hash data:  '588100.00235330TEST-ID-001KESTEST-20260414161400Test Overload FineTest Usertgia2...'
+  Hash:       NDI0ZGRmNzMwNzJiYjlmODNmZDE1Y2E4OTkxYTU1MmZhMWJmMjhlZTUwNjQ2ZjRlOTU4NzFmZjc0YTlkODdlMQ==
+
+  HTTP Status: 200
+  Response:    {"invoice_number":"AEVDVM","invoice_link":"https://test.pesaflow.com/checkout?request_id=rpIQWFqgPw4mI6q1UMRU","commission":"5.00","amount_net":"100.00","amount_expected":"105.00"}
+
+  [PASS] Invoice created on Pesaflow
+         Pesaflow Invoice No: AEVDVM
+         Payment Link:        https://test.pesaflow.com/checkout?request_id=rpIQWFqgPw4mI6q1UMRU
+         Amount Net:          100.00
+         Commission:          5.00
+         Total Expected:      105.00
+
+======================================================================
+  STEP 3: Save Local Invoice
+======================================================================
+  [LOCAL] Invoice saved: D:\Projects\Codevertex\TruLoad\truload-backend\Tests\e2e\pesaflow_local_invoice_TEST-20260414161400.json
+          Pesaflow Invoice: AEVDVM
+          Payment Link: https://test.pesaflow.com/checkout?request_id=rpIQWFqgPw4mI6q1UMRU
+
+======================================================================
+  STEP 3: Query Payment Status
+======================================================================
+  Invoice Ref:     TEST-20260414161400
+  Pesaflow Inv No: AEVDVM
+  Hash data:  '588AEVDVM'
+  Hash:       MjBjZWZjZGE3N2FhNjIyNzFhYTBjN2I5ODVmNTRlZDA3MTEwODRkYmFlODA4ZDRmZDY2NTVlN2Q2ZmQzZWU5OQ==
+  URL:        https://test.pesaflow.com/api/invoice/payment/status?api_client_id=588&ref_no=AEVDVM&secure_hash=MjBjZWZjZGE3N2FhNjIyNzFhYTBjN2I5ODVmNTRlZDA3MTEwODRkYmFlODA4ZDRmZDY2NTVlN2Q2ZmQzZWU5OQ%3D%3D
+
+  HTTP Status: 200
+  Response:    {"status":"pending","ref_no":"AEVDVM","payment_date":null,"name":"Test User","currency":"KES","client_invoice_ref":"TEST-20260414161400","amount_paid":"0.00","amount_expected":"105.00"}
+
+  [PASS] Payment status retrieved
+
+======================================================================
+  SUMMARY
+======================================================================
+  [PASS] oauth: PASS
+  [PASS] create_invoice: PASS
+  [PASS] save_local_invoice: PASS
+  [TEST] payment_status: TESTED
+======================================================================
+======================================================================
+  PESAFLOW API DIRECT TEST
+  Base URL:      https://test.pesaflow.com
+  API Client ID: 588
+  API Key:       hkW0lc/+xu9GA5Di
+  API Secret:    tgia2h6QEc...
+  Retries:       1
+  Token cache:   D:\Projects\Codevertex\TruLoad\truload-backend\Tests\e2e\.pesaflow_token_cache.json
+  Timestamp:     2026-04-14T16:42:07.145414+00:00
+======================================================================
+
+======================================================================
+  STEP 1: Get Pesaflow OAuth Token
+======================================================================
+  [CACHE] Reusing cached token (expires in 1852s)
+
+======================================================================
+  STEP 2: Create Invoice via Pesaflow iframe endpoint
+======================================================================
+  URL:        https://test.pesaflow.com/PaymentAPI/iframev2.1.php
+  Invoice Ref: TEST-20260414164207
+  Amount:      100.00 KES
+  Hash data:  '588100.00235330TEST-ID-001KESTEST-20260414164207Test Overload FineTest Usertgia2...'
+  Hash:       MmM3Mzk2ZmZkZTI3NDQ1ZGE2NDkwMTI0MzA3NjdiZGZmMWYzZGU3ODUzNWE5MGI4ZjU1ZTYzZmE0ZWE0ZjUwOQ==
+
+  HTTP Status: 200
+  Response:    {"invoice_number":"LYVBVM","invoice_link":"https://test.pesaflow.com/checkout?request_id=wxSNr-DxzQKSiCANCpxj","commission":"5.00","amount_net":"100.00","amount_expected":"105.00"}
+
+  [PASS] Invoice created on Pesaflow
+         Pesaflow Invoice No: LYVBVM
+         Payment Link:        https://test.pesaflow.com/checkout?request_id=wxSNr-DxzQKSiCANCpxj
+         Amount Net:          100.00
+         Commission:          5.00
+         Total Expected:      105.00
+
+======================================================================
+  STEP 3: Save Local Invoice
+======================================================================
+  [LOCAL] Invoice saved: D:\Projects\Codevertex\TruLoad\truload-backend\Tests\e2e\pesaflow_local_invoice_TEST-20260414164207.json
+          Pesaflow Invoice: LYVBVM
+          Payment Link: https://test.pesaflow.com/checkout?request_id=wxSNr-DxzQKSiCANCpxj
+
+======================================================================
+  STEP 3: Query Payment Status
+======================================================================
+  Invoice Ref:     TEST-20260414164207
+  Pesaflow Inv No: LYVBVM
+  Hash data:  '588LYVBVM'
+  Hash:       OTgxZWMzODdlNmVhMzVjYzUwMDg2ZmY4MDEwNzRiY2ExMTA1NjBjNTU2MWNmNWIxOGRjM2U3M2IxMGYxN2U4NQ==
+  URL:        https://test.pesaflow.com/api/invoice/payment/status?api_client_id=588&ref_no=LYVBVM&secure_hash=OTgxZWMzODdlNmVhMzVjYzUwMDg2ZmY4MDEwNzRiY2ExMTA1NjBjNTU2MWNmNWIxOGRjM2U3M2IxMGYxN2U4NQ%3D%3D
+
+  HTTP Status: 200
+  Response:    {"status":"pending","ref_no":"LYVBVM","payment_date":null,"name":"Test User","currency":"KES","client_invoice_ref":"TEST-20260414164207","amount_paid":"0.00","amount_expected":"105.00"}
+
+  [PASS] Payment status retrieved
+
+======================================================================
+  SUMMARY
+======================================================================
+  [PASS] oauth: PASS
+  [PASS] create_invoice: PASS
+  [PASS] save_local_invoice: PASS
+  [TEST] payment_status: TESTED
+======================================================================

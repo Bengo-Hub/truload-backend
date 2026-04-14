@@ -1,7 +1,7 @@
 # TruLoad E2E Compliance Test Results
 
-**Date**: 2026-03-01 21:53:26
-**Environment**: localhost:4000 (fresh database)
+**Date**: 2026-04-14 19:41:33
+**Environment**: https://kuraweighapitest.masterspace.co.ke
 
 ---
 
@@ -11,8 +11,8 @@
 
 ======================================================================
   TRULOAD COMPLIANCE E2E TEST
-  Target: http://localhost:4000
-  Started: 2026-03-01T18:53:26.417836Z
+  Target: https://kuraweighapitest.masterspace.co.ke
+  Started: 2026-04-14T16:41:34.323640Z
 ======================================================================
 
   Workflow: Overload -> Case+Yard -> Prosecution -> Invoice
@@ -22,28 +22,12 @@
 ======================================================================
   STEP 1: Login
 ======================================================================
-    POST /auth/login -> 200
-    [INFO] No stationId in user profile, fetching fallback...
-    stationId (fallback): ef26c390-1365-425e-bcff-e81968763ac7 (Nairobi Mobile Unit 01)
-    userId:    019caaba-1808-70a8-8328-71baa828065b
-    stationId: ef26c390-1365-425e-bcff-e81968763ac7
+    POST /auth/login -> 401
 
-  [PASS] Login
-    -> Logged in as gadmin@masterspace.co.ke
+  [ERROR] Login
+    -> Login failed: 401 {"message":"Account is locked out"}
 
-======================================================================
-  STEP 2: Setup metadata (driver, transporter, cargo, locations)
-======================================================================
-    POST /drivers -> 400
-    POST /transporters -> 201
-    Cargo type found: Agricultural Produce
-    Origin: Busia Border
-    Destination: Eldoret
-
-  [FAIL] Setup metadata (driver, transporter, cargo, locations)
-    -> Metadata: driverId=MISSING, transporterId=OK, cargoId=OK, originId=OK, destinationId=OK
-
-  *** ABORTING: Critical step 2 failed ***
+  *** ABORTING: Critical step 1 failed ***
 
 
 ======================================================================
@@ -51,11 +35,10 @@
 ======================================================================
   Step  Status   Name
   ---   ------   --------------------------------------------------
-  1     [PASS]   Login
-  2     [FAIL]   Setup metadata (driver, transporter, cargo, locations)
+  1     [FAIL]   Login
 
   ============================================================
-  TOTAL: 2  |  PASS: 1  |  FAIL: 1
+  TOTAL: 1  |  PASS: 0  |  FAIL: 1
 
   1 STEP(S) FAILED
 
@@ -68,7 +51,7 @@
     receiptId: ---
     reweighId: ---
     driverId: ---
-    transporterId: d59bb5ec-e5ca-4b3e-8d8b-4c850a75f0bd
+    transporterId: ---
 ======================================================================
 
 STDERR:
@@ -82,8 +65,8 @@ STDERR:
 
 ======================================================================
   TRULOAD COMPLIANCE E2E TEST -- SCENARIO 2
-  Target: http://localhost:4000
-  Started: 2026-03-01T18:53:31.813419Z
+  Target: https://kuraweighapitest.masterspace.co.ke
+  Started: 2026-04-14T16:41:35.793760Z
 ======================================================================
 
   Workflow: Within-Tolerance Overload -> Warning -> Auto Special Release -> Case Closed
@@ -92,28 +75,12 @@ STDERR:
 ======================================================================
   STEP 1: Login
 ======================================================================
-    POST /auth/login -> 200
-    [INFO] No stationId in user profile, fetching fallback...
-    stationId (fallback): ef26c390-1365-425e-bcff-e81968763ac7 (Nairobi Mobile Unit 01)
-    userId:    019caaba-1808-70a8-8328-71baa828065b
-    stationId: ef26c390-1365-425e-bcff-e81968763ac7
+    POST /auth/login -> 401
 
-  [PASS] Login
-    -> Logged in as gadmin@masterspace.co.ke
+  [ERROR] Login
+    -> Login failed: 401 {"message":"Account is locked out"}
 
-======================================================================
-  STEP 2: Setup metadata (driver, transporter, cargo, locations)
-======================================================================
-    POST /drivers -> 400
-    Transporter found: E2E Test Transporters Ltd
-    Cargo type found: Agricultural Produce
-    Origin: Busia Border
-    Destination: Eldoret
-
-  [FAIL] Setup metadata (driver, transporter, cargo, locations)
-    -> Metadata: driverId=MISSING, transporterId=OK, cargoId=OK, originId=OK, destinationId=OK
-
-  *** ABORTING: Critical step 2 failed ***
+  *** ABORTING: Critical step 1 failed ***
 
 
 ======================================================================
@@ -121,11 +88,10 @@ STDERR:
 ======================================================================
   Step  Status   Name
   ---   ------   --------------------------------------------------
-  1     [PASS]   Login
-  2     [FAIL]   Setup metadata (driver, transporter, cargo, locations)
+  1     [FAIL]   Login
 
   ============================================================
-  TOTAL: 2  |  PASS: 1  |  FAIL: 1
+  TOTAL: 1  |  PASS: 0  |  FAIL: 1
 
   1 STEP(S) FAILED
 
@@ -136,7 +102,7 @@ STDERR:
     specialReleaseId: ---
     scaleTestId: ---
     driverId: ---
-    transporterId: d59bb5ec-e5ca-4b3e-8d8b-4c850a75f0bd
+    transporterId: ---
 ======================================================================
 
 STDERR:
@@ -150,8 +116,8 @@ STDERR:
 
 ======================================================================
   TRULOAD COMPLIANCE E2E TEST -- SCENARIO 3
-  Target: http://localhost:4000
-  Started: 2026-03-01T18:53:32.514183Z
+  Target: https://kuraweighapitest.masterspace.co.ke
+  Started: 2026-04-14T16:41:37.275470Z
 ======================================================================
 
   Workflow: Manual KeNHA Tag -> Compliant Weight + TagHold
@@ -161,28 +127,12 @@ STDERR:
 ======================================================================
   STEP 1: Login
 ======================================================================
-    POST /auth/login -> 200
-    [INFO] No stationId in user profile, fetching fallback...
-    stationId (fallback): ef26c390-1365-425e-bcff-e81968763ac7 (Nairobi Mobile Unit 01)
-    userId:    019caaba-1808-70a8-8328-71baa828065b
-    stationId: ef26c390-1365-425e-bcff-e81968763ac7
+    POST /auth/login -> 401
 
-  [PASS] Login
-    -> Logged in as gadmin@masterspace.co.ke
+  [ERROR] Login
+    -> Login failed: 401 {"message":"Account is locked out"}
 
-======================================================================
-  STEP 2: Setup metadata (driver, transporter, cargo, locations)
-======================================================================
-    POST /drivers -> 400
-    Transporter found: E2E Test Transporters Ltd
-    Cargo type found: Agricultural Produce
-    Origin: Busia Border
-    Destination: Eldoret
-
-  [FAIL] Setup metadata (driver, transporter, cargo, locations)
-    -> Metadata: driverId=MISSING, transporterId=OK, cargoId=OK, originId=OK, destinationId=OK
-
-  *** ABORTING: Critical step 2 failed ***
+  *** ABORTING: Critical step 1 failed ***
 
 
 ======================================================================
@@ -190,11 +140,10 @@ STDERR:
 ======================================================================
   Step  Status   Name
   ---   ------   --------------------------------------------------
-  1     [PASS]   Login
-  2     [FAIL]   Setup metadata (driver, transporter, cargo, locations)
+  1     [FAIL]   Login
 
   ============================================================
-  TOTAL: 2  |  PASS: 1  |  FAIL: 1
+  TOTAL: 1  |  PASS: 0  |  FAIL: 1
 
   1 STEP(S) FAILED
 
@@ -208,7 +157,7 @@ STDERR:
     adminDiscretionReleaseTypeId: ---
     scaleTestId: ---
     driverId: ---
-    transporterId: d59bb5ec-e5ca-4b3e-8d8b-4c850a75f0bd
+    transporterId: ---
 ======================================================================
 
 STDERR:
@@ -222,8 +171,8 @@ STDERR:
 
 ======================================================================
   TRULOAD COMPLIANCE E2E TEST -- SCENARIO 4
-  Target: http://localhost:4000
-  Started: 2026-03-01T18:53:33.224026Z
+  Target: https://kuraweighapitest.masterspace.co.ke
+  Started: 2026-04-14T16:41:38.602243Z
 ======================================================================
 
   Workflow: Compliant Vehicle -> Weight Ticket Only (No Case, No Yard, No Prosecution)
@@ -232,28 +181,12 @@ STDERR:
 ======================================================================
   STEP 1: Login
 ======================================================================
-    POST /auth/login -> 200
-    [INFO] No stationId in user profile, fetching fallback...
-    stationId (fallback): ef26c390-1365-425e-bcff-e81968763ac7 (Nairobi Mobile Unit 01)
-    userId:    019caaba-1808-70a8-8328-71baa828065b
-    stationId: ef26c390-1365-425e-bcff-e81968763ac7
+    POST /auth/login -> 401
 
-  [PASS] Login
-    -> Logged in as gadmin@masterspace.co.ke
+  [ERROR] Login
+    -> Login failed: 401 {"message":"Account is locked out"}
 
-======================================================================
-  STEP 2: Setup metadata (driver, transporter, cargo, locations)
-======================================================================
-    POST /drivers -> 400
-    Transporter found: E2E Test Transporters Ltd
-    Cargo type found: Agricultural Produce
-    Origin: Busia Border
-    Destination: Eldoret
-
-  [FAIL] Setup metadata (driver, transporter, cargo, locations)
-    -> Metadata: driverId=MISSING, transporterId=OK, cargoId=OK, originId=OK, destinationId=OK
-
-  *** ABORTING: Critical step 2 failed ***
+  *** ABORTING: Critical step 1 failed ***
 
 
 ======================================================================
@@ -261,11 +194,10 @@ STDERR:
 ======================================================================
   Step  Status   Name
   ---   ------   --------------------------------------------------
-  1     [PASS]   Login
-  2     [FAIL]   Setup metadata (driver, transporter, cargo, locations)
+  1     [FAIL]   Login
 
   ============================================================
-  TOTAL: 2  |  PASS: 1  |  FAIL: 1
+  TOTAL: 1  |  PASS: 0  |  FAIL: 1
 
   1 STEP(S) FAILED
 
@@ -274,7 +206,7 @@ STDERR:
     vehicleId: ---
     scaleTestId: ---
     driverId: ---
-    transporterId: d59bb5ec-e5ca-4b3e-8d8b-4c850a75f0bd
+    transporterId: ---
 ======================================================================
 
 STDERR:
@@ -288,8 +220,8 @@ STDERR:
 
 ======================================================================
   TRULOAD COMPLIANCE E2E TEST -- SCENARIO 5
-  Target: http://localhost:4000
-  Started: 2026-03-01T18:54:28.252310Z
+  Target: https://kuraweighapitest.masterspace.co.ke
+  Started: 2026-04-14T16:41:39.873619Z
 ======================================================================
 
   Workflow: Overload -> Case+Yard -> Prosecution+Invoice
@@ -299,34 +231,12 @@ STDERR:
 ======================================================================
   STEP 1: Login
 ======================================================================
-    POST /auth/login -> 200
-    userId:    019caaba-1808-70a8-8328-71baa828065b
-    stationId: None
+    POST /auth/login -> 401
 
-  [PASS] Login
-    -> Logged in as gadmin@masterspace.co.ke
+  [ERROR] Login
+    -> Login failed: 401 {"message":"Account is locked out"}
 
-======================================================================
-  STEP 2: Setup metadata (driver, transporter, cargo, locations)
-======================================================================
-    POST /drivers -> 201
-    Transporter found: E2E Test Transporters Ltd
-    Cargo type found: Agricultural Produce
-    Origin: Busia Border
-    Destination: Eldoret
-
-  [PASS] Setup metadata (driver, transporter, cargo, locations)
-    -> Metadata: driverId=OK, transporterId=OK, cargoId=OK, originId=OK, destinationId=OK
-
-======================================================================
-  STEP 3: Create scale test
-======================================================================
-    POST /scale-tests -> 400
-
-  [FAIL] Create scale test
-    -> Failed: 400 {"type":"https://tools.ietf.org/html/rfc9110#section-15.5.1","title":"One or more validation errors occurred.","status":400,"errors":{"request":["The request field is required."],"$.stationId":["The J
-
-  *** ABORTING: Critical step 3 failed ***
+  *** ABORTING: Critical step 1 failed ***
 
 
 ======================================================================
@@ -334,12 +244,10 @@ STDERR:
 ======================================================================
   Step  Status   Name
   ---   ------   --------------------------------------------------
-  1     [PASS]   Login
-  2     [PASS]   Setup metadata (driver, transporter, cargo, locations)
-  3     [FAIL]   Create scale test
+  1     [FAIL]   Login
 
   ============================================================
-  TOTAL: 3  |  PASS: 2  |  FAIL: 1
+  TOTAL: 1  |  PASS: 0  |  FAIL: 1
 
   1 STEP(S) FAILED
 
@@ -351,8 +259,8 @@ STDERR:
     invoiceId: ---
     courtEscalationDispositionId: ---
     prohibitionOrderId: ---
-    driverId: 56163410-7e58-4545-ae73-65f1c779ad60
-    transporterId: d59bb5ec-e5ca-4b3e-8d8b-4c850a75f0bd
+    driverId: ---
+    transporterId: ---
 ======================================================================
 
 STDERR:
@@ -367,8 +275,8 @@ STDERR:
 ======================================================================
   TRULOAD COMPLIANCE E2E TEST -- SCENARIO 6
   Full Court Case Lifecycle
-  Target: http://localhost:4000
-  Started: 2026-03-01T18:54:29.032762Z
+  Target: https://kuraweighapitest.masterspace.co.ke
+  Started: 2026-04-14T16:41:41.195434Z
 ======================================================================
 
   Workflow: Metadata -> Autoweigh -> Overload -> Case+Yard
@@ -379,34 +287,12 @@ STDERR:
 ======================================================================
   STEP 1: Login
 ======================================================================
-    POST /auth/login -> 200
-    userId:    019caaba-1808-70a8-8328-71baa828065b
-    stationId: None
+    POST /auth/login -> 401
 
-  [PASS] Login
-    -> Logged in as gadmin@masterspace.co.ke
+  [ERROR] Login
+    -> Login failed: 401 {"message":"Account is locked out"}
 
-======================================================================
-  STEP 2: Setup metadata (driver, transporter, cargo, locs)
-======================================================================
-    Driver found: John E2E (56163410-7e58-4545-ae73-65f1c779ad60)
-    Transporter found: E2E Test Transporters Ltd
-    Cargo type found: Agricultural Produce
-    Origin: Busia Border
-    Destination: Eldoret
-
-  [PASS] Setup metadata (driver, transporter, cargo, locs)
-    -> Metadata: driverId=OK, transporterId=OK, cargoId=OK, originId=OK, destinationId=OK
-
-======================================================================
-  STEP 3: Create scale test
-======================================================================
-    POST /scale-tests -> 400
-
-  [FAIL] Create scale test
-    -> Failed: 400 {"type":"https://tools.ietf.org/html/rfc9110#section-15.5.1","title":"One or more validation errors occurred.","status":400,"errors":{"request":["The request field is required."],"$.stationId":["The J
-
-  *** ABORTING: Critical step 3 failed ***
+  *** ABORTING: Critical step 1 failed ***
 
 
 ======================================================================
@@ -414,12 +300,10 @@ STDERR:
 ======================================================================
   Step  Status   Name
   ---   ------   --------------------------------------------------
-  1     [PASS]   Login
-  2     [PASS]   Setup metadata (driver, transporter, cargo, locs)
-  3     [FAIL]   Create scale test
+  1     [FAIL]   Login
 
   ============================================================
-  TOTAL: 3  |  PASS: 2  |  FAIL: 1
+  TOTAL: 1  |  PASS: 0  |  FAIL: 1
 
   1 STEP(S) FAILED
 
@@ -442,9 +326,9 @@ STDERR:
     courtDispositionTypeId: ---
     convictedOutcomeId: ---
     scaleTestId: ---
-    driverId: 56163410-7e58-4545-ae73-65f1c779ad60
-    transporterId: d59bb5ec-e5ca-4b3e-8d8b-4c850a75f0bd
-    userId: 019caaba-1808-70a8-8328-71baa828065b
+    driverId: ---
+    transporterId: ---
+    userId: ---
 ======================================================================
 
 STDERR:
@@ -458,8 +342,8 @@ STDERR:
 
 ======================================================================
   TRULOAD E2E SCENARIO 7: REPEAT OFFENDER -- MULTIPLE OVERLOADS
-  Target: http://localhost:4000
-  Started: 2026-03-01T18:54:30.576435Z
+  Target: https://kuraweighapitest.masterspace.co.ke
+  Started: 2026-04-14T16:41:42.507165Z
 ======================================================================
 
   Vehicle: KDG 999R
@@ -470,22 +354,12 @@ STDERR:
 ======================================================================
   STEP 1: Login
 ======================================================================
-    POST /auth/login -> 200
-    userId:    019caaba-1808-70a8-8328-71baa828065b
-    stationId: None
+    POST /auth/login -> 401
 
-  [PASS] Login
-    -> Logged in as gadmin@masterspace.co.ke
+  [ERROR] Login
+    -> Login failed: 401 {"message":"Account is locked out"}
 
-======================================================================
-  STEP 2: Create scale test
-======================================================================
-    POST /scale-tests -> 400
-
-  [FAIL] Create scale test
-    -> Failed: 400 {"type":"https://tools.ietf.org/html/rfc9110#section-15.5.1","title":"One or more validation errors occurred.","status":400,"errors":{"request":["The request field is required."],"$.stationId":["The J
-
-  *** ABORTING: Critical step 2 failed ***
+  *** ABORTING: Critical step 1 failed ***
 
 
 ======================================================================
@@ -493,17 +367,16 @@ STDERR:
 ======================================================================
   Step  Status   Name
   ---   ------   --------------------------------------------------
-  1     [PASS]   Login
-  2     [FAIL]   Create scale test
+  1     [FAIL]   Login
 
   ============================================================
-  TOTAL: 2  |  PASS: 1  |  FAIL: 1
+  TOTAL: 1  |  PASS: 0  |  FAIL: 1
 
   1 STEP(S) FAILED
 
   Shared IDs:
-    userId: 019caaba-1808-70a8-8328-71baa828065b
-    stationId: None
+    userId: ---
+    stationId: ---
     scaleTestId: ---
     driverId: ---
     transporterId: ---
@@ -540,13 +413,13 @@ STDERR:
 
 | Scenario | Total | Pass | Fail | Status |
 |----------|-------|------|------|--------|
-| Scenario 1: Standard Overload Workflow | 2 | 1 | 1 | FAIL |
-| Scenario 2: Compliant Vehicle (No Overload) | 2 | 1 | 1 | FAIL |
-| Scenario 3: Tag-Hold and Yard Release | 2 | 1 | 1 | FAIL |
-| Scenario 4: Permit-Based Exemption | 2 | 1 | 1 | FAIL |
-| Scenario 5: Court Escalation Path | 3 | 2 | 1 | FAIL |
-| Scenario 6: Full Court Case Lifecycle | 3 | 2 | 1 | FAIL |
-| Scenario 7: Repeat Offender Multiple Overloads | 2 | 1 | 1 | FAIL |
-| **TOTAL** | **16** | **9** | **7** | **7 FAILURES** |
+| Scenario 1: Standard Overload Workflow | 1 | 0 | 1 | FAIL |
+| Scenario 2: Compliant Vehicle (No Overload) | 1 | 0 | 1 | FAIL |
+| Scenario 3: Tag-Hold and Yard Release | 1 | 0 | 1 | FAIL |
+| Scenario 4: Permit-Based Exemption | 1 | 0 | 1 | FAIL |
+| Scenario 5: Court Escalation Path | 1 | 0 | 1 | FAIL |
+| Scenario 6: Full Court Case Lifecycle | 1 | 0 | 1 | FAIL |
+| Scenario 7: Repeat Offender Multiple Overloads | 1 | 0 | 1 | FAIL |
+| **TOTAL** | **7** | **0** | **7** | **7 FAILURES** |
 
 ### 7 FAILURES DETECTED

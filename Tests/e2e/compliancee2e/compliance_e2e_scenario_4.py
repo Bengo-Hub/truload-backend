@@ -37,6 +37,7 @@ import sys
 import uuid
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
 
 try:
@@ -45,12 +46,18 @@ except ImportError:
     print("ERROR: 'requests' package required. Install with: pip install requests")
     sys.exit(1)
 
+E2E_ROOT = Path(__file__).resolve().parent.parent
+if str(E2E_ROOT) not in sys.path:
+    sys.path.append(str(E2E_ROOT))
+
+from test_credentials import LOGIN_EMAIL_DEFAULT, LOGIN_PASSWORD_DEFAULT
+
 # ─── Configuration ──────────────────────────────────────────────────────────
 
 DEFAULT_BASE_URL = "http://localhost:4000"
 API_PREFIX = "/api/v1"
-LOGIN_EMAIL = "gadmin@masterspace.co.ke"
-LOGIN_PASSWORD = "ChangeMe123!"
+LOGIN_EMAIL = LOGIN_EMAIL_DEFAULT
+LOGIN_PASSWORD = LOGIN_PASSWORD_DEFAULT
 
 # Compliant axle weights (3-axle, GVW=21500, permissible=26000, well under limit)
 COMPLIANT_AXLES = [

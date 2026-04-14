@@ -2,6 +2,7 @@
 import subprocess
 import sys
 import datetime
+import argparse
 
 RESULTS_FILE = "TEST_RESULTS.md"
 SCENARIOS = [
@@ -16,10 +17,18 @@ SCENARIOS = [
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Run all TruLoad compliance E2E scenarios")
+    parser.add_argument(
+        "--base-url",
+        default="https://kuraweighapitest.masterspace.co.ke",
+        help="Backend base URL for all scenarios",
+    )
+    args = parser.parse_args()
+
     with open(RESULTS_FILE, "w", encoding="utf-8") as f:
         f.write("# TruLoad E2E Compliance Test Results\n\n")
         f.write(f"**Date**: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write("**Environment**: localhost:4000 (fresh database)\n\n")
+        f.write(f"**Environment**: {args.base_url}\n\n")
         f.write("---\n\n")
 
         overall_pass = 0
@@ -34,7 +43,7 @@ def main():
 
             try:
                 result = subprocess.run(
-                    [sys.executable, script],
+                    [sys.executable, script, "--base-url", args.base_url],
                     capture_output=True,
                     text=True,
                     timeout=300,

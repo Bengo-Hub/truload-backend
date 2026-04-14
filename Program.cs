@@ -652,6 +652,7 @@ app.UseSwaggerUI(c =>
 });
 
 // Support legacy Swagger URLS (/swagger and /swagger/index.html)
+app.MapGet("/", () => Results.Redirect("/v1/docs", false));
 app.MapGet("/swagger", () => Results.Redirect("/v1/docs", false));
 app.MapGet("/swagger/index.html", () => Results.Redirect("/v1/docs", false));
 
