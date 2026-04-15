@@ -26,6 +26,9 @@ public class YardEntryDto
     public int? GvwPermissibleKg { get; set; }
     public int? OverloadKg { get; set; }
     public decimal? TotalFeeUsd { get; set; }
+    public decimal? TotalFeeKes { get; set; }
+    /// <summary>Charging currency from the Act used (KES or USD)</summary>
+    public string? ChargingCurrency { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
