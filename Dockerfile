@@ -42,8 +42,17 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS final
 ARG APP_VERSION=1.0.0
 ENV VERSION=${APP_VERSION}
 
-# Install curl and postgresql-client for health checks and DB operations
-RUN apt-get update && apt-get install -y curl postgresql-client && rm -rf /var/lib/apt/lists/*
+# Install curl and postgresql-client-17 for health checks + DB dump/restore.
+# The server runs PostgreSQL 17; pg_dump refuses to dump a newer major version,
+# so we pin the client to 17 via the official PostgreSQL APT repo.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl ca-certificates gnupg lsb-release \
+ && install -d /usr/share/postgresql-common/pgdg \
+ && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+ && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends postgresql-client-17 \
+ && rm -rf /var/lib/apt/lists/*
 
 # Install EF Core tools globally for migrations
 RUN dotnet tool install --global dotnet-ef --version 10.0.*
