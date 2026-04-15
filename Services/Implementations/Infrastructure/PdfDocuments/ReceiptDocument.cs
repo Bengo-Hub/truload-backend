@@ -21,7 +21,7 @@ public class ReceiptDocument : BaseDocument
     public ReceiptDocument(Receipt receipt, string? organizationName = null, string? organizationAddress = null, string? orgLogoFile = null, bool showSecondaryLogo = true)
     {
         _receipt = receipt;
-        _organizationName = organizationName ?? "Kenya Roads Authority (KURA)";
+        _organizationName = organizationName ?? "Kenya Urban Roads Authority (KURA)";
         _organizationAddress = organizationAddress ?? "P.O. Box 00100-1234, Nairobi, Kenya";
         _orgLogoFile = ResolveOrgLogo(orgLogoFile);
         _showSecondaryLogo = showSecondaryLogo;
@@ -140,6 +140,7 @@ public class ReceiptDocument : BaseDocument
             {
                 col.Item().PaddingTop(5).Column(summary =>
                 {
+                    var invoiceCurrency = string.IsNullOrWhiteSpace(_receipt.Invoice.Currency) ? _receipt.Currency : _receipt.Invoice.Currency;
                     summary.Item().Text("INVOICE SUMMARY:").FontSize(9).SemiBold();
                     summary.Item().PaddingLeft(10).Table(table =>
                     {
@@ -153,13 +154,13 @@ public class ReceiptDocument : BaseDocument
                         var balance = _receipt.Invoice.AmountDue - totalPaid;
 
                         table.Cell().Text("Invoice Amount:").FontSize(8);
-                        table.Cell().AlignRight().Text($"${_receipt.Invoice.AmountDue:N2}").FontSize(8);
+                        table.Cell().AlignRight().Text($"{invoiceCurrency} {_receipt.Invoice.AmountDue:N2}").FontSize(8);
 
                         table.Cell().Text("Total Paid:").FontSize(8);
-                        table.Cell().AlignRight().Text($"${totalPaid:N2}").FontSize(8).FontColor(Colors.Green.Medium);
+                        table.Cell().AlignRight().Text($"{invoiceCurrency} {totalPaid:N2}").FontSize(8).FontColor(Colors.Green.Medium);
 
                         table.Cell().Text("Balance Due:").FontSize(8).SemiBold();
-                        table.Cell().AlignRight().Text($"${balance:N2}").FontSize(8).SemiBold()
+                        table.Cell().AlignRight().Text($"{invoiceCurrency} {balance:N2}").FontSize(8).SemiBold()
                             .FontColor(balance > 0 ? Colors.Red.Medium : Colors.Green.Medium);
                     });
 

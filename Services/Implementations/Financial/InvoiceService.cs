@@ -314,6 +314,11 @@ public class InvoiceService : IInvoiceService
     private InvoiceDto MapToDto(Invoice invoice)
     {
         var amountPaid = invoice.Receipts?.Where(r => r.DeletedAt == null).Sum(r => r.AmountPaid) ?? 0;
+        var paidAt = invoice.Receipts?
+            .Where(r => r.DeletedAt == null)
+            .OrderByDescending(r => r.PaymentDate)
+            .Select(r => (DateTime?)r.PaymentDate)
+            .FirstOrDefault();
 
         return new InvoiceDto
         {
@@ -332,6 +337,7 @@ public class InvoiceService : IInvoiceService
             Status = invoice.Status,
             GeneratedAt = invoice.GeneratedAt,
             DueDate = invoice.DueDate,
+            PaidAt = paidAt,
             PesaflowInvoiceNumber = invoice.PesaflowInvoiceNumber,
             PesaflowPaymentReference = invoice.PesaflowPaymentReference,
             PesaflowPaymentLink = invoice.PesaflowPaymentLink,

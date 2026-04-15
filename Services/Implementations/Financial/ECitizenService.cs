@@ -306,10 +306,20 @@ public class ECitizenService : IECitizenService
         using var doc = JsonDocument.Parse(responseBody);
         var root = doc.RootElement;
 
+        // Parse amount_paid - Pesaflow may return as string or number
+        decimal amountPaid = 0;
+        if (root.TryGetProperty("amount_paid", out var ap))
+        {
+            if (ap.ValueKind == JsonValueKind.Number)
+                amountPaid = ap.GetDecimal();
+            else if (ap.ValueKind == JsonValueKind.String)
+                decimal.TryParse(ap.GetString(), out amountPaid);
+        }
+
         return new PesaflowPaymentStatusResponse
         {
             Status = root.TryGetProperty("status", out var s) ? s.GetString() : null,
-            AmountPaid = root.TryGetProperty("amount_paid", out var ap) ? ap.GetDecimal() : 0,
+            AmountPaid = amountPaid,
             PaymentReference = root.TryGetProperty("payment_reference", out var pr) ? pr.GetString() : null,
             PaymentChannel = root.TryGetProperty("payment_channel", out var pc) ? pc.GetString() : null,
             PaymentDate = root.TryGetProperty("payment_date", out var pd) && pd.ValueKind != JsonValueKind.Null
@@ -497,49 +507,50 @@ public class ECitizenService : IECitizenService
         {
             try
             {
-                var status = await QueryPaymentStatusAsync(invoice.InvoiceNo, ct);
+                var status = await QueryPaymentStatusForAnyReferenceAsync(invoice, null, ct);
 
-                if (status != null && string.Equals(status.Status, "PAID", StringComparison.OrdinalIgnoreCase))
+                if (IsPaymentConfirmed(status))
                 {
+                    var confirmedStatus = status!;
                     // Check if receipt already exists
                     var hasReceipt = await _context.Receipts
                         .AnyAsync(r => r.InvoiceId == invoice.Id && r.DeletedAt == null, ct);
 
-                    if (!hasReceipt && status.AmountPaid > 0)
+                    if (!hasReceipt && confirmedStatus.AmountPaid > 0)
                     {
                         var paymentRequest = new RecordPaymentRequest
                         {
-                            AmountPaid = status.AmountPaid,
+                            AmountPaid = confirmedStatus.AmountPaid,
                             Currency = invoice.Currency,
                             PaymentMethod = "pesaflow",
-                            TransactionReference = status.PaymentReference,
+                            TransactionReference = confirmedStatus.PaymentReference,
                             IdempotencyKey = Guid.NewGuid()
                         };
 
                         await _receiptService.RecordPaymentAsync(invoice.Id, paymentRequest, Guid.Empty, ct);
 
                         // Update PaymentChannel on the created receipt
-                        if (!string.IsNullOrEmpty(status.PaymentChannel))
+                        if (!string.IsNullOrEmpty(confirmedStatus.PaymentChannel))
                         {
                             var receipt = await _context.Receipts
-                                .Where(r => r.TransactionReference == status.PaymentReference && r.DeletedAt == null)
+                                .Where(r => r.TransactionReference == confirmedStatus.PaymentReference && r.DeletedAt == null)
                                 .FirstOrDefaultAsync(ct);
 
                             if (receipt != null)
                             {
-                                receipt.PaymentChannel = status.PaymentChannel;
+                                receipt.PaymentChannel = confirmedStatus.PaymentChannel;
                                 await _context.SaveChangesAsync(ct);
                             }
                         }
 
-                        invoice.PesaflowPaymentReference = status.PaymentReference;
+                        invoice.PesaflowPaymentReference = confirmedStatus.PaymentReference;
                         invoice.Status = "paid";
                         invoice.UpdatedAt = DateTime.UtcNow;
                         await _context.SaveChangesAsync(ct);
 
                         reconciled++;
                         _logger.LogInformation("Reconciled invoice {InvoiceNo}: {Amount} paid",
-                            invoice.InvoiceNo, status.AmountPaid);
+                            invoice.InvoiceNo, confirmedStatus.AmountPaid);
                     }
                 }
             }
@@ -562,6 +573,7 @@ public class ECitizenService : IECitizenService
 
         if (invoice.Status == "paid")
         {
+            await EnsureCaseClosedForPaidInvoiceAsync(invoice, Guid.Empty, ct);
             _logger.LogInformation("Invoice {InvoiceNo} is already paid", invoice.InvoiceNo);
             return true;
         }
@@ -569,14 +581,14 @@ public class ECitizenService : IECitizenService
         try
         {
             // Query Pesaflow status
-            var status = await QueryPaymentStatusAsync(invoice.InvoiceNo, ct);
+            var status = await QueryPaymentStatusForAnyReferenceAsync(invoice, transactionReference, ct);
 
-            if (status != null && (string.Equals(status.Status, "PAID", StringComparison.OrdinalIgnoreCase) || 
-                                   string.Equals(status.Status, "SUCCESS", StringComparison.OrdinalIgnoreCase)))
+            if (IsPaymentConfirmed(status))
             {
+                var confirmedStatus = status!;
                 // Check if receipt already exists
-                var effectiveAmount = amountPaid ?? status.AmountPaid;
-                var effectiveReference = status.PaymentReference ?? transactionReference;
+                var effectiveAmount = amountPaid ?? confirmedStatus.AmountPaid;
+                var effectiveReference = confirmedStatus.PaymentReference ?? transactionReference;
 
                 if (string.IsNullOrEmpty(effectiveReference))
                 {
@@ -601,7 +613,7 @@ public class ECitizenService : IECitizenService
                     await _receiptService.RecordPaymentAsync(invoice.Id, paymentRequest, Guid.Empty, ct);
 
                     // Update PaymentChannel on the created receipt
-                    if (!string.IsNullOrEmpty(status.PaymentChannel))
+                    if (!string.IsNullOrEmpty(confirmedStatus.PaymentChannel))
                     {
                         var receipt = await _context.Receipts
                             .Where(r => r.TransactionReference == effectiveReference && r.DeletedAt == null)
@@ -609,13 +621,14 @@ public class ECitizenService : IECitizenService
 
                         if (receipt != null)
                         {
-                            receipt.PaymentChannel = status.PaymentChannel;
+                            receipt.PaymentChannel = confirmedStatus.PaymentChannel;
                         }
                     }
 
                     invoice.PesaflowPaymentReference = effectiveReference;
                     invoice.Status = "paid";
                     invoice.UpdatedAt = DateTime.UtcNow;
+                    await EnsureCaseClosedForPaidInvoiceAsync(invoice, Guid.Empty, ct);
                     await _context.SaveChangesAsync(ct);
 
                     _logger.LogInformation("Successfully reconciled invoice {InvoiceNo} manually", invoice.InvoiceNo);
@@ -628,6 +641,7 @@ public class ECitizenService : IECitizenService
                     {
                         invoice.Status = "paid";
                         invoice.UpdatedAt = DateTime.UtcNow;
+                        await EnsureCaseClosedForPaidInvoiceAsync(invoice, Guid.Empty, ct);
                         await _context.SaveChangesAsync(ct);
                     }
                     return true;
@@ -643,5 +657,127 @@ public class ECitizenService : IECitizenService
             _logger.LogError(ex, "Failed to manually reconcile invoice {InvoiceNo}", invoice.InvoiceNo);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Treat Pesaflow payment status values that indicate successful settlement as paid.
+    /// Supports varied upstream conventions (e.g., PAID, SUCCESS, SETTLED) and falls back
+    /// to amount evidence where status is absent/unknown but a positive payment is reported.
+    /// </summary>
+    private static bool IsPaymentConfirmed(PesaflowPaymentStatusResponse? status)
+    {
+        if (status == null)
+            return false;
+
+        var normalized = status.Status?.Trim();
+        if (!string.IsNullOrEmpty(normalized))
+        {
+            if (string.Equals(normalized, "PAID", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(normalized, "SUCCESS", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(normalized, "SETTLED", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return status.AmountPaid > 0;
+    }
+
+    /// <summary>
+    /// Attempts payment status using multiple candidate references.
+    /// Priority: Pesaflow invoice number -> provided transaction ref -> stored payment ref -> local invoice number.
+    /// This supports manual reconciliation where payment references may be MPesa/bank refs instead of invoice refs.
+    /// </summary>
+    private async Task<PesaflowPaymentStatusResponse?> QueryPaymentStatusForAnyReferenceAsync(
+        TruLoad.Backend.Models.Financial.Invoice invoice,
+        string? transactionReference,
+        CancellationToken ct)
+    {
+        var candidates = BuildPaymentStatusReferenceCandidates(invoice, transactionReference);
+
+        foreach (var reference in candidates)
+        {
+            var status = await QueryPaymentStatusAsync(reference, ct);
+            if (status == null)
+                continue;
+
+            if (IsPaymentConfirmed(status))
+            {
+                _logger.LogInformation(
+                    "Payment status confirmed for invoice {InvoiceNo} using reference {Reference}",
+                    invoice.InvoiceNo, reference);
+                return status;
+            }
+
+            _logger.LogInformation(
+                "Payment status not yet confirmed for invoice {InvoiceNo} using reference {Reference}. Status={Status} AmountPaid={AmountPaid}",
+                invoice.InvoiceNo, reference, status.Status, status.AmountPaid);
+        }
+
+        return null;
+    }
+
+    private static List<string> BuildPaymentStatusReferenceCandidates(
+        TruLoad.Backend.Models.Financial.Invoice invoice,
+        string? transactionReference)
+    {
+        var refs = new List<string>();
+
+        void AddIfPresent(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return;
+
+            var trimmed = value.Trim();
+            if (!refs.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
+                refs.Add(trimmed);
+        }
+
+        AddIfPresent(invoice.PesaflowInvoiceNumber);
+        AddIfPresent(transactionReference);
+        AddIfPresent(invoice.PesaflowPaymentReference);
+        AddIfPresent(invoice.InvoiceNo);
+
+        return refs;
+    }
+
+    private async Task EnsureCaseClosedForPaidInvoiceAsync(
+        TruLoad.Backend.Models.Financial.Invoice invoice,
+        Guid userId,
+        CancellationToken ct)
+    {
+        if (!invoice.CaseRegisterId.HasValue)
+            return;
+
+        var caseRegister = await _context.CaseRegisters
+            .Include(c => c.CaseStatus)
+            .FirstOrDefaultAsync(c => c.Id == invoice.CaseRegisterId.Value && c.DeletedAt == null, ct);
+        if (caseRegister == null || caseRegister.ClosedAt.HasValue)
+            return;
+
+        var statusCode = caseRegister.CaseStatus?.Code;
+        var closableStates = new[] { "OPEN", "INVESTIGATION", "ESCALATED" };
+        if (string.IsNullOrWhiteSpace(statusCode) || !closableStates.Contains(statusCode))
+            return;
+
+        var closedStatusId = await _context.CaseStatuses
+            .Where(cs => cs.Code == "CLOSED")
+            .Select(cs => cs.Id)
+            .FirstOrDefaultAsync(ct);
+        var paidDispositionId = await _context.DispositionTypes
+            .Where(dt => dt.Code == "PAID")
+            .Select(dt => dt.Id)
+            .FirstOrDefaultAsync(ct);
+        if (closedStatusId == Guid.Empty || paidDispositionId == Guid.Empty)
+            return;
+
+        caseRegister.CaseStatusId = closedStatusId;
+        caseRegister.DispositionTypeId = paidDispositionId;
+        caseRegister.ClosingReason =
+            $"Case auto-closed after invoice reconciliation. Invoice: {invoice.InvoiceNo}; " +
+            $"Pesaflow reference: {invoice.PesaflowPaymentReference ?? "N/A"}.";
+        caseRegister.ClosedAt = DateTime.UtcNow;
+        caseRegister.ClosedById = userId == Guid.Empty ? null : userId;
+        caseRegister.UpdatedAt = DateTime.UtcNow;
     }
 }

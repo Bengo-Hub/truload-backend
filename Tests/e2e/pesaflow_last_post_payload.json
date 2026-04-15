@@ -7,7 +7,7 @@
     "serviceID": "235330",
     "billDesc": "Test Overload Fine",
     "currency": "KES",
-    "billRefNumber": "TEST-20260213113848",
+    "billRefNumber": "TEST-20260414164207",
     "clientMSISDN": "254700000000",
     "clientName": "Test User",
     "clientIDNumber": "TEST-ID-001",
@@ -17,9 +17,9 @@
     "callBackURLOnFailure": "http://localhost:4000/api/v1/payments/callback/failure",
     "callBackURLOnTimeout": "http://localhost:4000/api/v1/payments/callback/timeout",
     "notificationURL": "http://localhost:4000/api/v1/payments/webhook/ecitizen-pesaflow",
-    "secureHash": "ZmU5ZmYyYTcyNDQ4MTE5YTI0MzM3MGJkODUxOTdjOTQwYWMyM2QwNGEyYWE4MTcxMjJkNTIyZDhkNDMxZjdiYg==",
+    "secureHash": "MmM3Mzk2ZmZkZTI3NDQ1ZGE2NDkwMTI0MzA3NjdiZGZmMWYzZGU3ODUzNWE5MGI4ZjU1ZTYzZmE0ZWE0ZjUwOQ==",
     "format": "json",
     "sendSTK": "false"
   },
-  "timestamp": "2026-02-13T11:38:48.644911+00:00"
+  "timestamp": "2026-04-14T16:42:07.148258+00:00"
 }

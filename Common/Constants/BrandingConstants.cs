@@ -7,18 +7,18 @@ namespace TruLoad.Backend.Common.Constants;
 public static class BrandingConstants
 {
     /// <summary>
-    /// Official color palette for Kenya Roads Authority (KURA/KeNHA).
+    /// Official color palette for Kenya road authorities (KURA/KeNHA/KeRRA).
     /// </summary>
     public static class Colors
     {
         /// <summary>
-        /// Kenya Roads Authority primary black color.
+        /// Kenya road authorities primary black color.
         /// Used for text and primary branding elements.
         /// </summary>
         public const string KuraBlack = "#313232ff";
 
         /// <summary>
-        /// Kenya Roads Authority primary blue color.
+        /// Kenya road authorities primary blue color.
         /// Used for headers, titles, and official documents.
         /// </summary>
         public const string KuraBlue = "#0066CC";
@@ -53,7 +53,7 @@ public static class BrandingConstants
     public static class Organization
     {
         public const string RepublicOfKenya = "REPUBLIC OF KENYA";
-        public const string KenyaRoadsAuthority = "KENYA ROADS AUTHORITY (KeNHA/KURA/KE\nNHA)";
+        public const string KenyaRoadsAuthority = "Kenya Urban Roads Authority (KURA)";
         public const string RoadsEnforcementDivision = "ROADS ENFORCEMENT DIVISION";
         public const string TruLoadSystemName = "TRULOAD WEIGHING SYSTEM";
     }

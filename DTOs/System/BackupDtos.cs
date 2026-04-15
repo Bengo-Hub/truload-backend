@@ -105,7 +105,7 @@ public record UpdateBackupSettingsRequest
     public string ScheduleCron { get; init; } = "0 2 * * *";
 
     [Required]
-    public string StoragePath { get; init; } = "./backups";
+    public string StoragePath { get; init; } = "/app/backups/truload";
 
     public string? BackupPgDumpPath { get; init; }
 

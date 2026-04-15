@@ -374,7 +374,7 @@ public class BackupService : IBackupService
     {
         var path = await _settingsService.GetSettingValueAsync(
             SettingKeys.BackupStoragePath,
-            "./backups",
+            "/app/backups/truload",
             ct);
 
         return path;

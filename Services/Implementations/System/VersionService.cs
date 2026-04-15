@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using System.Reflection;
 using TruLoad.Backend.Services.Interfaces;
 
@@ -11,12 +14,21 @@ public class VersionService : IVersionService
 {
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _environment;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<VersionService> _logger;
     private VersionInfo? _cachedVersionInfo;
+    private DateTime _cacheExpiresAtUtc = DateTime.MinValue;
 
-    public VersionService(IConfiguration configuration, IHostEnvironment environment)
+    public VersionService(
+        IConfiguration configuration,
+        IHostEnvironment environment,
+        IHttpClientFactory httpClientFactory,
+        ILogger<VersionService> logger)
     {
         _configuration = configuration;
         _environment = environment;
+        _httpClientFactory = httpClientFactory;
+        _logger = logger;
     }
 
     /// <summary>
@@ -32,7 +44,7 @@ public class VersionService : IVersionService
     /// </summary>
     public VersionInfo GetVersionInfo()
     {
-        if (_cachedVersionInfo != null)
+        if (_cachedVersionInfo != null && DateTime.UtcNow < _cacheExpiresAtUtc)
         {
             return _cachedVersionInfo;
         }
@@ -45,12 +57,20 @@ public class VersionService : IVersionService
             GitBranch = GetGitBranch(),
             Environment = _environment.EnvironmentName
         };
+        _cacheExpiresAtUtc = DateTime.UtcNow.AddMinutes(GetCacheRefreshMinutes());
 
         return _cachedVersionInfo;
     }
 
     private string GetVersionFromSources()
     {
+        // Prefer latest GitHub release/tag so deployed UI always tracks latest published version.
+        var githubVersion = GetGitHubLatestVersion();
+        if (!string.IsNullOrEmpty(githubVersion))
+        {
+            return StripVersionPrefix(githubVersion);
+        }
+
         // Try environment variable first (set by Docker build arg / CI/CD)
         var envVersion = Environment.GetEnvironmentVariable("VERSION")
             ?? _configuration["VERSION"];
@@ -75,6 +95,15 @@ public class VersionService : IVersionService
 
         // Final fallback
         return "1.0.0";
+    }
+
+    private int GetCacheRefreshMinutes()
+    {
+        var raw = _configuration["Versioning:RefreshMinutes"];
+        if (int.TryParse(raw, out var minutes) && minutes > 0)
+            return minutes;
+
+        return 5;
     }
 
     /// <summary>
@@ -140,6 +169,106 @@ public class VersionService : IVersionService
             // Ignore errors
         }
         return null;
+    }
+
+    private string? GetGitHubLatestVersion()
+    {
+        var repository = _configuration["Versioning:GitHubRepository"]
+            ?? Environment.GetEnvironmentVariable("GITHUB_REPOSITORY")
+            ?? "Bengo-Hub/truload-backend";
+        var apiBaseUrl = _configuration["Versioning:GitHubApiBaseUrl"] ?? "https://api.github.com";
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("TruLoadBackend", "1.0"));
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+
+            var token = _configuration["Versioning:GitHubToken"] ?? Environment.GetEnvironmentVariable("GITHUB_TOKEN");
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Trim());
+            }
+
+            var candidateTags = new List<string>();
+
+            // 1) Prefer explicit latest release when available.
+            var latestReleaseUrl = $"{apiBaseUrl.TrimEnd('/')}/repos/{repository}/releases/latest";
+            using var releaseResponse = client.GetAsync(latestReleaseUrl).GetAwaiter().GetResult();
+            if (releaseResponse.IsSuccessStatusCode)
+            {
+                var latestRelease = releaseResponse.Content.ReadFromJsonAsync<GitHubReleaseResponse>()
+                    .GetAwaiter().GetResult();
+                if (!string.IsNullOrWhiteSpace(latestRelease?.TagName))
+                {
+                    candidateTags.Add(latestRelease.TagName.Trim());
+                }
+            }
+
+            // 2) Add recent releases (helps when /releases/latest lags or misses non-latest semantics).
+            var releasesUrl = $"{apiBaseUrl.TrimEnd('/')}/repos/{repository}/releases?per_page=50";
+            var releases = client.GetFromJsonAsync<List<GitHubReleaseResponse>>(releasesUrl).GetAwaiter().GetResult();
+            if (releases != null)
+            {
+                foreach (var release in releases)
+                {
+                    if (!string.IsNullOrWhiteSpace(release.TagName))
+                    {
+                        candidateTags.Add(release.TagName.Trim());
+                    }
+                }
+            }
+
+            // 3) Add repository tags and choose highest semantic version.
+            var tagsUrl = $"{apiBaseUrl.TrimEnd('/')}/repos/{repository}/tags?per_page=100";
+            var tags = client.GetFromJsonAsync<List<GitHubTagResponse>>(tagsUrl).GetAwaiter().GetResult();
+            if (tags != null)
+            {
+                foreach (var tag in tags)
+                {
+                    if (!string.IsNullOrWhiteSpace(tag.Name))
+                    {
+                        candidateTags.Add(tag.Name.Trim());
+                    }
+                }
+            }
+
+            var bestSemanticTag = candidateTags
+                .Select(tag => new { Tag = tag, Parsed = ParseSemVerOrNull(tag) })
+                .Where(x => x.Parsed != null)
+                .OrderByDescending(x => x.Parsed)
+                .Select(x => x.Tag)
+                .FirstOrDefault();
+
+            if (!string.IsNullOrWhiteSpace(bestSemanticTag))
+            {
+                return bestSemanticTag;
+            }
+
+            // Fallback to first non-empty candidate if no semantic version could be parsed.
+            var fallbackTag = candidateTags.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t));
+            if (!string.IsNullOrWhiteSpace(fallbackTag))
+            {
+                return fallbackTag;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unable to fetch latest version from GitHub");
+        }
+
+        return null;
+    }
+
+    private static Version? ParseSemVerOrNull(string rawTag)
+    {
+        if (string.IsNullOrWhiteSpace(rawTag))
+            return null;
+
+        var normalized = StripVersionPrefix(rawTag);
+        var core = normalized.Split('-', '+')[0];
+
+        return Version.TryParse(core, out var parsed) ? parsed : null;
     }
 
     private string GetGitCommit()
@@ -224,5 +353,17 @@ public class VersionService : IVersionService
             // Ignore errors
         }
         return DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
+    }
+
+    private sealed class GitHubReleaseResponse
+    {
+        [JsonPropertyName("tag_name")]
+        public string? TagName { get; set; }
+    }
+
+    private sealed class GitHubTagResponse
+    {
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
     }
 }

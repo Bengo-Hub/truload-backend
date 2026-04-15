@@ -248,7 +248,7 @@ public class ComplianceCertificateDocument : BaseDocument
             {
                 seal.Item().AlignCenter().Text("OFFICIAL SEAL").FontSize(8).SemiBold();
                 seal.Item().AlignCenter().PaddingVertical(20).Text("[STAMP HERE]").FontSize(10).FontColor(Colors.Grey.Medium);
-                seal.Item().AlignCenter().Text("Kenya Roads Authority").FontSize(7);
+                seal.Item().AlignCenter().Text("Kenya Urban Roads Authority").FontSize(7);
             });
 
             // Bottom Disclaimer

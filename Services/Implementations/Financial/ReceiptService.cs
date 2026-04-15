@@ -104,6 +104,10 @@ public class ReceiptService : IReceiptService
         var invoice = await _context.Invoices
             .Include(i => i.Receipts)
             .Include(i => i.ProsecutionCase)
+            .ThenInclude(p => p!.CaseRegister)
+            .ThenInclude(c => c!.CaseStatus)
+            .Include(i => i.CaseRegister)
+            .ThenInclude(c => c!.CaseStatus)
             .FirstOrDefaultAsync(i => i.Id == invoiceId && i.DeletedAt == null, ct)
             ?? throw new InvalidOperationException($"Invoice {invoiceId} not found");
 
@@ -118,7 +122,11 @@ public class ReceiptService : IReceiptService
         var remaining = invoice.AmountDue - currentPaid;
 
         if (request.AmountPaid > remaining)
-            throw new InvalidOperationException($"Payment amount ({request.AmountPaid:C}) exceeds remaining balance ({remaining:C})");
+        {
+            var currency = string.IsNullOrWhiteSpace(invoice.Currency) ? request.Currency : invoice.Currency;
+            throw new InvalidOperationException(
+                $"Payment amount ({currency} {request.AmountPaid:N2}) exceeds remaining balance ({currency} {remaining:N2})");
+        }
 
         var receiptNo = await GenerateReceiptNumberAsync(ct);
 
@@ -132,7 +140,9 @@ public class ReceiptService : IReceiptService
             PaymentMethod = request.PaymentMethod,
             TransactionReference = request.TransactionReference,
             IdempotencyKey = request.IdempotencyKey,
-            ReceivedById = userId,
+            // System-driven flows (webhook/reconcile jobs) may not have an authenticated officer context.
+            // Persist null instead of Guid.Empty to avoid FK violations on asp_net_users.
+            ReceivedById = userId == Guid.Empty ? null : userId,
             PaymentDate = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -152,6 +162,8 @@ public class ReceiptService : IReceiptService
                 invoice.ProsecutionCase.Status = "paid";
                 invoice.ProsecutionCase.UpdatedAt = DateTime.UtcNow;
             }
+
+            await TryCloseLinkedCaseOnFullPaymentAsync(invoice, receiptNo, request, userId, ct);
         }
 
         invoice.UpdatedAt = DateTime.UtcNow;
@@ -207,6 +219,69 @@ public class ReceiptService : IReceiptService
         }
 
         return (await GetByIdAsync(receipt.Id, ct))!;
+    }
+
+    private async Task TryCloseLinkedCaseOnFullPaymentAsync(
+        Invoice invoice,
+        string receiptNo,
+        RecordPaymentRequest request,
+        Guid userId,
+        CancellationToken ct)
+    {
+        var caseRegister = invoice.CaseRegister ?? invoice.ProsecutionCase?.CaseRegister;
+        if (caseRegister == null || caseRegister.ClosedAt.HasValue)
+            return;
+
+        var currentStatusCode = caseRegister.CaseStatus?.Code;
+        if (string.IsNullOrWhiteSpace(currentStatusCode))
+        {
+            currentStatusCode = await _context.CaseStatuses
+                .Where(cs => cs.Id == caseRegister.CaseStatusId)
+                .Select(cs => cs.Code)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        var closableStates = new[] { "OPEN", "INVESTIGATION", "ESCALATED" };
+        if (string.IsNullOrWhiteSpace(currentStatusCode) || !closableStates.Contains(currentStatusCode))
+        {
+            _logger.LogInformation(
+                "Skipping auto-close for case {CaseNo}; status {Status} is not closable",
+                caseRegister.CaseNo, currentStatusCode ?? "UNKNOWN");
+            return;
+        }
+
+        var closedStatusId = await _context.CaseStatuses
+            .Where(cs => cs.Code == "CLOSED")
+            .Select(cs => cs.Id)
+            .FirstOrDefaultAsync(ct);
+        if (closedStatusId == Guid.Empty)
+        {
+            _logger.LogWarning("Cannot auto-close case {CaseNo}: CLOSED status not found", caseRegister.CaseNo);
+            return;
+        }
+
+        var paidDispositionId = await _context.DispositionTypes
+            .Where(dt => dt.Code == "PAID")
+            .Select(dt => dt.Id)
+            .FirstOrDefaultAsync(ct);
+        if (paidDispositionId == Guid.Empty)
+        {
+            _logger.LogWarning("Cannot auto-close case {CaseNo}: PAID disposition not found", caseRegister.CaseNo);
+            return;
+        }
+
+        caseRegister.CaseStatusId = closedStatusId;
+        caseRegister.DispositionTypeId = paidDispositionId;
+        caseRegister.ClosingReason =
+            $"Case auto-closed after invoice payment reconciliation. Invoice: {invoice.InvoiceNo}; Receipt: {receiptNo}; " +
+            $"Payment method: {request.PaymentMethod}; Amount: {request.AmountPaid:N2} {request.Currency}.";
+        caseRegister.ClosedAt = DateTime.UtcNow;
+        caseRegister.ClosedById = userId == Guid.Empty ? null : userId;
+        caseRegister.UpdatedAt = DateTime.UtcNow;
+
+        _logger.LogInformation(
+            "Auto-closed case {CaseNo} after full payment for invoice {InvoiceNo}",
+            caseRegister.CaseNo, invoice.InvoiceNo);
     }
 
     public async Task<ReceiptDto> VoidReceiptAsync(Guid id, string reason, Guid userId, CancellationToken ct = default)

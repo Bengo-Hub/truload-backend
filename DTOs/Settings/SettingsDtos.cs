@@ -125,7 +125,7 @@ public record BackupSettingsDto
     public bool Enabled { get; init; } = true;
     public string ScheduleCron { get; init; } = "0 2 * * *"; // Daily at 2 AM
     public int RetentionDays { get; init; } = 30;
-    public string StoragePath { get; init; } = "./backups";
+    public string StoragePath { get; init; } = "/app/backups/truload";
 }
 
 /// <summary>
