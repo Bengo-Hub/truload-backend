@@ -67,11 +67,13 @@ ${PULL_SECRETS_YAML}
           # Extract connection details from connection string
           # Format: Host=...;Port=5432;Database=truload;Username=truload_user;Password=XXX
           DB_HOST=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Host=\K[^;]+' || echo "postgresql.infra.svc.cluster.local")
+          DB_PORT=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Port=\K[^;]+' || echo "5432")
           DB_USER=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Username=\K[^;]+' || echo "truload_user")
           DB_NAME=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Database=\K[^;]+' || echo "truload")
           DB_PASS=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Password=\K[^;]+' || echo "")
 
           echo "Database Host: \$DB_HOST"
+          echo "Database Port: \$DB_PORT"
           echo "Database User: \$DB_USER"
           echo "Database Name: \$DB_NAME"
 
@@ -83,13 +85,12 @@ ${PULL_SECRETS_YAML}
           # Test database connectivity using extracted credentials
           echo "Testing PostgreSQL connection..."
           export PGPASSWORD="\$DB_PASS"
-          psql -h "\$DB_HOST" -U "\$DB_USER" -d "\$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1 && {
+          psql -h "\$DB_HOST" -p "\$DB_PORT" -U "\$DB_USER" -d "\$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1 && {
             echo "✓ PostgreSQL connection successful"
           } || {
-            echo "✗ PostgreSQL connection failed - check credentials"
-            echo "Trying with postgres superuser..."
-            psql -h "\$DB_HOST" -U postgres -d "\$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1 && {
-              echo "✓ PostgreSQL connection successful (via postgres user)"
+            echo "✗ PostgreSQL connection failed via PgBouncer - trying direct PostgreSQL..."
+            psql -h "postgresql.infra.svc.cluster.local" -p 5432 -U "\$DB_USER" -d "\$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1 && {
+              echo "✓ PostgreSQL connection successful (direct)"
             } || {
               echo "✗ PostgreSQL connection failed completely"
               exit 1
@@ -98,7 +99,7 @@ ${PULL_SECRETS_YAML}
 
           # Check if database has tables (indicates existing deployment)
           echo "Checking database state..."
-          TABLE_COUNT=\$(psql -h "\$DB_HOST" -U "\$DB_USER" -d "\$DB_NAME" -t -c \
+          TABLE_COUNT=\$(psql -h "\$DB_HOST" -p "\$DB_PORT" -U "\$DB_USER" -d "\$DB_NAME" -t -c \
             "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';" 2>/dev/null | xargs || echo "0")
           
           # For .NET runtime images, EF tools don't work with DLLs
