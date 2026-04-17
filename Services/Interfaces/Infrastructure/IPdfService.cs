@@ -1,3 +1,4 @@
+using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models.CaseManagement;
 
@@ -7,6 +8,7 @@ public interface IPdfService
 {
     // Weighing documents
     Task<byte[]> GenerateWeightTicketAsync(WeighingTransaction transaction);
+    Task<byte[]> GenerateCommercialWeightTicketAsync(CommercialWeighingResultDto result, Guid stationId);
     Task<byte[]> GenerateProhibitionOrderAsync(ProhibitionOrder order);
     Task<byte[]> GeneratePermitAsync(Permit permit);
 

@@ -156,7 +156,11 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     // ===== Traffic: Driver & Demerit Points Management =====
     public DbSet<Driver> Drivers { get; set; } = null!;
     public DbSet<DriverDemeritRecord> DriverDemeritRecords { get; set; } = null!;
-    
+
+    // ===== Commercial Weighing =====
+    public DbSet<CommercialToleranceSetting> CommercialToleranceSettings { get; set; } = null!;
+    public DbSet<VehicleTareHistory> VehicleTareHistory { get; set; } = null!;
+
     // ===== System Configuration =====
     public DbSet<PermitType> PermitTypes { get; set; } = null!;
     public DbSet<ToleranceSetting> ToleranceSettings { get; set; } = null!;

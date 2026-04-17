@@ -65,6 +65,35 @@ namespace TruLoad.Backend.Models.Weighing
         [Column("is_flagged")]
         public bool IsFlagged { get; set; } = false;
 
+        // ── Commercial Weighing: Tare Weight Management ──
+
+        /// <summary>
+        /// Default/preset tare weight for this vehicle (kg).
+        /// Used in single-pass commercial weighing when the vehicle isn't weighed empty.
+        /// </summary>
+        [Column("default_tare_weight_kg")]
+        public int? DefaultTareWeightKg { get; set; }
+
+        /// <summary>
+        /// Most recent measured tare weight (kg).
+        /// Updated each time the vehicle is weighed empty.
+        /// </summary>
+        [Column("last_tare_weight_kg")]
+        public int? LastTareWeightKg { get; set; }
+
+        /// <summary>
+        /// Timestamp of the most recent tare measurement.
+        /// </summary>
+        [Column("last_tare_weighed_at")]
+        public DateTime? LastTareWeighedAt { get; set; }
+
+        /// <summary>
+        /// Number of days before tare weight must be re-verified.
+        /// Default null uses the organization-level setting (typically 30-90 days).
+        /// </summary>
+        [Column("tare_expiry_days")]
+        public int? TareExpiryDays { get; set; }
+
         // Navigation properties
         [ForeignKey("OwnerId")]
         public virtual VehicleOwner? Owner { get; set; }
@@ -77,5 +106,6 @@ namespace TruLoad.Backend.Models.Weighing
 
         // Collections
         public virtual ICollection<Permit> Permits { get; set; } = new List<Permit>();
+        public virtual ICollection<VehicleTareHistory> TareHistory { get; set; } = new List<VehicleTareHistory>();
     }
 }

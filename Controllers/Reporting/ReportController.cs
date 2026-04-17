@@ -124,6 +124,12 @@ public class ReportController : ControllerBase
             return isEnforcement;
         }
 
+        // Commercial reports are only for commercial tenants with weighing enabled
+        if (string.Equals(reportModule, ReportModules.Commercial, StringComparison.OrdinalIgnoreCase))
+        {
+            return !isEnforcement && enabledModules.Contains(TenantModules.Weighing, StringComparer.OrdinalIgnoreCase);
+        }
+
         var allowed = GetAllowedReportModules(enabledModules);
         return allowed.Contains(reportModule);
     }
@@ -164,6 +170,12 @@ public class ReportController : ControllerBase
         {
             allowedReportModules.Add(ReportModules.Yard);
             allowedReportModules.Add(ReportModules.Security);
+        }
+
+        // Commercial tenants with weighing enabled get commercial reports
+        if (!isEnforcement && enabledModules.Contains(TenantModules.Weighing, StringComparer.OrdinalIgnoreCase))
+        {
+            allowedReportModules.Add(ReportModules.Commercial);
         }
 
         catalog.Modules = catalog.Modules

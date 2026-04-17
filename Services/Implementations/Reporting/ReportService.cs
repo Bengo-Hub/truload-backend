@@ -19,6 +19,7 @@ public class ReportService : IReportService
         [ReportModules.Financial] = "Financial",
         [ReportModules.Yard] = "Yard Management",
         [ReportModules.Security] = "Security & Audit",
+        [ReportModules.Commercial] = "Commercial Weighing",
     };
 
     public ReportService(

@@ -237,6 +237,17 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.HasIndex(e => e.DescriptionEmbedding)
                     .HasMethod("hnsw")
                     .HasOperators("vector_cosine_ops");
+
+                // ── Commercial Weighing: Tare Weight Fields ──
+                entity.Property(e => e.DefaultTareWeightKg).HasColumnName("default_tare_weight_kg");
+                entity.Property(e => e.LastTareWeightKg).HasColumnName("last_tare_weight_kg");
+                entity.Property(e => e.LastTareWeighedAt).HasColumnName("last_tare_weighed_at");
+                entity.Property(e => e.TareExpiryDays).HasColumnName("tare_expiry_days");
+
+                entity.HasMany(e => e.TareHistory)
+                    .WithOne(th => th.Vehicle)
+                    .HasForeignKey(th => th.VehicleId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Permit entity configuration
@@ -451,6 +462,42 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.HasIndex(e => e.ViolationReasonEmbedding)
                     .HasMethod("hnsw")
                     .HasOperators("vector_cosine_ops");
+
+                // ── Commercial Weighing Fields ──
+                entity.Property(e => e.WeighingMode)
+                    .HasColumnName("weighing_mode")
+                    .HasMaxLength(20)
+                    .HasDefaultValue("enforcement");
+
+                entity.Property(e => e.FirstWeightKg).HasColumnName("first_weight_kg");
+                entity.Property(e => e.FirstWeightType).HasColumnName("first_weight_type").HasMaxLength(10);
+                entity.Property(e => e.FirstWeightAt).HasColumnName("first_weight_at");
+                entity.Property(e => e.SecondWeightKg).HasColumnName("second_weight_kg");
+                entity.Property(e => e.SecondWeightType).HasColumnName("second_weight_type").HasMaxLength(10);
+                entity.Property(e => e.SecondWeightAt).HasColumnName("second_weight_at");
+                entity.Property(e => e.TareWeightKg).HasColumnName("tare_weight_kg");
+                entity.Property(e => e.GrossWeightKg).HasColumnName("gross_weight_kg");
+                entity.Property(e => e.NetWeightKg).HasColumnName("net_weight_kg");
+                entity.Property(e => e.TareSource).HasColumnName("tare_source").HasMaxLength(20);
+                entity.Property(e => e.ConsignmentNo).HasColumnName("consignment_no").HasMaxLength(100);
+                entity.Property(e => e.OrderReference).HasColumnName("order_reference").HasMaxLength(100);
+                entity.Property(e => e.ExpectedNetWeightKg).HasColumnName("expected_net_weight_kg");
+                entity.Property(e => e.WeightDiscrepancyKg).HasColumnName("weight_discrepancy_kg");
+                entity.Property(e => e.SealNumbers).HasColumnName("seal_numbers").HasMaxLength(200);
+                entity.Property(e => e.TrailerRegNo).HasColumnName("trailer_reg_no").HasMaxLength(20);
+                entity.Property(e => e.Remarks).HasColumnName("remarks");
+                entity.Property(e => e.QualityDeductionKg).HasColumnName("quality_deduction_kg");
+                entity.Property(e => e.AdjustedNetWeightKg).HasColumnName("adjusted_net_weight_kg");
+                entity.Property(e => e.IndustryMetadata).HasColumnName("industry_metadata").HasColumnType("jsonb");
+
+                // Commercial indexes
+                entity.HasIndex(e => e.WeighingMode)
+                    .HasDatabaseName("IX_weighing_transactions_weighing_mode");
+                entity.HasIndex(e => e.ConsignmentNo)
+                    .HasDatabaseName("IX_weighing_transactions_consignment_no")
+                    .HasFilter("consignment_no IS NOT NULL");
+                entity.HasIndex(e => new { e.TransporterId, e.WeighedAt })
+                    .HasDatabaseName("IX_weighing_transactions_transporter_date");
             });
 
             // WeighingAxle entity configuration
@@ -637,6 +684,149 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.HasIndex(e => e.WeighingId);
                 entity.HasIndex(e => e.IssuedById);
                 entity.HasIndex(e => e.Status);
+            });
+
+            // ── Commercial Tolerance Setting entity configuration ──
+            modelBuilder.Entity<CommercialToleranceSetting>(entity =>
+            {
+                entity.ToTable("commercial_tolerance_settings", "weighing");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id)
+                    .HasColumnName("id")
+                    .HasColumnType("uuid")
+                    .HasDefaultValueSql("gen_random_uuid()");
+
+                entity.Property(e => e.ToleranceType)
+                    .HasColumnName("tolerance_type")
+                    .HasMaxLength(20)
+                    .IsRequired();
+
+                entity.Property(e => e.ToleranceValue)
+                    .HasColumnName("tolerance_value")
+                    .HasColumnType("decimal(10,4)")
+                    .IsRequired();
+
+                entity.Property(e => e.MaxToleranceKg)
+                    .HasColumnName("max_tolerance_kg");
+
+                entity.Property(e => e.CargoTypeId)
+                    .HasColumnName("cargo_type_id");
+
+                entity.Property(e => e.Description)
+                    .HasColumnName("description")
+                    .HasMaxLength(200);
+
+                entity.Property(e => e.OrganizationId)
+                    .HasColumnName("organization_id");
+
+                entity.Property(e => e.StationId)
+                    .HasColumnName("station_id");
+
+                entity.Property(e => e.IsActive)
+                    .HasColumnName("is_active")
+                    .HasDefaultValue(true);
+
+                entity.Property(e => e.CreatedAt)
+                    .HasColumnName("created_at")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.Property(e => e.UpdatedAt)
+                    .HasColumnName("updated_at")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne(e => e.CargoType)
+                    .WithMany()
+                    .HasForeignKey(e => e.CargoTypeId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasIndex(e => e.OrganizationId);
+                entity.HasIndex(e => new { e.OrganizationId, e.CargoTypeId })
+                    .HasDatabaseName("IX_commercial_tolerance_org_cargo");
+
+                entity.HasCheckConstraint("chk_tolerance_type",
+                    "tolerance_type IN ('percentage', 'absolute')");
+            });
+
+            // ── Vehicle Tare History entity configuration ──
+            modelBuilder.Entity<VehicleTareHistory>(entity =>
+            {
+                entity.ToTable("vehicle_tare_history", "weighing");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id)
+                    .HasColumnName("id")
+                    .HasColumnType("uuid")
+                    .HasDefaultValueSql("gen_random_uuid()");
+
+                entity.Property(e => e.VehicleId)
+                    .HasColumnName("vehicle_id")
+                    .IsRequired();
+
+                entity.Property(e => e.TareWeightKg)
+                    .HasColumnName("tare_weight_kg")
+                    .IsRequired();
+
+                entity.Property(e => e.WeighedAt)
+                    .HasColumnName("weighed_at")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.Property(e => e.StationId)
+                    .HasColumnName("station_id");
+
+                entity.Property(e => e.OrganizationId)
+                    .HasColumnName("organization_id")
+                    .IsRequired();
+
+                entity.Property(e => e.Source)
+                    .HasColumnName("source")
+                    .HasMaxLength(20)
+                    .IsRequired();
+
+                entity.Property(e => e.Notes)
+                    .HasColumnName("notes")
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.IsActive)
+                    .HasColumnName("is_active")
+                    .HasDefaultValue(true);
+
+                entity.Property(e => e.CreatedAt)
+                    .HasColumnName("created_at")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.Property(e => e.UpdatedAt)
+                    .HasColumnName("updated_at")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasIndex(e => e.VehicleId);
+                entity.HasIndex(e => e.OrganizationId);
+                entity.HasIndex(e => new { e.VehicleId, e.WeighedAt })
+                    .HasDatabaseName("IX_vehicle_tare_history_vehicle_date");
+
+                entity.HasCheckConstraint("chk_tare_source",
+                    "source IN ('measured', 'manual')");
+            });
+
+            // ── Transporter portal fields ──
+            modelBuilder.Entity<Transporter>(entity =>
+            {
+                entity.Property(e => e.PortalAccountEmail)
+                    .HasColumnName("portal_account_email")
+                    .HasMaxLength(255);
+
+                entity.Property(e => e.PortalAccountId)
+                    .HasColumnName("portal_account_id");
+
+                entity.HasIndex(e => e.PortalAccountEmail)
+                    .HasDatabaseName("IX_transporters_portal_email")
+                    .HasFilter("portal_account_email IS NOT NULL");
+
+                entity.HasIndex(e => e.PortalAccountId)
+                    .HasDatabaseName("IX_transporters_portal_account_id")
+                    .HasFilter("portal_account_id IS NOT NULL");
             });
     }
 }

@@ -11,8 +11,9 @@ public static class ReportModules
     public const string Financial = "financial";
     public const string Yard = "yard";
     public const string Security = "security";
+    public const string Commercial = "commercial";
 
-    public static readonly string[] All = [Weighing, Prosecution, Cases, Financial, Yard, Security];
+    public static readonly string[] All = [Weighing, Prosecution, Cases, Financial, Yard, Security, Commercial];
 }
 
 /// <summary>

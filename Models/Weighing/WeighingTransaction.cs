@@ -280,6 +280,127 @@ public class WeighingTransaction : TenantAwareEntity
     /// </summary>
     public DateTime? AutoweighAt { get; set; }
 
+    // ── Commercial Weighing Fields ──
+
+    /// <summary>
+    /// Weighing mode: "enforcement" (axle-load) or "commercial" (factory/industry).
+    /// Derived from Organization.TenantType at creation time.
+    /// </summary>
+    [MaxLength(20)]
+    public string WeighingMode { get; set; } = "enforcement";
+
+    /// <summary>
+    /// First pass weight in kg (commercial two-pass weighing).
+    /// </summary>
+    public int? FirstWeightKg { get; set; }
+
+    /// <summary>
+    /// Type of first weight: "tare" or "gross".
+    /// </summary>
+    [MaxLength(10)]
+    public string? FirstWeightType { get; set; }
+
+    /// <summary>
+    /// Timestamp of first weight capture.
+    /// </summary>
+    public DateTime? FirstWeightAt { get; set; }
+
+    /// <summary>
+    /// Second pass weight in kg (commercial two-pass weighing).
+    /// </summary>
+    public int? SecondWeightKg { get; set; }
+
+    /// <summary>
+    /// Type of second weight: "tare" or "gross".
+    /// </summary>
+    [MaxLength(10)]
+    public string? SecondWeightType { get; set; }
+
+    /// <summary>
+    /// Timestamp of second weight capture.
+    /// </summary>
+    public DateTime? SecondWeightAt { get; set; }
+
+    /// <summary>
+    /// Resolved tare weight (from measurement, preset, or stored).
+    /// </summary>
+    public int? TareWeightKg { get; set; }
+
+    /// <summary>
+    /// Resolved gross weight.
+    /// </summary>
+    public int? GrossWeightKg { get; set; }
+
+    /// <summary>
+    /// Net weight = gross - tare (cargo weight).
+    /// </summary>
+    public int? NetWeightKg { get; set; }
+
+    /// <summary>
+    /// Source of the tare weight: "measured", "preset", "stored".
+    /// </summary>
+    [MaxLength(20)]
+    public string? TareSource { get; set; }
+
+    /// <summary>
+    /// Consignment or delivery note reference number.
+    /// </summary>
+    [MaxLength(100)]
+    public string? ConsignmentNo { get; set; }
+
+    /// <summary>
+    /// Purchase order, sales order, or dispatch order reference.
+    /// </summary>
+    [MaxLength(100)]
+    public string? OrderReference { get; set; }
+
+    /// <summary>
+    /// Expected net weight (from order/dispatch).
+    /// Used for discrepancy detection.
+    /// </summary>
+    public int? ExpectedNetWeightKg { get; set; }
+
+    /// <summary>
+    /// Difference between actual and expected net weight.
+    /// Positive = over expected, negative = under expected.
+    /// </summary>
+    public int? WeightDiscrepancyKg { get; set; }
+
+    /// <summary>
+    /// Container or trailer seal numbers (comma-separated).
+    /// </summary>
+    [MaxLength(200)]
+    public string? SealNumbers { get; set; }
+
+    /// <summary>
+    /// Trailer registration number (for articulated vehicles).
+    /// </summary>
+    [MaxLength(20)]
+    public string? TrailerRegNo { get; set; }
+
+    /// <summary>
+    /// Operator notes or observations about this weighing.
+    /// </summary>
+    public string? Remarks { get; set; }
+
+    /// <summary>
+    /// Quality deduction in kg (e.g., moisture, foreign matter for agri commodities).
+    /// </summary>
+    public int? QualityDeductionKg { get; set; }
+
+    /// <summary>
+    /// Net weight after quality deductions: NetWeightKg - QualityDeductionKg.
+    /// </summary>
+    public int? AdjustedNetWeightKg { get; set; }
+
+    /// <summary>
+    /// Industry-specific metadata stored as JSON.
+    /// E.g., mining: pit source, material grade. Agriculture: moisture %, grading.
+    /// Logistics: container number, bill of lading. Waste: manifest, waste stream.
+    /// </summary>
+    [Column(TypeName = "jsonb")]
+    public string? IndustryMetadata { get; set; }
+
     // Navigation Properties
     public Vehicle? Vehicle { get; set; }
     public Driver? Driver { get; set; }

@@ -7,6 +7,7 @@ using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models.CaseManagement;
 using TruLoad.Backend.Models.Prosecution;
 using TruLoad.Backend.Models.Financial;
+using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments;
 
@@ -66,6 +67,39 @@ public class QuestPdfService : IPdfService
                 transaction, organizationName, tenantType, orgLogoFile,
                 operationalToleranceKg, primaryColor, secondaryColor,
                 gvwToleranceKg, gvwToleranceDisplay, axleToleranceDisplay);
+            return document.Generate();
+        });
+    }
+
+    public async Task<byte[]> GenerateCommercialWeightTicketAsync(CommercialWeighingResultDto result, Guid stationId)
+    {
+        // Resolve organization info from station for branding
+        string? organizationName = null;
+        string? orgLogoFile = null;
+        string? primaryColor = null;
+        string? secondaryColor = null;
+        if (stationId != Guid.Empty)
+        {
+            var orgInfo = await _context.Stations
+                .Where(s => s.Id == stationId)
+                .Select(s => new {
+                    s.Organization.Name,
+                    s.Organization.LogoUrl,
+                    s.Organization.PrimaryColor,
+                    s.Organization.SecondaryColor
+                })
+                .FirstOrDefaultAsync();
+            organizationName = orgInfo?.Name;
+            primaryColor = orgInfo?.PrimaryColor;
+            secondaryColor = orgInfo?.SecondaryColor;
+            if (!string.IsNullOrEmpty(orgInfo?.LogoUrl))
+                orgLogoFile = Path.GetFileName(orgInfo.LogoUrl);
+        }
+
+        return await Task.Run(() =>
+        {
+            var document = new CommercialWeightTicketDocument(
+                result, organizationName, orgLogoFile, primaryColor, secondaryColor);
             return document.Generate();
         });
     }

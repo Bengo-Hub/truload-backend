@@ -41,6 +41,20 @@ namespace TruLoad.Backend.Models.Weighing
         [StringLength(50)]
         public string? NtacNo { get; set; }
 
+        /// <summary>
+        /// Email address linked to the transporter's self-service portal account.
+        /// Matched against auth-api user for portal authentication.
+        /// </summary>
+        [Column("portal_account_email")]
+        [StringLength(255)]
+        public string? PortalAccountEmail { get; set; }
+
+        /// <summary>
+        /// Auth-api user ID linked to this transporter for portal access.
+        /// </summary>
+        [Column("portal_account_id")]
+        public Guid? PortalAccountId { get; set; }
+
         // Collections
         public virtual ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
     }

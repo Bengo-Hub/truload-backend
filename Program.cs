@@ -393,6 +393,7 @@ builder.Services.AddScoped<IStatusLookupService, StatusLookupService>();
 // Auth services
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IWeighingService, WeighingService>();
+builder.Services.AddScoped<ICommercialWeighingService, CommercialWeighingService>();
 builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
 
 // Document numbering service (Sprint 22)
@@ -481,6 +482,7 @@ builder.Services.AddScoped<IModuleReportGenerator, CaseReportGenerator>();
 builder.Services.AddScoped<IModuleReportGenerator, FinancialReportGenerator>();
 builder.Services.AddScoped<IModuleReportGenerator, YardReportGenerator>();
 builder.Services.AddScoped<IModuleReportGenerator, SecurityReportGenerator>();
+builder.Services.AddScoped<IModuleReportGenerator, CommercialReportGenerator>();
 
 // ===== Hangfire Background Jobs =====
 // Reuse the pool-limited connection string for Hangfire too
