@@ -65,14 +65,19 @@ ${PULL_SECRETS_YAML}
           echo "================================"
           
           # Extract connection details from connection string
-          # Format: Host=...;Port=5432;Database=truload;Username=truload_user;Password=XXX
-          DB_HOST=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Host=\K[^;]+' || echo "postgresql.infra.svc.cluster.local")
-          DB_PORT=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Port=\K[^;]+' || echo "5432")
+          # Format: Host=pgbouncer...;Port=6432;Database=truload;Username=truload_user;Password=XXX
           DB_USER=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Username=\K[^;]+' || echo "truload_user")
           DB_NAME=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Database=\K[^;]+' || echo "truload")
           DB_PASS=\$(echo "\$ConnectionStrings__DefaultConnection" | grep -oP 'Password=\K[^;]+' || echo "")
 
-          echo "Database Host: \$DB_HOST"
+          # Migrations ALWAYS bypass PgBouncer and connect directly to PostgreSQL.
+          # PgBouncer transaction pooling can interfere with DDL, advisory locks,
+          # and prepared statements used by EF Core migrations.
+          # Runtime connections still use PgBouncer for connection pooling.
+          DB_HOST="postgresql.infra.svc.cluster.local"
+          DB_PORT="5432"
+
+          echo "Database Host: \$DB_HOST (direct PostgreSQL, bypassing PgBouncer)"
           echo "Database Port: \$DB_PORT"
           echo "Database User: \$DB_USER"
           echo "Database Name: \$DB_NAME"
@@ -86,15 +91,13 @@ ${PULL_SECRETS_YAML}
           echo "Testing PostgreSQL connection..."
           export PGPASSWORD="\$DB_PASS"
           psql -h "\$DB_HOST" -p "\$DB_PORT" -U "\$DB_USER" -d "\$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1 && {
-            echo "✓ PostgreSQL connection successful"
+            echo "✓ PostgreSQL connection successful (direct)"
           } || {
-            echo "✗ PostgreSQL connection failed via PgBouncer - trying direct PostgreSQL..."
-            psql -h "postgresql.infra.svc.cluster.local" -p 5432 -U "\$DB_USER" -d "\$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1 && {
-              echo "✓ PostgreSQL connection successful (direct)"
-            } || {
-              echo "✗ PostgreSQL connection failed completely"
-              exit 1
-            }
+            echo "✗ PostgreSQL connection failed"
+            echo "  Host: \$DB_HOST:\$DB_PORT"
+            echo "  User: \$DB_USER"
+            echo "  Database: \$DB_NAME"
+            exit 1
           }
 
           # Check if database has tables (indicates existing deployment)
