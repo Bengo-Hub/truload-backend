@@ -60,6 +60,8 @@ using TruLoad.Backend.Services.Interfaces.Integration;
 using TruLoad.Backend.Services.Implementations.Integration;
 using TruLoad.Backend.Services.Interfaces.Reporting;
 using TruLoad.Backend.Services.Implementations.Reporting;
+using TruLoad.Backend.Services.Interfaces.Portal;
+using TruLoad.Backend.Services.Implementations.Portal;
 using TruLoad.Backend.Services.BackgroundJobs;
 using TruLoad.Backend.Services.Implementations.Reporting.Modules;
 using TruLoad.Backend.DTOs.Analytics;
@@ -473,6 +475,9 @@ builder.Services.AddHttpClient<ISupersetService, SupersetService>();
 
 // SignalR for real-time analytics
 builder.Services.AddSignalR();
+
+// Transporter Self-Service Portal
+builder.Services.AddScoped<ITransporterPortalService, TransporterPortalService>();
 
 // Reporting services (modular per-module report generation)
 builder.Services.AddScoped<IReportService, ReportService>();

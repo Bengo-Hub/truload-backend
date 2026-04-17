@@ -48,6 +48,7 @@ public class SubscriptionEnforcementMiddleware
         // Skip paths that should always be accessible (auth, health, webhooks)
         var path = context.Request.Path.Value ?? "";
         if (path.StartsWith("/api/v1/auth", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/v1/portal", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/v1/payments/treasury-callback", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/hangfire", StringComparison.OrdinalIgnoreCase))
