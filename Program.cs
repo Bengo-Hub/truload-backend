@@ -86,6 +86,7 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new TruLoad.Backend.Json.NullableDateTimeJsonConverter());
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 builder.Services.AddMemoryCache();
 builder.Services.AddEndpointsApiExplorer();
