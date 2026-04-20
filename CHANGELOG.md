@@ -5,6 +5,15 @@ All notable changes to TruLoad Backend will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1](https://github.com/Bengo-Hub/truload-backend/compare/v1.1.0...v1.1.1) (2026-04-20)
+
+
+### Bug Fixes
+
+* bypass PgBouncer for EF Core startup migrations ([e445dcf](https://github.com/Bengo-Hub/truload-backend/commit/e445dcf6304eaffcfb44bc04af3555485937ef3c))
+* remove redundant migration job — startup handles migrations ([b3128b5](https://github.com/Bengo-Hub/truload-backend/commit/b3128b5c283948ae0486c017fd24aaec6815ab18))
+* use DROP INDEX IF EXISTS in commercial weighing migration ([4fd3b3e](https://github.com/Bengo-Hub/truload-backend/commit/4fd3b3edd8c4336d7af1a1ea2b24b4851abf5a22))
+
 ## [1.1.0](https://github.com/Bengo-Hub/truload-backend/compare/v1.0.29...v1.1.0) (2026-04-17)
 
 
