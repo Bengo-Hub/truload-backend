@@ -121,6 +121,19 @@ public class Driver : BaseEntity
     /// </summary>
     public DateTime? SuspensionEndDate { get; set; }
 
+    /// <summary>
+    /// Email address linked to the driver's self-service portal account.
+    /// Matched against auth-api user for portal authentication.
+    /// Drivers log in to view their personal weighing history and demerit points.
+    /// </summary>
+    [StringLength(255)]
+    public string? PortalAccountEmail { get; set; }
+
+    /// <summary>
+    /// Auth-api user ID linked to this driver for portal access.
+    /// </summary>
+    public Guid? PortalAccountId { get; set; }
+
     // Navigation properties
     public ICollection<DriverDemeritRecord> DemeritRecords { get; set; } = new List<DriverDemeritRecord>();
     // Future: public ICollection<Weighing> Weighings { get; set; }

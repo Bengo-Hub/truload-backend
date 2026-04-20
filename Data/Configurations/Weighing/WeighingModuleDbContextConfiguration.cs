@@ -64,11 +64,23 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                     .HasColumnName("created_at")
                     .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                entity.Property(e => e.PortalAccountEmail)
+                    .HasColumnName("portal_account_email")
+                    .HasMaxLength(255);
+                entity.Property(e => e.PortalAccountId)
+                    .HasColumnName("portal_account_id");
+
                 // Indexes
                 entity.HasIndex(e => e.IdNoOrPassport).IsUnique();
                 entity.HasIndex(e => e.NtacNo).IsUnique().HasFilter("ntac_no IS NOT NULL");
                 entity.HasIndex(e => e.Email);
                 entity.HasIndex(e => e.Phone);
+                entity.HasIndex(e => e.PortalAccountEmail)
+                    .HasDatabaseName("IX_vehicle_owners_portal_account_email")
+                    .HasFilter("portal_account_email IS NOT NULL");
+                entity.HasIndex(e => e.PortalAccountId)
+                    .HasDatabaseName("IX_vehicle_owners_portal_account_id")
+                    .HasFilter("portal_account_id IS NOT NULL");
             });
 
             // Transporter entity configuration
@@ -612,10 +624,22 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                entity.Property(e => e.PortalAccountEmail)
+                    .HasColumnName("portal_account_email")
+                    .HasMaxLength(255);
+                entity.Property(e => e.PortalAccountId)
+                    .HasColumnName("portal_account_id");
+
                 // Indexes — filtered unique so multiple NULLs are allowed
                 entity.HasIndex(e => e.DrivingLicenseNo).IsUnique().HasFilter("driving_license_no IS NOT NULL");
                 entity.HasIndex(e => e.IdNumber).IsUnique().HasFilter("id_number IS NOT NULL");
                 entity.HasIndex(e => e.NtsaId);
+                entity.HasIndex(e => e.PortalAccountEmail)
+                    .HasDatabaseName("IX_drivers_portal_account_email")
+                    .HasFilter("portal_account_email IS NOT NULL");
+                entity.HasIndex(e => e.PortalAccountId)
+                    .HasDatabaseName("IX_drivers_portal_account_id")
+                    .HasFilter("portal_account_id IS NOT NULL");
             });
 
             // DriverDemeritRecord entity configuration
