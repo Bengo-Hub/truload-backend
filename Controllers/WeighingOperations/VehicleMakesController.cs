@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models.Infrastructure;
 using TruLoad.Backend.Repositories.Infrastructure;
 
@@ -109,8 +110,16 @@ public class VehicleMakesController : ControllerBase
             IsActive = true
         };
 
-        var created = await _repository.CreateAsync(make);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        try
+        {
+            var created = await _repository.CreateAsync(make);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("idx_vehicle_makes_code") == true
+                                         || ex.InnerException?.Message.Contains("duplicate key") == true)
+        {
+            return Conflict(new { Message = $"Vehicle make with code {request.Code} already exists" });
+        }
     }
 
     /// <summary>

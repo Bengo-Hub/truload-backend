@@ -45,31 +45,13 @@ public class AuditMiddleware
         var requestPath = context.Request.Path.Value ?? string.Empty;
         var requestMethod = context.Request.Method;
         var originalBodyStream = context.Response.Body;
+        var responseBody = new MemoryStream();
 
-        using (var responseBody = new MemoryStream())
+        try
         {
             context.Response.Body = responseBody;
 
-            try
-            {
-                await _next(context);
-            }
-            catch (Exception ex)
-            {
-                // Log audit entry for exceptions
-                await LogAuditEntryAsync(
-                    dbContext,
-                    context,
-                    requestPath,
-                    requestMethod,
-                    500,
-                    startTime,
-                    success: false,
-                    denialReason: ex.Message);
-                
-                // Re-throw to let the global exception handler deal with it
-                throw;
-            }
+            await _next(context);
 
             // Log audit entry after response
             await LogAuditEntryAsync(
@@ -84,9 +66,29 @@ public class AuditMiddleware
             // Copy response back to original stream
             responseBody.Seek(0, SeekOrigin.Begin);
             await responseBody.CopyToAsync(originalBodyStream);
+        }
+        catch (Exception ex)
+        {
+            // Log audit entry for exceptions
+            await LogAuditEntryAsync(
+                dbContext,
+                context,
+                requestPath,
+                requestMethod,
+                500,
+                startTime,
+                success: false,
+                denialReason: ex.Message);
 
-            // Restore original response body
+            // Re-throw to let the global exception handler deal with it
+            throw;
+        }
+        finally
+        {
+            // Always restore the original response body stream so the global
+            // exception handler (or any outer middleware) can write to it.
             context.Response.Body = originalBodyStream;
+            await responseBody.DisposeAsync();
         }
     }
 
