@@ -5,29 +5,28 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Data.Seeders;
 
 /// <summary>
-/// Seeds role-permission assignments for 8 built-in roles.
+/// Seeds role-permission assignments for built-in roles.
 /// Assigns permissions based on role type and authorization level.
-/// SUPERUSER: 109 permissions (all) - maps to auth-service superuser flag
-/// SYSTEM_ADMIN: 108 permissions (all except system.admin)
-/// STATION_MANAGER: 66 permissions (incl. financial create/read)
-/// WEIGHING_OPERATOR: 10 permissions
-/// ENFORCEMENT_OFFICER: 44 permissions (incl. financial create/read)
-/// INSPECTOR: 26 permissions
-/// AUDITOR: 36 permissions (incl. financial read/audit)
-/// MIDDLEWARE_SERVICE: 7 permissions (autoweigh operations only)
+///
+/// Enforcement roles:
+///   SUPERUSER: all permissions (maps to auth-service superuser flag)
+///   SYSTEM_ADMIN: all except system.admin
+///   STATION_MANAGER: station ops + financial create/read + case/prosecution read
+///   WEIGHING_OPERATOR: weighing create + vehicle/driver management
+///   ENFORCEMENT_OFFICER: case/prosecution + financial + limited weighing
+///   INSPECTOR: read-only across weighing/case/prosecution + analytics
+///   AUDITOR: read-only + audit logs across all domains + financial read
+///   MIDDLEWARE_SERVICE: minimal autoweigh permissions only
+///
+/// Commercial weighing roles:
+///   COMMERCIAL_MANAGER: full commercial stack — no yard/tag/case/prosecution
+///   COMMERCIAL_OPERATOR: daily ops — weighing create, vehicle/tare management
+///   COMMERCIAL_AUDITOR: read-only across commercial weighing, financial, analytics
 /// </summary>
 public static class RolePermissionSeeder
 {
     /// <summary>
-    /// Define permission codes for each role.
-    /// SUPERUSER: 109 permissions (all - includes system.* and financial.*)
-    /// SYSTEM_ADMIN: 108 permissions (exclude system.admin)
-    /// STATION_MANAGER: 66 permissions (incl. financial)
-    /// WEIGHING_OPERATOR: 10 permissions
-    /// ENFORCEMENT_OFFICER: 44 permissions (incl. financial)
-    /// INSPECTOR: 26 permissions
-    /// AUDITOR: 36 permissions (incl. financial read/audit)
-    /// MIDDLEWARE_SERVICE: 7 permissions (autoweigh operations only)
+    /// Permission codes for each built-in role. Idempotent — only adds missing assignments.
     /// </summary>
     private static readonly Dictionary<string, List<string>> RolePermissions = new()
     {
@@ -202,6 +201,130 @@ public static class RolePermissionSeeder
                 // Limited permissions for TruConnect middleware autoweigh operations
                 "weighing.create", "weighing.read", "weighing.update", "weighing.webhook",
                 "vehicle.read", "driver.read", "transporter.read"
+            }
+        },
+
+        // ── Commercial weighing roles (weighbridge operator staff) ────────────────
+        {
+            "COMMERCIAL_MANAGER", new List<string>
+            {
+                // Full commercial weighing stack — no enforcement-only perms (yard, tag, case, prosecution)
+                "weighing.create", "weighing.read", "weighing.read_own", "weighing.update",
+                "weighing.approve", "weighing.override", "weighing.export", "weighing.audit", "weighing.scale_test",
+                "vehicle.create", "vehicle.read", "vehicle.update",
+                "transporter.create", "transporter.read", "transporter.update",
+                "driver.create", "driver.read", "driver.update",
+                // Config: tolerance settings, cargo types, weighing metadata
+                "config.read", "config.create", "config.update",
+                "config.manage_taxonomy", "config.manage_references", "config.audit",
+                // User & shift management
+                "user.create", "user.read", "user.read_own", "user.update", "user.update_own",
+                "user.assign_roles", "user.manage_shifts", "user.audit",
+                // Station
+                "station.read", "station.read_own", "station.update_own",
+                "station.manage_staff", "station.configure_defaults", "station.export", "station.audit",
+                // Technical (scale calibration)
+                "technical.read", "technical.calibration", "technical.scale_test", "technical.audit",
+                // Analytics & reporting
+                "analytics.read", "analytics.read_own", "analytics.export",
+                "analytics.schedule", "analytics.manage_dashboards", "analytics.audit",
+                // Financial
+                "invoice.create", "invoice.read", "invoice.read_own", "invoice.update", "invoice.void",
+                "receipt.create", "receipt.read", "receipt.read_own", "receipt.void",
+                "financial.audit"
+            }
+        },
+        {
+            "COMMERCIAL_SUPERVISOR", new List<string>
+            {
+                // Weighing review, tare approval, reports — no user management or config changes
+                "weighing.create", "weighing.read", "weighing.read_own", "weighing.update",
+                "weighing.approve", "weighing.export", "weighing.audit",
+                "vehicle.create", "vehicle.read", "vehicle.update",
+                "transporter.read", "transporter.create", "transporter.update",
+                "driver.read", "driver.create", "driver.update",
+                // Config read-only (to understand tolerance/cargo rules, not change them)
+                "config.read",
+                // Technical
+                "technical.read", "technical.scale_test",
+                // Analytics
+                "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit",
+                // Financial read (for reconciliation reference)
+                "invoice.read", "invoice.read_own", "invoice.create", "invoice.update",
+                "receipt.read", "receipt.read_own", "receipt.create",
+                "financial.audit"
+            }
+        },
+        {
+            "COMMERCIAL_OPERATOR", new List<string>
+            {
+                // Day-to-day commercial weighing: create weighings, record tare, manage vehicles/drivers
+                "weighing.create", "weighing.read_own", "weighing.export", "weighing.audit",
+                "vehicle.create", "vehicle.read", "vehicle.update",
+                "transporter.read",
+                "driver.create", "driver.read", "driver.update",
+                // Technical: view calibration status and run scale tests
+                "technical.read", "technical.scale_test",
+                // Financial: view own invoices/receipts
+                "invoice.read_own",
+                "receipt.read_own"
+            }
+        },
+        {
+            "COMMERCIAL_FINANCE", new List<string>
+            {
+                // Invoice management, payment reconciliation, financial reporting
+                "invoice.create", "invoice.read", "invoice.read_own", "invoice.update", "invoice.void",
+                "receipt.create", "receipt.read", "receipt.read_own", "receipt.void",
+                "financial.audit",
+                // Weighing read (for reconciling billed weights against records)
+                "weighing.read", "weighing.read_own", "weighing.export", "weighing.audit",
+                // Vehicle/transporter read (for billing reference)
+                "vehicle.read",
+                "transporter.read",
+                "driver.read",
+                // Analytics (for financial reports)
+                "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit"
+            }
+        },
+        {
+            "COMMERCIAL_AUDITOR", new List<string>
+            {
+                // Read-only access across commercial weighing, financial, and analytics
+                "weighing.read", "weighing.read_own", "weighing.export", "weighing.audit",
+                "vehicle.read",
+                "transporter.read",
+                "driver.read",
+                "config.read", "config.audit",
+                "technical.read", "technical.audit",
+                "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit",
+                "invoice.read", "invoice.read_own",
+                "receipt.read", "receipt.read_own",
+                "financial.audit"
+            }
+        },
+
+        // ── Transporter portal roles (self-service portal for fleet operators) ──────
+        {
+            "TRANSPORTER_ADMIN", new List<string>
+            {
+                // Full portal: fleet management + team management + billing + export
+                "portal.access", "portal.manage_fleet", "portal.manage_team",
+                "portal.manage_billing", "portal.export"
+            }
+        },
+        {
+            "TRANSPORTER_MANAGER", new List<string>
+            {
+                // Fleet management + history + export — no team/billing management
+                "portal.access", "portal.manage_fleet", "portal.export"
+            }
+        },
+        {
+            "TRANSPORTER_VIEWER", new List<string>
+            {
+                // Read-only portal: weighing history view only
+                "portal.access"
             }
         }
     };

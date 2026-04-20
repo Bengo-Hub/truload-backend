@@ -169,7 +169,14 @@ public static class PermissionSeeder
         ("technical.read", "Read Technical", "Technical", "View technical settings, calibration and device status"),
         ("technical.calibration", "Calibration", "Technical", "Manage calibration and scale test configuration"),
         ("technical.scale_test", "Scale Test", "Technical", "Perform and view scale tests"),
-        ("technical.audit", "Audit Technical", "Technical", "View technical audit logs")
+        ("technical.audit", "Audit Technical", "Technical", "View technical audit logs"),
+
+        // Portal Category — transporter self-service portal (5 permissions)
+        ("portal.access", "Portal Access", "Portal", "Access the transporter self-service portal and view weighing history"),
+        ("portal.manage_fleet", "Manage Fleet", "Portal", "Add, edit, and manage vehicles in the transporter fleet register"),
+        ("portal.manage_team", "Manage Team", "Portal", "Invite and manage portal team members and their access levels"),
+        ("portal.manage_billing", "Manage Billing", "Portal", "Manage portal subscription plan and billing information"),
+        ("portal.export", "Export Portal Data", "Portal", "Export weighing history and download bulk PDF tickets")
     };
 
     /// <summary>

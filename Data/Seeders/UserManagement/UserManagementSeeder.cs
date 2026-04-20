@@ -121,7 +121,7 @@ public class UserManagementSeeder
                 SsoTenantSlug = "truload",
                 PaymentGateway = "treasury",
                 CommercialWeighingFeeKes = 500m,
-                EnabledModulesJson = "[\"dashboard\",\"weighing\",\"reporting\",\"users\",\"setup_weighing_metadata\",\"setup_settings\",\"financial_invoices\",\"financial_receipts\"]",
+                EnabledModulesJson = "[\"dashboard\",\"weighing\",\"reporting\",\"users\",\"shifts\",\"technical\",\"financial_invoices\",\"financial_receipts\",\"setup_weighing_metadata\",\"setup_settings\",\"setup_system_config\",\"setup_security\",\"tare_register\",\"setup_tolerance\"]",
                 ContactEmail = "admin@truload.codevertexitsolutions.com",
                 ContactPhone = "+254700000010",
                 Address = "Nairobi, Kenya",

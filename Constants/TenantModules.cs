@@ -23,7 +23,11 @@ public static class TenantModules
     public const string SetupActs = "setup_acts";
     public const string SetupSettings = "setup_settings";
     public const string SetupSystemConfig = "setup_system_config";
+    // Commercial-only modules
+    public const string TareRegister = "tare_register";
+    public const string SetupTolerance = "setup_tolerance";
 
+    /// <summary>All modules available to axle-load enforcement tenants.</summary>
     public static readonly IReadOnlyList<string> AllModules = new[]
     {
         Dashboard, Weighing, Cases, CaseManagement, SpecialReleases, Prosecution, Reporting,
@@ -32,12 +36,16 @@ public static class TenantModules
     };
 
     /// <summary>
-    /// Default enabled modules for Commercial Weighing tenants (no axle load enforcement).
+    /// Default enabled modules for Commercial Weighing tenants.
+    /// Excludes enforcement-only modules (Cases, Prosecution, SpecialReleases, SetupAxle, SetupActs).
+    /// Includes commercial-only modules (TareRegister, SetupTolerance).
     /// </summary>
     public static readonly IReadOnlyList<string> DefaultCommercialWeighingModules = new[]
     {
-        Dashboard, Weighing, Reporting, Users, SetupWeighingMetadata, SetupSettings,
-        FinancialInvoices, FinancialReceipts
+        Dashboard, Weighing, Reporting, Users, Shifts, Technical,
+        FinancialInvoices, FinancialReceipts,
+        SetupWeighingMetadata, SetupSettings, SetupSystemConfig, SetupSecurity,
+        TareRegister, SetupTolerance
     };
 
     public const string TenantTypeCommercialWeighing = "CommercialWeighing";
