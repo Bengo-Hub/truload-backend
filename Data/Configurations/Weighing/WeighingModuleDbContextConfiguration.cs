@@ -382,6 +382,16 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                     .HasMaxLength(50)
                     .HasDefaultValue("Pending");
 
+                entity.Property(e => e.CaptureStatus)
+                    .HasColumnName("CaptureStatus")
+                    .HasMaxLength(50)
+                    .HasDefaultValue("captured");
+
+                entity.Property(e => e.CaptureSource)
+                    .HasColumnName("CaptureSource")
+                    .HasMaxLength(50)
+                    .HasDefaultValue("manual");
+
                 entity.Property(e => e.ViolationReason)
                     .HasColumnName("violation_reason")
                     .HasMaxLength(1000);

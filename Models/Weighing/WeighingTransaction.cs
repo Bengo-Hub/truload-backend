@@ -267,7 +267,7 @@ public class WeighingTransaction : TenantAwareEntity
     /// <summary>
     /// Capture status: auto (auto-weigh data only), captured (final weights submitted), not_weighed (vehicle left without capture)
     /// </summary>
-    [MaxLength(20)]
+    [MaxLength(50)]
     public string CaptureStatus { get; set; } = "captured";
 
     /// <summary>
