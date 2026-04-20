@@ -11,10 +11,8 @@ namespace TruLoad.Backend.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_weighing_transactions_transporter_id",
-                schema: "weighing",
-                table: "weighing_transactions");
+            // Use raw SQL with IF EXISTS — this index may not exist in all environments
+            migrationBuilder.Sql("DROP INDEX IF EXISTS weighing.\"IX_weighing_transactions_transporter_id\";");
 
             migrationBuilder.AddColumn<int>(
                 name: "adjusted_net_weight_kg",
