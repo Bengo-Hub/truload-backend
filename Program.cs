@@ -523,12 +523,23 @@ try
 
         Log.Information("Checking pending migrations...");
 
-        var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
+        // Migrations must bypass PgBouncer: EF Core uses session-scoped advisory locks
+        // which PgBouncer transaction pooling releases between transactions, causing Migrate() to fail.
+        var migConnBuilder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+        migConnBuilder.Host = "postgresql.infra.svc.cluster.local";
+        migConnBuilder.Port = 5432;
+        migConnBuilder.Pooling = false;
+        var migrationOptions = new DbContextOptionsBuilder<TruLoadDbContext>()
+            .UseNpgsql(migConnBuilder.ConnectionString, o => o.UseVector())
+            .Options;
+        using var migrationContext = new TruLoadDbContext(migrationOptions);
+
+        var pendingMigrations = migrationContext.Database.GetPendingMigrations().ToList();
 
         if (pendingMigrations.Any())
         {
-            Log.Information("Applying {Count} pending migrations...", pendingMigrations.Count);
-            dbContext.Database.Migrate();
+            Log.Information("Applying {Count} pending migrations directly via PostgreSQL (bypassing PgBouncer)...", pendingMigrations.Count);
+            migrationContext.Database.Migrate();
             Log.Information("✓ Migrations applied successfully");
         }
         else
