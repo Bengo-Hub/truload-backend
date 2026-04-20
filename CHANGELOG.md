@@ -5,6 +5,20 @@ All notable changes to TruLoad Backend will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0](https://github.com/Bengo-Hub/truload-backend/compare/v1.0.29...v1.1.0) (2026-04-17)
+
+
+### Features
+
+* add commercial weighing backend (Sprint 1-2) ([109a9f1](https://github.com/Bengo-Hub/truload-backend/commit/109a9f1356ebbbce295cc2a3b4b59895b1502fa7))
+* add transporter self-service portal backend (Sprint 4) ([076c109](https://github.com/Bengo-Hub/truload-backend/commit/076c109e4ce2fc54befd8c07f5e1700f15edcbde))
+
+
+### Bug Fixes
+
+* **deploy:** add port extraction for PgBouncer in migration script ([1b0bf41](https://github.com/Bengo-Hub/truload-backend/commit/1b0bf41d51b5d14a6a8525236950a3c59af63513))
+* **deploy:** migration always bypasses PgBouncer, connects direct to PostgreSQL ([28bdcfb](https://github.com/Bengo-Hub/truload-backend/commit/28bdcfb3f553c5d826c6a106a45ab9450b030bf1))
+
 ## [1.0.29](https://github.com/Bengo-Hub/truload-backend/compare/v1.0.28...v1.0.29) (2026-04-15)
 
 
