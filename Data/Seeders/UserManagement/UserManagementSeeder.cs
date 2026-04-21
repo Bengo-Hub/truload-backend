@@ -127,8 +127,8 @@ public class UserManagementSeeder
                 Address = "Nairobi, Kenya",
                 PrimaryColor = "#0cbd4a",
                 SecondaryColor = "#067a2e",
-                LogoUrl = "/truload-logo.svg",
-                PlatformLogoUrl = "/truload-logo.svg",
+                LogoUrl = "truload-logo.png",
+                PlatformLogoUrl = "truload-logo.png",
                 LoginPageImageUrl = "/images/background-images/login-background-image.png",
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
@@ -161,12 +161,18 @@ public class UserManagementSeeder
                     existing.SecondaryColor = org.SecondaryColor;
                     updated = true;
                 }
-                if (string.IsNullOrEmpty(existing.LogoUrl) && !string.IsNullOrEmpty(org.LogoUrl))
+                // Always correct the TRULOAD-DEMO logo from the stale SVG path to the PNG filename
+                // (the PDF service resolves logos by filename from wwwroot/images/)
+                var logoNeedsUpdate = string.IsNullOrEmpty(existing.LogoUrl)
+                    || (org.Code == "TRULOAD-DEMO" && existing.LogoUrl != org.LogoUrl);
+                if (logoNeedsUpdate && !string.IsNullOrEmpty(org.LogoUrl))
                 {
                     existing.LogoUrl = org.LogoUrl;
                     updated = true;
                 }
-                if (string.IsNullOrEmpty(existing.PlatformLogoUrl) && !string.IsNullOrEmpty(org.PlatformLogoUrl))
+                var platformLogoNeedsUpdate = string.IsNullOrEmpty(existing.PlatformLogoUrl)
+                    || (org.Code == "TRULOAD-DEMO" && existing.PlatformLogoUrl != org.PlatformLogoUrl);
+                if (platformLogoNeedsUpdate && !string.IsNullOrEmpty(org.PlatformLogoUrl))
                 {
                     existing.PlatformLogoUrl = org.PlatformLogoUrl;
                     updated = true;

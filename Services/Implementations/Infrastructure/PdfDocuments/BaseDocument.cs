@@ -30,9 +30,9 @@ public abstract class BaseDocument
 
     /// <summary>
     /// Resolves the organization logo file to use for document branding.
-    /// Falls back to TruLoad default logo, then KURA logo as last resort.
+    /// Commercial documents fall back to the TruLoad logo; enforcement documents fall back to the KURA logo.
     /// </summary>
-    public static string ResolveOrgLogo(string? orgLogoFile)
+    public static string ResolveOrgLogo(string? orgLogoFile, bool isCommercial = false)
     {
         // Try org-specific logo first
         if (!string.IsNullOrEmpty(orgLogoFile))
@@ -42,12 +42,21 @@ public abstract class BaseDocument
                 return orgLogoFile;
         }
 
-        // Fall back to TruLoad default logo
-        var truloadPath = Path.Combine(ImagesBasePath, BrandingConstants.Logos.TruLoadLogo);
-        if (File.Exists(truloadPath))
+        // Commercial: fall back to TruLoad logo, never KURA
+        if (isCommercial)
+        {
+            var truloadPath = Path.Combine(ImagesBasePath, BrandingConstants.Logos.TruLoadLogo);
+            if (File.Exists(truloadPath))
+                return BrandingConstants.Logos.TruLoadLogo;
+            // If TruLoad PNG is also absent, return the name so the header renders without a logo rather than showing KURA
+            return BrandingConstants.Logos.TruLoadLogo;
+        }
+
+        // Enforcement: try TruLoad then KURA
+        var truloadFallback = Path.Combine(ImagesBasePath, BrandingConstants.Logos.TruLoadLogo);
+        if (File.Exists(truloadFallback))
             return BrandingConstants.Logos.TruLoadLogo;
 
-        // Last resort: KURA logo (for enforcement orgs)
         return BrandingConstants.Logos.KuraLogo;
     }
 

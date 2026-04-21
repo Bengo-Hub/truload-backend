@@ -55,7 +55,7 @@ public class CommercialWeightTicketDocument : BaseDocument
 
     private void ComposeHeader(IContainer container)
     {
-        var primaryLogo = ResolveOrgLogo(_orgLogoFile);
+        var primaryLogo = ResolveOrgLogo(_orgLogoFile, isCommercial: true);
 
         ComposeOfficialHeaderWithLogos(
             container,

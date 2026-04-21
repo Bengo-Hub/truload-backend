@@ -365,16 +365,35 @@ public class UserSeeder
         }
         else
         {
-            if (existingAdmin.OrganizationId != truloadDemoOrg.Id || (existingAdmin.StationId == null && demoStation != null))
+            var updated = false;
+            if (existingAdmin.OrganizationId != truloadDemoOrg.Id)
             {
                 existingAdmin.OrganizationId = truloadDemoOrg.Id;
-                if (demoStation != null) existingAdmin.StationId = demoStation.Id;
+                updated = true;
+            }
+            if (existingAdmin.StationId == null && demoStation != null)
+            {
+                existingAdmin.StationId = demoStation.Id;
+                updated = true;
+            }
+            if (updated)
+            {
                 await _userManager.UpdateAsync(existingAdmin);
                 Console.WriteLine($"✓ Updated TruLoad demo admin {demoAdminEmail}: org + station linked");
             }
+
+            // Repair role: remove any enforcement roles and ensure Commercial Weighing Manager is assigned
+            var currentRoles = await _userManager.GetRolesAsync(existingAdmin);
+            if (!currentRoles.Contains("Commercial Weighing Manager"))
+            {
+                if (currentRoles.Any())
+                    await _userManager.RemoveFromRolesAsync(existingAdmin, currentRoles);
+                await _userManager.AddToRoleAsync(existingAdmin, "Commercial Weighing Manager");
+                Console.WriteLine($"✓ Repaired role for {demoAdminEmail}: removed [{string.Join(", ", currentRoles)}], assigned Commercial Weighing Manager");
+            }
             else
             {
-                Console.WriteLine($"✓ TruLoad demo admin {demoAdminEmail} already exists, skipping seed");
+                Console.WriteLine($"✓ TruLoad demo admin {demoAdminEmail} already exists with correct role, skipping seed");
             }
         }
     }
@@ -447,7 +466,19 @@ public class UserSeeder
             var existing = await _userManager.FindByEmailAsync(userData.Email);
             if (existing != null)
             {
-                Console.WriteLine($"✓ Demo {userData.Label} {userData.Email} already exists, skipping seed");
+                // Repair role if the user has wrong roles from a prior seed run
+                var currentRoles = await _userManager.GetRolesAsync(existing);
+                if (!currentRoles.Contains(userData.RoleName))
+                {
+                    if (currentRoles.Any())
+                        await _userManager.RemoveFromRolesAsync(existing, currentRoles);
+                    await _userManager.AddToRoleAsync(existing, userData.RoleName);
+                    Console.WriteLine($"✓ Repaired role for {userData.Email}: removed [{string.Join(", ", currentRoles)}], assigned {userData.RoleName}");
+                }
+                else
+                {
+                    Console.WriteLine($"✓ Demo {userData.Label} {userData.Email} already exists with correct role, skipping seed");
+                }
                 continue;
             }
 
