@@ -397,11 +397,14 @@ public class TransporterPortalService : ITransporterPortalService
             .Distinct()
             .ToListAsync();
 
-        // Get the first org's subscription as the "primary" subscription
-        // In future, transporter portal may have its own subscription separate from orgs
+        // Resolve subscription via the primary org the transporter has been weighed under.
+        // When transporter-specific plans are in production, this slug will map to the
+        // transporter's own TRANSPORTER_BASIC/STANDARD/PREMIUM plan; until then it falls
+        // back to the org's commercial plan (which shares the same feature-code mechanism).
         string status = "NONE";
         string? planName = null;
         DateTime? expiresAt = null;
+        SubscriptionFeatures features = new("NONE", null, []);
 
         if (orgIds.Any())
         {
@@ -417,20 +420,18 @@ public class TransporterPortalService : ITransporterPortalService
                     status = sub.Status;
                     planName = sub.PlanName;
                     expiresAt = sub.ExpiresAt;
+
+                    features = await _subscriptionService.GetFeaturesAsync(primaryOrg.SsoTenantSlug);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to fetch subscription for portal user {UserId}", userId);
-                    // Fail open - grant basic access
+                    _logger.LogWarning(ex, "Failed to fetch subscription for portal user {UserId} — failing open", userId);
                     status = "ACTIVE";
+                    features = new SubscriptionFeatures("ACTIVE", null,
+                        ["portal_access", "ticket_download", "email_notifications"]);
                 }
             }
         }
-
-        var isActive = status is "ACTIVE" or "TRIAL";
-        var isPremium = isActive && planName != null &&
-            (planName.Contains("Premium", StringComparison.OrdinalIgnoreCase) ||
-             planName.Contains("Enterprise", StringComparison.OrdinalIgnoreCase));
 
         return new PortalSubscriptionDto
         {
@@ -439,13 +440,13 @@ public class TransporterPortalService : ITransporterPortalService
             ExpiresAt = expiresAt,
             Features = new PortalFeatureAccess
             {
-                MultiSiteAccess = isPremium,
-                DataExport = isActive,
-                DriverReports = isActive,
-                VehicleTrends = isActive,
-                ApiAccess = isPremium,
-                Analytics = isPremium,
-                ConsignmentTracking = isActive
+                MultiSiteAccess     = features.Has("multi_site_access"),
+                DataExport          = features.Has("data_export"),
+                DriverReports       = features.Has("driver_reports"),
+                VehicleTrends       = features.Has("vehicle_trends"),
+                ApiAccess           = features.Has("api_access"),
+                Analytics           = features.Has("analytics"),
+                ConsignmentTracking = features.Has("consignment_tracking"),
             }
         };
     }

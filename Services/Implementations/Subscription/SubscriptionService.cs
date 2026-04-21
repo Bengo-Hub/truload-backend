@@ -62,6 +62,65 @@ public class SubscriptionService : ISubscriptionService
         return new SubscriptionStatus(status, expiresAt, planName);
     }
 
+    public async Task<SubscriptionFeatures> GetFeaturesAsync(string ssoTenantSlug, CancellationToken ct = default)
+    {
+        var baseUrl = _configuration["Subscriptions:ApiUrl"];
+        var serviceJwt = _configuration["Subscriptions:ServiceJwt"];
+
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(serviceJwt))
+        {
+            _logger.LogWarning("Subscriptions API not configured — returning empty features for {Slug}", ssoTenantSlug);
+            return new SubscriptionFeatures("UNKNOWN", null, []);
+        }
+
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/v1/features");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", serviceJwt);
+            request.Headers.Add("X-Tenant-Slug", ssoTenantSlug);
+
+            var response = await _httpClient.SendAsync(request, ct);
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+                return new SubscriptionFeatures("NONE", null, []);
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Subscriptions features API returned {Status} for {Slug}: {Body}",
+                    response.StatusCode, ssoTenantSlug, json);
+                // Fail open with basic access
+                return new SubscriptionFeatures("ACTIVE", null, ["portal_access", "ticket_download", "email_notifications"]);
+            }
+
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            var status = root.TryGetProperty("status", out var s) ? s.GetString() ?? "NONE" : "NONE";
+            var planCode = root.TryGetProperty("plan_code", out var pc) ? pc.GetString() : null;
+
+            var featureCodes = new List<string>();
+            if (root.TryGetProperty("features", out var featuresEl) && featuresEl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var f in featuresEl.EnumerateArray())
+                {
+                    var code = f.ValueKind == JsonValueKind.String
+                        ? f.GetString()
+                        : f.TryGetProperty("feature_code", out var fc) ? fc.GetString() : null;
+                    if (!string.IsNullOrWhiteSpace(code))
+                        featureCodes.Add(code!);
+                }
+            }
+
+            return new SubscriptionFeatures(status, planCode, featureCodes);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GetFeaturesAsync failed for {Slug} — failing open", ssoTenantSlug);
+            return new SubscriptionFeatures("ACTIVE", null, ["portal_access", "ticket_download", "email_notifications"]);
+        }
+    }
+
     public async Task ReportUsageAsync(string ssoTenantSlug, string metricType, int qty, object? metadata = null, CancellationToken ct = default)
     {
         try
