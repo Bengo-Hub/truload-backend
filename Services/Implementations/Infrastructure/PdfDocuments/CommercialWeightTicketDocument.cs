@@ -85,6 +85,13 @@ public class CommercialWeightTicketDocument : BaseDocument
             // Weight Summary (prominent center section)
             col.Item().Element(ComposeWeightSummary);
 
+            // Per-deck / per-axle weights (if captured)
+            if ((_result.FirstPassAxles != null && _result.FirstPassAxles.Count > 0) ||
+                (_result.SecondPassAxles != null && _result.SecondPassAxles.Count > 0))
+            {
+                col.Item().Element(ComposeAxleWeights);
+            }
+
             // Discrepancy section (if expected weight provided)
             if (_result.ExpectedNetWeightKg.HasValue && _result.NetWeightKg.HasValue)
             {
@@ -252,6 +259,70 @@ public class CommercialWeightTicketDocument : BaseDocument
                         });
                     });
                 }
+            });
+        });
+    }
+
+    private void ComposeAxleWeights(IContainer container)
+    {
+        var firstAxles = _result.FirstPassAxles ?? new List<CommercialAxleWeightDto>();
+        var secondAxles = _result.SecondPassAxles ?? new List<CommercialAxleWeightDto>();
+        var isMultideck = firstAxles.Count <= 4 && firstAxles.Count > 1;
+        var label = isMultideck ? "DECK WEIGHTS" : "AXLE WEIGHTS";
+
+        container.Border(0.5f).BorderColor(Colors.Grey.Lighten1).Column(col =>
+        {
+            col.Item().Background("#F0F4F8").Padding(3)
+                .Text(label).FontSize(8.5f).SemiBold();
+
+            col.Item().Padding(4).Table(table =>
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    columns.ConstantColumn(60);  // Deck/Axle
+                    columns.RelativeColumn();     // First pass
+                    if (secondAxles.Count > 0)
+                        columns.RelativeColumn(); // Second pass
+                });
+
+                // Header
+                table.Header(header =>
+                {
+                    var hLabel = isMultideck ? "Deck" : "Axle";
+                    header.Cell().Background("#E5E7EB").Padding(3).Text(hLabel).FontSize(7.5f).SemiBold();
+                    header.Cell().Background("#E5E7EB").Padding(3)
+                        .Text($"First ({Capitalize(_result.FirstWeightType ?? "pass")}) kg").FontSize(7.5f).SemiBold();
+                    if (secondAxles.Count > 0)
+                        header.Cell().Background("#E5E7EB").Padding(3)
+                            .Text($"Second ({Capitalize(_result.SecondWeightType ?? "pass")}) kg").FontSize(7.5f).SemiBold();
+                });
+
+                // Rows
+                var maxCount = Math.Max(firstAxles.Count, secondAxles.Count);
+                for (var i = 0; i < maxCount; i++)
+                {
+                    var isEven = i % 2 == 0;
+                    var bg = isEven ? "#FFFFFF" : "#F9FAFB";
+                    var axleLabel = isMultideck ? $"Deck {i + 1}" : $"Axle {i + 1}";
+                    var firstW = i < firstAxles.Count ? $"{firstAxles[i].WeightKg:N0}" : "---";
+                    var secondW = i < secondAxles.Count ? $"{secondAxles[i].WeightKg:N0}" : "---";
+
+                    table.Cell().Background(bg).Padding(2).Text(axleLabel).FontSize(7.5f).SemiBold();
+                    table.Cell().Background(bg).Padding(2).Text(firstW).FontSize(7.5f);
+                    if (secondAxles.Count > 0)
+                        table.Cell().Background(bg).Padding(2).Text(secondW).FontSize(7.5f);
+                }
+
+                // GVW total row
+                var firstGvw = firstAxles.Count > 0 ? firstAxles.Sum(a => a.WeightKg) : (int?)null;
+                var secondGvw = secondAxles.Count > 0 ? secondAxles.Sum(a => a.WeightKg) : (int?)null;
+
+                table.Cell().Background("#E5E7EB").Padding(2).Text("GVW").FontSize(7.5f).Bold();
+                table.Cell().Background("#E5E7EB").Padding(2)
+                    .Text(firstGvw.HasValue ? $"{firstGvw.Value:N0}" : "---").FontSize(7.5f).Bold();
+                if (secondAxles.Count > 0)
+                    table.Cell().Background("#E5E7EB").Padding(2)
+                        .Text(secondGvw.HasValue ? $"{secondGvw.Value:N0}" : "---").FontSize(7.5f).Bold();
             });
         });
     }

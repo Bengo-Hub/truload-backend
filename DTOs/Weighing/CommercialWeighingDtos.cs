@@ -94,7 +94,7 @@ public class InitiateCommercialWeighingRequest
 public class CaptureFirstWeightRequest
 {
     /// <summary>
-    /// Measured weight in kg.
+    /// Total measured weight in kg (GVW for multideck, sum of axles for mobile).
     /// </summary>
     [Required]
     [Range(1, 200000)]
@@ -107,6 +107,12 @@ public class CaptureFirstWeightRequest
     [MaxLength(10)]
     [RegularExpression("^(tare|gross)$", ErrorMessage = "WeightType must be 'tare' or 'gross'.")]
     public string WeightType { get; set; } = "gross";
+
+    /// <summary>
+    /// Individual axle/deck weights (optional). For mobile: per-axle kg values.
+    /// For multideck: per-deck kg values (deck 1–4). Stored in weighing_axles.
+    /// </summary>
+    public List<int>? AxleWeights { get; set; }
 }
 
 /// <summary>
@@ -115,12 +121,17 @@ public class CaptureFirstWeightRequest
 public class CaptureSecondWeightRequest
 {
     /// <summary>
-    /// Measured weight in kg. The system auto-determines if this is tare or gross
+    /// Total measured weight in kg. System auto-determines tare or gross
     /// based on the first weight type.
     /// </summary>
     [Required]
     [Range(1, 200000)]
     public int WeightKg { get; set; }
+
+    /// <summary>
+    /// Individual axle/deck weights for the second pass (optional).
+    /// </summary>
+    public List<int>? AxleWeights { get; set; }
 }
 
 /// <summary>
@@ -221,11 +232,25 @@ public class CommercialWeighingResultDto
     // Tolerance
     public bool ToleranceExceeded { get; set; }
     public string? ToleranceDisplay { get; set; }
+    public bool ToleranceExceptionApproved { get; set; }
+    public Guid? ToleranceExceptionApprovedBy { get; set; }
+    public DateTime? ToleranceExceptionApprovedAt { get; set; }
+
+    // Axle / deck weights (stored per-pass in weighing_axles)
+    public List<CommercialAxleWeightDto> FirstPassAxles { get; set; } = new();
+    public List<CommercialAxleWeightDto> SecondPassAxles { get; set; } = new();
 
     // Metadata
     public string? IndustryMetadata { get; set; }
     public DateTime WeighedAt { get; set; }
     public DateTime CreatedAt { get; set; }
+}
+
+public class CommercialAxleWeightDto
+{
+    public int AxleNumber { get; set; }
+    public int WeightKg { get; set; }
+    public string Pass { get; set; } = "first";
 }
 
 /// <summary>

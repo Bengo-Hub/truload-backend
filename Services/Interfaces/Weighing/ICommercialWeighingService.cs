@@ -81,4 +81,10 @@ public interface ICommercialWeighingService
     /// Updates an existing commercial tolerance setting.
     /// </summary>
     Task<CommercialToleranceSettingDto> UpdateCommercialToleranceSettingAsync(Guid id, CommercialToleranceSettingDto dto);
+
+    /// <summary>
+    /// Approves a tolerance exception for a transaction where discrepancy exceeded configured bands.
+    /// Requires weighing.override permission.
+    /// </summary>
+    Task<CommercialWeighingResultDto> ApproveToleranceExceptionAsync(Guid transactionId, Guid approvedByUserId);
 }

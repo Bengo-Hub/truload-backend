@@ -401,6 +401,22 @@ public class WeighingTransaction : TenantAwareEntity
     [Column(TypeName = "jsonb")]
     public string? IndustryMetadata { get; set; }
 
+    /// <summary>
+    /// Whether a supervisor has approved a tolerance exception for this transaction.
+    /// Set when net weight discrepancy exceeds configured tolerance bands.
+    /// </summary>
+    public bool ToleranceExceptionApproved { get; set; } = false;
+
+    /// <summary>
+    /// User ID of the supervisor who approved the tolerance exception.
+    /// </summary>
+    public Guid? ToleranceExceptionApprovedBy { get; set; }
+
+    /// <summary>
+    /// Timestamp when the tolerance exception was approved.
+    /// </summary>
+    public DateTime? ToleranceExceptionApprovedAt { get; set; }
+
     // Navigation Properties
     public Vehicle? Vehicle { get; set; }
     public Driver? Driver { get; set; }

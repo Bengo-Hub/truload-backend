@@ -281,6 +281,68 @@ public class CommercialWeighingController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Generates an interim weight ticket PDF after the first weight is captured.
+    /// Issued between first and second weighing — e.g. while vehicle unloads/loads.
+    /// </summary>
+    [HttpGet("{id}/interim-ticket/pdf")]
+    [Authorize(Policy = "Permission:weighing.read")]
+    [Produces("application/pdf")]
+    [ProducesResponseType(typeof(FileContentResult), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetInterimTicketPdf(Guid id)
+    {
+        try
+        {
+            var result = await _commercialWeighingService.GetCommercialResultAsync(id);
+            if (result.FirstWeightKg == null)
+                return BadRequest("First weight has not been captured yet.");
+            // Reuse the commercial ticket PDF — partial results render with available weights only
+            var pdfBytes = await _pdfService.GenerateCommercialWeightTicketAsync(result, result.StationId);
+            return File(pdfBytes, "application/pdf", $"interim-ticket-{result.TicketNumber}.pdf");
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound($"Weighing transaction {id} not found");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating interim ticket PDF for transaction {TransactionId}", id);
+            return StatusCode(500, "An error occurred while generating the interim ticket PDF.");
+        }
+    }
+
+    /// <summary>
+    /// Approves a tolerance exception for a transaction where the weight discrepancy
+    /// exceeded configured tolerance bands. Requires weighing.override permission.
+    /// </summary>
+    [HttpPost("{id}/approve-tolerance-exception")]
+    [Authorize(Policy = "Permission:weighing.override")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(CommercialWeighingResultDto), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> ApproveToleranceException(Guid id)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userGuid))
+            return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var result = await _commercialWeighingService.ApproveToleranceExceptionAsync(id, userGuid);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound($"Weighing transaction {id} not found");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error approving tolerance exception for transaction {TransactionId}", id);
+            return StatusCode(500, "An error occurred while approving the tolerance exception.");
+        }
+    }
+
     // ============================================================================
     // Commercial Tolerance Settings
     // ============================================================================

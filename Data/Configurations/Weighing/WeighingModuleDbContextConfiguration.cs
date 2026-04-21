@@ -511,6 +511,9 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.Property(e => e.QualityDeductionKg).HasColumnName("quality_deduction_kg");
                 entity.Property(e => e.AdjustedNetWeightKg).HasColumnName("adjusted_net_weight_kg");
                 entity.Property(e => e.IndustryMetadata).HasColumnName("industry_metadata").HasColumnType("jsonb");
+                entity.Property(e => e.ToleranceExceptionApproved).HasColumnName("tolerance_exception_approved").HasDefaultValue(false);
+                entity.Property(e => e.ToleranceExceptionApprovedBy).HasColumnName("tolerance_exception_approved_by");
+                entity.Property(e => e.ToleranceExceptionApprovedAt).HasColumnName("tolerance_exception_approved_at");
 
                 // Commercial indexes
                 entity.HasIndex(e => e.WeighingMode)

@@ -7,6 +7,7 @@ using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Services.Interfaces.Weighing;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
+using STJson = System.Text.Json;
 
 namespace TruLoad.Backend.Services.Implementations.Weighing;
 
@@ -131,6 +132,13 @@ public class CommercialWeighingService : ICommercialWeighingService
         transaction.CaptureStatus = "first_weight_captured";
         transaction.UpdatedAt = DateTime.UtcNow;
 
+        // Store per-deck/axle weights in IndustryMetadata JSON (commercial doesn't use weighing_axles enforcement schema)
+        if (request.AxleWeights != null && request.AxleWeights.Count > 0)
+        {
+            var meta = MergeIndustryMetadata(transaction.IndustryMetadata, new { firstPassWeights = request.AxleWeights });
+            transaction.IndustryMetadata = meta;
+        }
+
         await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation(
@@ -195,6 +203,13 @@ public class CommercialWeighingService : ICommercialWeighingService
         transaction.ControlStatus = "Complete";
         transaction.CaptureStatus = "captured";
         transaction.UpdatedAt = DateTime.UtcNow;
+
+        // Store per-deck/axle weights for second pass in IndustryMetadata JSON
+        if (request.AxleWeights != null && request.AxleWeights.Count > 0)
+        {
+            var meta = MergeIndustryMetadata(transaction.IndustryMetadata, new { secondPassWeights = request.AxleWeights });
+            transaction.IndustryMetadata = meta;
+        }
 
         // Update vehicle tare if tare was measured in this session
         await RecordTareWeightAsync(
@@ -563,6 +578,22 @@ public class CommercialWeighingService : ICommercialWeighingService
         }
     }
 
+    private static List<CommercialAxleWeightDto> ParsePassWeights(string? industryMetadata, string passKey)
+    {
+        if (string.IsNullOrEmpty(industryMetadata)) return new();
+        try
+        {
+            var doc = STJson.JsonDocument.Parse(industryMetadata);
+            if (!doc.RootElement.TryGetProperty(passKey, out var arr)) return new();
+            var result = new List<CommercialAxleWeightDto>();
+            int axle = 1;
+            foreach (var item in arr.EnumerateArray())
+                result.Add(new CommercialAxleWeightDto { AxleNumber = axle++, WeightKg = item.GetInt32(), Pass = passKey == "firstPassWeights" ? "first" : "second" });
+            return result;
+        }
+        catch { return new(); }
+    }
+
     private static CommercialWeighingResultDto MapToCommercialResultDto(WeighingTransaction transaction)
     {
         var toleranceExceeded = false;
@@ -624,10 +655,48 @@ public class CommercialWeighingService : ICommercialWeighingService
 
             ToleranceExceeded = toleranceExceeded,
             ToleranceDisplay = transaction.GvwToleranceDisplay,
+            ToleranceExceptionApproved = transaction.ToleranceExceptionApproved,
+            ToleranceExceptionApprovedBy = transaction.ToleranceExceptionApprovedBy,
+            ToleranceExceptionApprovedAt = transaction.ToleranceExceptionApprovedAt,
+
+            FirstPassAxles = ParsePassWeights(transaction.IndustryMetadata, "firstPassWeights"),
+            SecondPassAxles = ParsePassWeights(transaction.IndustryMetadata, "secondPassWeights"),
 
             IndustryMetadata = transaction.IndustryMetadata,
             WeighedAt = transaction.WeighedAt,
             CreatedAt = transaction.CreatedAt
         };
+    }
+
+    private static string MergeIndustryMetadata(string? existingJson, object mergeData)
+    {
+        var existing = string.IsNullOrEmpty(existingJson)
+            ? new Dictionary<string, object?>()
+            : STJson.JsonSerializer.Deserialize<Dictionary<string, object?>>(existingJson)
+              ?? new Dictionary<string, object?>();
+
+        var mergeJson = STJson.JsonSerializer.Serialize(mergeData);
+        var mergeDict = STJson.JsonSerializer.Deserialize<Dictionary<string, object?>>(mergeJson)
+                        ?? new Dictionary<string, object?>();
+
+        foreach (var kvp in mergeDict)
+            existing[kvp.Key] = kvp.Value;
+
+        return STJson.JsonSerializer.Serialize(existing);
+    }
+
+    public async Task<CommercialWeighingResultDto> ApproveToleranceExceptionAsync(Guid transactionId, Guid approvedByUserId)
+    {
+        var transaction = await GetTransactionOrThrowAsync(transactionId);
+        EnsureCommercialMode(transaction);
+
+        transaction.ToleranceExceptionApproved = true;
+        transaction.ToleranceExceptionApprovedBy = approvedByUserId;
+        transaction.ToleranceExceptionApprovedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+        _logger.LogInformation("Tolerance exception approved for transaction {TransactionId} by user {UserId}", transactionId, approvedByUserId);
+
+        return MapToCommercialResultDto(transaction);
     }
 }
