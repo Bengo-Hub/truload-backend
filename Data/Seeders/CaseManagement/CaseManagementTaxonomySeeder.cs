@@ -764,16 +764,25 @@ public static class CaseManagementTaxonomySeeder
             .Select(w => w.Code)
             .ToListAsync();
 
-        // Update legacy ISSUED status to IN_FORCE if it exists
+        // Migrate legacy ISSUED status to IN_FORCE
         var issuedStatus = await context.WarrantStatuses
             .FirstOrDefaultAsync(w => w.Code == "ISSUED");
         if (issuedStatus != null)
         {
-            issuedStatus.Code = "IN_FORCE";
-            issuedStatus.Name = "In Force";
-            issuedStatus.Description = "Warrant is active and enforceable.";
+            var inForceAlreadyExists = existingCodes.Contains("IN_FORCE");
+            if (inForceAlreadyExists)
+            {
+                // IN_FORCE exists separately — remove the duplicate ISSUED record
+                context.WarrantStatuses.Remove(issuedStatus);
+            }
+            else
+            {
+                issuedStatus.Code = "IN_FORCE";
+                issuedStatus.Name = "In Force";
+                issuedStatus.Description = "Warrant is active and enforceable.";
+                existingCodes.Add("IN_FORCE");
+            }
             existingCodes.Remove("ISSUED");
-            existingCodes.Add("IN_FORCE");
         }
 
         var newStatuses = statuses
