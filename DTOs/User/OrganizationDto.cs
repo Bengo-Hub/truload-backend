@@ -19,6 +19,11 @@ public class OrganizationDto
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+    // Commercial weighing settings — only populated for CommercialWeighing tenants
+    public decimal? CommercialWeighingFeeKes { get; set; }
+    public int? DefaultTareExpiryDays { get; set; }
+    public string? PaymentGateway { get; set; }
 }
 
 public class CreateOrganizationRequest
@@ -47,6 +52,10 @@ public class UpdateOrganizationRequest
     public string? PrimaryColor { get; set; }
     public string? SecondaryColor { get; set; }
     public bool? IsActive { get; set; }
+
+    // Commercial weighing config — accepted from tenant admins for CommercialWeighing orgs
+    public decimal? CommercialWeighingFeeKes { get; set; }
+    public int? DefaultTareExpiryDays { get; set; }
 }
 
 /// <summary>
@@ -62,6 +71,18 @@ public class UpdateOrganizationBrandingRequest
     public string? LoginPageImageUrl { get; set; }
     public string? PrimaryColor { get; set; }
     public string? SecondaryColor { get; set; }
+}
+
+/// <summary>
+/// Request to update commercial weighing settings for the current tenant (config.update).
+/// Only applies to CommercialWeighing tenants.
+/// </summary>
+public class UpdateCommercialSettingsRequest
+{
+    /// <summary>Flat weighing fee charged per session (KES). Must be >= 0.</summary>
+    public decimal? CommercialWeighingFeeKes { get; set; }
+    /// <summary>Org-wide tare expiry in days. Set to 0 to clear (no expiry).</summary>
+    public int? DefaultTareExpiryDays { get; set; }
 }
 
 /// <summary>

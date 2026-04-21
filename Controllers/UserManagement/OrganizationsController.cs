@@ -145,6 +145,10 @@ public class OrganizationsController : ControllerBase
         if (request.LoginPageImageUrl != null) org.LoginPageImageUrl = request.LoginPageImageUrl;
         if (request.PrimaryColor != null) org.PrimaryColor = request.PrimaryColor;
         if (request.SecondaryColor != null) org.SecondaryColor = request.SecondaryColor;
+        if (request.CommercialWeighingFeeKes.HasValue && request.CommercialWeighingFeeKes.Value >= 0)
+            org.CommercialWeighingFeeKes = request.CommercialWeighingFeeKes.Value;
+        if (request.DefaultTareExpiryDays.HasValue)
+            org.DefaultTareExpiryDays = request.DefaultTareExpiryDays.Value > 0 ? request.DefaultTareExpiryDays.Value : null;
 
         var updated = await _organizationRepository.UpdateAsync(org, cancellationToken);
         _logger.LogInformation("Organization updated: {OrgId}", updated.Id);
@@ -196,6 +200,38 @@ public class OrganizationsController : ControllerBase
     }
 
     /// <summary>
+    /// Update commercial weighing settings (fee, tare expiry) for the current tenant.
+    /// Only valid for CommercialWeighing tenants. Requires config.update permission.
+    /// </summary>
+    [HttpPatch("current/commercial-settings")]
+    [HasPermission("config.update")]
+    [ProducesResponseType(typeof(OrganizationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<OrganizationDto>> UpdateCommercialSettings(
+        [FromBody] UpdateCommercialSettingsRequest request, CancellationToken cancellationToken)
+    {
+        var orgId = _tenantContext.OrganizationId;
+        if (orgId == Guid.Empty)
+            return NotFound(new { message = "No organisation in context" });
+        var org = await _organizationRepository.GetByIdAsync(orgId, cancellationToken);
+        if (org == null)
+            return NotFound(new { message = "Organisation not found" });
+        if (!string.Equals(org.TenantType, TenantModules.TenantTypeCommercialWeighing, StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "Commercial settings are only applicable to CommercialWeighing tenants." });
+
+        if (request.CommercialWeighingFeeKes.HasValue && request.CommercialWeighingFeeKes.Value >= 0)
+            org.CommercialWeighingFeeKes = request.CommercialWeighingFeeKes.Value;
+        if (request.DefaultTareExpiryDays.HasValue)
+            org.DefaultTareExpiryDays = request.DefaultTareExpiryDays.Value > 0 ? request.DefaultTareExpiryDays.Value : null;
+
+        var updated = await _organizationRepository.UpdateAsync(org, cancellationToken);
+        _logger.LogInformation("Commercial settings updated for org {OrgId}: fee={Fee}, tareExpiry={Expiry}",
+            orgId, org.CommercialWeighingFeeKes, org.DefaultTareExpiryDays);
+        return Ok(MapToDto(updated));
+    }
+
+    /// <summary>
     /// Update organization tenant type and enabled modules. Superuser only.
     /// </summary>
     [HttpPatch("{id:guid}/modules")]
@@ -239,6 +275,7 @@ public class OrganizationsController : ControllerBase
     private static OrganizationDto MapToDto(Organization org)
     {
         var enabledModules = ResolveEnabledModules(org);
+        var isCommercial = string.Equals(org.TenantType, TenantModules.TenantTypeCommercialWeighing, StringComparison.OrdinalIgnoreCase);
         return new OrganizationDto
         {
             Id = org.Id,
@@ -257,7 +294,11 @@ public class OrganizationsController : ControllerBase
             SecondaryColor = org.SecondaryColor,
             IsActive = org.IsActive,
             CreatedAt = org.CreatedAt,
-            UpdatedAt = org.UpdatedAt
+            UpdatedAt = org.UpdatedAt,
+            // Commercial-only fields — always populated so frontend can handle switching
+            CommercialWeighingFeeKes = isCommercial ? org.CommercialWeighingFeeKes : null,
+            DefaultTareExpiryDays = isCommercial ? org.DefaultTareExpiryDays : null,
+            PaymentGateway = isCommercial ? org.PaymentGateway : null,
         };
     }
 

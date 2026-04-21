@@ -422,4 +422,29 @@ public class CommercialWeighingController : ControllerBase
             return StatusCode(500, "An error occurred while updating the tolerance setting.");
         }
     }
+
+    /// <summary>
+    /// Deletes a commercial tolerance setting.
+    /// </summary>
+    [HttpDelete("tolerance-settings/{id}")]
+    [Authorize(Policy = "Permission:weighing.update")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> DeleteToleranceSetting(Guid id)
+    {
+        try
+        {
+            await _commercialWeighingService.DeleteCommercialToleranceSettingAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound($"Tolerance setting {id} not found");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting commercial tolerance setting {SettingId}", id);
+            return StatusCode(500, "An error occurred while deleting the tolerance setting.");
+        }
+    }
 }

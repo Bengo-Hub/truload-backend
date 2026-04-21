@@ -502,6 +502,19 @@ public class CommercialWeighingService : ICommercialWeighingService
         return dto;
     }
 
+    public async Task DeleteCommercialToleranceSettingAsync(Guid id)
+    {
+        var orgId = _tenantContext.OrganizationId;
+        var setting = await _dbContext.CommercialToleranceSettings
+            .FirstOrDefaultAsync(s => s.Id == id && s.OrganizationId == orgId);
+
+        if (setting == null)
+            throw new KeyNotFoundException($"Commercial tolerance setting {id} not found for this organisation");
+
+        _dbContext.CommercialToleranceSettings.Remove(setting);
+        await _dbContext.SaveChangesAsync();
+    }
+
     // ============================================================================
     // Private Helpers
     // ============================================================================

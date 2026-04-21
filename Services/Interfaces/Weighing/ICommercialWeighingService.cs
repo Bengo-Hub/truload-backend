@@ -83,6 +83,11 @@ public interface ICommercialWeighingService
     Task<CommercialToleranceSettingDto> UpdateCommercialToleranceSettingAsync(Guid id, CommercialToleranceSettingDto dto);
 
     /// <summary>
+    /// Deletes a commercial tolerance setting. Throws KeyNotFoundException if not found or belongs to a different org.
+    /// </summary>
+    Task DeleteCommercialToleranceSettingAsync(Guid id);
+
+    /// <summary>
     /// Approves a tolerance exception for a transaction where discrepancy exceeded configured bands.
     /// Requires weighing.override permission.
     /// </summary>

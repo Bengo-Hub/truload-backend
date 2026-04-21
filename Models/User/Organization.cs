@@ -59,6 +59,13 @@ public class Organization
     public decimal CommercialWeighingFeeKes { get; set; } = 500m;
 
     /// <summary>
+    /// Org-level default tare expiry in days for commercial weighing.
+    /// Vehicles without an explicit TareExpiryDays inherit this value.
+    /// Null = no expiry enforced (tares never expire). Default 90 days.
+    /// </summary>
+    public int? DefaultTareExpiryDays { get; set; } = 90;
+
+    /// <summary>
     /// Payment gateway used for invoices: "ecitizen_pesaflow" (default, enforcement) | "treasury" (commercial).
     /// </summary>
     public string PaymentGateway { get; set; } = "ecitizen_pesaflow";
