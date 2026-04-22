@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.CaseManagement;
+using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Models.CaseManagement;
 using TruLoad.Backend.Repositories.CaseManagement;
 using TruLoad.Backend.Services.Interfaces.CaseManagement;
@@ -45,10 +46,16 @@ public class SpecialReleaseService : ISpecialReleaseService
         return releases.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<SpecialReleaseDto>> GetPendingApprovalsAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<PagedResponse<SpecialReleaseDto>> GetPendingApprovalsAsync(
+        string? caseNo = null,
+        string? releaseType = null,
+        DateTime? from = null,
+        DateTime? to = null,
+        int pageNumber = 1,
+        int pageSize = 20)
     {
-        var releases = await _specialReleaseRepository.GetPendingApprovalsAsync(pageNumber, pageSize);
-        return releases.Select(MapToDto);
+        var (items, total) = await _specialReleaseRepository.GetPendingApprovalsAsync(caseNo, releaseType, from, to, pageNumber, pageSize);
+        return PagedResponse<SpecialReleaseDto>.Create(items.Select(MapToDto).ToList(), total, pageNumber, pageSize);
     }
 
     public async Task<SpecialReleaseDto> RequestSpecialReleaseAsync(CreateSpecialReleaseRequest request, Guid userId)

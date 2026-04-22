@@ -44,18 +44,41 @@ public class SpecialReleaseRepository : ISpecialReleaseRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<SpecialRelease>> GetPendingApprovalsAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<(List<SpecialRelease> Items, int TotalCount)> GetPendingApprovalsAsync(
+        string? caseNo = null,
+        string? releaseType = null,
+        DateTime? from = null,
+        DateTime? to = null,
+        int pageNumber = 1,
+        int pageSize = 20)
     {
-        // Note: SpecialRelease model doesn't have IsApproved/IsRejected fields
-        // For now, return all recent releases
-        return await _context.SpecialReleases
+        var query = _context.SpecialReleases
             .AsNoTracking()
             .Include(sr => sr.CaseRegister)
             .Include(sr => sr.ReleaseType)
+            .Where(sr => !sr.IsApproved && !sr.IsRejected)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(caseNo))
+            query = query.Where(sr => sr.CaseRegister != null && sr.CaseRegister.CaseNo.Contains(caseNo));
+
+        if (!string.IsNullOrWhiteSpace(releaseType))
+            query = query.Where(sr => sr.ReleaseType != null && sr.ReleaseType.Name.Contains(releaseType));
+
+        if (from.HasValue)
+            query = query.Where(sr => sr.CreatedAt >= from.Value);
+
+        if (to.HasValue)
+            query = query.Where(sr => sr.CreatedAt <= to.Value);
+
+        var total = await query.CountAsync();
+        var items = await query
             .OrderBy(sr => sr.CreatedAt)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
+
+        return (items, total);
     }
 
     public async Task<IEnumerable<SpecialRelease>> GetApprovedReleasesAsync(

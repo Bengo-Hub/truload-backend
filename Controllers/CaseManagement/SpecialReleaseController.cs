@@ -56,13 +56,19 @@ public class SpecialReleaseController : ControllerBase
     }
 
     /// <summary>
-    /// Get pending approvals
+    /// Get pending approvals with optional search filters
     /// </summary>
     [HttpGet("pending")]
-    public async Task<IActionResult> GetPendingApprovals([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> GetPendingApprovals(
+        [FromQuery] string? caseNo = null,
+        [FromQuery] string? releaseType = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20)
     {
-        var releases = await _specialReleaseService.GetPendingApprovalsAsync(pageNumber, pageSize);
-        return Ok(releases);
+        var result = await _specialReleaseService.GetPendingApprovalsAsync(caseNo, releaseType, from, to, pageNumber, pageSize);
+        return Ok(result);
     }
 
     /// <summary>

@@ -24,11 +24,12 @@ public class VehicleRepository : IVehicleRepository
 
     public async Task<Vehicle?> GetByRegNoAsync(string regNo)
     {
+        var normalized = regNo.Replace(" ", "");
         return await _context.Vehicles
             .AsNoTracking()
             .Include(v => v.Owner)
             .Include(v => v.Transporter)
-            .FirstOrDefaultAsync(v => v.RegNo == regNo);
+            .FirstOrDefaultAsync(v => v.RegNo != null && v.RegNo.Replace(" ", "") == normalized);
     }
 
     /// <summary>
@@ -40,10 +41,11 @@ public class VehicleRepository : IVehicleRepository
 
         if (!string.IsNullOrWhiteSpace(query))
         {
-            var term = query.Trim();
-            q = q.Where(v => (v.RegNo != null && v.RegNo.Contains(term)) ||
-                             (v.ChassisNo != null && v.ChassisNo.Contains(term)) ||
-                             (v.EngineNo != null && v.EngineNo.Contains(term)));
+            var term = query.Trim().Replace(" ", "");
+            q = q.Where(v =>
+                (v.RegNo != null && EF.Functions.ILike(v.RegNo.Replace(" ", ""), $"%{term}%")) ||
+                (v.ChassisNo != null && EF.Functions.ILike(v.ChassisNo.Replace(" ", ""), $"%{term}%")) ||
+                (v.EngineNo != null && EF.Functions.ILike(v.EngineNo.Replace(" ", ""), $"%{term}%")));
         }
 
         return await q.OrderBy(v => v.RegNo).Take(500).ToListAsync();
