@@ -29,6 +29,8 @@ public class ProsecutionCaseDto
     public decimal PenaltyMultiplier { get; set; }
     public int OffenseCount { get; set; }
     public int DemeritPoints { get; set; }
+    public decimal PerPartyFeeUsd { get; set; }
+    public decimal PerPartyFeeKes { get; set; }
     public decimal TotalFeeUsd { get; set; }
     public decimal TotalFeeKes { get; set; }
     public decimal ForexRate { get; set; }
@@ -63,6 +65,10 @@ public class ChargeCalculationResult
 
     // Best charge determination
     public string BestChargeBasis { get; set; } = "gvw";
+    // Per-party fee (driver pays this; owner pays the same amount — joint liability)
+    public decimal PerPartyFeeUsd { get; set; }
+    public decimal PerPartyFeeKes { get; set; }
+    // Combined total = PerPartyFee × 2
     public decimal TotalFeeUsd { get; set; }
     public decimal TotalFeeKes { get; set; }
 

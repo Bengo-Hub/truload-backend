@@ -11,6 +11,7 @@ public interface IVehicleMakesRepository
     Task<List<VehicleMake>> GetAllAsync(bool includeInactive = false, CancellationToken cancellationToken = default);
     Task<VehicleMake?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<VehicleMake?> GetByCodeAsync(string code, CancellationToken cancellationToken = default);
+    Task<VehicleMake?> GetByCodeIncludingDeletedAsync(string code, CancellationToken cancellationToken = default);
     Task<List<VehicleMake>> GetByCountryAsync(string country, CancellationToken cancellationToken = default);
     Task<VehicleMake> CreateAsync(VehicleMake make, CancellationToken cancellationToken = default);
     Task<VehicleMake> UpdateAsync(VehicleMake make, CancellationToken cancellationToken = default);

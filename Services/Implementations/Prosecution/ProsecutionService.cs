@@ -162,9 +162,14 @@ public class ProsecutionService : IProsecutionService
         var bestChargeBasis = gvwFeeUsd >= totalAxleFeeUsd ? "gvw" : "axle";
         var baseFeeUsd = bestChargeBasis == "gvw" ? gvwFeeUsd : totalAxleFeeUsd;
 
-        // Apply multiplier (always 1.0 — repeat-offender penalties are encoded in conviction-specific fee bands)
-        var totalFeeUsd = baseFeeUsd * multiplier;
-        var totalFeeKes = totalFeeUsd * forexRate;
+        // Per-party fee (multiplier always 1.0 — repeat offender uses higher fee bands, not a blanket multiplier)
+        var perPartyFeeUsd = baseFeeUsd * multiplier;
+        var perPartyFeeKes = perPartyFeeUsd * forexRate;
+
+        // Under Cap 403 and EAC VLC Act, driver and owner are jointly and severally liable —
+        // the fee schedule gives the per-party amount; total = 2 × per-party
+        var totalFeeUsd = perPartyFeeUsd * 2;
+        var totalFeeKes = perPartyFeeKes * 2;
 
         // Get demerit points from compliance result
         var demeritPoints = compliance.DemeritPoints?.TotalPoints ?? 0;
@@ -190,6 +195,8 @@ public class ProsecutionService : IProsecutionService
                 FeeKes = g.FeeUsd * forexRate
             }).ToList(),
             BestChargeBasis = bestChargeBasis,
+            PerPartyFeeUsd = perPartyFeeUsd,
+            PerPartyFeeKes = perPartyFeeKes,
             TotalFeeUsd = totalFeeUsd,
             TotalFeeKes = totalFeeKes,
             PenaltyMultiplier = multiplier,
@@ -589,6 +596,8 @@ public class ProsecutionService : IProsecutionService
             PenaltyMultiplier = p.PenaltyMultiplier,
             OffenseCount = p.OffenseCount,
             DemeritPoints = p.DemeritPoints,
+            PerPartyFeeUsd = p.TotalFeeUsd / 2,
+            PerPartyFeeKes = p.TotalFeeKes / 2,
             TotalFeeUsd = p.TotalFeeUsd,
             TotalFeeKes = p.TotalFeeKes,
             ForexRate = p.ForexRate,

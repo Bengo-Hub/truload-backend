@@ -43,6 +43,12 @@ public class VehicleMakesRepository : IVehicleMakesRepository
             .FirstOrDefaultAsync(m => m.Code == code && m.DeletedAt == null, cancellationToken);
     }
 
+    public async Task<VehicleMake?> GetByCodeIncludingDeletedAsync(string code, CancellationToken cancellationToken = default)
+    {
+        return await _context.VehicleMakes
+            .FirstOrDefaultAsync(m => m.Code == code, cancellationToken);
+    }
+
     public async Task<List<VehicleMake>> GetByCountryAsync(string country, CancellationToken cancellationToken = default)
     {
         return await _context.VehicleMakes

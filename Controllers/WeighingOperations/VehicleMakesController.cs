@@ -97,9 +97,23 @@ public class VehicleMakesController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        // Check for an active (non-deleted) make with the same code
         var existing = await _repository.GetByCodeAsync(request.Code);
         if (existing != null)
-            return Conflict(new { Message = $"Vehicle make with code {request.Code} already exists" });
+            return Conflict(new { Message = $"Vehicle make '{existing.Name}' already exists. Use the existing entry." });
+
+        // Check for a previously soft-deleted make — restore it instead of creating a duplicate
+        var deleted = await _repository.GetByCodeIncludingDeletedAsync(request.Code);
+        if (deleted != null && deleted.DeletedAt != null)
+        {
+            deleted.DeletedAt = null;
+            deleted.IsActive = true;
+            deleted.Name = request.Name;
+            if (request.Country != null) deleted.Country = request.Country;
+            if (request.Description != null) deleted.Description = request.Description;
+            var restored = await _repository.UpdateAsync(deleted);
+            return Ok(restored);
+        }
 
         var make = new VehicleMake
         {

@@ -1,5 +1,6 @@
 using TruLoad.Backend.Models.CaseManagement;
 
+
 namespace TruLoad.Backend.Repositories.CaseManagement;
 
 public interface ISpecialReleaseRepository
