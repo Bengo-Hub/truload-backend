@@ -79,6 +79,7 @@ public class CaseRegisterRepository : ICaseRegisterRepository
     }
 
     public async Task<IEnumerable<CaseRegister>> SearchAsync(
+        string? generalSearch = null,
         string? caseNo = null,
         string? vehicleRegNumber = null,
         Guid? stationId = null,
@@ -101,6 +102,15 @@ public class CaseRegisterRepository : ICaseRegisterRepository
             .Include(c => c.DispositionType)
             .Include(c => c.CaseManager)
             .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(generalSearch))
+        {
+            var gs = generalSearch.Trim().Replace(" ", "");
+            query = query.Where(c =>
+                c.CaseNo.Contains(generalSearch.Trim()) ||
+                (c.Weighing != null && c.Weighing.Vehicle != null &&
+                 EF.Functions.ILike(c.Weighing.Vehicle.RegNo.Replace(" ", ""), $"%{gs}%")));
+        }
 
         if (!string.IsNullOrWhiteSpace(caseNo))
             query = query.Where(c => c.CaseNo.Contains(caseNo));

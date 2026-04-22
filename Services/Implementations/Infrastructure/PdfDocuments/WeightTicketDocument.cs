@@ -343,6 +343,11 @@ public class WeightTicketDocument : BaseDocument
                 // Summary data in horizontal row
                 row.RelativeItem().Column(c =>
                 {
+                    var isEnforcement = !_isCommercial;
+                    var feeCurrency = _transaction.Act?.ChargingCurrency ?? "KES";
+                    var perPartyFee = feeCurrency == "KES" ? _transaction.TotalFeeKes : _transaction.TotalFeeUsd;
+                    var combinedFee = isEnforcement ? perPartyFee * 2 : perPartyFee;
+
                     c.Item().Row(r =>
                     {
                         r.RelativeItem().Column(mc => {
@@ -360,20 +365,24 @@ public class WeightTicketDocument : BaseDocument
                             else
                                 oc.Item().Text("0 kg").FontSize(9.5f).FontColor(OfficialGreen);
                         });
-                        var totalFee = (_transaction.Act?.ChargingCurrency ?? "KES") == "KES"
-                            ? _transaction.TotalFeeKes
-                            : _transaction.TotalFeeUsd;
-                        if (totalFee > 0 || _transaction.TotalFeeUsd > 0 || _transaction.TotalFeeKes > 0)
+                        if (combinedFee > 0)
                         {
-                            var feeToShow = totalFee > 0 ? totalFee : Math.Max(_transaction.TotalFeeUsd, _transaction.TotalFeeKes);
                             r.RelativeItem().Column(fc => {
-                                var currency = _transaction.Act?.ChargingCurrency ?? "KES";
-                                fc.Item().Text($"Total Fee ({currency})").FontSize(7.5f).SemiBold().FontColor("#4B5563");
-                                fc.Item().Text($"{feeToShow:N2}").FontSize(9.5f).Bold();
+                                fc.Item().Text(isEnforcement ? $"Combined Charge ({feeCurrency})" : $"Total Fee ({feeCurrency})")
+                                    .FontSize(7.5f).SemiBold().FontColor("#4B5563");
+                                fc.Item().Text($"{combinedFee:N2}").FontSize(9.5f).Bold();
                             });
                         }
                     });
-                    
+
+                    // Per-party footnote for enforcement
+                    if (isEnforcement && perPartyFee > 0)
+                    {
+                        c.Item().PaddingTop(2).Text(
+                            $"* Combined charge: Driver's fine {feeCurrency} {perPartyFee:N2} + Owner's fine {feeCurrency} {perPartyFee:N2} = {feeCurrency} {combinedFee:N2} (joint liability, s.58(1) Traffic Act / EAC VLC Act)")
+                            .FontSize(6.5f).Italic().FontColor("#4B5563");
+                    }
+
                     // Tolerance footnotes
                     if (_gvwToleranceKg > 0 || _gvwToleranceDisplay != "0%")
                     {

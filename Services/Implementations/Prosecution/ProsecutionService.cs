@@ -68,8 +68,25 @@ public class ProsecutionService : IProsecutionService
             .Where(p => p.DeletedAt == null)
             .AsQueryable();
 
+        if (!string.IsNullOrWhiteSpace(criteria.GeneralSearch))
+        {
+            var gs = criteria.GeneralSearch.Trim();
+            var gsNorm = gs.Replace(" ", "");
+            query = query.Where(p =>
+                (p.CaseRegister != null && p.CaseRegister.CaseNo.Contains(gs)) ||
+                (p.Weighing != null && p.Weighing.VehicleRegNumber != null &&
+                 EF.Functions.ILike(p.Weighing.VehicleRegNumber.Replace(" ", ""), $"%{gsNorm}%")));
+        }
+
         if (!string.IsNullOrWhiteSpace(criteria.CaseNo))
             query = query.Where(p => p.CaseRegister != null && p.CaseRegister.CaseNo.Contains(criteria.CaseNo));
+
+        if (!string.IsNullOrWhiteSpace(criteria.VehicleRegNumber))
+        {
+            var vr = criteria.VehicleRegNumber.Trim().Replace(" ", "");
+            query = query.Where(p => p.Weighing != null && p.Weighing.VehicleRegNumber != null &&
+                EF.Functions.ILike(p.Weighing.VehicleRegNumber.Replace(" ", ""), $"%{vr}%"));
+        }
 
         if (criteria.CaseRegisterId.HasValue)
             query = query.Where(p => p.CaseRegisterId == criteria.CaseRegisterId.Value);

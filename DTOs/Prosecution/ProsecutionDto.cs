@@ -134,7 +134,10 @@ public class UpdateProsecutionRequest
 /// </summary>
 public class ProsecutionSearchCriteria : PagedRequest
 {
+    /// <summary>OR search: matches CaseNo OR vehicle reg number</summary>
+    public string? GeneralSearch { get; set; }
     public string? CaseNo { get; set; }
+    public string? VehicleRegNumber { get; set; }
     public Guid? CaseRegisterId { get; set; }
     public Guid? WeighingId { get; set; }
     public Guid? StationId { get; set; }

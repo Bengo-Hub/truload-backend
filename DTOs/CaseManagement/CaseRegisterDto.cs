@@ -123,6 +123,8 @@ public class CloseCaseRequest
 /// </summary>
 public class CaseSearchCriteria : PagedRequest
 {
+    /// <summary>OR search: matches CaseNo OR vehicle reg number</summary>
+    public string? GeneralSearch { get; set; }
     public string? CaseNo { get; set; }
     public string? VehicleRegNumber { get; set; }
     public Guid? StationId { get; set; }

@@ -151,78 +151,174 @@ public class InvoiceDocument : BaseDocument
 
     private void ComposeChargeTable(IContainer container)
     {
-        container.Border(1).BorderColor(Colors.Grey.Lighten1).Table(table =>
+        var prosecution = _invoice.ProsecutionCase;
+        var isTrafficAct = string.Equals(prosecution?.Act?.ChargingCurrency, "KES", StringComparison.OrdinalIgnoreCase)
+                        || prosecution?.Act == null;
+        var perPartyKes = (prosecution?.TotalFeeKes ?? 0) / 2;
+        var perPartyUsd = (prosecution?.TotalFeeUsd ?? 0) / 2;
+        var basisLabel = prosecution?.BestChargeBasis == "gvw" ? "GVW" : "Axle";
+
+        container.Column(col =>
         {
-            table.ColumnsDefinition(columns =>
+            col.Item().Border(1).BorderColor(Colors.Grey.Lighten1).Table(table =>
             {
-                columns.RelativeColumn(3);
-                columns.RelativeColumn();
-                columns.RelativeColumn();
-                columns.RelativeColumn();
+                if (isTrafficAct)
+                {
+                    table.ColumnsDefinition(columns =>
+                    {
+                        columns.RelativeColumn(3);
+                        columns.RelativeColumn();
+                        columns.RelativeColumn();
+                    });
+
+                    table.Header(header =>
+                    {
+                        header.Cell().Element(HeaderStyle).Text("Description");
+                        header.Cell().Element(HeaderStyle).AlignRight().Text("Qty/Kg");
+                        header.Cell().Element(HeaderStyle).AlignRight().Text("Amount (KES)");
+                        static IContainer HeaderStyle(IContainer c) =>
+                            c.DefaultTextStyle(x => x.SemiBold().FontSize(9).FontColor(Colors.White))
+                             .Background(Colors.Grey.Darken2).PaddingVertical(5).PaddingHorizontal(5);
+                    });
+
+                    if (prosecution != null)
+                    {
+                        if (prosecution.GvwOverloadKg > 0)
+                        {
+                            table.Cell().Element(CellStyle).Text("GVW Overload Charge");
+                            table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.GvwOverloadKg:N0}");
+                            table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.GvwFeeKes:N2}");
+                        }
+                        if (prosecution.MaxAxleOverloadKg > 0)
+                        {
+                            table.Cell().Element(CellStyle).Text("Axle Overload Charge");
+                            table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.MaxAxleOverloadKg:N0}");
+                            table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.MaxAxleFeeKes:N2}");
+                        }
+
+                        table.Cell().ColumnSpan(3).Element(NoteStyle)
+                            .Text($"* Charge applied based on {basisLabel} (higher of the two)").FontSize(8).Italic();
+
+                        if (prosecution.PenaltyMultiplier > 1)
+                        {
+                            table.Cell().Element(CellStyle).Text($"Repeat Offender Penalty ({prosecution.PenaltyMultiplier:N1}x)").FontColor(OfficialRed);
+                            table.Cell().Element(CellStyle).Text("");
+                            table.Cell().Element(CellStyle).Text("Applied");
+                        }
+
+                        // Joint liability breakdown
+                        table.Cell().ColumnSpan(3).Element(SeparatorStyle)
+                            .Text("JOINT AND SEVERAL LIABILITY — s.58(1) Traffic Act Cap 403").FontSize(8).SemiBold().FontColor(OfficialRed);
+
+                        table.Cell().Element(CellStyle).Text("Driver's Fine");
+                        table.Cell().Element(CellStyle).Text("");
+                        table.Cell().Element(CellStyle).AlignRight().Text($"KES {perPartyKes:N2}");
+
+                        table.Cell().Element(CellStyle).Text("Registered Owner's Fine");
+                        table.Cell().Element(CellStyle).Text("");
+                        table.Cell().Element(CellStyle).AlignRight().Text($"KES {perPartyKes:N2}");
+
+                        table.Cell().Element(TotalStyle).Text("TOTAL COMBINED CHARGE");
+                        table.Cell().Element(TotalStyle).Text("");
+                        table.Cell().Element(TotalStyle).AlignRight().Text($"KES {prosecution.TotalFeeKes:N2}");
+                    }
+                }
+                else
+                {
+                    // EAC — show both USD and KES
+                    table.ColumnsDefinition(columns =>
+                    {
+                        columns.RelativeColumn(3);
+                        columns.RelativeColumn();
+                        columns.RelativeColumn();
+                        columns.RelativeColumn();
+                    });
+
+                    table.Header(header =>
+                    {
+                        header.Cell().Element(HeaderStyle).Text("Description");
+                        header.Cell().Element(HeaderStyle).AlignRight().Text("Qty/Kg");
+                        header.Cell().Element(HeaderStyle).AlignRight().Text("Amount (USD)");
+                        header.Cell().Element(HeaderStyle).AlignRight().Text("Amount (KES)");
+                        static IContainer HeaderStyle(IContainer c) =>
+                            c.DefaultTextStyle(x => x.SemiBold().FontSize(9).FontColor(Colors.White))
+                             .Background(Colors.Grey.Darken2).PaddingVertical(5).PaddingHorizontal(5);
+                    });
+
+                    if (prosecution != null)
+                    {
+                        if (prosecution.GvwOverloadKg > 0)
+                        {
+                            table.Cell().Element(CellStyle).Text("GVW Overload Charge");
+                            table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.GvwOverloadKg:N0}");
+                            table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.GvwFeeUsd:N2}");
+                            table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.GvwFeeKes:N2}");
+                        }
+                        if (prosecution.MaxAxleOverloadKg > 0)
+                        {
+                            table.Cell().Element(CellStyle).Text("Axle Overload Charge");
+                            table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.MaxAxleOverloadKg:N0}");
+                            table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.MaxAxleFeeUsd:N2}");
+                            table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.MaxAxleFeeKes:N2}");
+                        }
+
+                        table.Cell().ColumnSpan(4).Element(NoteStyle)
+                            .Text($"* Charge applied based on {basisLabel} (higher of the two)").FontSize(8).Italic();
+
+                        if (prosecution.PenaltyMultiplier > 1)
+                        {
+                            table.Cell().Element(CellStyle).Text($"Repeat Offender Penalty ({prosecution.PenaltyMultiplier:N1}x)").FontColor(OfficialRed);
+                            table.Cell().Element(CellStyle).Text(""); table.Cell().Element(CellStyle).Text(""); table.Cell().Element(CellStyle).Text("Applied");
+                        }
+
+                        // Joint liability breakdown
+                        table.Cell().ColumnSpan(4).Element(SeparatorStyle)
+                            .Text("JOINT AND SEVERAL LIABILITY — EAC Vehicle Load Control Act").FontSize(8).SemiBold().FontColor(OfficialRed);
+
+                        table.Cell().Element(CellStyle).Text("Driver's Fine");
+                        table.Cell().Element(CellStyle).Text("");
+                        table.Cell().Element(CellStyle).AlignRight().Text($"USD {perPartyUsd:N2}");
+                        table.Cell().Element(CellStyle).AlignRight().Text($"KES {perPartyKes:N2}");
+
+                        table.Cell().Element(CellStyle).Text("Registered Owner's Fine");
+                        table.Cell().Element(CellStyle).Text("");
+                        table.Cell().Element(CellStyle).AlignRight().Text($"USD {perPartyUsd:N2}");
+                        table.Cell().Element(CellStyle).AlignRight().Text($"KES {perPartyKes:N2}");
+
+                        table.Cell().Element(TotalStyle).Text("TOTAL COMBINED CHARGE");
+                        table.Cell().Element(TotalStyle).Text("");
+                        table.Cell().Element(TotalStyle).AlignRight().Text($"USD {prosecution.TotalFeeUsd:N2}");
+                        table.Cell().Element(TotalStyle).AlignRight().Text($"KES {prosecution.TotalFeeKes:N2}");
+                    }
+                }
+
+                static IContainer CellStyle(IContainer c) =>
+                    c.PaddingVertical(4)
+                     .PaddingHorizontal(5)
+                     .BorderBottom(0.5f)
+                     .BorderColor(Colors.Grey.Lighten2)
+                     .DefaultTextStyle(t => t.FontSize(9));
+
+                static IContainer NoteStyle(IContainer c) =>
+                    c.PaddingVertical(3)
+                     .PaddingHorizontal(5)
+                     .Background(Colors.Grey.Lighten4)
+                     .DefaultTextStyle(t => t.FontSize(8));
+
+                static IContainer SeparatorStyle(IContainer c) =>
+                    c.PaddingVertical(3).PaddingHorizontal(5)
+                     .Background(Colors.Red.Lighten5)
+                     .DefaultTextStyle(t => t.FontSize(8));
+
+                static IContainer TotalStyle(IContainer c) =>
+                    c.PaddingVertical(5).PaddingHorizontal(5)
+                     .Background(Colors.Grey.Lighten4)
+                     .DefaultTextStyle(t => t.FontSize(10).SemiBold());
             });
 
-            // Header
-            table.Header(header =>
-            {
-                header.Cell().Element(HeaderStyle).Text("Description");
-                header.Cell().Element(HeaderStyle).AlignRight().Text("Qty/Kg");
-                header.Cell().Element(HeaderStyle).AlignRight().Text("Amount (USD)");
-                header.Cell().Element(HeaderStyle).AlignRight().Text("Amount (KES)");
-
-                static IContainer HeaderStyle(IContainer c) =>
-                    c.DefaultTextStyle(x => x.SemiBold().FontSize(9).FontColor(Colors.White))
-                     .Background(Colors.Grey.Darken2)
-                     .PaddingVertical(5)
-                     .PaddingHorizontal(5);
-            });
-
-            var prosecution = _invoice.ProsecutionCase;
-            if (prosecution != null)
-            {
-                // GVW Overload Charge
-                if (prosecution.GvwOverloadKg > 0)
-                {
-                    table.Cell().Element(CellStyle).Text("GVW Overload Charge");
-                    table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.GvwOverloadKg:N0}");
-                    table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.GvwFeeUsd:N2}");
-                    table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.GvwFeeKes:N2}");
-                }
-
-                // Axle Overload Charge
-                if (prosecution.MaxAxleOverloadKg > 0)
-                {
-                    table.Cell().Element(CellStyle).Text("Axle Overload Charge");
-                    table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.MaxAxleOverloadKg:N0}");
-                    table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.MaxAxleFeeUsd:N2}");
-                    table.Cell().Element(CellStyle).AlignRight().Text($"{prosecution.MaxAxleFeeKes:N2}");
-                }
-
-                // Best Charge Basis Note
-                var basisLabel = prosecution.BestChargeBasis == "gvw" ? "GVW" : "Axle";
-                table.Cell().ColumnSpan(4).Element(NoteStyle).Text($"* Charge applied based on {basisLabel} (higher of the two)").FontSize(8).Italic();
-
-                // Penalty Multiplier
-                if (prosecution.PenaltyMultiplier > 1)
-                {
-                    table.Cell().Element(CellStyle).Text($"Repeat Offender Penalty ({prosecution.PenaltyMultiplier:N1}x)").FontColor(OfficialRed);
-                    table.Cell().Element(CellStyle).Text("");
-                    table.Cell().Element(CellStyle).Text("");
-                    table.Cell().Element(CellStyle).Text("Applied");
-                }
-            }
-
-            static IContainer CellStyle(IContainer c) =>
-                c.PaddingVertical(4)
-                 .PaddingHorizontal(5)
-                 .BorderBottom(0.5f)
-                 .BorderColor(Colors.Grey.Lighten2)
-                 .DefaultTextStyle(t => t.FontSize(9));
-
-            static IContainer NoteStyle(IContainer c) =>
-                c.PaddingVertical(3)
-                 .PaddingHorizontal(5)
-                 .Background(Colors.Grey.Lighten4)
-                 .DefaultTextStyle(t => t.FontSize(8));
+            if (!isTrafficAct && prosecution != null)
+                col.Item().PaddingTop(3).Text($"Exchange Rate: 1 USD = {prosecution.ForexRate:N2} KES")
+                    .FontSize(8).Italic();
         });
     }
 
@@ -296,13 +392,13 @@ public class InvoiceDocument : BaseDocument
                     bank.Item().Text("Bank: Kenya Commercial Bank").FontSize(9);
                     bank.Item().Text("Account: 1234567890").FontSize(9);
                     bank.Item().Text("Branch: Nairobi Main").FontSize(9);
-                    bank.Item().Text($"Reference: {_invoice.InvoiceNo}").FontSize(9).SemiBold();
+                    bank.Item().Text($"Reference: {_invoice.PesaflowInvoiceNumber ?? _invoice.InvoiceNo}").FontSize(9).SemiBold();
                 });
                 row.RelativeItem().Column(mpesa =>
                 {
                     mpesa.Item().Text("M-Pesa Paybill:").FontSize(9).SemiBold();
                     mpesa.Item().Text("Business No: 123456").FontSize(9);
-                    mpesa.Item().Text($"Account: {_invoice.InvoiceNo}").FontSize(9);
+                    mpesa.Item().Text($"Account: {_invoice.PesaflowInvoiceNumber ?? _invoice.InvoiceNo}").FontSize(9);
                     mpesa.Item().PaddingTop(3).Text("Till No: 654321").FontSize(9).SemiBold();
                 });
             });

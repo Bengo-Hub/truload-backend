@@ -55,8 +55,25 @@ public class CaseRegisterService : ICaseRegisterService
             .Where(c => c.DeletedAt == null)
             .AsQueryable();
 
+        if (!string.IsNullOrWhiteSpace(criteria.GeneralSearch))
+        {
+            var gs = criteria.GeneralSearch.Trim().Replace(" ", "");
+            countQuery = countQuery
+                .Include(c => c.Weighing).ThenInclude(w => w!.Vehicle)
+                .Where(c => c.CaseNo.Contains(criteria.GeneralSearch.Trim()) ||
+                    (c.Weighing != null && c.Weighing.Vehicle != null &&
+                     EF.Functions.ILike(c.Weighing.Vehicle.RegNo.Replace(" ", ""), $"%{gs}%")));
+        }
         if (!string.IsNullOrWhiteSpace(criteria.CaseNo))
             countQuery = countQuery.Where(c => c.CaseNo.Contains(criteria.CaseNo));
+        if (!string.IsNullOrWhiteSpace(criteria.VehicleRegNumber))
+        {
+            var normalizedReg = criteria.VehicleRegNumber.Replace(" ", "");
+            countQuery = countQuery
+                .Include(c => c.Weighing).ThenInclude(w => w!.Vehicle)
+                .Where(c => c.Weighing != null && c.Weighing.Vehicle != null &&
+                     EF.Functions.ILike(c.Weighing.Vehicle.RegNo.Replace(" ", ""), $"%{normalizedReg}%"));
+        }
         if (criteria.StationId.HasValue)
             countQuery = countQuery.Where(c => c.Weighing != null && c.Weighing.StationId == criteria.StationId.Value);
         if (criteria.ViolationTypeId.HasValue)
@@ -84,6 +101,7 @@ public class CaseRegisterService : ICaseRegisterService
 
         // Get paginated items from repository
         var cases = await _caseRegisterRepository.SearchAsync(
+            generalSearch: criteria.GeneralSearch,
             caseNo: criteria.CaseNo,
             vehicleRegNumber: criteria.VehicleRegNumber,
             stationId: criteria.StationId,

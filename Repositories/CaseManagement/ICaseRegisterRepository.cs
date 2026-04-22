@@ -10,6 +10,7 @@ public interface ICaseRegisterRepository
     Task<CaseRegister?> GetByProhibitionOrderIdAsync(Guid prohibitionOrderId);
     Task<IEnumerable<CaseRegister>> GetAllAsync(int pageNumber = 1, int pageSize = 50);
     Task<IEnumerable<CaseRegister>> SearchAsync(
+        string? generalSearch = null,
         string? caseNo = null,
         string? vehicleRegNumber = null,
         Guid? stationId = null,
