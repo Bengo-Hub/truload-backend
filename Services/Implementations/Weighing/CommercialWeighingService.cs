@@ -3,8 +3,10 @@ using TruLoad.Backend.Data;
 using TruLoad.Backend.Data.Repositories.Weighing;
 using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Middleware;
+using TruLoad.Backend.Models.Financial;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models.System;
+using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.Weighing;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using STJson = System.Text.Json;
@@ -17,6 +19,7 @@ public class CommercialWeighingService : ICommercialWeighingService
     private readonly ITenantContext _tenantContext;
     private readonly IVehicleRepository _vehicleRepository;
     private readonly IDocumentNumberService _documentNumberService;
+    private readonly ITreasuryService _treasuryService;
     private readonly ILogger<CommercialWeighingService> _logger;
 
     public CommercialWeighingService(
@@ -24,12 +27,14 @@ public class CommercialWeighingService : ICommercialWeighingService
         ITenantContext tenantContext,
         IVehicleRepository vehicleRepository,
         IDocumentNumberService documentNumberService,
+        ITreasuryService treasuryService,
         ILogger<CommercialWeighingService> logger)
     {
         _dbContext = dbContext;
         _tenantContext = tenantContext;
         _vehicleRepository = vehicleRepository;
         _documentNumberService = documentNumberService;
+        _treasuryService = treasuryService;
         _logger = logger;
     }
 
@@ -221,6 +226,9 @@ public class CommercialWeighingService : ICommercialWeighingService
 
         await _dbContext.SaveChangesAsync();
 
+        // Create commercial weighing invoice (idempotent)
+        await CreateCommercialInvoiceAsync(transaction);
+
         _logger.LogInformation(
             "Second weight captured for {TransactionId}: {WeightKg}kg ({WeightType}). Net={NetKg}kg",
             transactionId, request.WeightKg, secondWeightType, transaction.NetWeightKg);
@@ -318,6 +326,9 @@ public class CommercialWeighingService : ICommercialWeighingService
 
         await _dbContext.SaveChangesAsync();
 
+        // Create commercial weighing invoice (idempotent)
+        await CreateCommercialInvoiceAsync(transaction);
+
         _logger.LogInformation(
             "Stored tare used for {TransactionId}: tare={TareKg}kg ({Source}). Net={NetKg}kg",
             transactionId, tareWeightKg, tareSource, transaction.NetWeightKg);
@@ -342,7 +353,25 @@ public class CommercialWeighingService : ICommercialWeighingService
         if (transaction == null)
             throw new KeyNotFoundException($"Weighing transaction {transactionId} not found");
 
-        return MapToCommercialResultDto(transaction);
+        var dto = MapToCommercialResultDto(transaction);
+
+        // Attach invoice data so the frontend can show payment status / open the treasury modal
+        var invoice = await _dbContext.Invoices
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.WeighingId == transactionId && i.InvoiceType == "commercial_weighing_fee");
+
+        if (invoice != null)
+        {
+            dto.InvoiceNo = invoice.InvoiceNo;
+            dto.InvoiceStatus = invoice.Status;
+            dto.InvoiceAmountKes = invoice.AmountDue;
+            dto.TreasuryIntentId = invoice.TreasuryIntentId;
+            dto.TreasuryPaymentUrl = !string.IsNullOrWhiteSpace(invoice.TreasuryIntentId)
+                ? $"https://books.codevertexitsolutions.com/pay?intent_id={invoice.TreasuryIntentId}"
+                : null;
+        }
+
+        return dto;
     }
 
     public async Task RecordTareWeightAsync(
@@ -518,6 +547,78 @@ public class CommercialWeighingService : ICommercialWeighingService
     // ============================================================================
     // Private Helpers
     // ============================================================================
+
+    /// <summary>
+    /// Creates a flat-fee commercial weighing invoice when weighing completes.
+    /// Idempotent — silently skips if invoice already exists.
+    /// </summary>
+    private async Task CreateCommercialInvoiceAsync(WeighingTransaction transaction)
+    {
+        try
+        {
+            var existing = await _dbContext.Invoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.WeighingId == transaction.Id && i.InvoiceType == "commercial_weighing_fee");
+            if (existing != null) return;
+
+            var org = await _dbContext.Organizations
+                .AsNoTracking()
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(o => o.Id == transaction.OrganizationId);
+            if (org == null) return;
+
+            var invoiceNo = await _documentNumberService.GenerateNumberAsync(
+                org.Id, transaction.StationId, DocumentTypes.Invoice);
+
+            var invoice = new Invoice
+            {
+                InvoiceNo = invoiceNo,
+                WeighingId = transaction.Id,
+                AmountDue = org.CommercialWeighingFeeKes,
+                Currency = "KES",
+                Status = "pending",
+                InvoiceType = "commercial_weighing_fee",
+                GeneratedAt = DateTime.UtcNow,
+                OrganizationId = org.Id,
+                StationId = transaction.StationId
+            };
+
+            _dbContext.Invoices.Add(invoice);
+            await _dbContext.SaveChangesAsync();
+
+            if (org.PaymentGateway == "treasury" && !string.IsNullOrWhiteSpace(org.SsoTenantSlug))
+            {
+                try
+                {
+                    var intent = await _treasuryService.CreatePaymentIntentAsync(
+                        org.SsoTenantSlug,
+                        org.CommercialWeighingFeeKes,
+                        invoice.Id.ToString(),
+                        $"Weighing fee — ticket {transaction.TicketNumber}");
+
+                    invoice.TreasuryIntentId = intent.IntentId;
+                    invoice.TreasuryIntentStatus = intent.Status;
+                    await _dbContext.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Failed to create treasury payment intent for invoice {InvoiceNo}. Invoice saved as pending.",
+                        invoiceNo);
+                }
+            }
+
+            _logger.LogInformation(
+                "Created commercial invoice {InvoiceNo} ({Amount} KES) for weighing {TransactionId}",
+                invoiceNo, org.CommercialWeighingFeeKes, transaction.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to create commercial invoice for transaction {TransactionId}. Manual intervention required.",
+                transaction.Id);
+        }
+    }
 
     private async Task<WeighingTransaction> GetTransactionOrThrowAsync(Guid transactionId)
     {

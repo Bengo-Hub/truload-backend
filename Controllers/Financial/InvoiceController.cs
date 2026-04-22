@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -183,6 +184,46 @@ public class InvoiceController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Manually reconcile a commercial invoice (cash / offline payment).
+    /// Marks the invoice as paid and records the payment channel and reference.
+    /// </summary>
+    [HttpPost("api/v1/invoices/{id}/reconcile")]
+    [HasPermission("invoice.update")]
+    public async Task<IActionResult> ManualReconcile(
+        Guid id,
+        [FromBody] ManualReconcileRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        try
+        {
+            var invoice = await _invoiceService.GetByIdAsync(id, ct);
+            if (invoice == null) return NotFound("Invoice not found");
+
+            // Only allow reconciliation of pending invoices
+            if (invoice.Status?.ToLower() != "pending")
+                return BadRequest($"Invoice is already {invoice.Status}. Only pending invoices can be reconciled.");
+
+            // Record as paid with provided channel and reference
+            var updated = await _invoiceService.MarkAsPaidAsync(
+                id,
+                request.AmountPaid,
+                request.Channel,
+                request.Reference,
+                request.Notes,
+                GetCurrentUserId(),
+                ct);
+
+            return Ok(updated);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     private Guid GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -206,4 +247,24 @@ public class UpdateInvoiceStatusRequest
 public class VoidInvoiceRequest
 {
     public string Reason { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request to manually reconcile a commercial invoice against a cash / offline payment
+/// </summary>
+public class ManualReconcileRequest
+{
+    [Required]
+    [Range(0.01, 10_000_000)]
+    public decimal AmountPaid { get; set; }
+
+    [Required]
+    [MaxLength(50)]
+    public string Channel { get; set; } = "cash";
+
+    [MaxLength(100)]
+    public string? Reference { get; set; }
+
+    [MaxLength(500)]
+    public string? Notes { get; set; }
 }

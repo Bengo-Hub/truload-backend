@@ -26,6 +26,7 @@ public static class TenantModules
     // Commercial-only modules
     public const string TareRegister = "tare_register";
     public const string SetupTolerance = "setup_tolerance";
+    public const string Billing = "billing";
 
     /// <summary>All modules available to axle-load enforcement tenants.</summary>
     public static readonly IReadOnlyList<string> AllModules = new[]
@@ -45,7 +46,7 @@ public static class TenantModules
         Dashboard, Weighing, Reporting, Users, Shifts, Technical,
         FinancialInvoices, FinancialReceipts,
         SetupWeighingMetadata, SetupSettings, SetupSystemConfig, SetupSecurity,
-        TareRegister, SetupTolerance
+        TareRegister, SetupTolerance, Billing
     };
 
     public const string TenantTypeCommercialWeighing = "CommercialWeighing";

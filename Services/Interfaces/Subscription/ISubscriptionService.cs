@@ -44,4 +44,16 @@ public interface ISubscriptionService
     /// Fire-and-forget safe — failures are logged but do not block the caller.
     /// </summary>
     Task ReportUsageAsync(string ssoTenantSlug, string metricType, int qty, object? metadata = null, CancellationToken ct = default);
+
+    /// <summary>Lists all available subscription plans (public endpoint — no tenant auth).</summary>
+    Task<string> GetPlansJsonAsync(CancellationToken ct = default);
+
+    /// <summary>Gets billing info for the authenticated tenant. Forwards the user's SSO JWT.</summary>
+    Task<string> GetBillingJsonAsync(string userJwt, CancellationToken ct = default);
+
+    /// <summary>Gets the current subscription for the authenticated tenant. Forwards the user's SSO JWT.</summary>
+    Task<string> GetSubscriptionJsonAsync(string userJwt, CancellationToken ct = default);
+
+    /// <summary>Changes the subscription plan. Forwards the user's SSO JWT.</summary>
+    Task<string> ChangePlanJsonAsync(string userJwt, string planCode, CancellationToken ct = default);
 }

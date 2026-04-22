@@ -240,6 +240,13 @@ public class CommercialWeighingResultDto
     public List<CommercialAxleWeightDto> FirstPassAxles { get; set; } = new();
     public List<CommercialAxleWeightDto> SecondPassAxles { get; set; } = new();
 
+    // Invoice / payment (set after weighing completes)
+    public string? InvoiceNo { get; set; }
+    public string? InvoiceStatus { get; set; }
+    public decimal? InvoiceAmountKes { get; set; }
+    public string? TreasuryIntentId { get; set; }
+    public string? TreasuryPaymentUrl { get; set; }
+
     // Metadata
     public string? IndustryMetadata { get; set; }
     public DateTime WeighedAt { get; set; }

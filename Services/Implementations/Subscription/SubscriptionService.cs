@@ -121,6 +121,88 @@ public class SubscriptionService : ISubscriptionService
         }
     }
 
+    public async Task<string> GetPlansJsonAsync(CancellationToken ct = default)
+    {
+        var baseUrl = _configuration["Subscriptions:ApiUrl"];
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            return "[]";
+
+        try
+        {
+            var response = await _httpClient.GetAsync($"{baseUrl}/api/v1/plans?active=true", ct);
+            if (!response.IsSuccessStatusCode)
+                return "[]";
+            return await response.Content.ReadAsStringAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GetPlansJsonAsync failed");
+            return "[]";
+        }
+    }
+
+    public async Task<string> GetBillingJsonAsync(string userJwt, CancellationToken ct = default)
+    {
+        var baseUrl = _configuration["Subscriptions:ApiUrl"];
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            return "{}";
+
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/v1/billing");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", userJwt);
+            var response = await _httpClient.SendAsync(request, ct);
+            return await response.Content.ReadAsStringAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GetBillingJsonAsync failed");
+            return "{}";
+        }
+    }
+
+    public async Task<string> GetSubscriptionJsonAsync(string userJwt, CancellationToken ct = default)
+    {
+        var baseUrl = _configuration["Subscriptions:ApiUrl"];
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            return "{}";
+
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/v1/subscription/");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", userJwt);
+            var response = await _httpClient.SendAsync(request, ct);
+            return await response.Content.ReadAsStringAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GetSubscriptionJsonAsync failed");
+            return "{}";
+        }
+    }
+
+    public async Task<string> ChangePlanJsonAsync(string userJwt, string planCode, CancellationToken ct = default)
+    {
+        var baseUrl = _configuration["Subscriptions:ApiUrl"];
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            throw new InvalidOperationException("Subscriptions API is not configured");
+
+        var body = new { plan_code = planCode };
+        var request = new HttpRequestMessage(HttpMethod.Put, $"{baseUrl}/api/v1/subscription/plan")
+        {
+            Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json")
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", userJwt);
+
+        var response = await _httpClient.SendAsync(request, ct);
+        var json = await response.Content.ReadAsStringAsync(ct);
+
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException($"Plan change failed: {json}");
+
+        return json;
+    }
+
     public async Task ReportUsageAsync(string ssoTenantSlug, string metricType, int qty, object? metadata = null, CancellationToken ct = default)
     {
         try

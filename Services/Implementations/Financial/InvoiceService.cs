@@ -302,6 +302,51 @@ public class InvoiceService : IInvoiceService
         }).ToList();
     }
 
+    public async Task<InvoiceDto> MarkAsPaidAsync(Guid id, decimal amountPaid, string channel, string? reference, string? notes, Guid userId, CancellationToken ct = default)
+    {
+        var invoice = await _context.Invoices
+            .Include(i => i.Receipts)
+            .FirstOrDefaultAsync(i => i.Id == id && i.DeletedAt == null, ct)
+            ?? throw new InvalidOperationException($"Invoice {id} not found");
+
+        if (invoice.Status == "paid")
+            throw new InvalidOperationException("Invoice is already paid");
+
+        if (invoice.Status == "void" || invoice.Status == "cancelled")
+            throw new InvalidOperationException($"Cannot record payment for a {invoice.Status} invoice");
+
+        var year = DateTime.UtcNow.Year;
+        var receiptCount = await _context.Receipts.CountAsync(r => r.CreatedAt.Year == year, ct);
+        var receiptNo = $"RCP-{year}-{(receiptCount + 1):D6}";
+
+        var receipt = new Receipt
+        {
+            Id = Guid.NewGuid(),
+            ReceiptNo = receiptNo,
+            InvoiceId = id,
+            AmountPaid = amountPaid,
+            Currency = invoice.Currency,
+            PaymentMethod = channel,
+            TransactionReference = reference,
+            IdempotencyKey = Guid.NewGuid(),
+            ReceivedById = userId == Guid.Empty ? null : userId,
+            PaymentChannel = channel,
+            PaymentDate = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Receipts.Add(receipt);
+
+        invoice.Status = "paid";
+        invoice.TreasuryIntentStatus = "succeeded";
+        invoice.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(ct);
+
+        return (await GetByIdAsync(id, ct))!;
+    }
+
     public async Task<string> GenerateInvoiceNumberAsync(CancellationToken ct = default)
     {
         var year = DateTime.UtcNow.Year;
