@@ -324,12 +324,12 @@ public class InvoiceDocument : BaseDocument
 
     private void ComposePaymentSummary(IContainer container)
     {
+        var prosecution = _invoice.ProsecutionCase;
+        var isTrafficAct = string.Equals(prosecution?.Act?.ChargingCurrency, "KES", StringComparison.OrdinalIgnoreCase)
+                        || prosecution?.Act == null;
         var invoiceCurrency = string.IsNullOrWhiteSpace(_invoice.Currency) ? "KES" : _invoice.Currency;
-        var forexRate = _invoice.ProsecutionCase?.ForexRate ?? 130m;
-        var equivalentCurrency = string.Equals(invoiceCurrency, "USD", StringComparison.OrdinalIgnoreCase) ? "KES" : "USD";
-        var equivalentAmount = string.Equals(invoiceCurrency, "USD", StringComparison.OrdinalIgnoreCase)
-            ? _invoice.AmountDue * forexRate
-            : forexRate > 0 ? _invoice.AmountDue / forexRate : 0m;
+        var forexRate = prosecution?.ForexRate ?? 130m;
+        var amountPaid = _invoice.Receipts?.Where(r => r.DeletedAt == null).Sum(r => r.AmountPaid) ?? 0;
 
         container.Border(1).BorderColor(Colors.Black).Column(col =>
         {
@@ -339,20 +339,27 @@ public class InvoiceDocument : BaseDocument
                 r.ConstantItem(80).AlignRight().Text($"{invoiceCurrency} {_invoice.AmountDue:N2}");
             });
 
-            col.Item().Padding(5).Row(r =>
+            // Exchange rate and USD equivalent only for EAC (non-Traffic Act) invoices
+            if (!isTrafficAct)
             {
-                r.RelativeItem().Text($"Exchange Rate (1 USD):").FontSize(9);
-                r.ConstantItem(80).AlignRight().Text($"KES {forexRate:N2}").FontSize(9);
-            });
+                var equivalentCurrency = string.Equals(invoiceCurrency, "USD", StringComparison.OrdinalIgnoreCase) ? "KES" : "USD";
+                var equivalentAmount = string.Equals(invoiceCurrency, "USD", StringComparison.OrdinalIgnoreCase)
+                    ? _invoice.AmountDue * forexRate
+                    : forexRate > 0 ? _invoice.AmountDue / forexRate : 0m;
 
-            col.Item().Padding(5).Row(r =>
-            {
-                r.RelativeItem().Text($"Amount Due ({equivalentCurrency}):").SemiBold();
-                r.ConstantItem(80).AlignRight().Text($"{equivalentCurrency} {equivalentAmount:N2}").SemiBold();
-            });
+                col.Item().Padding(5).Row(r =>
+                {
+                    r.RelativeItem().Text("Exchange Rate (1 USD):").FontSize(9);
+                    r.ConstantItem(80).AlignRight().Text($"KES {forexRate:N2}").FontSize(9);
+                });
 
-            // If partial payment made
-            var amountPaid = _invoice.Receipts?.Where(r => r.DeletedAt == null).Sum(r => r.AmountPaid) ?? 0;
+                col.Item().Padding(5).Row(r =>
+                {
+                    r.RelativeItem().Text($"Amount Due ({equivalentCurrency}):").SemiBold();
+                    r.ConstantItem(80).AlignRight().Text($"{equivalentCurrency} {equivalentAmount:N2}").SemiBold();
+                });
+            }
+
             if (amountPaid > 0)
             {
                 col.Item().Background(Colors.Green.Lighten4).Padding(5).Row(r =>
