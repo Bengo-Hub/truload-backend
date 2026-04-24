@@ -551,7 +551,7 @@ try
 
 
         // Check if initial seeding has already been completed
-        var seedingVersion = 25; // Increment this when you need to re-seed
+        var seedingVersion = 26; // Increment this when you need to re-seed
         var seedingName = "InitialSeed";
 
         var existingSeed = await dbContext.DatabaseSeedingHistory
