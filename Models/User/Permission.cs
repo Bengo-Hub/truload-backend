@@ -40,9 +40,15 @@ public class Permission
         public bool IsActive { get; set; } = true;
 
         /// <summary>
-        /// When true, this permission is system-sensitive (e.g. user.delete, system.manage_roles). Only superusers can view/assign it.
+        /// When true, only superusers can assign or view this permission.
+        /// Used for critical system management permissions.
         /// </summary>
         public bool IsSystemSensitive { get; set; } = false;
+
+        /// <summary>
+        /// Use case grouping for the permission (e.g., Shared, Commercial, Enforcement)
+        /// </summary>
+        public string UseCase { get; set; } = "Shared";
 
         /// <summary>
         /// Timestamp when the permission was created.

@@ -41,7 +41,9 @@ public class PermissionsController : ControllerBase
     [HasPermission("config.read")]
     [ProducesResponseType(typeof(IEnumerable<PermissionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<IEnumerable<PermissionDto>>> GetAllPermissions(CancellationToken cancellationToken = default)
+    public async Task<ActionResult<IEnumerable<PermissionDto>>> GetAllPermissions(
+        [FromQuery] string? useCase = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -50,6 +52,13 @@ public class PermissionsController : ControllerBase
             var list = permissions.ToList();
             if (!User.IsInRole("Superuser"))
                 list = list.Where(p => !p.IsSystemSensitive).ToList();
+            
+            if (!string.IsNullOrWhiteSpace(useCase))
+            {
+                var uc = useCase.Trim().ToLower();
+                list = list.Where(p => p.UseCase.ToLower() == "shared" || p.UseCase.ToLower() == uc).ToList();
+            }
+
             var dtos = list.Select(p => p.ToDto()).ToList();
             
             _logger.LogInformation("Retrieved {Count} permissions", dtos.Count);
@@ -126,6 +135,7 @@ public class PermissionsController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<IEnumerable<PermissionDto>>> GetPermissionsByCategory(
         string category,
+        [FromQuery] string? useCase = null,
         CancellationToken cancellationToken = default)
     {
         try
@@ -138,6 +148,13 @@ public class PermissionsController : ControllerBase
             var list = permissions.ToList();
             if (!User.IsInRole("Superuser"))
                 list = list.Where(p => !p.IsSystemSensitive).ToList();
+            
+            if (!string.IsNullOrWhiteSpace(useCase))
+            {
+                var uc = useCase.Trim().ToLower();
+                list = list.Where(p => p.UseCase.ToLower() == "shared" || p.UseCase.ToLower() == uc).ToList();
+            }
+
             var dtos = list.Select(p => p.ToDto()).ToList();
 
             _logger.LogInformation("Retrieved {Count} permissions for category {Category}", dtos.Count, category);

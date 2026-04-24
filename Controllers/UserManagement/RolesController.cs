@@ -52,7 +52,8 @@ public class RolesController : ControllerBase
     [HasPermission("system.manage_roles")]
     [ProducesResponseType(typeof(IEnumerable<RoleDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<RoleDto>>> GetAll(
-        [FromQuery] bool includeInactive = false)
+        [FromQuery] bool includeInactive = false,
+        [FromQuery] string? useCase = null)
     {
         var query = _roleManager.Roles.AsQueryable();
 
@@ -62,6 +63,12 @@ public class RolesController : ControllerBase
         if (!includeInactive)
         {
             query = query.Where(r => r.IsActive);
+        }
+
+        if (!string.IsNullOrWhiteSpace(useCase))
+        {
+            var uc = useCase.Trim().ToLower();
+            query = query.Where(r => r.UseCase.ToLower() == "shared" || r.UseCase.ToLower() == uc);
         }
         
         var roles = await query.OrderBy(r => r.Name).ToListAsync();

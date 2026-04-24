@@ -46,6 +46,11 @@ public class PermissionDto
     public bool IsSystemSensitive { get; set; }
 
     /// <summary>
+    /// Use case grouping for the permission (e.g., Shared, Commercial, Enforcement)
+    /// </summary>
+    public string UseCase { get; set; } = "Shared";
+
+    /// <summary>
     /// Timestamp when the permission was created.
     /// </summary>
     public DateTime CreatedAt { get; set; }

@@ -35,6 +35,16 @@ public class ApplicationRole : IdentityRole<Guid>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
+    /// Soft delete timestamp
+    /// </summary>
+    public DateTime? DeletedAt { get; set; }
+
+    /// <summary>
+    /// Use case grouping for the role (e.g., Shared, Commercial, Enforcement)
+    /// </summary>
+    public string UseCase { get; set; } = "Shared";
+
+    /// <summary>
     /// Record update timestamp
     /// </summary>
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

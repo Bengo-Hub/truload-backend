@@ -9,8 +9,8 @@ public class RoleDto
     public string Code { get; set; } = string.Empty;
     public string? Description { get; set; }
     public bool IsActive { get; set; }
-    /// <summary>When true, only superusers can view/assign this role.</summary>
     public bool IsSystemRole { get; set; }
+    public string UseCase { get; set; } = "Shared";
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -20,6 +20,7 @@ public class CreateRoleRequest
     public string Name { get; set; } = string.Empty;
     public string Code { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public string UseCase { get; set; } = "Shared";
 }
 
 public class UpdateRoleRequest
@@ -28,6 +29,7 @@ public class UpdateRoleRequest
     public string? Code { get; set; }
     public string? Description { get; set; }
     public bool? IsActive { get; set; }
+    public string? UseCase { get; set; }
 }
 
 public class AssignPermissionsRequest
@@ -72,4 +74,5 @@ public class PermissionDto
     public string Name { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
     public bool IsActive { get; set; }
+    public string UseCase { get; set; } = "Shared";
 }

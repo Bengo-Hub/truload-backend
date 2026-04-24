@@ -230,6 +230,7 @@ public static class PermissionSeeder
                 Description = description,
                 IsActive = true,
                 IsSystemSensitive = SystemSensitiveCodes.Contains(code),
+                UseCase = ResolveUseCase(category, code),
                 CreatedAt = DateTime.UtcNow
             });
         }
@@ -240,13 +241,38 @@ public static class PermissionSeeder
             await context.SaveChangesAsync();
         }
 
-        // Mark existing permissions as system-sensitive where applicable (idempotent)
-        var toUpdate = await context.Permissions
-            .Where(p => SystemSensitiveCodes.Contains(p.Code) && !p.IsSystemSensitive)
-            .ToListAsync();
+        // Mark existing permissions as system-sensitive and apply UseCase where applicable
+        var toUpdate = await context.Permissions.ToListAsync();
+        var hasUpdates = false;
         foreach (var p in toUpdate)
-            p.IsSystemSensitive = true;
-        if (toUpdate.Count > 0)
+        {
+            var isSensitive = SystemSensitiveCodes.Contains(p.Code);
+            if (p.IsSystemSensitive != isSensitive)
+            {
+                p.IsSystemSensitive = isSensitive;
+                hasUpdates = true;
+            }
+            var useCase = ResolveUseCase(p.Category, p.Code);
+            if (p.UseCase != useCase)
+            {
+                p.UseCase = useCase;
+                hasUpdates = true;
+            }
+        }
+        if (hasUpdates)
             await context.SaveChangesAsync();
+    }
+
+    private static string ResolveUseCase(string category, string code)
+    {
+        return category switch
+        {
+            "Yard" => "Enforcement",
+            "Tag" => "Enforcement",
+            "Case" => "Enforcement",
+            "Prosecution" => "Enforcement",
+            "Portal" => "Commercial",
+            _ => "Shared"
+        };
     }
 }

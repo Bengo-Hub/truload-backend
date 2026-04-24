@@ -153,6 +153,15 @@ public class TenantContextMiddleware
         Guid? stationId = null;
         bool isExplicit = false;
 
+        // Determine if user is superuser early on
+        bool isSuperuser = false;
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            var roles = context.User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
+            isSuperuser = roles.Contains("Superuser", StringComparer.OrdinalIgnoreCase) || 
+                          roles.Contains("SUPERUSER", StringComparer.OrdinalIgnoreCase);
+        }
+
         // Layer 1: Try request headers (explicit tenant selection)
         if (context.Request.Headers.TryGetValue(OrgIdHeader, out var orgIdHeader) &&
             Guid.TryParse(orgIdHeader.FirstOrDefault(), out var headerOrgId))
@@ -170,15 +179,8 @@ public class TenantContextMiddleware
         }
 
         // Layer 2: Try user claims from JWT (if not resolved from headers)
-        // For Superusers WITHOUT explicit headers: skip claim-based org resolution
-        // so they operate in cross-tenant mode (OrgId stays empty, global filters bypassed).
-        // When headers ARE provided (isExplicit=true, e.g. platform user drilling into a tenant),
-        // orgId is already set from Layer 1 — this block is skipped.
         if (!orgId.HasValue)
         {
-            var roles = context.User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
-            var isSuperuser = roles.Contains("Superuser");
-
             if (isSuperuser)
             {
                 // Platform owner with no explicit tenant → cross-tenant mode
@@ -199,11 +201,11 @@ public class TenantContextMiddleware
             }
         }
 
-        // Do not fall back to station from claims when user is HQ (is_hq_user): they see all stations unless X-Station-ID is sent for drill-down
+        // Do not fall back to station from claims when user is HQ (is_hq_user) or Superuser
         if (!stationId.HasValue)
         {
             var isHqUser = context.User.FindFirst("is_hq_user")?.Value == "true";
-            if (!isHqUser)
+            if (!isHqUser && !isSuperuser)
             {
                 var stationIdClaim = context.User.FindFirst("station_id") ??
                                     context.User.FindFirst("outlet_id");
@@ -217,7 +219,8 @@ public class TenantContextMiddleware
         }
 
         // Layer 3: Try Hostname/Domain-based resolution (mss.masterspace.co.ke, etc.)
-        if (!orgId.HasValue)
+        // Skip for superusers so they don't get locked into a tenant simply by accessing via a specific URL
+        if (!orgId.HasValue && !isSuperuser)
         {
             var host = context.Request.Host.Host.ToLower();
             string? slug = null;
@@ -244,13 +247,8 @@ public class TenantContextMiddleware
         }
 
         // Layer 4: Fallback to default organization
-        // Platform owners (Superusers) with NO explicit tenant headers → leave org empty (Guid.Empty)
-        // so global query filters are bypassed and they see all tenants' data.
         if (!orgId.HasValue)
         {
-            var roles = context.User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
-            var isSuperuser = roles.Contains("Superuser");
-
             if (isSuperuser)
             {
                 // Platform owner: no tenant context → bypass tenant filters

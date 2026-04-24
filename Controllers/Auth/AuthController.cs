@@ -330,16 +330,20 @@ public class AuthController : ControllerBase
         // Resolve organization for frontend routing and tenant-mode enforcement
         string? organizationCode = null;
         string? tenantType = null;
+        string? tenantUseCase = null;
         List<string>? enabledModules = null;
         if (user.OrganizationId.HasValue)
         {
             var org = await _organizationRepository.GetByIdAsync(user.OrganizationId.Value);
             organizationCode = org?.Code;
             tenantType = org?.TenantType;
-            // Use the same resolver as profile endpoint — falls back to DefaultCommercialWeighingModules
-            // for commercial tenants when EnabledModulesJson is empty
             if (org != null)
+            {
+                tenantUseCase = string.Equals(org.TenantType, TenantModules.TenantTypeCommercialWeighing, StringComparison.OrdinalIgnoreCase) ? "Commercial" : "Enforcement";
+                // Use the same resolver as profile endpoint — falls back to DefaultCommercialWeighingModules
+                // for commercial tenants when EnabledModulesJson is empty
                 enabledModules = ResolveEnabledModulesForOrg(org);
+            }
         }
 
         var response = new
@@ -358,6 +362,7 @@ public class AuthController : ControllerBase
                 organizationId = user.OrganizationId ?? (await _organizationRepository.GetByCodeAsync("KURA"))?.Id,
                 organizationCode,
                 tenantType,
+                tenantUseCase,
                 enabledModules,
                 stationId = user.StationId,
                 isHqUser,
@@ -722,6 +727,7 @@ public class AuthController : ControllerBase
 
         string? organizationCode = null;
         string? tenantType = null;
+        string? tenantUseCase = null;
         List<string>? enabledModules = null;
         if (user.OrganizationId.HasValue)
         {
@@ -730,6 +736,7 @@ public class AuthController : ControllerBase
             {
                 organizationCode = org.Code;
                 tenantType = org.TenantType;
+                tenantUseCase = string.Equals(org.TenantType, TenantModules.TenantTypeCommercialWeighing, StringComparison.OrdinalIgnoreCase) ? "Commercial" : "Enforcement";
                 enabledModules = ResolveEnabledModulesForOrg(org);
             }
         }
@@ -753,6 +760,7 @@ public class AuthController : ControllerBase
             organizationId = user.OrganizationId,
             organizationCode,
             tenantType,
+            tenantUseCase,
             enabledModules,
             stationId = user.StationId,
             isHqUser,

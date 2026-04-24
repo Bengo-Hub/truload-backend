@@ -24,6 +24,7 @@ public static class PermissionMappingExtensions
             Description = permission.Description,
             IsActive = permission.IsActive,
             IsSystemSensitive = permission.IsSystemSensitive,
+            UseCase = permission.UseCase,
             CreatedAt = permission.CreatedAt
         };
     }
@@ -56,6 +57,7 @@ public static class PermissionMappingExtensions
             Category = dto.Category,
             Description = dto.Description,
             IsActive = dto.IsActive,
+            UseCase = dto.UseCase ?? "Shared",
             CreatedAt = dto.CreatedAt == default ? DateTime.UtcNow : dto.CreatedAt
         };
     }
