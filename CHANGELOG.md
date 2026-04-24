@@ -5,6 +5,27 @@ All notable changes to TruLoad Backend will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0](https://github.com/Bengo-Hub/truload-backend/compare/v1.1.2...v1.2.0) (2026-04-24)
+
+
+### Features
+
+* add commercial and transporter portal roles, permissions, and demo users ([285e3cb](https://github.com/Bengo-Hub/truload-backend/commit/285e3cbbadf4ccc2a48a199bf88799e916a2ce7c))
+* commercial payment flows — invoice creation, manual reconcile, billing proxy ([961aff6](https://github.com/Bengo-Hub/truload-backend/commit/961aff6eb82c42264084432bc9bb98691b3b0aaa))
+* commercial weighing PDF axle weights, tolerance approval, controller endpoints ([39a9958](https://github.com/Bengo-Hub/truload-backend/commit/39a9958d1a95e49d180dc12dfa10e0deb723ed1e))
+* **commercial:** DefaultTareExpiryDays org setting + commercial settings PATCH endpoint + DELETE tolerance ([9937447](https://github.com/Bengo-Hub/truload-backend/commit/9937447dd011dec08e81c3878beaa8e763be3419))
+* implement use case segregation for roles and permissions ([b004263](https://github.com/Bengo-Hub/truload-backend/commit/b004263c1514225135ada5c3e6a394f7485b918e))
+* **portal:** add portal auth fields to Driver and VehicleOwner models + EF migration ([48cdaa7](https://github.com/Bengo-Hub/truload-backend/commit/48cdaa7261fb1e9c3ec8c08cd9b501855fdb9af3))
+* **portal:** replace plan-name feature gating with subscriptions-api feature codes ([be7a2f3](https://github.com/Bengo-Hub/truload-backend/commit/be7a2f3cfc899ab8ed106e10c9cd6ec9b7d786ed))
+
+
+### Bug Fixes
+
+* extend CaptureStatus/CaptureSource VARCHAR(20→50) to fix 500 on first-weight ([313e272](https://github.com/Bengo-Hub/truload-backend/commit/313e272d9c9be176543d03914ee63512d53756ec))
+* remove redundant migration job — startup handles migrations ([b3128b5](https://github.com/Bengo-Hub/truload-backend/commit/b3128b5c283948ae0486c017fd24aaec6815ab18))
+* **seed:** handle duplicate ISSUED/IN_FORCE warrant status on reseed ([13246da](https://github.com/Bengo-Hub/truload-backend/commit/13246da4827d329e5aba292da783e7849ee31ebd))
+* use DROP INDEX IF EXISTS in commercial weighing migration ([4fd3b3e](https://github.com/Bengo-Hub/truload-backend/commit/4fd3b3edd8c4336d7af1a1ea2b24b4851abf5a22))
+
 ## [1.1.2](https://github.com/Bengo-Hub/truload-backend/compare/v1.1.1...v1.1.2) (2026-04-20)
 
 
