@@ -447,4 +447,61 @@ public class CommercialWeighingController : ControllerBase
             return StatusCode(500, "An error occurred while deleting the tolerance setting.");
         }
     }
+
+    /// <summary>
+    /// Voids a pending commercial weighing transaction.
+    /// </summary>
+    [HttpPost("{id}/void")]
+    [Authorize(Policy = "Permission:weighing.create")]
+    [ProducesResponseType(typeof(CommercialWeighingResultDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> Void(Guid id, [FromBody] VoidCommercialWeighingRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userGuid))
+            return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var result = await _commercialWeighingService.VoidCommercialWeighingAsync(id, request, userGuid);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error voiding commercial weighing {TransactionId}", id);
+            return StatusCode(500, "An error occurred while voiding the transaction.");
+        }
+    }
+
+    /// <summary>
+    /// Gets pending commercial weighing transactions (first weight captured, awaiting second pass).
+    /// </summary>
+    [HttpGet("pending")]
+    [Authorize(Policy = "Permission:weighing.read")]
+    [ProducesResponseType(typeof(List<CommercialWeighingResultDto>), 200)]
+    public async Task<IActionResult> GetPending([FromQuery] Guid stationId)
+    {
+        try
+        {
+            var results = await _commercialWeighingService.GetPendingCommercialTransactionsAsync(stationId);
+            return Ok(results);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching pending commercial transactions for station {StationId}", stationId);
+            return StatusCode(500, "An error occurred while fetching pending transactions.");
+        }
+    }
 }

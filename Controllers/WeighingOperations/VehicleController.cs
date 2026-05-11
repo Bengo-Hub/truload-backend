@@ -29,6 +29,21 @@ public class VehicleController : ControllerBase
         return Ok(vehicle);
     }
 
+    [HttpGet]
+    [HasPermission("vehicle.read")]
+    public async Task<IActionResult> GetPaged(
+        [FromQuery] string? search,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] Guid? transporterId = null)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1 || pageSize > 200) pageSize = 20;
+
+        var (items, total) = await _vehicleRepository.SearchPagedAsync(search, page, pageSize, transporterId);
+        return Ok(new { items, totalCount = total, page, pageSize });
+    }
+
     [HttpGet("search")]
     [HasPermission("vehicle.read")]
     public async Task<IActionResult> Search([FromQuery] string query)

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.Weighing;
 
 namespace TruLoad.Backend.Data.Repositories.Weighing;
@@ -7,10 +8,12 @@ namespace TruLoad.Backend.Data.Repositories.Weighing;
 public class DriverRepository : IDriverRepository
 {
     private readonly TruLoadDbContext _context;
+    private readonly ITenantContext _tenantContext;
 
-    public DriverRepository(TruLoadDbContext context)
+    public DriverRepository(TruLoadDbContext context, ITenantContext tenantContext)
     {
         _context = context;
+        _tenantContext = tenantContext;
     }
 
     public async Task<Driver?> GetByIdAsync(Guid id)
@@ -36,10 +39,15 @@ public class DriverRepository : IDriverRepository
 
     /// <summary>
     /// Search drivers by name, ID number, or license. When query is empty, returns all drivers (up to 500) for dropdowns and setup tabs.
+    /// Filters to drivers that are global (OrganizationId == null) or belong to the current tenant.
     /// </summary>
     public async Task<IEnumerable<Driver>> SearchAsync(string query)
     {
-        var q = _context.Drivers.AsNoTracking();
+        var orgId = _tenantContext.OrganizationId;
+
+        var q = _context.Drivers
+            .AsNoTracking()
+            .Where(d => d.OrganizationId == null || d.OrganizationId == orgId);
 
         if (!string.IsNullOrWhiteSpace(query))
         {

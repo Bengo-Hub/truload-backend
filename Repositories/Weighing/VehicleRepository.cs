@@ -51,6 +51,36 @@ public class VehicleRepository : IVehicleRepository
         return await q.OrderBy(v => v.RegNo).Take(500).ToListAsync();
     }
 
+    public async Task<(IEnumerable<Vehicle> Items, int TotalCount)> SearchPagedAsync(string? search, int page, int pageSize, Guid? transporterId = null)
+    {
+        var q = _context.Vehicles
+            .AsNoTracking()
+            .Include(v => v.Owner)
+            .Include(v => v.Transporter)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().Replace(" ", "");
+            q = q.Where(v =>
+                (v.RegNo != null && EF.Functions.ILike(v.RegNo.Replace(" ", ""), $"%{term}%")) ||
+                (v.ChassisNo != null && EF.Functions.ILike(v.ChassisNo.Replace(" ", ""), $"%{term}%")) ||
+                (v.EngineNo != null && EF.Functions.ILike(v.EngineNo.Replace(" ", ""), $"%{term}%")));
+        }
+
+        if (transporterId.HasValue)
+            q = q.Where(v => v.TransporterId == transporterId.Value);
+
+        var total = await q.CountAsync();
+        var items = await q
+            .OrderBy(v => v.RegNo)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, total);
+    }
+
     public async Task<Vehicle> CreateAsync(Vehicle vehicle)
     {
         _context.Vehicles.Add(vehicle);

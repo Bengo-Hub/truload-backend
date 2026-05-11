@@ -5,7 +5,9 @@ using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.Financial;
 using TruLoad.Backend.Models.Weighing;
+using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.System;
+using TruLoad.Backend.Models.Infrastructure;
 using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.Weighing;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
@@ -81,6 +83,33 @@ public class CommercialWeighingService : ICommercialWeighingService
             orgId, request.StationId, DocumentTypes.WeightTicket,
             vehicleRegNo);
 
+        // Load snapshot data — captured once so historical tickets show correct info even if master data changes
+        Driver? snapshotDriver = null;
+        Transporter? snapshotTransporter = null;
+        Vehicle? snapshotVehicle = null;
+        CargoTypes? snapshotCargo = null;
+        OriginsDestinations? snapshotOrigin = null;
+        OriginsDestinations? snapshotDestination = null;
+
+        // Load vehicle for make/model snapshot
+        if (vehicleId != Guid.Empty)
+            snapshotVehicle = await _dbContext.Vehicles.AsNoTracking().FirstOrDefaultAsync(v => v.Id == vehicleId);
+
+        if (request.DriverId.HasValue)
+            snapshotDriver = await _dbContext.Drivers.AsNoTracking().FirstOrDefaultAsync(d => d.Id == request.DriverId.Value);
+
+        if (request.TransporterId.HasValue)
+            snapshotTransporter = await _dbContext.Transporters.AsNoTracking().FirstOrDefaultAsync(t => t.Id == request.TransporterId.Value);
+
+        if (request.CargoId.HasValue)
+            snapshotCargo = await _dbContext.CargoTypes.AsNoTracking().FirstOrDefaultAsync(c => c.Id == request.CargoId.Value);
+
+        if (request.OriginId.HasValue)
+            snapshotOrigin = await _dbContext.OriginsDestinations.AsNoTracking().FirstOrDefaultAsync(o => o.Id == request.OriginId.Value);
+
+        if (request.DestinationId.HasValue)
+            snapshotDestination = await _dbContext.OriginsDestinations.AsNoTracking().FirstOrDefaultAsync(o => o.Id == request.DestinationId.Value);
+
         var transaction = new WeighingTransaction
         {
             TicketNumber = ticketNumber,
@@ -106,7 +135,15 @@ public class CommercialWeighingService : ICommercialWeighingService
             CaptureStatus = "pending",
             CaptureSource = "frontend",
             WeighedAt = DateTime.UtcNow,
-            OrganizationId = orgId
+            OrganizationId = orgId,
+            WeighingScaleType = request.WeighingScaleType ?? "multideck",
+            SnapshotDriverName = snapshotDriver != null ? $"{snapshotDriver.FullNames} {snapshotDriver.Surname}".Trim() : null,
+            SnapshotTransporterName = snapshotTransporter?.Name,
+            SnapshotVehicleMake = snapshotVehicle?.Make,
+            SnapshotVehicleModel = snapshotVehicle?.Model,
+            SnapshotCargoTypeName = snapshotCargo?.Name,
+            SnapshotOriginName = snapshotOrigin?.Name,
+            SnapshotDestinationName = snapshotDestination?.Name,
         };
 
         _dbContext.WeighingTransactions.Add(transaction);
@@ -285,6 +322,9 @@ public class CommercialWeighingService : ICommercialWeighingService
                         _logger.LogWarning(
                             "Stored tare for vehicle {VehicleId} expired ({ExpiryDays} days). Last measured: {LastTareAt}",
                             transaction.VehicleId, expiryDays, vehicle.LastTareWeighedAt.Value);
+                        throw new InvalidOperationException(
+                            $"Stored tare for this vehicle expired {(DateTime.UtcNow - vehicle.LastTareWeighedAt.Value).Days} days ago. " +
+                            "Re-weigh the empty vehicle or provide a manual override tare weight.");
                     }
                 }
             }
@@ -544,6 +584,61 @@ public class CommercialWeighingService : ICommercialWeighingService
         await _dbContext.SaveChangesAsync();
     }
 
+    public async Task<CommercialWeighingResultDto> VoidCommercialWeighingAsync(
+        Guid transactionId,
+        VoidCommercialWeighingRequest request,
+        Guid voidedByUserId)
+    {
+        var transaction = await GetTransactionOrThrowAsync(transactionId);
+        EnsureCommercialMode(transaction);
+
+        if (transaction.VoidedAt.HasValue)
+            throw new InvalidOperationException("This transaction has already been voided.");
+
+        if (transaction.ControlStatus == "Complete" && transaction.SecondWeightKg.HasValue)
+            throw new InvalidOperationException("Cannot void a completed weighing. Contact a supervisor for corrections.");
+
+        transaction.VoidedAt = DateTime.UtcNow;
+        transaction.VoidReason = request.Reason;
+        transaction.VoidedByUserId = voidedByUserId;
+        transaction.ControlStatus = "Voided";
+        transaction.CaptureStatus = "voided";
+        transaction.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Commercial weighing {TransactionId} voided by {UserId}: {Reason}",
+            transactionId, voidedByUserId, request.Reason);
+
+        return await GetCommercialResultAsync(transactionId);
+    }
+
+    public async Task<List<CommercialWeighingResultDto>> GetPendingCommercialTransactionsAsync(Guid stationId)
+    {
+        var orgId = _tenantContext.OrganizationId;
+
+        var transactions = await _dbContext.WeighingTransactions
+            .AsNoTracking()
+            .Include(t => t.Vehicle)
+            .Include(t => t.Driver)
+            .Include(t => t.Transporter)
+            .Include(t => t.Cargo)
+            .Include(t => t.Origin)
+            .Include(t => t.Destination)
+            .Where(t =>
+                t.OrganizationId == orgId &&
+                t.StationId == stationId &&
+                t.WeighingMode == "commercial" &&
+                t.CaptureStatus == "first_weight_captured" &&
+                t.VoidedAt == null)
+            .OrderByDescending(t => t.FirstWeightAt)
+            .Take(20)
+            .ToListAsync();
+
+        return transactions.Select(MapToCommercialResultDto).ToList();
+    }
+
     // ============================================================================
     // Private Helpers
     // ============================================================================
@@ -722,17 +817,18 @@ public class CommercialWeighingService : ICommercialWeighingService
             TicketNumber = transaction.TicketNumber,
             ControlStatus = transaction.ControlStatus,
             WeighingMode = transaction.WeighingMode,
+            WeighingScaleType = transaction.WeighingScaleType,
 
             VehicleId = transaction.VehicleId,
             VehicleRegNumber = transaction.VehicleRegNumber,
-            VehicleMake = transaction.Vehicle?.Make,
-            VehicleModel = transaction.Vehicle?.Model,
+            VehicleMake = transaction.SnapshotVehicleMake ?? transaction.Vehicle?.Make,
+            VehicleModel = transaction.SnapshotVehicleModel ?? transaction.Vehicle?.Model,
             TrailerRegNo = transaction.TrailerRegNo,
 
             DriverId = transaction.DriverId,
-            DriverName = transaction.Driver?.FullNames,
+            DriverName = transaction.SnapshotDriverName ?? (transaction.Driver != null ? $"{transaction.Driver.FullNames} {transaction.Driver.Surname}".Trim() : null),
             TransporterId = transaction.TransporterId,
-            TransporterName = transaction.Transporter?.Name,
+            TransporterName = transaction.SnapshotTransporterName ?? transaction.Transporter?.Name,
             WeighedByUserName = transaction.WeighedByUser?.FullName,
 
             StationId = transaction.StationId ?? Guid.Empty,
@@ -761,11 +857,11 @@ public class CommercialWeighingService : ICommercialWeighingService
             Remarks = transaction.Remarks,
 
             OriginId = transaction.OriginId,
-            SourceLocation = transaction.Origin?.Name,
+            SourceLocation = transaction.SnapshotOriginName ?? transaction.Origin?.Name,
             DestinationId = transaction.DestinationId,
-            DestinationLocation = transaction.Destination?.Name,
+            DestinationLocation = transaction.SnapshotDestinationName ?? transaction.Destination?.Name,
             CargoId = transaction.CargoId,
-            CargoType = transaction.Cargo?.Name,
+            CargoType = transaction.SnapshotCargoTypeName ?? transaction.Cargo?.Name,
 
             ToleranceExceeded = toleranceExceeded,
             ToleranceDisplay = transaction.GvwToleranceDisplay,
@@ -778,7 +874,9 @@ public class CommercialWeighingService : ICommercialWeighingService
 
             IndustryMetadata = transaction.IndustryMetadata,
             WeighedAt = transaction.WeighedAt,
-            CreatedAt = transaction.CreatedAt
+            CreatedAt = transaction.CreatedAt,
+            VoidedAt = transaction.VoidedAt,
+            VoidReason = transaction.VoidReason,
         };
     }
 

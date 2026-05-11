@@ -92,4 +92,14 @@ public interface ICommercialWeighingService
     /// Requires weighing.override permission.
     /// </summary>
     Task<CommercialWeighingResultDto> ApproveToleranceExceptionAsync(Guid transactionId, Guid approvedByUserId);
+
+    /// <summary>
+    /// Voids a pending commercial weighing transaction.
+    /// </summary>
+    Task<CommercialWeighingResultDto> VoidCommercialWeighingAsync(Guid transactionId, VoidCommercialWeighingRequest request, Guid voidedByUserId);
+
+    /// <summary>
+    /// Gets pending commercial weighing transactions (first weight captured, awaiting second pass) for a station.
+    /// </summary>
+    Task<List<CommercialWeighingResultDto>> GetPendingCommercialTransactionsAsync(Guid stationId);
 }

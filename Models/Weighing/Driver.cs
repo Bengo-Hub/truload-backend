@@ -9,7 +9,12 @@ namespace TruLoad.Backend.Models.Weighing;
 /// </summary>
 public class Driver : BaseEntity
 {
-    
+    /// <summary>
+    /// Organization that owns this driver record.
+    /// Null = shared/global (enforcement). Non-null = tenant-specific (commercial).
+    /// </summary>
+    public Guid? OrganizationId { get; set; }
+
     /// <summary>
     /// NTSA (National Transport and Safety Authority) driver ID
     /// Unique identifier from national database (optional).

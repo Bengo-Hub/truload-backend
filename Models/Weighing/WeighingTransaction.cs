@@ -417,6 +417,54 @@ public class WeighingTransaction : TenantAwareEntity
     /// </summary>
     public DateTime? ToleranceExceptionApprovedAt { get; set; }
 
+    // ── Scale Type ──
+    /// <summary>
+    /// Scale type for commercial weighing: "multideck" (platform scale) or "mobile" (axle-by-axle).
+    /// Only relevant when WeighingMode = "commercial".
+    /// </summary>
+    [MaxLength(20)]
+    public string? WeighingScaleType { get; set; }
+
+    // ── Snapshot Fields (denormalized at time of weighing) ──
+    /// <summary>Snapshot of driver name at time of weighing.</summary>
+    [MaxLength(200)]
+    public string? SnapshotDriverName { get; set; }
+
+    /// <summary>Snapshot of transporter name at time of weighing.</summary>
+    [MaxLength(200)]
+    public string? SnapshotTransporterName { get; set; }
+
+    /// <summary>Snapshot of vehicle make at time of weighing.</summary>
+    [MaxLength(100)]
+    public string? SnapshotVehicleMake { get; set; }
+
+    /// <summary>Snapshot of vehicle model at time of weighing.</summary>
+    [MaxLength(100)]
+    public string? SnapshotVehicleModel { get; set; }
+
+    /// <summary>Snapshot of cargo type name at time of weighing.</summary>
+    [MaxLength(200)]
+    public string? SnapshotCargoTypeName { get; set; }
+
+    /// <summary>Snapshot of origin location name at time of weighing.</summary>
+    [MaxLength(200)]
+    public string? SnapshotOriginName { get; set; }
+
+    /// <summary>Snapshot of destination location name at time of weighing.</summary>
+    [MaxLength(200)]
+    public string? SnapshotDestinationName { get; set; }
+
+    // ── Void Fields ──
+    /// <summary>When the transaction was voided (null if not voided).</summary>
+    public DateTime? VoidedAt { get; set; }
+
+    /// <summary>Reason for voiding this transaction.</summary>
+    [MaxLength(500)]
+    public string? VoidReason { get; set; }
+
+    /// <summary>User who voided this transaction.</summary>
+    public Guid? VoidedByUserId { get; set; }
+
     // Navigation Properties
     public Vehicle? Vehicle { get; set; }
     public Driver? Driver { get; set; }

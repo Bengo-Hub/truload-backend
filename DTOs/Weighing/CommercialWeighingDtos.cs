@@ -86,6 +86,13 @@ public class InitiateCommercialWeighingRequest
     /// Industry-specific metadata as JSON string.
     /// </summary>
     public string? IndustryMetadata { get; set; }
+
+    /// <summary>
+    /// Scale type for commercial weighing: "multideck" or "mobile".
+    /// Defaults to "multideck" if not provided.
+    /// </summary>
+    [MaxLength(20)]
+    public string? WeighingScaleType { get; set; }
 }
 
 /// <summary>
@@ -176,6 +183,7 @@ public class CommercialWeighingResultDto
     public string TicketNumber { get; set; } = string.Empty;
     public string ControlStatus { get; set; } = string.Empty;
     public string WeighingMode { get; set; } = "commercial";
+    public string? WeighingScaleType { get; set; }
 
     // Vehicle info
     public Guid VehicleId { get; set; }
@@ -251,6 +259,10 @@ public class CommercialWeighingResultDto
     public string? IndustryMetadata { get; set; }
     public DateTime WeighedAt { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    // Void info
+    public DateTime? VoidedAt { get; set; }
+    public string? VoidReason { get; set; }
 }
 
 public class CommercialAxleWeightDto
@@ -296,6 +308,14 @@ public class CommercialToleranceSettingDto
     /// </summary>
     [MaxLength(200)]
     public string? Description { get; set; }
+}
+
+/// <summary>Request to void a pending commercial weighing transaction.</summary>
+public class VoidCommercialWeighingRequest
+{
+    [Required]
+    [MaxLength(500)]
+    public string Reason { get; set; } = string.Empty;
 }
 
 /// <summary>
