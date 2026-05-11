@@ -43,9 +43,9 @@ public class DriverController : ControllerBase
 
     [HttpGet("search")]
     [HasPermission("driver.read")]
-    public async Task<IActionResult> Search([FromQuery] string? query)
+    public async Task<IActionResult> Search([FromQuery] string? query, [FromQuery] Guid? transporterId = null)
     {
-        var drivers = await _driverRepository.SearchAsync(query ?? string.Empty);
+        var drivers = await _driverRepository.SearchAsync(query ?? string.Empty, transporterId);
         return Ok(drivers);
     }
 

@@ -7,7 +7,7 @@ public interface IDriverRepository
     Task<Driver?> GetByIdAsync(Guid id);
     Task<Driver?> GetByIdNumberAsync(string idNumber);
     Task<Driver?> GetByLicenseAsync(string licenseNo);
-    Task<IEnumerable<Driver>> SearchAsync(string query);
+    Task<IEnumerable<Driver>> SearchAsync(string query, Guid? transporterId = null);
     Task<Driver> CreateAsync(Driver driver);
     Task UpdateAsync(Driver driver);
 }

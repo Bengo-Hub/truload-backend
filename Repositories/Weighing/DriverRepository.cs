@@ -41,13 +41,16 @@ public class DriverRepository : IDriverRepository
     /// Search drivers by name, ID number, or license. When query is empty, returns all drivers (up to 500) for dropdowns and setup tabs.
     /// Filters to drivers that are global (OrganizationId == null) or belong to the current tenant.
     /// </summary>
-    public async Task<IEnumerable<Driver>> SearchAsync(string query)
+    public async Task<IEnumerable<Driver>> SearchAsync(string query, Guid? transporterId = null)
     {
         var orgId = _tenantContext.OrganizationId;
 
         var q = _context.Drivers
             .AsNoTracking()
             .Where(d => d.OrganizationId == null || d.OrganizationId == orgId);
+
+        if (transporterId.HasValue)
+            q = q.Where(d => d.TransporterId == transporterId.Value);
 
         if (!string.IsNullOrWhiteSpace(query))
         {

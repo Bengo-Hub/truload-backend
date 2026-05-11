@@ -16,6 +16,13 @@ public class Driver : BaseEntity
     public Guid? OrganizationId { get; set; }
 
     /// <summary>
+    /// Transporter/fleet operator this driver is employed by (optional).
+    /// Null = independent driver (owner-operator or enforcement record).
+    /// When set, the driver appears in that transporter's portal fleet list.
+    /// </summary>
+    public Guid? TransporterId { get; set; }
+
+    /// <summary>
     /// NTSA (National Transport and Safety Authority) driver ID
     /// Unique identifier from national database (optional).
     /// </summary>
@@ -140,6 +147,7 @@ public class Driver : BaseEntity
     public Guid? PortalAccountId { get; set; }
 
     // Navigation properties
+    public virtual Transporter? Transporter { get; set; }
     public ICollection<DriverDemeritRecord> DemeritRecords { get; set; } = new List<DriverDemeritRecord>();
     // Future: public ICollection<Weighing> Weighings { get; set; }
     // Future: public ICollection<CaseRegister> CaseRegisters { get; set; }

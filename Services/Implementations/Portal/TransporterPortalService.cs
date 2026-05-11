@@ -240,8 +240,17 @@ public class TransporterPortalService : ITransporterPortalService
     {
         var transporter = await GetTransporterForUserAsync(userId);
 
-        // Get distinct drivers who have driven for this transporter
-        var driverIds = await _dbContext.WeighingTransactions
+        // Collect driver IDs from two sources:
+        // 1. Directly linked via Driver.TransporterId (registered under this transporter)
+        // 2. Appeared in weighing transactions for this transporter (historical)
+        var directDriverIds = await _dbContext.Set<Models.Weighing.Driver>()
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(d => d.TransporterId == transporter.Id && d.IsActive)
+            .Select(d => d.Id)
+            .ToListAsync();
+
+        var transactionDriverIds = await _dbContext.WeighingTransactions
             .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(w => w.TransporterId == transporter.Id && w.DriverId.HasValue)
@@ -249,13 +258,15 @@ public class TransporterPortalService : ITransporterPortalService
             .Distinct()
             .ToListAsync();
 
-        if (!driverIds.Any())
+        var allDriverIds = directDriverIds.Union(transactionDriverIds).Distinct().ToList();
+
+        if (!allDriverIds.Any())
             return new List<PortalDriverDto>();
 
         var drivers = await _dbContext.Set<Models.Weighing.Driver>()
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .Where(d => driverIds.Contains(d.Id) && d.IsActive)
+            .Where(d => allDriverIds.Contains(d.Id) && d.IsActive)
             .Select(d => new PortalDriverDto
             {
                 Id = d.Id,
