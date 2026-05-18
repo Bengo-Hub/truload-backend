@@ -224,17 +224,24 @@ public class TenantContextMiddleware
             }
         }
 
-        // Layer 3: Try Hostname/Domain-based resolution (mss.masterspace.co.ke, etc.)
-        // Skip for superusers so they don't get locked into a tenant simply by accessing via a specific URL
+        // Layer 3: Try Domain/Origin-based resolution.
+        // Uses both the server Host header and the browser Origin header so that
+        // requests from a tenant-branded frontend (e.g. kuraweigh.kura.go.ke →
+        // truloadapi.codevertexitsolutions.com) are routed to the correct tenant DB
+        // even on unauthenticated requests (login, forgot-password, etc.).
+        // Skip for superusers so they don't get locked into a tenant by URL.
         if (!orgId.HasValue && !isSuperuser)
         {
             var host = context.Request.Host.Host.ToLower();
+            // Browser sets Origin on cross-origin requests; use it as secondary signal
+            var origin = (context.Request.Headers["Origin"].FirstOrDefault() ?? "").ToLower();
+            var domainSignal = string.IsNullOrEmpty(origin) ? host : origin;
             string? slug = null;
 
-            if (host.Contains("mss.")) slug = "mss";
-            else if (host.Contains("urbanloft.")) slug = "urban-loft";
-            else if (host.Contains("kura.")) slug = "kura";
-            else if (host.Contains("ultichange.")) slug = "ultichange";
+            if (domainSignal.Contains("mss.")) slug = "mss";
+            else if (domainSignal.Contains("urbanloft.")) slug = "urban-loft";
+            else if (domainSignal.Contains("kura.") || domainSignal.Contains("kuraweigh")) slug = "kura";
+            else if (domainSignal.Contains("ultichange.")) slug = "ultichange";
             else if (host.Contains("codevertexitsolutions.com") || host.Contains("codevertex.")) slug = "codevertex";
 
             if (slug != null)
@@ -281,7 +288,10 @@ public class TenantContextMiddleware
         }
         else
         {
-            // Fetch org code for the resolved org ID
+            // Fetch org code for the resolved org ID (inner scope uses default truload DB).
+            // For dedicated-DB tenants (e.g. kura → kuraweigh) the org UUID in the JWT
+            // differs from the truload DB UUID; fall back to the JWT org_code claim so
+            // the outer-scope factory can still route to the correct tenant DB.
             var org = await dbContext.Organizations
                 .AsNoTracking()
                 .FirstOrDefaultAsync(o => o.Id == orgId && o.IsActive);
@@ -292,7 +302,19 @@ public class TenantContextMiddleware
             }
             else
             {
-                _logger.LogWarning("Organization {OrgId} not found or inactive", orgId);
+                // Try the org_code JWT claim as a fallback for cross-DB tenants
+                var orgCodeClaim = context.User.FindFirst("org_code")?.Value;
+                if (!string.IsNullOrWhiteSpace(orgCodeClaim))
+                {
+                    tenantContext.OrganizationCode = orgCodeClaim;
+                    _logger.LogDebug(
+                        "Organization {OrgId} not found in default DB — using org_code claim: {OrgCode}",
+                        orgId, orgCodeClaim);
+                }
+                else
+                {
+                    _logger.LogWarning("Organization {OrgId} not found or inactive", orgId);
+                }
             }
         }
 

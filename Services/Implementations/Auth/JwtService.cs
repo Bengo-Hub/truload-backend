@@ -60,15 +60,26 @@ public class JwtService : IJwtService
 
         // Add organization/station/department (mandatory fallback to KURA for organization)
         var orgId = user.OrganizationId;
+        string? orgCode = null;
         if (!orgId.HasValue)
         {
             // Fallback to KURA organization if not explicitly assigned
             var kura = _context.Organizations.AsNoTracking().FirstOrDefault(o => o.Code == "KURA");
-            if (kura != null) orgId = kura.Id;
+            if (kura != null) { orgId = kura.Id; orgCode = kura.Code; }
+        }
+        else
+        {
+            var org = _context.Organizations.AsNoTracking().FirstOrDefault(o => o.Id == orgId);
+            orgCode = org?.Code;
         }
 
         if (orgId.HasValue)
             claims.Add(new Claim("organization_id", orgId.Value.ToString()));
+
+        // org_code lets the middleware route to the correct per-tenant DB even when
+        // the org UUID differs between the shared truload DB and a dedicated tenant DB.
+        if (!string.IsNullOrWhiteSpace(orgCode))
+            claims.Add(new Claim("org_code", orgCode));
 
         if (user.StationId.HasValue)
             claims.Add(new Claim("station_id", user.StationId.Value.ToString()));
