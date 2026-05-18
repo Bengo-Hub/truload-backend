@@ -224,7 +224,23 @@ public class AxleConfigurationController : ControllerBase
                 return NotFound(new { message = "Axle configuration not found" });
             }
 
-            // Update basic fields
+            // Update tolerance on any config (standard or derived).
+            // ToleranceKg = 0 or null means "use global Act tolerance".
+            // ToleranceKg >= 1000 overrides the global GVW tolerance for this specific config.
+            if (request.ToleranceKg.HasValue)
+                existing.ToleranceKg = request.ToleranceKg.Value > 0 ? request.ToleranceKg.Value : null;
+
+            // Standard configs: only tolerance and notes can be updated (immutable structure)
+            if (existing.IsStandard)
+            {
+                existing.Notes = request.Notes;
+                existing.UpdatedAt = DateTime.UtcNow;
+                var stdUpdated = await _repository.UpdateDerivedConfigAsync(existing, cancellationToken);
+                var stdResult = await _repository.GetByIdAsync(id, includeWeightReferences: true, cancellationToken);
+                return Ok(MapToResponseDto(stdResult!));
+            }
+
+            // Update basic fields (derived configs only)
             existing.AxleName = request.AxleName;
             existing.Description = request.Description;
             existing.LegalFramework = request.LegalFramework ?? existing.LegalFramework;
@@ -428,6 +444,8 @@ public class AxleConfigurationController : ControllerBase
             CreatedAt = config.CreatedAt,
             UpdatedAt = config.UpdatedAt,
             CreatedByUserId = config.CreatedByUserId,
+            ToleranceKg = config.ToleranceKg,
+            TolerancePercentage = config.TolerancePercentage,
             WeightReferenceCount = config.AxleWeightReferences?.Count ?? 0,
             WeightReferences = config.AxleWeightReferences?.Select(wr => new AxleWeightReferenceDto
             {

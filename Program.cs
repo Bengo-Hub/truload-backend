@@ -195,9 +195,29 @@ if (!csBuilder.ConnectionString.Contains("MaxPoolSize", StringComparison.Ordinal
     connectionString = csBuilder.ConnectionString;
 }
 
-builder.Services.AddDbContext<TruLoadDbContext>(options =>
-    options.UseNpgsql(connectionString, npgsqlOptions =>
-        npgsqlOptions.UseVector()));
+// Per-tenant database routing: tenants with a dedicated DB (e.g. kura → kuraweigh) get
+// their own connection string; all others share the default truload database.
+// Configure via env var: TENANTDATABASES__KURA=Host=...;Database=kuraweigh;...
+// or appsettings.json TenantDatabases.kura (injected via K8s secret at runtime).
+var tenantConnProvider = new TruLoad.Backend.Services.Infrastructure.TenantConnectionStringProvider(
+    builder.Configuration, connectionString);
+builder.Services.AddSingleton(tenantConnProvider);
+
+// IHttpContextAccessor is needed so the scoped DbContext factory can read the tenant slug
+// from the current request without depending on ITenantContext (which itself needs the DB).
+builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddDbContext<TruLoadDbContext>((serviceProvider, options) =>
+{
+    // Resolve tenant slug from the current HTTP request route data or header.
+    // This is evaluated per-request (scoped), so each request gets its own context.
+    var httpCtx = serviceProvider.GetService<IHttpContextAccessor>()?.HttpContext;
+    string? tenantSlug = httpCtx?.GetRouteValue("orgSlug")?.ToString()
+        ?? httpCtx?.Request.Headers["X-Tenant-Slug"].FirstOrDefault();
+
+    var resolvedConnString = tenantConnProvider.Resolve(tenantSlug);
+    options.UseNpgsql(resolvedConnString, npgsqlOptions => npgsqlOptions.UseVector());
+});
 
 // ASP.NET Core Identity
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>

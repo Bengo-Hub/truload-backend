@@ -19,6 +19,17 @@ public class AxleConfigurationResponseDto
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public Guid? CreatedByUserId { get; set; }
+    /// <summary>
+    /// Per-config GVW tolerance override in kg. 0 or null = use global Act tolerance.
+    /// When >= 1000 kg, this overrides the global regulatory GVW tolerance for this configuration.
+    /// </summary>
+    public int? ToleranceKg { get; set; }
+
+    /// <summary>
+    /// Per-config GVW tolerance as percentage. Only used when ToleranceKg is null/0.
+    /// </summary>
+    public decimal? TolerancePercentage { get; set; }
+
     public int WeightReferenceCount { get; set; }
     public List<AxleWeightReferenceDto>? WeightReferences { get; set; }
 }

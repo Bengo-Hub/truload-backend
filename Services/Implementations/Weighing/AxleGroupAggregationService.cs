@@ -237,17 +237,40 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
         result.GvwMeasuredKg = transaction.WeighingAxles.Sum(a => a.MeasuredWeightKg);
         result.GvwPermissibleKg = transaction.GvwPermissibleKg;
 
-        // Fetch GVW tolerance from database (per legal framework)
-        int gvwToleranceKg = await _toleranceRepository.CalculateToleranceKgAsync(
-            legalFramework, "GVW", result.GvwPermissibleKg);
-        var gvwToleranceSetting = await _toleranceRepository.GetToleranceAsync(legalFramework, "GVW");
+        // GVW Tolerance Priority:
+        //   1. Axle config specific override (ToleranceKg >= 1000 kg) — highest priority
+        //   2. Global regulatory tolerance from ToleranceSetting (EAC=5%, Traffic Act=2000kg)
+        // The config-specific tolerance is set per configuration on the Axle Configurations page
+        // and allows overriding the global tolerance (e.g., 2T for 2-axle, 3T for 3-axle+).
+        int gvwToleranceKg;
+        ToleranceSetting? gvwToleranceSetting;
+
+        var axleConfigTolerance = transaction.WeighingAxles
+            .Select(a => a.AxleConfiguration?.ToleranceKg)
+            .FirstOrDefault(t => t.HasValue && t.Value >= 1000);
+
+        if (axleConfigTolerance.HasValue)
+        {
+            // Per-config override: use this exact kg value, ignore global regulatory tolerance
+            gvwToleranceKg = axleConfigTolerance.Value;
+            gvwToleranceSetting = null; // display will show kg value directly
+        }
+        else
+        {
+            // No per-config override: fall back to global regulatory tolerance from the Act
+            gvwToleranceKg = await _toleranceRepository.CalculateToleranceKgAsync(
+                legalFramework, "GVW", result.GvwPermissibleKg);
+            gvwToleranceSetting = await _toleranceRepository.GetToleranceAsync(legalFramework, "GVW");
+        }
 
         // Fetch Axle tolerance setting for display
         var axleToleranceSetting = await _toleranceRepository.GetToleranceAsync(legalFramework, "AXLE");
 
         result.GvwToleranceKg = gvwToleranceKg;
         result.GvwEffectiveLimitKg = result.GvwPermissibleKg + gvwToleranceKg;
-        result.GvwToleranceDisplay = BuildToleranceDisplay(gvwToleranceSetting, gvwToleranceKg);
+        result.GvwToleranceDisplay = axleConfigTolerance.HasValue
+            ? $"{gvwToleranceKg:N0} kg (config)"
+            : BuildToleranceDisplay(gvwToleranceSetting, gvwToleranceKg);
         result.AxleToleranceDisplay = BuildToleranceDisplay(axleToleranceSetting, groupResults.FirstOrDefault()?.ToleranceKg ?? 0);
         result.GvwOverloadKg = Math.Max(0, result.GvwMeasuredKg - result.GvwEffectiveLimitKg);
 

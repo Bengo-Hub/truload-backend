@@ -37,6 +37,13 @@ public class UpdateAxleConfigurationDto
     public bool IsActive { get; set; } = true;
 
     /// <summary>
+    /// Per-config GVW tolerance override in kg. Set to 0 to use the global Act tolerance.
+    /// When >= 1000, this overrides the global regulatory GVW tolerance for this configuration.
+    /// Applies to both standard and derived configurations.
+    /// </summary>
+    public int? ToleranceKg { get; set; }
+
+    /// <summary>
     /// Updated weight references. When provided, replaces all existing refs
     /// and GVW is recalculated from the sum of AxleLegalWeightKg values.
     /// </summary>
