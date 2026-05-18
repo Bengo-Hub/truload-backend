@@ -242,7 +242,6 @@ public class TenantContextMiddleware
             else if (domainSignal.Contains("urbanloft.")) slug = "urban-loft";
             else if (domainSignal.Contains("kura.") || domainSignal.Contains("kuraweigh")) slug = "kura";
             else if (domainSignal.Contains("ultichange.")) slug = "ultichange";
-            else if (host.Contains("codevertexitsolutions.com") || host.Contains("codevertex.")) slug = "codevertex";
 
             if (slug != null)
             {
