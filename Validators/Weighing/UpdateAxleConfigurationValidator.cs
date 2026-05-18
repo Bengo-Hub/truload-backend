@@ -23,11 +23,11 @@ public class UpdateAxleConfigurationValidator : AbstractValidator<UpdateAxleConf
             .WithMessage("All weight reference weights must be greater than 0");
 
         RuleFor(x => x.LegalFramework)
-            .Must(x => x == null || new[] { "EAC", "TRAFFIC_ACT", "BOTH" }.Contains(x))
+            .Must(x => x == null || new[] { "EAC", "TRAFFIC_ACT", "TrafficAct", "BOTH" }.Contains(x))
             .WithMessage("Legal framework must be 'EAC', 'TRAFFIC_ACT', or 'BOTH'");
 
         RuleFor(x => x.VisualDiagramUrl)
-            .Must(x => x == null || Uri.TryCreate(x, UriKind.Absolute, out _))
+            .Must(x => x == null || x == string.Empty || Uri.TryCreate(x, UriKind.Absolute, out _))
             .WithMessage("Visual diagram URL must be a valid URI");
 
         RuleFor(x => x.Notes)

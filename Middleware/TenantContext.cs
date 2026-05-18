@@ -68,7 +68,7 @@ public class TenantContextMiddleware
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext context, TenantContext tenantContext, TruLoadDbContext dbContext)
+    public async Task InvokeAsync(HttpContext context, TenantContext tenantContext, IServiceScopeFactory scopeFactory)
     {
         // Skip tenant resolution for public/anonymous endpoints
         if (ShouldSkipTenantResolution(context))
@@ -76,6 +76,12 @@ public class TenantContextMiddleware
             await _next(context);
             return;
         }
+
+        // Use an inner scope so this lookup doesn't consume the request-scoped TruLoadDbContext.
+        // Controllers inject TruLoadDbContext later; the factory reads ITenantContext.OrganizationCode
+        // which we populate here — the inner scope avoids a chicken-and-egg deadlock.
+        await using var innerScope = scopeFactory.CreateAsyncScope();
+        var dbContext = innerScope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
 
         await ResolveTenantAsync(context, tenantContext, dbContext);
 

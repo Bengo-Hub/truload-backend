@@ -203,17 +203,17 @@ var tenantConnProvider = new TruLoad.Backend.Services.Infrastructure.TenantConne
     builder.Configuration, connectionString);
 builder.Services.AddSingleton(tenantConnProvider);
 
-// IHttpContextAccessor is needed so the scoped DbContext factory can read the tenant slug
-// from the current request without depending on ITenantContext (which itself needs the DB).
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddDbContext<TruLoadDbContext>((serviceProvider, options) =>
 {
-    // Resolve tenant slug from the current HTTP request route data or header.
-    // This is evaluated per-request (scoped), so each request gets its own context.
-    var httpCtx = serviceProvider.GetService<IHttpContextAccessor>()?.HttpContext;
-    string? tenantSlug = httpCtx?.GetRouteValue("orgSlug")?.ToString()
-        ?? httpCtx?.Request.Headers["X-Tenant-Slug"].FirstOrDefault();
+    // ITenantContext is populated by TenantContextMiddleware before any controller runs.
+    // Using it here (scoped factory) means the DbContext created for controllers gets the
+    // correct per-tenant connection string (e.g. kura → kuraweigh DB).
+    // The middleware itself uses an inner scope with its own DbContext to avoid this dependency.
+    var tenantCtx = serviceProvider.GetService<ITenantContext>();
+    var orgCode = tenantCtx?.OrganizationCode;
+    var tenantSlug = !string.IsNullOrWhiteSpace(orgCode) ? orgCode.ToLower() : null;
 
     var resolvedConnString = tenantConnProvider.Resolve(tenantSlug);
     options.UseNpgsql(resolvedConnString, npgsqlOptions => npgsqlOptions.UseVector());

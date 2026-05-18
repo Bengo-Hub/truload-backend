@@ -630,9 +630,31 @@ public class NotificationService : INotificationService
     public async Task SaveWorkflowPreferencesAsync(WorkflowPreferencesDto prefs, CancellationToken ct = default)
     {
         var json = JsonSerializer.Serialize(prefs, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        const string key = "notification.workflow.preferences";
         try
         {
-            await _settingsService.UpdateSettingAsync("notification.workflow.preferences", json, Guid.Empty, ct);
+            var existing = await _dbContext.ApplicationSettings
+                .FirstOrDefaultAsync(s => s.SettingKey == key, ct);
+
+            if (existing != null)
+            {
+                existing.SettingValue = json;
+                existing.UpdatedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                _dbContext.ApplicationSettings.Add(new TruLoad.Backend.Models.System.ApplicationSettings
+                {
+                    SettingKey = key,
+                    SettingValue = json,
+                    SettingType = "Json",
+                    Category = TruLoad.Backend.Models.System.SettingKeys.CategoryNotifications,
+                    DisplayName = "Notification Workflow Preferences",
+                    IsEditable = true,
+                });
+            }
+
+            await _dbContext.SaveChangesAsync(ct);
         }
         catch (Exception ex)
         {

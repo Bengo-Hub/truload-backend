@@ -191,6 +191,32 @@ public class NotificationsController : ControllerBase
         return Ok(new { message = "Workflow preferences saved" });
     }
 
+    // ── Test email ────────────────────────────────────────────────────────────
+
+    /// <summary>Sends a test email to confirm the notifications-api integration is working.</summary>
+    [HttpPost("test-email")]
+    [Authorize(Roles = "Superuser,System Admin,Admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> SendTestEmail([FromBody] SendTestEmailRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Recipient))
+            return BadRequest(new { error = "recipient is required" });
+
+        var ok = await _notificationService.SendEmailAsync(
+            "system_test",
+            request.Recipient,
+            request.Recipient,
+            new Dictionary<string, object> { ["sent_at"] = DateTime.UtcNow.ToString("O") },
+            "TruLoad — Test Notification",
+            ct);
+
+        if (!ok)
+            return BadRequest(new { error = "Email send failed — check notifications-api provider configuration" });
+
+        return Ok(new { message = "Test email sent successfully" });
+    }
+
     // ── Push device token endpoints ───────────────────────────────────────────
 
     /// <summary>Returns active push device tokens for the current user.</summary>
@@ -232,3 +258,4 @@ public class NotificationsController : ControllerBase
 }
 
 public sealed record DeleteTokenRequest(string Token);
+public sealed record SendTestEmailRequest(string Recipient);
