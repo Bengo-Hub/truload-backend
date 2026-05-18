@@ -383,7 +383,7 @@ jobs:
             echo "✅ Deployment rollout successful"
             
             # Try ingress health endpoint
-            HOSTS=$(kubectl get ingress -n ${NS} -o jsonpath='{.items[*].spec.rules[*].host}' | tr ' ' '\n' | grep -E '^truloadapitest' || true)
+            HOSTS=$(kubectl get ingress -n ${NS} -o jsonpath='{.items[*].spec.rules[*].host}' | tr ' ' '\n' | grep -E '^truloadapi' || true)
             if [ -n "$HOSTS" ]; then
               STATUS=1
               for H in $HOSTS; do

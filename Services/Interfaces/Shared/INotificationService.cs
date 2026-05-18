@@ -1,3 +1,4 @@
+using TruLoad.Backend.DTOs.Notifications;
 using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Models.Notifications;
 
@@ -134,4 +135,23 @@ public interface INotificationService
     /// Deletes a notification from the user's inbox.
     /// </summary>
     Task<bool> DeleteNotificationAsync(Guid notificationId, Guid userId, CancellationToken ct = default);
+
+    // ── Provider proxy (forwards to notifications-service) ──────────────────
+
+    Task<List<NotificationProviderDto>> GetAvailableProvidersAsync(CancellationToken ct = default);
+    Task<List<NotificationProviderDto>> GetSelectedProvidersAsync(CancellationToken ct = default);
+    Task<bool> SelectProviderAsync(SelectProviderRequest request, CancellationToken ct = default);
+    Task<ProviderSettingsDto?> GetProviderSettingsAsync(string providerType, string providerName, CancellationToken ct = default);
+    Task<bool> SaveProviderSettingsAsync(SaveProviderSettingsRequest request, CancellationToken ct = default);
+
+    // ── Workflow preferences (stored in ApplicationSettings) ────────────────
+
+    Task<WorkflowPreferencesDto> GetWorkflowPreferencesAsync(CancellationToken ct = default);
+    Task SaveWorkflowPreferencesAsync(WorkflowPreferencesDto prefs, CancellationToken ct = default);
+
+    // ── Push device tokens (forwards to notifications-service) ──────────────
+
+    Task<List<DeviceTokenItemDto>> GetDeviceTokensAsync(Guid userId, CancellationToken ct = default);
+    Task<bool> RegisterDeviceTokenAsync(Guid userId, RegisterDeviceTokenRequest request, CancellationToken ct = default);
+    Task<bool> DeleteDeviceTokenAsync(string token, CancellationToken ct = default);
 }

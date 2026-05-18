@@ -4,6 +4,7 @@ using TruLoad.Backend.DTOs.Financial;
 using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Models.Financial;
 using TruLoad.Backend.Services.Interfaces.Financial;
+using TruLoad.Backend.Services.Interfaces.Shared;
 
 namespace TruLoad.Backend.Services.Implementations.Financial;
 
@@ -13,10 +14,17 @@ namespace TruLoad.Backend.Services.Implementations.Financial;
 public class InvoiceService : IInvoiceService
 {
     private readonly TruLoadDbContext _context;
+    private readonly INotificationService _notificationService;
+    private readonly ILogger<InvoiceService> _logger;
 
-    public InvoiceService(TruLoadDbContext context)
+    public InvoiceService(
+        TruLoadDbContext context,
+        INotificationService notificationService,
+        ILogger<InvoiceService> logger)
     {
         _context = context;
+        _notificationService = notificationService;
+        _logger = logger;
     }
 
     public async Task<InvoiceDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -158,6 +166,14 @@ public class InvoiceService : IInvoiceService
 
         await _context.SaveChangesAsync(ct);
 
+        // NOTIFY: Invoice Generated
+        _ = _notificationService.SendInternalNotificationAsync(
+            userId,
+            "Invoice Generated",
+            $"Invoice {invoiceNo} has been generated for {chargingCurrency} {amountDue:N2}. Due in 30 days.",
+            "info",
+            $"/financial/invoices/{invoice.Id}");
+
         return (await GetByIdAsync(invoice.Id, ct))!;
     }
 
@@ -173,6 +189,17 @@ public class InvoiceService : IInvoiceService
         invoice.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(ct);
+
+        // NOTIFY: Invoice Paid/Reconciled
+        if (status is "paid" or "reconciled")
+        {
+            _ = _notificationService.SendInternalNotificationAsync(
+                userId,
+                "Invoice Payment Confirmed",
+                $"Invoice {invoice.InvoiceNo} has been marked as {status}.",
+                "success",
+                $"/financial/invoices/{invoice.Id}");
+        }
 
         return (await GetByIdAsync(id, ct))!;
     }
@@ -194,6 +221,14 @@ public class InvoiceService : IInvoiceService
         invoice.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(ct);
+
+        // NOTIFY: Invoice Voided
+        _ = _notificationService.SendInternalNotificationAsync(
+            userId,
+            "Invoice Voided",
+            $"Invoice {invoice.InvoiceNo} has been voided. Reason: {reason}",
+            "warning",
+            $"/financial/invoices/{invoice.Id}");
 
         return (await GetByIdAsync(id, ct))!;
     }

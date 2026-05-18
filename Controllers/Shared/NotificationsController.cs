@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TruLoad.Backend.DTOs.Notifications;
 using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Models.Notifications;
 using TruLoad.Backend.Services.Interfaces.Shared;
@@ -116,4 +117,118 @@ public class NotificationsController : ControllerBase
 
         return NotFound();
     }
+
+    // ── Provider proxy endpoints ──────────────────────────────────────────────
+
+    /// <summary>Returns email/SMS providers available on the platform.</summary>
+    [HttpGet("providers/available")]
+    [ProducesResponseType(typeof(List<NotificationProviderDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult> GetAvailableProviders(CancellationToken ct)
+    {
+        var providers = await _notificationService.GetAvailableProvidersAsync(ct);
+        return Ok(new { providers });
+    }
+
+    /// <summary>Returns the tenant's currently selected providers.</summary>
+    [HttpGet("providers/selected")]
+    [ProducesResponseType(typeof(List<NotificationProviderDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult> GetSelectedProviders(CancellationToken ct)
+    {
+        var selected = await _notificationService.GetSelectedProvidersAsync(ct);
+        return Ok(new { selected });
+    }
+
+    /// <summary>Sets the tenant's preferred provider for a channel.</summary>
+    [HttpPost("providers/select")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> SelectProvider([FromBody] SelectProviderRequest request, CancellationToken ct)
+    {
+        var ok = await _notificationService.SelectProviderAsync(request, ct);
+        if (!ok) return BadRequest(new { error = "Failed to select provider" });
+        return Ok(new { message = "Provider selected" });
+    }
+
+    /// <summary>Returns settings for a specific provider (secrets masked).</summary>
+    [HttpGet("providers/settings")]
+    [ProducesResponseType(typeof(ProviderSettingsDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult> GetProviderSettings([FromQuery] string providerType, [FromQuery] string providerName, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(providerType) || string.IsNullOrWhiteSpace(providerName))
+            return BadRequest(new { error = "provider_type and provider_name are required" });
+
+        var settings = await _notificationService.GetProviderSettingsAsync(providerType, providerName, ct);
+        if (settings == null) return NotFound();
+        return Ok(settings);
+    }
+
+    /// <summary>Saves tenant-level provider settings.</summary>
+    [HttpPost("providers/settings")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> SaveProviderSettings([FromBody] SaveProviderSettingsRequest request, CancellationToken ct)
+    {
+        var ok = await _notificationService.SaveProviderSettingsAsync(request, ct);
+        if (!ok) return BadRequest(new { error = "Failed to save provider settings" });
+        return Ok(new { message = "Settings saved" });
+    }
+
+    // ── Workflow preference endpoints ─────────────────────────────────────────
+
+    /// <summary>Returns the tenant's workflow notification preferences.</summary>
+    [HttpGet("workflow-preferences")]
+    [ProducesResponseType(typeof(WorkflowPreferencesDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<WorkflowPreferencesDto>> GetWorkflowPreferences(CancellationToken ct)
+    {
+        var prefs = await _notificationService.GetWorkflowPreferencesAsync(ct);
+        return Ok(prefs);
+    }
+
+    /// <summary>Saves the tenant's workflow notification preferences.</summary>
+    [HttpPut("workflow-preferences")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> SaveWorkflowPreferences([FromBody] WorkflowPreferencesDto prefs, CancellationToken ct)
+    {
+        await _notificationService.SaveWorkflowPreferencesAsync(prefs, ct);
+        return Ok(new { message = "Workflow preferences saved" });
+    }
+
+    // ── Push device token endpoints ───────────────────────────────────────────
+
+    /// <summary>Returns active push device tokens for the current user.</summary>
+    [HttpGet("push/tokens")]
+    [ProducesResponseType(typeof(List<DeviceTokenItemDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult> GetDeviceTokens(CancellationToken ct)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            return Unauthorized();
+
+        var tokens = await _notificationService.GetDeviceTokensAsync(userId, ct);
+        return Ok(new { tokens });
+    }
+
+    /// <summary>Registers an FCM device token for push notifications.</summary>
+    [HttpPost("push/tokens")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> RegisterDeviceToken([FromBody] RegisterDeviceTokenRequest request, CancellationToken ct)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            return Unauthorized();
+
+        var ok = await _notificationService.RegisterDeviceTokenAsync(userId, request, ct);
+        if (!ok) return BadRequest(new { error = "Failed to register device token" });
+        return Ok(new { message = "Device token registered" });
+    }
+
+    /// <summary>Deactivates a push device token.</summary>
+    [HttpDelete("push/tokens")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> DeleteDeviceToken([FromBody] DeleteTokenRequest request, CancellationToken ct)
+    {
+        var ok = await _notificationService.DeleteDeviceTokenAsync(request.Token, ct);
+        if (!ok) return NotFound();
+        return Ok(new { message = "Device token removed" });
+    }
 }
+
+public sealed record DeleteTokenRequest(string Token);

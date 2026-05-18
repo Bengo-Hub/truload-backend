@@ -120,6 +120,13 @@ public class AuthController : ControllerBase
 
         _logger.LogInformation("User {Email} registered successfully", request.Email);
 
+        // NOTIFY: Welcome notification for new user
+        _ = _notificationService.SendInternalNotificationAsync(
+            user.Id,
+            "Welcome to TruLoad",
+            $"Your account has been created successfully. Welcome, {user.FullName ?? user.Email}!",
+            "success");
+
         return Ok(new
         {
             message = "User registered successfully",
@@ -162,6 +169,12 @@ public class AuthController : ControllerBase
         {
             if (result.IsLockedOut)
             {
+                // NOTIFY: Account locked out — security alert
+                _ = _notificationService.SendInternalNotificationAsync(
+                    user.Id,
+                    "Account Locked",
+                    "Your account has been temporarily locked due to multiple failed login attempts. Contact your administrator if you need access.",
+                    "warning");
                 return Unauthorized(new { message = "Account is locked out" });
             }
             return Unauthorized(new { message = "Invalid email or password" });
@@ -587,6 +600,13 @@ public class AuthController : ControllerBase
 
         _logger.LogInformation("Password reset successfully for {Email}", request.Email);
 
+        // NOTIFY: Password reset confirmation
+        _ = _notificationService.SendInternalNotificationAsync(
+            user.Id,
+            "Password Reset Successful",
+            "Your password has been reset successfully. If you did not make this change, contact your administrator immediately.",
+            "info");
+
         return Ok(new { message = "Password reset successfully" });
     }
 
@@ -684,6 +704,13 @@ public class AuthController : ControllerBase
         await _userManager.UpdateAsync(user);
 
         _logger.LogInformation("Password changed successfully for user {UserId}", userId);
+
+        // NOTIFY: Password changed confirmation
+        _ = _notificationService.SendInternalNotificationAsync(
+            user.Id,
+            "Password Changed",
+            "Your password was changed successfully. If you did not make this change, contact your administrator immediately.",
+            "info");
 
         return Ok(new { message = "Password changed successfully" });
     }

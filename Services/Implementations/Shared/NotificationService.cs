@@ -1,14 +1,17 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Configuration;
+using TruLoad.Backend.DTOs.Notifications;
 using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Models.Notifications;
 using TruLoad.Backend.Services.Interfaces.Shared;
+using TruLoad.Backend.Services.Interfaces.System;
 
 namespace TruLoad.Backend.Services.Implementations.Shared;
 
@@ -20,20 +23,29 @@ public class NotificationService : INotificationService
 {
     private readonly HttpClient _httpClient;
     private readonly NotificationServiceOptions _options;
-    private readonly Services.Interfaces.System.IIntegrationConfigService _configService;
+    private readonly IIntegrationConfigService _configService;
+    private readonly ISettingsService _settingsService;
     private readonly TruLoadDbContext _dbContext;
     private readonly ILogger<NotificationService> _logger;
+
+    private static readonly JsonSerializerOptions _jsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
 
     public NotificationService(
         HttpClient httpClient,
         IOptions<NotificationServiceOptions> options,
-        Services.Interfaces.System.IIntegrationConfigService configService,
+        IIntegrationConfigService configService,
+        ISettingsService settingsService,
         TruLoadDbContext dbContext,
         ILogger<NotificationService> logger)
     {
         _httpClient = httpClient;
         _options = options.Value;
         _configService = configService;
+        _settingsService = settingsService;
         _dbContext = dbContext;
         _logger = logger;
 
@@ -506,5 +518,202 @@ public class NotificationService : INotificationService
             _logger.LogError(ex, "Failed to send notification via {Channel} channel", channel);
             return (channel, false);
         }
+    }
+
+    // ── Provider proxy ───────────────────────────────────────────────────────
+
+    public async Task<List<NotificationProviderDto>> GetAvailableProvidersAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("/api/v1/providers/available", ct);
+            if (!response.IsSuccessStatusCode) return new List<NotificationProviderDto>();
+            var body = await response.Content.ReadAsStringAsync(ct);
+            var wrapper = JsonSerializer.Deserialize<ProviderListWrapper>(body, _jsonOpts);
+            return wrapper?.Providers ?? new List<NotificationProviderDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch available providers");
+            return new List<NotificationProviderDto>();
+        }
+    }
+
+    public async Task<List<NotificationProviderDto>> GetSelectedProvidersAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("/api/v1/providers/selected", ct);
+            if (!response.IsSuccessStatusCode) return new List<NotificationProviderDto>();
+            var body = await response.Content.ReadAsStringAsync(ct);
+            var wrapper = JsonSerializer.Deserialize<SelectedWrapper>(body, _jsonOpts);
+            return wrapper?.Selected?.Select(s => new NotificationProviderDto
+            {
+                ProviderType = s.GetValueOrDefault("provider_type") ?? string.Empty,
+                ProviderName = s.GetValueOrDefault("provider_name") ?? string.Empty,
+            }).ToList() ?? new List<NotificationProviderDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch selected providers");
+            return new List<NotificationProviderDto>();
+        }
+    }
+
+    public async Task<bool> SelectProviderAsync(SelectProviderRequest request, CancellationToken ct = default)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(request, _jsonOpts);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("/api/v1/providers/select", content, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to select provider");
+            return false;
+        }
+    }
+
+    public async Task<ProviderSettingsDto?> GetProviderSettingsAsync(string providerType, string providerName, CancellationToken ct = default)
+    {
+        try
+        {
+            var url = $"/api/v1/providers/settings?provider_type={providerType}&provider_name={providerName}";
+            var response = await _httpClient.GetAsync(url, ct);
+            if (!response.IsSuccessStatusCode) return null;
+            var body = await response.Content.ReadAsStringAsync(ct);
+            return JsonSerializer.Deserialize<ProviderSettingsDto>(body, _jsonOpts);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get provider settings for {Type}/{Name}", providerType, providerName);
+            return null;
+        }
+    }
+
+    public async Task<bool> SaveProviderSettingsAsync(SaveProviderSettingsRequest request, CancellationToken ct = default)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(request, _jsonOpts);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("/api/v1/providers/settings", content, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save provider settings");
+            return false;
+        }
+    }
+
+    // ── Workflow preferences ─────────────────────────────────────────────────
+
+    public async Task<WorkflowPreferencesDto> GetWorkflowPreferencesAsync(CancellationToken ct = default)
+    {
+        var defaults = new WorkflowPreferencesDto();
+        var raw = await _settingsService.GetSettingValueAsync("notification.workflow.preferences", string.Empty, ct);
+        if (string.IsNullOrWhiteSpace(raw)) return defaults;
+        try
+        {
+            return JsonSerializer.Deserialize<WorkflowPreferencesDto>(raw, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? defaults;
+        }
+        catch
+        {
+            return defaults;
+        }
+    }
+
+    public async Task SaveWorkflowPreferencesAsync(WorkflowPreferencesDto prefs, CancellationToken ct = default)
+    {
+        var json = JsonSerializer.Serialize(prefs, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        try
+        {
+            await _settingsService.UpdateSettingAsync("notification.workflow.preferences", json, Guid.Empty, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save workflow preferences");
+            throw;
+        }
+    }
+
+    // ── Push device tokens ───────────────────────────────────────────────────
+
+    public async Task<List<DeviceTokenItemDto>> GetDeviceTokensAsync(Guid userId, CancellationToken ct = default)
+    {
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/push/tokens");
+            request.Headers.TryAddWithoutValidation("X-User-ID", userId.ToString());
+            var response = await _httpClient.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode) return new List<DeviceTokenItemDto>();
+            var body = await response.Content.ReadAsStringAsync(ct);
+            var wrapper = JsonSerializer.Deserialize<DeviceTokenListWrapper>(body, _jsonOpts);
+            return wrapper?.Tokens ?? new List<DeviceTokenItemDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to list device tokens for user {UserId}", userId);
+            return new List<DeviceTokenItemDto>();
+        }
+    }
+
+    public async Task<bool> RegisterDeviceTokenAsync(Guid userId, RegisterDeviceTokenRequest request, CancellationToken ct = default)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(request, _jsonOpts);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var msg = new HttpRequestMessage(HttpMethod.Post, "/api/v1/push/tokens") { Content = content };
+            msg.Headers.TryAddWithoutValidation("X-User-ID", userId.ToString());
+            var response = await _httpClient.SendAsync(msg, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to register device token for user {UserId}", userId);
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteDeviceTokenAsync(string token, CancellationToken ct = default)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(new { token }, _jsonOpts);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var request = new HttpRequestMessage(HttpMethod.Delete, "/api/v1/push/tokens") { Content = content };
+            var response = await _httpClient.SendAsync(request, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete device token");
+            return false;
+        }
+    }
+
+    // ── Private deserialization helpers ──────────────────────────────────────
+
+    private sealed class ProviderListWrapper
+    {
+        [JsonPropertyName("providers")]
+        public List<NotificationProviderDto> Providers { get; set; } = new();
+    }
+
+    private sealed class SelectedWrapper
+    {
+        [JsonPropertyName("selected")]
+        public List<Dictionary<string, string>> Selected { get; set; } = new();
+    }
+
+    private sealed class DeviceTokenListWrapper
+    {
+        [JsonPropertyName("tokens")]
+        public List<DeviceTokenItemDto> Tokens { get; set; } = new();
     }
 }

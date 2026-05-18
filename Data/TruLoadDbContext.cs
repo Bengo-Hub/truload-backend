@@ -225,6 +225,7 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
 
     // ===== System Settings =====
     public DbSet<ApplicationSettings> ApplicationSettings { get; set; } = null!;
+    public DbSet<ScheduledReport> ScheduledReports { get; set; } = null!;
 
     // ===== Auth: Refresh Tokens & Push Subscriptions =====
     public DbSet<TruLoad.Backend.Models.Identity.RefreshToken> RefreshTokens { get; set; } = null!;

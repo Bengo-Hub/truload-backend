@@ -111,10 +111,10 @@ builder.Services.AddSwaggerGen(options =>
     
     options.AddServer(new Microsoft.OpenApi.Models.OpenApiServer
     {
-        Url = "https://kuraweighapitest.masterspace.co.ke",
-        Description = "Production Server (Testing)"
+        Url = "https://truloadapi.codevertexitsolutions.com",
+        Description = "Production Server"
     });
-    
+
     options.AddServer(new Microsoft.OpenApi.Models.OpenApiServer
     {
         Url = "https://kuraweighapi.kura.go.ke",
@@ -433,6 +433,7 @@ builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IReceiptService, ReceiptService>();
 builder.Services.AddScoped<ICurrencyService, CurrencyService>();
 builder.Services.AddSingleton<ExchangeRateSyncJob>();
+builder.Services.AddSingleton<TruLoad.Backend.Services.BackgroundJobs.ReportScheduleJob>();
 
 // Integration & Payment services (Sprint 15: eCitizen/Pesaflow)
 builder.Services.AddSingleton<IEncryptionService, AesGcmEncryptionService>();
@@ -798,6 +799,16 @@ Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.Materi
     "mv-refresh",
     job => job.ExecuteAsync(default),
     "*/30 * * * *", // Every 30 minutes
+    new Hangfire.RecurringJobOptions
+    {
+        TimeZone = TimeZoneInfo.Utc,
+        QueueName = "default"
+    });
+
+Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.ReportScheduleJob>(
+    "report-schedule-runner",
+    job => job.ExecuteAsync(),
+    "*/5 * * * *", // Every 5 minutes — checks for due reports
     new Hangfire.RecurringJobOptions
     {
         TimeZone = TimeZoneInfo.Utc,
