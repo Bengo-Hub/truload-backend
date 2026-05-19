@@ -204,10 +204,15 @@ public class NotificationsController : ControllerBase
             return BadRequest(new { error = "recipient is required" });
 
         var ok = await _notificationService.SendEmailAsync(
-            "system_test",
+            "test_email",
             request.Recipient,
             request.Recipient,
-            new Dictionary<string, object> { ["sent_at"] = DateTime.UtcNow.ToString("O") },
+            new Dictionary<string, object>
+            {
+                ["sent_at"] = DateTime.UtcNow.ToString("O"),
+                ["brand_name"] = "TruLoad",
+                ["brand_primary_color"] = "#1a1a2e"
+            },
             "TruLoad — Test Notification",
             ct);
 
