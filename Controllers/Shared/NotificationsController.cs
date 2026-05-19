@@ -204,7 +204,7 @@ public class NotificationsController : ControllerBase
             return BadRequest(new { error = "recipient is required" });
 
         var ok = await _notificationService.SendEmailAsync(
-            "test_email",
+            "system_test",
             request.Recipient,
             request.Recipient,
             new Dictionary<string, object>
