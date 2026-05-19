@@ -340,7 +340,7 @@ public class NotificationService : INotificationService
     {
         try
         {
-            var endpoint = $"/api/v1/{_options.TenantId}/notifications/templates";
+            var endpoint = "/api/v1/templates";
             if (!string.IsNullOrEmpty(channel))
             {
                 endpoint += $"?channel={channel}";
@@ -448,7 +448,7 @@ public class NotificationService : INotificationService
     {
         try
         {
-            var endpoint = $"/api/v1/{_options.TenantId}/notifications/messages";
+            var endpoint = "/api/v1/notifications/messages";
 
             var jsonContent = JsonSerializer.Serialize(request, new JsonSerializerOptions
             {
