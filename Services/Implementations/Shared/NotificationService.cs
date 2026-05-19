@@ -77,6 +77,66 @@ public class NotificationService : INotificationService
         return _options.TenantId;
     }
 
+    /// <summary>
+    /// Loads the current tenant's branding fields from the Organization table.
+    /// Returns null if tenant context is unavailable or the org cannot be found.
+    /// </summary>
+    private async Task<Dictionary<string, object>?> GetTenantBrandingAsync(CancellationToken ct)
+    {
+        if (_tenantContext == null || _tenantContext.OrganizationId == Guid.Empty)
+            return null;
+
+        try
+        {
+            var org = await _dbContext.Organizations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.Id == _tenantContext.OrganizationId && o.IsActive, ct);
+
+            if (org == null) return null;
+
+            var branding = new Dictionary<string, object>
+            {
+                ["brand_name"] = org.Name
+            };
+
+            if (!string.IsNullOrWhiteSpace(org.PrimaryColor))
+                branding["brand_primary_color"] = org.PrimaryColor;
+
+            if (!string.IsNullOrWhiteSpace(org.SecondaryColor))
+                branding["brand_secondary_color"] = org.SecondaryColor;
+
+            if (!string.IsNullOrWhiteSpace(org.ContactEmail))
+                branding["brand_email"] = org.ContactEmail;
+
+            if (!string.IsNullOrWhiteSpace(org.ContactPhone))
+                branding["brand_phone"] = org.ContactPhone;
+
+            // Build absolute logo URL so email clients can load it
+            var logoPath = org.PlatformLogoUrl ?? org.LogoUrl;
+            if (!string.IsNullOrWhiteSpace(logoPath))
+            {
+                if (logoPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                    logoPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                {
+                    branding["brand_logo_url"] = logoPath;
+                }
+                else if (!string.IsNullOrWhiteSpace(_options.PublicBaseUrl))
+                {
+                    var baseUrl = _options.PublicBaseUrl.TrimEnd('/');
+                    var path = logoPath.StartsWith('/') ? logoPath : "/" + logoPath;
+                    branding["brand_logo_url"] = baseUrl + path;
+                }
+            }
+
+            return branding;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load tenant branding for org {OrgId}", _tenantContext.OrganizationId);
+            return null;
+        }
+    }
+
     public async Task<bool> SendEmailAsync(
         string templateName,
         string recipientEmail,
@@ -87,12 +147,19 @@ public class NotificationService : INotificationService
     {
         try
         {
-            // Enhance template data with recipient name
-            var enhancedData = new Dictionary<string, object>(templateData)
-            {
-                ["name"] = recipientName,
-                ["recipient_name"] = recipientName
-            };
+            // Start with tenant branding as baseline; caller-provided values take precedence
+            var branding = await GetTenantBrandingAsync(cancellationToken);
+            var enhancedData = branding != null
+                ? new Dictionary<string, object>(branding)
+                : new Dictionary<string, object>();
+
+            // Merge caller-provided data (overrides branding defaults)
+            foreach (var kvp in templateData)
+                enhancedData[kvp.Key] = kvp.Value;
+
+            // Always inject recipient identity
+            enhancedData["name"] = recipientName;
+            enhancedData["recipient_name"] = recipientName;
 
             var metadata = new Dictionary<string, object>();
             if (!string.IsNullOrWhiteSpace(subject))

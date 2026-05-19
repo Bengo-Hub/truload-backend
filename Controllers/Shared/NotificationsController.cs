@@ -210,10 +210,8 @@ public class NotificationsController : ControllerBase
             new Dictionary<string, object>
             {
                 ["sent_at"] = DateTime.UtcNow.ToString("O"),
-                ["brand_name"] = "TruLoad",
-                ["brand_primary_color"] = "#1a1a2e"
             },
-            "TruLoad — Test Notification",
+            "Notification Test — Email Delivery Verified",
             ct);
 
         if (!ok)

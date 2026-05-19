@@ -27,4 +27,11 @@ public class NotificationServiceOptions
     /// HTTP request timeout in seconds (default: 30)
     /// </summary>
     public int TimeoutSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// Public base URL of this API (e.g., "https://truloadapi.codevertexitsolutions.com").
+    /// Used to convert relative logo paths stored in Organization.LogoUrl into absolute URLs
+    /// that email clients can load.
+    /// </summary>
+    public string? PublicBaseUrl { get; set; }
 }
