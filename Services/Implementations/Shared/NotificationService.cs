@@ -8,6 +8,7 @@ using TruLoad.Backend.Configuration;
 using TruLoad.Backend.DTOs.Notifications;
 using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Data;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Models.Notifications;
 using TruLoad.Backend.Services.Interfaces.Shared;
@@ -23,6 +24,7 @@ public class NotificationService : INotificationService
 {
     private readonly HttpClient _httpClient;
     private readonly NotificationServiceOptions _options;
+    private readonly ITenantContext? _tenantContext;
     private readonly IIntegrationConfigService _configService;
     private readonly ISettingsService _settingsService;
     private readonly TruLoadDbContext _dbContext;
@@ -40,10 +42,12 @@ public class NotificationService : INotificationService
         IIntegrationConfigService configService,
         ISettingsService settingsService,
         TruLoadDbContext dbContext,
-        ILogger<NotificationService> logger)
+        ILogger<NotificationService> logger,
+        ITenantContext? tenantContext = null)
     {
         _httpClient = httpClient;
         _options = options.Value;
+        _tenantContext = tenantContext;
         _configService = configService;
         _settingsService = settingsService;
         _dbContext = dbContext;
@@ -58,6 +62,19 @@ public class NotificationService : INotificationService
         {
             _httpClient.DefaultRequestHeaders.Add("X-API-Key", _options.ApiKey);
         }
+    }
+
+    /// <summary>
+    /// Returns the tenant slug to use for notification routing.
+    /// Uses the current request's organisation code (e.g. "KURA" → "kura") when available,
+    /// falling back to the configured TenantId for background jobs.
+    /// </summary>
+    private string GetTenantSlug()
+    {
+        var orgCode = _tenantContext?.OrganizationCode;
+        if (!string.IsNullOrWhiteSpace(orgCode))
+            return orgCode.ToLowerInvariant();
+        return _options.TenantId;
     }
 
     public async Task<bool> SendEmailAsync(
@@ -86,7 +103,7 @@ public class NotificationService : INotificationService
             var request = new NotificationMessageRequest
             {
                 Channel = "email",
-                Tenant = _options.TenantId,
+                Tenant = GetTenantSlug(),
                 Template = templateName,
                 Data = enhancedData,
                 To = new List<string> { recipientEmail },
@@ -130,7 +147,7 @@ public class NotificationService : INotificationService
             var request = new NotificationMessageRequest
             {
                 Channel = "sms",
-                Tenant = _options.TenantId,
+                Tenant = GetTenantSlug(),
                 Template = "shared/plain_sms", // Generic SMS template
                 Data = new Dictionary<string, object>
                 {
@@ -175,7 +192,7 @@ public class NotificationService : INotificationService
             var request = new NotificationMessageRequest
             {
                 Channel = "push",
-                Tenant = _options.TenantId,
+                Tenant = GetTenantSlug(),
                 Template = "push_notification", // Generic push notification template
                 Data = notificationData,
                 To = new List<string> { userId.ToString() }
