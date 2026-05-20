@@ -96,10 +96,13 @@ public class QuestPdfService : IPdfService
                 orgLogoFile = Path.GetFileName(orgInfo.LogoUrl);
         }
 
+        // Interim = first weight captured but second weight not yet done
+        var isInterim = result.SecondWeightKg == null && result.FirstWeightKg != null;
+
         return await Task.Run(() =>
         {
             var document = new CommercialWeightTicketDocument(
-                result, organizationName, orgLogoFile, primaryColor, secondaryColor);
+                result, organizationName, orgLogoFile, primaryColor, secondaryColor, isInterim: isInterim);
             return document.Generate();
         });
     }

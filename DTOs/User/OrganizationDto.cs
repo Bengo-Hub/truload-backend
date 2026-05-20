@@ -24,6 +24,7 @@ public class OrganizationDto
     public decimal? CommercialWeighingFeeKes { get; set; }
     public int? DefaultTareExpiryDays { get; set; }
     public string? PaymentGateway { get; set; }
+    public string? WeighingBusinessModel { get; set; }
 }
 
 public class CreateOrganizationRequest
@@ -83,6 +84,8 @@ public class UpdateCommercialSettingsRequest
     public decimal? CommercialWeighingFeeKes { get; set; }
     /// <summary>Org-wide tare expiry in days. Set to 0 to clear (no expiry).</summary>
     public int? DefaultTareExpiryDays { get; set; }
+    /// <summary>Business model: "ThirdPartyWeighbridge" or "FacilityOwnedScale".</summary>
+    public string? WeighingBusinessModel { get; set; }
 }
 
 /// <summary>

@@ -53,8 +53,16 @@ public class Organization
     // ── Commercial Weighing fields ──────────────────────────────────────────────
 
     /// <summary>
+    /// Business model for commercial weighing:
+    /// "ThirdPartyWeighbridge" — public/private weighbridge charges transporters per transaction (default)
+    /// "FacilityOwnedScale"    — factory/quarry/farm owns their scale, weighs their own fleet, no per-transaction fee
+    /// Both models still pay TruLoad subscription fees.
+    /// </summary>
+    public string WeighingBusinessModel { get; set; } = "ThirdPartyWeighbridge";
+
+    /// <summary>
     /// Flat fee charged to a transporter per commercial weighing session (KES).
-    /// Only applies when TenantType = "CommercialWeighing". Default 500 KES.
+    /// Only applies when WeighingBusinessModel = "ThirdPartyWeighbridge". Default 500 KES.
     /// </summary>
     public decimal CommercialWeighingFeeKes { get; set; } = 500m;
 

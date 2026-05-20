@@ -18,6 +18,7 @@ public class CommercialWeightTicketDocument : BaseDocument
     private readonly string? _primaryColor;
     private readonly string? _secondaryColor;
     private readonly byte[]? _qrCodeBytes;
+    private readonly bool _isInterim;
 
     public CommercialWeightTicketDocument(
         CommercialWeighingResultDto result,
@@ -25,7 +26,8 @@ public class CommercialWeightTicketDocument : BaseDocument
         string? orgLogoFile = null,
         string? primaryColor = null,
         string? secondaryColor = null,
-        byte[]? qrCodeBytes = null)
+        byte[]? qrCodeBytes = null,
+        bool isInterim = false)
     {
         _result = result;
         _organizationName = organizationName;
@@ -33,6 +35,7 @@ public class CommercialWeightTicketDocument : BaseDocument
         _primaryColor = primaryColor;
         _secondaryColor = secondaryColor;
         _qrCodeBytes = qrCodeBytes;
+        _isInterim = isInterim;
     }
 
     public override byte[] Generate()
@@ -57,17 +60,27 @@ public class CommercialWeightTicketDocument : BaseDocument
     {
         var primaryLogo = ResolveOrgLogo(_orgLogoFile, isCommercial: true);
 
-        ComposeOfficialHeaderWithLogos(
-            container,
-            primaryLogo,
-            secondaryLogoFile: null, // No coat of arms for commercial
-            "WEIGHT TICKET",
-            subtitle: _result.StationName ?? "Weighbridge Station",
-            referenceNumber: $"Ticket No: {_result.TicketNumber}",
-            dateText: $"Date: {_result.WeighedAt:dd/MM/yyyy HH:mm}",
-            titleColor: _primaryColor,
-            organizationName: _organizationName,
-            isEnforcement: false);
+        container.Column(col =>
+        {
+            if (_isInterim)
+            {
+                col.Item().Background("#DC2626").Padding(4).AlignCenter()
+                    .Text("INTERIM WEIGHT TICKET — FIRST PASS ONLY")
+                    .FontSize(9).Bold().FontColor(Colors.White);
+            }
+
+            col.Item().Element(inner => ComposeOfficialHeaderWithLogos(
+                inner,
+                primaryLogo,
+                secondaryLogoFile: null,
+                "WEIGHT TICKET",
+                subtitle: _result.StationName ?? "Weighbridge Station",
+                referenceNumber: $"Ticket No: {_result.TicketNumber}",
+                dateText: $"Date: {_result.WeighedAt:dd/MM/yyyy HH:mm}",
+                titleColor: _primaryColor,
+                organizationName: _organizationName,
+                isEnforcement: false));
+        });
     }
 
     private void ComposeContent(IContainer container)
@@ -267,7 +280,10 @@ public class CommercialWeightTicketDocument : BaseDocument
     {
         var firstAxles = _result.FirstPassAxles ?? new List<CommercialAxleWeightDto>();
         var secondAxles = _result.SecondPassAxles ?? new List<CommercialAxleWeightDto>();
-        var isMultideck = firstAxles.Count <= 4 && firstAxles.Count > 1;
+        var scaleType = _result.WeighingScaleType?.ToLowerInvariant();
+        // Mobile weighing captures axle-by-axle during enforcement mode, not relevant for commercial deck sections
+        if (scaleType == "mobile") { container.Column(_ => { }); return; }
+        var isMultideck = scaleType == "multideck" || (firstAxles.Count <= 4 && firstAxles.Count > 1);
         var label = isMultideck ? "DECK WEIGHTS" : "AXLE WEIGHTS";
 
         container.Border(0.5f).BorderColor(Colors.Grey.Lighten1).Column(col =>

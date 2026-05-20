@@ -224,10 +224,17 @@ public class OrganizationsController : ControllerBase
             org.CommercialWeighingFeeKes = request.CommercialWeighingFeeKes.Value;
         if (request.DefaultTareExpiryDays.HasValue)
             org.DefaultTareExpiryDays = request.DefaultTareExpiryDays.Value > 0 ? request.DefaultTareExpiryDays.Value : null;
+        if (!string.IsNullOrWhiteSpace(request.WeighingBusinessModel))
+        {
+            var valid = new[] { "ThirdPartyWeighbridge", "FacilityOwnedScale" };
+            if (!valid.Contains(request.WeighingBusinessModel))
+                return BadRequest(new { message = "WeighingBusinessModel must be 'ThirdPartyWeighbridge' or 'FacilityOwnedScale'." });
+            org.WeighingBusinessModel = request.WeighingBusinessModel;
+        }
 
         var updated = await _organizationRepository.UpdateAsync(org, cancellationToken);
-        _logger.LogInformation("Commercial settings updated for org {OrgId}: fee={Fee}, tareExpiry={Expiry}",
-            orgId, org.CommercialWeighingFeeKes, org.DefaultTareExpiryDays);
+        _logger.LogInformation("Commercial settings updated for org {OrgId}: fee={Fee}, tareExpiry={Expiry}, model={Model}",
+            orgId, org.CommercialWeighingFeeKes, org.DefaultTareExpiryDays, org.WeighingBusinessModel);
         return Ok(MapToDto(updated));
     }
 
@@ -299,6 +306,7 @@ public class OrganizationsController : ControllerBase
             CommercialWeighingFeeKes = isCommercial ? org.CommercialWeighingFeeKes : null,
             DefaultTareExpiryDays = isCommercial ? org.DefaultTareExpiryDays : null,
             PaymentGateway = isCommercial ? org.PaymentGateway : null,
+            WeighingBusinessModel = isCommercial ? org.WeighingBusinessModel : null,
         };
     }
 

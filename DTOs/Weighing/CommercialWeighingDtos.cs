@@ -139,6 +139,13 @@ public class CaptureSecondWeightRequest
     /// Individual axle/deck weights for the second pass (optional).
     /// </summary>
     public List<int>? AxleWeights { get; set; }
+
+    /// <summary>
+    /// Expected net weight from order/dispatch (optional).
+    /// Provided at second-weight capture so tolerance can be evaluated immediately.
+    /// </summary>
+    [Range(0, 200000)]
+    public int? ExpectedNetWeightKg { get; set; }
 }
 
 /// <summary>

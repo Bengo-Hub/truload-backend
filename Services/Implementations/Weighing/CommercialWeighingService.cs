@@ -240,6 +240,10 @@ public class CommercialWeighingService : ICommercialWeighingService
         transaction.TareSource = "measured";
         transaction.GvwMeasuredKg = grossWeightKg;
 
+        // Allow operator to provide/override expected net weight at capture time
+        if (request.ExpectedNetWeightKg.HasValue)
+            transaction.ExpectedNetWeightKg = request.ExpectedNetWeightKg.Value;
+
         // Calculate discrepancy if expected weight provided
         if (transaction.ExpectedNetWeightKg.HasValue && transaction.NetWeightKg.HasValue)
         {
@@ -249,7 +253,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         // Check commercial tolerance
         await CheckCommercialToleranceAsync(transaction);
 
-        transaction.ControlStatus = "Complete";
+        transaction.ControlStatus = transaction.ToleranceExceeded ? "ToleranceExceeded" : "Complete";
         transaction.CaptureStatus = "captured";
         transaction.UpdatedAt = DateTime.UtcNow;
 
@@ -369,7 +373,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         // Check commercial tolerance
         await CheckCommercialToleranceAsync(transaction);
 
-        transaction.ControlStatus = "Complete";
+        transaction.ControlStatus = transaction.ToleranceExceeded ? "ToleranceExceeded" : "Complete";
         transaction.CaptureStatus = "captured";
         transaction.UpdatedAt = DateTime.UtcNow;
 
@@ -493,7 +497,47 @@ public class CommercialWeighingService : ICommercialWeighingService
             "Quality deduction updated for {TransactionId}: {DeductionKg}kg, adjusted net={AdjustedKg}kg",
             transactionId, request.QualityDeductionKg, transaction.AdjustedNetWeightKg);
 
+        _ = SendQualityDeductionNotificationAsync(transaction, request.QualityDeductionKg, request.Reason);
+
         return transaction;
+    }
+
+    private Task SendQualityDeductionNotificationAsync(WeighingTransaction transaction, int deductionKg, string? reason)
+    {
+        return Task.Run(async () =>
+        {
+            try
+            {
+                var prefs = await _notificationService.GetWorkflowPreferencesAsync();
+                if (!prefs.QualityDeductionApplied.EmailEnabled || !transaction.TransporterId.HasValue) return;
+
+                var transporter = await _dbContext.Transporters
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(t => t.Id == transaction.TransporterId.Value);
+                if (transporter == null || string.IsNullOrWhiteSpace(transporter.Email)) return;
+
+                var data = new Dictionary<string, object>
+                {
+                    ["ticket_number"] = transaction.TicketNumber ?? transaction.Id.ToString(),
+                    ["vehicle_plate"] = transaction.VehicleRegNumber,
+                    ["net_weight_kg"] = transaction.NetWeightKg ?? 0,
+                    ["deduction_kg"] = deductionKg,
+                    ["adjusted_net_kg"] = transaction.AdjustedNetWeightKg ?? 0,
+                    ["reason"] = reason ?? string.Empty,
+                };
+
+                await _notificationService.SendEmailAsync(
+                    templateName: "truload/quality_deduction_applied",
+                    recipientEmail: transporter.Email,
+                    recipientName: transporter.Name ?? "Transporter",
+                    templateData: data,
+                    subject: $"[TruLoad] Quality Deduction Applied — {transaction.TicketNumber ?? transaction.Id.ToString()}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[CommercialWeighing] Failed to send quality deduction notification for {Id}", transaction.Id);
+            }
+        });
     }
 
     public async Task<List<VehicleTareHistoryDto>> GetVehicleTareHistoryAsync(Guid vehicleId)
@@ -705,6 +749,15 @@ public class CommercialWeighingService : ICommercialWeighingService
                 .FirstOrDefaultAsync(o => o.Id == transaction.OrganizationId);
             if (org == null) return;
 
+            // Facility-owned scales do not charge per-transaction fees
+            if (org.WeighingBusinessModel == "FacilityOwnedScale" || org.CommercialWeighingFeeKes <= 0)
+            {
+                _logger.LogInformation(
+                    "Skipping invoice creation for transaction {TransactionId} — FacilityOwnedScale or zero fee",
+                    transaction.Id);
+                return;
+            }
+
             var invoiceNo = await _documentNumberService.GenerateNumberAsync(
                 org.Id, transaction.StationId, DocumentTypes.Invoice);
 
@@ -822,7 +875,9 @@ public class CommercialWeighingService : ICommercialWeighingService
             ? $"{tolerance.ToleranceValue:0.##}%"
             : $"{toleranceKg:N0} kg";
 
-        if (discrepancy > toleranceKg)
+        transaction.ToleranceExceeded = discrepancy > toleranceKg;
+
+        if (transaction.ToleranceExceeded)
         {
             _logger.LogWarning(
                 "Commercial tolerance exceeded for {TransactionId}: discrepancy={DiscrepancyKg}kg, tolerance={ToleranceKg}kg",
@@ -857,7 +912,9 @@ public class CommercialWeighingService : ICommercialWeighingService
                     ["weighed_at"] = (transaction.SecondWeightAt ?? DateTime.UtcNow).ToString("yyyy-MM-dd HH:mm"),
                 };
 
-                if (transaction.TransporterId.HasValue)
+                var prefs = await _notificationService.GetWorkflowPreferencesAsync();
+
+                if (transaction.TransporterId.HasValue && prefs.WeighingTicketReady.EmailEnabled)
                 {
                     var transporter = await _dbContext.Transporters
                         .AsNoTracking()
@@ -874,12 +931,9 @@ public class CommercialWeighingService : ICommercialWeighingService
                 }
 
                 var discrepancy = Math.Abs(transaction.WeightDiscrepancyKg ?? 0);
-                var toleranceExceeded = transaction.ToleranceApplied
-                    && transaction.GvwToleranceKg > 0
-                    && discrepancy > transaction.GvwToleranceKg
-                    && !transaction.ToleranceExceptionApproved;
 
-                if (toleranceExceeded && org != null)
+                if (transaction.ToleranceExceeded && !transaction.ToleranceExceptionApproved && org != null
+                    && prefs.ToleranceExceptionRaised.EmailEnabled)
                 {
                     var managerRoleNames = new[] { "Commercial Weighing Manager", "Station Manager" };
                     var managers = await _dbContext.Users
@@ -938,12 +992,6 @@ public class CommercialWeighingService : ICommercialWeighingService
 
     private static CommercialWeighingResultDto MapToCommercialResultDto(WeighingTransaction transaction)
     {
-        var toleranceExceeded = false;
-        if (transaction.WeightDiscrepancyKg.HasValue && transaction.GvwToleranceKg > 0)
-        {
-            toleranceExceeded = Math.Abs(transaction.WeightDiscrepancyKg.Value) > transaction.GvwToleranceKg;
-        }
-
         return new CommercialWeighingResultDto
         {
             Id = transaction.Id,
@@ -996,7 +1044,7 @@ public class CommercialWeighingService : ICommercialWeighingService
             CargoId = transaction.CargoId,
             CargoType = transaction.SnapshotCargoTypeName ?? transaction.Cargo?.Name,
 
-            ToleranceExceeded = toleranceExceeded,
+            ToleranceExceeded = transaction.ToleranceExceeded,
             ToleranceDisplay = transaction.GvwToleranceDisplay,
             ToleranceExceptionApproved = transaction.ToleranceExceptionApproved,
             ToleranceExceptionApprovedBy = transaction.ToleranceExceptionApprovedBy,
@@ -1038,6 +1086,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         transaction.ToleranceExceptionApproved = true;
         transaction.ToleranceExceptionApprovedBy = approvedByUserId;
         transaction.ToleranceExceptionApprovedAt = DateTime.UtcNow;
+        transaction.ControlStatus = "Complete";
 
         await _dbContext.SaveChangesAsync();
         _logger.LogInformation("Tolerance exception approved for transaction {TransactionId} by user {UserId}", transactionId, approvedByUserId);

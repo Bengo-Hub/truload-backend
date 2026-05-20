@@ -402,6 +402,13 @@ public class WeighingTransaction : TenantAwareEntity
     public string? IndustryMetadata { get; set; }
 
     /// <summary>
+    /// True when the net weight discrepancy exceeds the configured commercial tolerance.
+    /// Persisted at second-weight capture. Cleared (remains true) even after supervisor approval —
+    /// use ToleranceExceptionApproved to determine if it was resolved.
+    /// </summary>
+    public bool ToleranceExceeded { get; set; } = false;
+
+    /// <summary>
     /// Whether a supervisor has approved a tolerance exception for this transaction.
     /// Set when net weight discrepancy exceeds configured tolerance bands.
     /// </summary>

@@ -47,6 +47,11 @@ public class WorkflowPreferencesDto
     public WorkflowPreferenceItem ScheduledReport { get; set; } = new() { EmailEnabled = true };
     public WorkflowPreferenceItem UserRegistered { get; set; } = new() { EmailEnabled = false };
     public WorkflowPreferenceItem PasswordChanged { get; set; } = new() { EmailEnabled = false };
+    // Commercial weighing events
+    public WorkflowPreferenceItem WeighingTicketReady { get; set; } = new() { EmailEnabled = true };
+    public WorkflowPreferenceItem ToleranceExceptionRaised { get; set; } = new() { EmailEnabled = true, PushEnabled = true };
+    public WorkflowPreferenceItem StaleWeighingAlert { get; set; } = new() { EmailEnabled = true };
+    public WorkflowPreferenceItem QualityDeductionApplied { get; set; } = new() { EmailEnabled = true };
 }
 
 public class RegisterDeviceTokenRequest
