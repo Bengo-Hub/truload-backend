@@ -2,9 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
+using System.Text;
 using TruLoad.Backend.DTOs.Portal;
 using TruLoad.Backend.Services.Interfaces.Portal;
-using TruLoad.Backend.Services.Interfaces.Infrastructure;
 
 namespace TruLoad.Backend.Controllers.Portal;
 
@@ -15,22 +15,16 @@ namespace TruLoad.Backend.Controllers.Portal;
 public class TransporterPortalController : ControllerBase
 {
     private readonly ITransporterPortalService _portalService;
-    private readonly IPdfService _pdfService;
     private readonly ILogger<TransporterPortalController> _logger;
 
     public TransporterPortalController(
         ITransporterPortalService portalService,
-        IPdfService pdfService,
         ILogger<TransporterPortalController> logger)
     {
         _portalService = portalService;
-        _pdfService = pdfService;
         _logger = logger;
     }
 
-    /// <summary>
-    /// Registers a portal account by linking the authenticated user to an existing transporter.
-    /// </summary>
     [HttpPost("register")]
     [Produces("application/json")]
     [ProducesResponseType(typeof(PortalRegistrationResult), 200)]
@@ -60,9 +54,6 @@ public class TransporterPortalController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Gets paginated weighing history for the transporter across organizations.
-    /// </summary>
     [HttpGet("weighings")]
     [Produces("application/json")]
     [ProducesResponseType(typeof(PortalPagedResult<PortalWeighingDto>), 200)]
@@ -75,8 +66,7 @@ public class TransporterPortalController : ControllerBase
         [FromQuery] Guid? organizationId = null)
     {
         var userId = GetUserId();
-        if (userId == null)
-            return Unauthorized("User ID not found in claims");
+        if (userId == null) return Unauthorized("User ID not found in claims");
 
         try
         {
@@ -95,9 +85,6 @@ public class TransporterPortalController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Gets a single weighing detail.
-    /// </summary>
     [HttpGet("weighings/{id}")]
     [Produces("application/json")]
     [ProducesResponseType(typeof(PortalWeighingDto), 200)]
@@ -105,8 +92,7 @@ public class TransporterPortalController : ControllerBase
     public async Task<IActionResult> GetWeighingDetail(Guid id)
     {
         var userId = GetUserId();
-        if (userId == null)
-            return Unauthorized("User ID not found in claims");
+        if (userId == null) return Unauthorized("User ID not found in claims");
 
         try
         {
@@ -129,16 +115,43 @@ public class TransporterPortalController : ControllerBase
     }
 
     /// <summary>
-    /// Gets the list of vehicles for the transporter.
+    /// Downloads the weight ticket PDF for a specific weighing.
     /// </summary>
+    [HttpGet("weighings/{id}/pdf")]
+    [ProducesResponseType(typeof(FileResult), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> DownloadTicketPdf(Guid id)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var (pdfBytes, fileName) = await _portalService.DownloadWeighingPdfAsync(userId.Value, id);
+            return File(pdfBytes, "application/pdf", fileName);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound($"Weighing transaction {id} not found");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating PDF for portal weighing {WeighingId}", id);
+            return StatusCode(500, "An error occurred while generating the ticket PDF.");
+        }
+    }
+
     [HttpGet("vehicles")]
     [Produces("application/json")]
     [ProducesResponseType(typeof(List<PortalVehicleDto>), 200)]
     public async Task<IActionResult> GetVehicles()
     {
         var userId = GetUserId();
-        if (userId == null)
-            return Unauthorized("User ID not found in claims");
+        if (userId == null) return Unauthorized("User ID not found in claims");
 
         try
         {
@@ -156,23 +169,24 @@ public class TransporterPortalController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Gets weight trend data for a specific vehicle.
-    /// </summary>
     [HttpGet("vehicles/{vehicleId}/weight-trends")]
     [Produces("application/json")]
     [ProducesResponseType(typeof(List<PortalVehicleWeightTrendDto>), 200)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> GetVehicleWeightTrends(Guid vehicleId)
     {
         var userId = GetUserId();
-        if (userId == null)
-            return Unauthorized("User ID not found in claims");
+        if (userId == null) return Unauthorized("User ID not found in claims");
 
         try
         {
             var result = await _portalService.GetVehicleWeightTrendsAsync(userId.Value, vehicleId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { code = "feature_locked", message = ex.Message });
         }
         catch (KeyNotFoundException)
         {
@@ -189,17 +203,13 @@ public class TransporterPortalController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Gets the list of drivers for the transporter.
-    /// </summary>
     [HttpGet("drivers")]
     [Produces("application/json")]
     [ProducesResponseType(typeof(List<PortalDriverDto>), 200)]
     public async Task<IActionResult> GetDrivers()
     {
         var userId = GetUserId();
-        if (userId == null)
-            return Unauthorized("User ID not found in claims");
+        if (userId == null) return Unauthorized("User ID not found in claims");
 
         try
         {
@@ -217,23 +227,24 @@ public class TransporterPortalController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Gets performance metrics for a specific driver.
-    /// </summary>
     [HttpGet("drivers/{driverId}/performance")]
     [Produces("application/json")]
     [ProducesResponseType(typeof(PortalDriverPerformanceDto), 200)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> GetDriverPerformance(Guid driverId)
     {
         var userId = GetUserId();
-        if (userId == null)
-            return Unauthorized("User ID not found in claims");
+        if (userId == null) return Unauthorized("User ID not found in claims");
 
         try
         {
             var result = await _portalService.GetDriverPerformanceAsync(userId.Value, driverId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { code = "feature_locked", message = ex.Message });
         }
         catch (KeyNotFoundException)
         {
@@ -250,12 +261,10 @@ public class TransporterPortalController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Gets consignment tracking data for the transporter.
-    /// </summary>
     [HttpGet("consignments")]
     [Produces("application/json")]
     [ProducesResponseType(typeof(PortalPagedResult<PortalConsignmentDto>), 200)]
+    [ProducesResponseType(403)]
     public async Task<IActionResult> GetConsignments(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -263,14 +272,17 @@ public class TransporterPortalController : ControllerBase
         [FromQuery] DateTime? toDate = null)
     {
         var userId = GetUserId();
-        if (userId == null)
-            return Unauthorized("User ID not found in claims");
+        if (userId == null) return Unauthorized("User ID not found in claims");
 
         try
         {
             var result = await _portalService.GetConsignmentsAsync(
                 userId.Value, page, pageSize, fromDate, toDate);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { code = "feature_locked", message = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
@@ -292,8 +304,7 @@ public class TransporterPortalController : ControllerBase
     public async Task<IActionResult> GetSubscription()
     {
         var userId = GetUserId();
-        if (userId == null)
-            return Unauthorized("User ID not found in claims");
+        if (userId == null) return Unauthorized("User ID not found in claims");
 
         try
         {
@@ -311,7 +322,118 @@ public class TransporterPortalController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Downloads a portal data report (CSV or PDF) based on report type.
+    /// Gated by subscription tier.
+    /// </summary>
+    [HttpGet("reports/{reportId}")]
+    [ProducesResponseType(typeof(FileResult), 200)]
+    [ProducesResponseType(403)]
+    public async Task<IActionResult> DownloadReport(
+        string reportId,
+        [FromQuery] string format = "csv")
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var limits = await _portalService.GetFeatureAccessAsync(userId.Value);
+            var tier = limits.Tier;
+            var tierOrder = new Dictionary<string, int> { ["basic"] = 0, ["standard"] = 1, ["premium"] = 2 };
+            var currentOrder = tierOrder.GetValueOrDefault(tier, 0);
+
+            // Check tier requirements per report
+            var reportTierRequired = reportId switch
+            {
+                "weighing-summary" or "vehicle-weight-history" => 0,
+                "driver-trips" or "cargo-analysis" => 1,
+                "fleet-utilization" or "weight-discrepancy" => 2,
+                _ => 99
+            };
+
+            if (reportTierRequired == 99)
+                return NotFound($"Report '{reportId}' not found.");
+
+            if (currentOrder < reportTierRequired)
+            {
+                var required = reportTierRequired == 1 ? "Standard" : "Premium";
+                return StatusCode(403, new
+                {
+                    code = "feature_locked",
+                    message = $"This report requires a {required} subscription."
+                });
+            }
+
+            // Generate CSV data
+            var csvBytes = await BuildReportCsvAsync(userId.Value, reportId, limits.HistoryMonths);
+            var fileName = $"{reportId}-{DateTime.UtcNow:yyyyMMdd}.csv";
+            return File(csvBytes, "text/csv", fileName);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating portal report {ReportId}", reportId);
+            return StatusCode(500, "An error occurred while generating the report.");
+        }
+    }
+
     // ── Private helpers ──
+
+    private async Task<byte[]> BuildReportCsvAsync(Guid userId, string reportId, int historyMonths)
+    {
+        var cutoff = DateTime.UtcNow.AddMonths(-historyMonths);
+
+        var sb = new StringBuilder();
+
+        switch (reportId)
+        {
+            case "weighing-summary":
+            {
+                var result = await _portalService.GetWeighingsAsync(userId, 1, 1000, cutoff, null, null, null);
+                sb.AppendLine("Ticket,Date,Vehicle,Organization,Station,Tare(kg),Gross(kg),Net(kg),Cargo,Status");
+                foreach (var w in result.Items)
+                    sb.AppendLine($"\"{w.TicketNumber}\",\"{w.WeighedAt:yyyy-MM-dd HH:mm}\",\"{w.VehicleRegNumber}\",\"{w.OrganizationName}\",\"{w.StationName}\",{w.TareWeightKg},{w.GrossWeightKg},{w.NetWeightKg},\"{w.CargoType}\",\"{w.ControlStatus}\"");
+                break;
+            }
+            case "vehicle-weight-history":
+            {
+                var result = await _portalService.GetWeighingsAsync(userId, 1, 2000, cutoff, null, null, null);
+                sb.AppendLine("Vehicle,Date,Tare(kg),Gross(kg),Net(kg),Station,Ticket");
+                foreach (var w in result.Items)
+                    sb.AppendLine($"\"{w.VehicleRegNumber}\",\"{w.WeighedAt:yyyy-MM-dd HH:mm}\",{w.TareWeightKg},{w.GrossWeightKg},{w.NetWeightKg},\"{w.StationName}\",\"{w.TicketNumber}\"");
+                break;
+            }
+            case "driver-trips":
+            {
+                var drivers = await _portalService.GetDriversAsync(userId);
+                sb.AppendLine("Driver,LicenseNo,TotalTrips");
+                foreach (var d in drivers)
+                    sb.AppendLine($"\"{d.FullName}\",\"{d.DrivingLicenseNo}\",{d.TotalTrips}");
+                break;
+            }
+            case "cargo-analysis":
+            {
+                var result = await _portalService.GetWeighingsAsync(userId, 1, 2000, cutoff, null, null, null);
+                var grouped = result.Items
+                    .GroupBy(w => w.CargoType ?? "Unknown")
+                    .Select(g => new { Cargo = g.Key, Count = g.Count(), TotalNet = g.Sum(w => w.NetWeightKg ?? 0) });
+                sb.AppendLine("CargoType,WeighingCount,TotalNetKg");
+                foreach (var g in grouped)
+                    sb.AppendLine($"\"{g.Cargo}\",{g.Count},{g.TotalNet}");
+                break;
+            }
+            default:
+                sb.AppendLine("Report,GeneratedAt");
+                sb.AppendLine($"\"{reportId}\",\"{DateTime.UtcNow:yyyy-MM-dd HH:mm}\"");
+                break;
+        }
+
+        return Encoding.UTF8.GetBytes(sb.ToString());
+    }
 
     private Guid? GetUserId()
     {

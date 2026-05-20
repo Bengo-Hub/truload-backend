@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Portal;
+using TruLoad.Backend.DTOs.Weighing;
+using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using TruLoad.Backend.Services.Interfaces.Portal;
 using TruLoad.Backend.Services.Interfaces.Subscription;
 
@@ -15,21 +17,23 @@ public class TransporterPortalService : ITransporterPortalService
 {
     private readonly TruLoadDbContext _dbContext;
     private readonly ISubscriptionService _subscriptionService;
+    private readonly IPdfService _pdfService;
     private readonly ILogger<TransporterPortalService> _logger;
 
     public TransporterPortalService(
         TruLoadDbContext dbContext,
         ISubscriptionService subscriptionService,
+        IPdfService pdfService,
         ILogger<TransporterPortalService> logger)
     {
         _dbContext = dbContext;
         _subscriptionService = subscriptionService;
+        _pdfService = pdfService;
         _logger = logger;
     }
 
     public async Task<PortalRegistrationResult> RegisterAsync(Guid userId, string userEmail, PortalRegistrationRequest request)
     {
-        // Find matching transporter by email, phone, or code (cross-tenant)
         var transporter = await _dbContext.Transporters
             .IgnoreQueryFilters()
             .Where(t => t.IsActive &&
@@ -56,7 +60,6 @@ public class TransporterPortalService : ITransporterPortalService
             };
         }
 
-        // Link the portal account
         transporter.PortalAccountId = userId;
         transporter.PortalAccountEmail = userEmail;
         transporter.UpdatedAt = DateTime.UtcNow;
@@ -82,24 +85,25 @@ public class TransporterPortalService : ITransporterPortalService
         Guid? vehicleId, Guid? organizationId)
     {
         var transporter = await GetTransporterForUserAsync(userId);
+        var limits = await ResolvePortalSubscriptionAsync(transporter);
 
-        // Query weighing_transactions across all org partitions (cross-tenant)
+        // Enforce history date window based on subscription tier
+        var cutoff = DateTime.UtcNow.AddMonths(-limits.HistoryMonths);
+        var effectiveFrom = fromDate.HasValue && fromDate.Value > cutoff ? fromDate.Value : cutoff;
+
         var query = _dbContext.WeighingTransactions
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .Where(w => w.TransporterId == transporter.Id && w.WeighingMode == "commercial");
+            .Where(w => w.TransporterId == transporter.Id &&
+                        w.WeighingMode == "commercial" &&
+                        w.WeighedAt >= effectiveFrom);
 
-        if (fromDate.HasValue)
-            query = query.Where(w => w.WeighedAt >= fromDate.Value);
         if (toDate.HasValue)
             query = query.Where(w => w.WeighedAt <= toDate.Value);
         if (vehicleId.HasValue)
             query = query.Where(w => w.VehicleId == vehicleId.Value);
         if (organizationId.HasValue)
-        {
-            // Multi-site access is gated by subscription
             query = query.Where(w => w.OrganizationId == organizationId.Value);
-        }
 
         var totalCount = await query.CountAsync();
 
@@ -170,6 +174,78 @@ public class TransporterPortalService : ITransporterPortalService
         return weighing;
     }
 
+    public async Task<(byte[] Bytes, string FileName)> DownloadWeighingPdfAsync(Guid userId, Guid weighingId)
+    {
+        var transporter = await GetTransporterForUserAsync(userId);
+
+        var tx = await _dbContext.WeighingTransactions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Include(w => w.Vehicle)
+            .Include(w => w.Driver)
+            .Include(w => w.Organization)
+            .Include(w => w.Station)
+            .Include(w => w.Cargo)
+            .Include(w => w.Origin)
+            .Include(w => w.Destination)
+            .FirstOrDefaultAsync(w => w.Id == weighingId && w.TransporterId == transporter.Id)
+            ?? throw new KeyNotFoundException($"Weighing transaction {weighingId} not found for this transporter.");
+
+        var result = new CommercialWeighingResultDto
+        {
+            Id = tx.Id,
+            TicketNumber = tx.TicketNumber,
+            ControlStatus = tx.ControlStatus,
+            WeighingMode = tx.WeighingMode,
+            WeighingScaleType = tx.WeighingScaleType,
+
+            VehicleId = tx.VehicleId,
+            VehicleRegNumber = tx.VehicleRegNumber,
+            VehicleMake = tx.Vehicle?.Make,
+            VehicleModel = tx.Vehicle?.Model,
+
+            DriverId = tx.DriverId,
+            DriverName = tx.Driver != null ? $"{tx.Driver.FullNames} {tx.Driver.Surname}" : null,
+            TransporterId = tx.TransporterId,
+            TransporterName = transporter.Name,
+
+            StationId = tx.StationId ?? Guid.Empty,
+            StationName = tx.Station?.Name,
+
+            TareWeightKg = tx.TareWeightKg,
+            GrossWeightKg = tx.GrossWeightKg,
+            NetWeightKg = tx.NetWeightKg,
+            FirstWeightKg = tx.FirstWeightKg,
+            FirstWeightType = tx.FirstWeightType,
+            FirstWeightAt = tx.FirstWeightAt,
+            SecondWeightKg = tx.SecondWeightKg,
+            SecondWeightType = tx.SecondWeightType,
+            SecondWeightAt = tx.SecondWeightAt,
+            TareSource = tx.TareSource,
+
+            QualityDeductionKg = tx.QualityDeductionKg,
+            AdjustedNetWeightKg = tx.AdjustedNetWeightKg,
+
+            ConsignmentNo = tx.ConsignmentNo,
+            OrderReference = tx.OrderReference,
+            ExpectedNetWeightKg = tx.ExpectedNetWeightKg,
+            WeightDiscrepancyKg = tx.WeightDiscrepancyKg,
+            SealNumbers = tx.SealNumbers,
+            Remarks = tx.Remarks,
+
+            SourceLocation = tx.Origin?.Name,
+            DestinationLocation = tx.Destination?.Name,
+            CargoType = tx.Cargo?.Name,
+
+            ToleranceExceeded = tx.ToleranceExceeded,
+        };
+
+        var stationId = tx.StationId ?? Guid.Empty;
+        var pdfBytes = await _pdfService.GenerateCommercialWeightTicketAsync(result, stationId);
+        var fileName = $"ticket-{tx.TicketNumber}.pdf";
+        return (pdfBytes, fileName);
+    }
+
     public async Task<List<PortalVehicleDto>> GetVehiclesAsync(Guid userId)
     {
         var transporter = await GetTransporterForUserAsync(userId);
@@ -205,7 +281,11 @@ public class TransporterPortalService : ITransporterPortalService
     {
         var transporter = await GetTransporterForUserAsync(userId);
 
-        // Verify vehicle belongs to this transporter
+        // Require vehicle_trends feature
+        var limits = await ResolvePortalSubscriptionAsync(transporter);
+        if (!limits.Features.VehicleTrends)
+            throw new UnauthorizedAccessException("Vehicle weight trends require a Standard or Premium subscription.");
+
         var vehicleExists = await _dbContext.Vehicles
             .IgnoreQueryFilters()
             .AsNoTracking()
@@ -240,9 +320,6 @@ public class TransporterPortalService : ITransporterPortalService
     {
         var transporter = await GetTransporterForUserAsync(userId);
 
-        // Collect driver IDs from two sources:
-        // 1. Directly linked via Driver.TransporterId (registered under this transporter)
-        // 2. Appeared in weighing transactions for this transporter (historical)
         var directDriverIds = await _dbContext.Set<Models.Weighing.Driver>()
             .IgnoreQueryFilters()
             .AsNoTracking()
@@ -288,7 +365,11 @@ public class TransporterPortalService : ITransporterPortalService
     {
         var transporter = await GetTransporterForUserAsync(userId);
 
-        // Verify this driver has driven for this transporter
+        // Require driver_reports feature
+        var limits = await ResolvePortalSubscriptionAsync(transporter);
+        if (!limits.Features.DriverReports)
+            throw new UnauthorizedAccessException("Driver performance reports require a Standard or Premium subscription.");
+
         var hasTrips = await _dbContext.WeighingTransactions
             .IgnoreQueryFilters()
             .AsNoTracking()
@@ -323,7 +404,6 @@ public class TransporterPortalService : ITransporterPortalService
             ? weighings.Where(w => w.NetWeightKg.HasValue).Average(w => (double)w.NetWeightKg!.Value)
             : 0;
 
-        // Average turnaround = time between first and second weight
         var turnaroundMinutes = weighings
             .Where(w => w.FirstWeightAt.HasValue && w.SecondWeightAt.HasValue)
             .Select(w => (w.SecondWeightAt!.Value - w.FirstWeightAt!.Value).TotalMinutes)
@@ -347,6 +427,11 @@ public class TransporterPortalService : ITransporterPortalService
         DateTime? fromDate, DateTime? toDate)
     {
         var transporter = await GetTransporterForUserAsync(userId);
+
+        // Require consignment_tracking feature
+        var limits = await ResolvePortalSubscriptionAsync(transporter);
+        if (!limits.Features.ConsignmentTracking)
+            throw new UnauthorizedAccessException("Consignment tracking requires a Standard or Premium subscription.");
 
         var query = _dbContext.WeighingTransactions
             .IgnoreQueryFilters()
@@ -398,8 +483,35 @@ public class TransporterPortalService : ITransporterPortalService
     public async Task<PortalSubscriptionDto> GetFeatureAccessAsync(Guid userId)
     {
         var transporter = await GetTransporterForUserAsync(userId);
+        return await ResolvePortalSubscriptionAsync(transporter);
+    }
 
-        // Find the organizations where this transporter has weighings
+    // ── Private helpers ──
+
+    private async Task<Models.Weighing.Transporter> GetTransporterForUserAsync(Guid userId)
+    {
+        var transporter = await _dbContext.Transporters
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.PortalAccountId == userId && t.IsActive);
+
+        if (transporter == null)
+            throw new InvalidOperationException("No transporter linked to this portal account. Please register first.");
+
+        return transporter;
+    }
+
+    /// <summary>
+    /// Resolves subscription limits for a transporter.
+    /// Fails open: returns basic-tier defaults if the subscription service is unavailable.
+    /// </summary>
+    private async Task<PortalSubscriptionDto> ResolvePortalSubscriptionAsync(Models.Weighing.Transporter transporter)
+    {
+        string status = "NONE";
+        string? planName = null;
+        DateTime? expiresAt = null;
+        SubscriptionFeatures features = new("NONE", null, []);
+
         var orgIds = await _dbContext.WeighingTransactions
             .IgnoreQueryFilters()
             .AsNoTracking()
@@ -407,15 +519,6 @@ public class TransporterPortalService : ITransporterPortalService
             .Select(w => w.OrganizationId)
             .Distinct()
             .ToListAsync();
-
-        // Resolve subscription via the primary org the transporter has been weighed under.
-        // When transporter-specific plans are in production, this slug will map to the
-        // transporter's own TRANSPORTER_BASIC/STANDARD/PREMIUM plan; until then it falls
-        // back to the org's commercial plan (which shares the same feature-code mechanism).
-        string status = "NONE";
-        string? planName = null;
-        DateTime? expiresAt = null;
-        SubscriptionFeatures features = new("NONE", null, []);
 
         if (orgIds.Any())
         {
@@ -436,7 +539,7 @@ public class TransporterPortalService : ITransporterPortalService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to fetch subscription for portal user {UserId} — failing open", userId);
+                    _logger.LogWarning(ex, "Failed to fetch subscription for transporter {TransporterId} — failing open", transporter.Id);
                     status = "ACTIVE";
                     features = new SubscriptionFeatures("ACTIVE", null,
                         ["portal_access", "ticket_download", "email_notifications"]);
@@ -444,10 +547,16 @@ public class TransporterPortalService : ITransporterPortalService
             }
         }
 
+        var (tier, historyMonths, maxVehicles, maxDrivers) = DeriveTierLimits(planName);
+
         return new PortalSubscriptionDto
         {
             Status = status,
             PlanName = planName,
+            Tier = tier,
+            HistoryMonths = historyMonths,
+            MaxVehicles = maxVehicles,
+            MaxDrivers = maxDrivers,
             ExpiresAt = expiresAt,
             Features = new PortalFeatureAccess
             {
@@ -462,22 +571,13 @@ public class TransporterPortalService : ITransporterPortalService
         };
     }
 
-    // ── Private helpers ──
-
-    /// <summary>
-    /// Resolves the Transporter entity linked to the authenticated portal user.
-    /// Queries cross-tenant (IgnoreQueryFilters) since transporters span orgs.
-    /// </summary>
-    private async Task<Models.Weighing.Transporter> GetTransporterForUserAsync(Guid userId)
+    private static (string tier, int historyMonths, int maxVehicles, int maxDrivers) DeriveTierLimits(string? planName)
     {
-        var transporter = await _dbContext.Transporters
-            .IgnoreQueryFilters()
-            .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.PortalAccountId == userId && t.IsActive);
-
-        if (transporter == null)
-            throw new InvalidOperationException("No transporter linked to this portal account. Please register first.");
-
-        return transporter;
+        var plan = (planName ?? string.Empty).ToLowerInvariant();
+        if (plan.Contains("premium"))
+            return ("premium", 24, -1, -1);
+        if (plan.Contains("standard"))
+            return ("standard", 12, 50, 25);
+        return ("basic", 3, 10, 5);
     }
 }

@@ -154,6 +154,19 @@ public class PortalSubscriptionDto
 {
     public string Status { get; set; } = "NONE";
     public string? PlanName { get; set; }
+
+    /// <summary>Resolved tier: "basic" | "standard" | "premium"</summary>
+    public string Tier { get; set; } = "basic";
+
+    /// <summary>How many months of weighing history this tier can access.</summary>
+    public int HistoryMonths { get; set; } = 3;
+
+    /// <summary>Max active vehicles allowed; -1 means unlimited.</summary>
+    public int MaxVehicles { get; set; } = 10;
+
+    /// <summary>Max active drivers allowed; -1 means unlimited.</summary>
+    public int MaxDrivers { get; set; } = 5;
+
     public DateTime? ExpiresAt { get; set; }
     public PortalFeatureAccess Features { get; set; } = new();
 }

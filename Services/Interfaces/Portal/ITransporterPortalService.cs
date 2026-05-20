@@ -58,6 +58,11 @@ public interface ITransporterPortalService
     /// Gets the transporter's subscription status and feature access flags.
     /// </summary>
     Task<PortalSubscriptionDto> GetFeatureAccessAsync(Guid userId);
+
+    /// <summary>
+    /// Generates a PDF ticket for a specific weighing. Verifies transporter ownership.
+    /// </summary>
+    Task<(byte[] Bytes, string FileName)> DownloadWeighingPdfAsync(Guid userId, Guid weighingId);
 }
 
 /// <summary>
