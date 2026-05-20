@@ -231,7 +231,9 @@ public static class RolePermissionSeeder
                 // Financial
                 "invoice.create", "invoice.read", "invoice.read_own", "invoice.update", "invoice.void",
                 "receipt.create", "receipt.read", "receipt.read_own", "receipt.void",
-                "financial.audit"
+                "financial.audit",
+                // Security & data: audit logs, security policy, backup/restore
+                "system.security_policy", "system.audit_logs", "system.backup_restore"
             }
         },
         {
