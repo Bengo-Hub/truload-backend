@@ -9,6 +9,7 @@ using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Models.Infrastructure;
 using TruLoad.Backend.Services.Interfaces.Financial;
+using TruLoad.Backend.Services.Interfaces.Shared;
 using TruLoad.Backend.Services.Interfaces.Weighing;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using STJson = System.Text.Json;
@@ -22,6 +23,7 @@ public class CommercialWeighingService : ICommercialWeighingService
     private readonly IVehicleRepository _vehicleRepository;
     private readonly IDocumentNumberService _documentNumberService;
     private readonly ITreasuryService _treasuryService;
+    private readonly INotificationService _notificationService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<CommercialWeighingService> _logger;
 
@@ -31,6 +33,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         IVehicleRepository vehicleRepository,
         IDocumentNumberService documentNumberService,
         ITreasuryService treasuryService,
+        INotificationService notificationService,
         IConfiguration configuration,
         ILogger<CommercialWeighingService> logger)
     {
@@ -39,6 +42,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         _vehicleRepository = vehicleRepository;
         _documentNumberService = documentNumberService;
         _treasuryService = treasuryService;
+        _notificationService = notificationService;
         _configuration = configuration;
         _logger = logger;
     }
@@ -273,6 +277,8 @@ public class CommercialWeighingService : ICommercialWeighingService
             "Second weight captured for {TransactionId}: {WeightKg}kg ({WeightType}). Net={NetKg}kg",
             transactionId, request.WeightKg, secondWeightType, transaction.NetWeightKg);
 
+        _ = SendCompletionNotificationsAsync(transaction);
+
         return transaction;
     }
 
@@ -375,6 +381,8 @@ public class CommercialWeighingService : ICommercialWeighingService
         _logger.LogInformation(
             "Stored tare used for {TransactionId}: tare={TareKg}kg ({Source}). Net={NetKg}kg",
             transactionId, tareWeightKg, tareSource, transaction.NetWeightKg);
+
+        _ = SendCompletionNotificationsAsync(transaction);
 
         return transaction;
     }
@@ -820,6 +828,96 @@ public class CommercialWeighingService : ICommercialWeighingService
                 "Commercial tolerance exceeded for {TransactionId}: discrepancy={DiscrepancyKg}kg, tolerance={ToleranceKg}kg",
                 transaction.Id, discrepancy, toleranceKg);
         }
+    }
+
+    private Task SendCompletionNotificationsAsync(WeighingTransaction transaction)
+    {
+        return Task.Run(async () =>
+        {
+            try
+            {
+                var org = await _dbContext.Organizations
+                    .AsNoTracking()
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(o => o.Id == transaction.OrganizationId);
+
+                var station = await _dbContext.Stations
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Id == transaction.StationId);
+
+                var templateData = new Dictionary<string, object>
+                {
+                    ["ticket_number"] = transaction.TicketNumber ?? transaction.Id.ToString(),
+                    ["vehicle_plate"] = transaction.VehicleRegNumber,
+                    ["gross_weight_kg"] = transaction.GrossWeightKg ?? 0,
+                    ["tare_weight_kg"] = transaction.TareWeightKg ?? 0,
+                    ["net_weight_kg"] = transaction.NetWeightKg ?? 0,
+                    ["station_name"] = station?.Name ?? "Unknown Station",
+                    ["org_name"] = org?.Name ?? string.Empty,
+                    ["weighed_at"] = (transaction.SecondWeightAt ?? DateTime.UtcNow).ToString("yyyy-MM-dd HH:mm"),
+                };
+
+                if (transaction.TransporterId.HasValue)
+                {
+                    var transporter = await _dbContext.Transporters
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(t => t.Id == transaction.TransporterId.Value);
+                    if (transporter != null && !string.IsNullOrWhiteSpace(transporter.Email))
+                    {
+                        await _notificationService.SendEmailAsync(
+                            templateName: "truload/weight_ticket",
+                            recipientEmail: transporter.Email,
+                            recipientName: transporter.Name ?? "Transporter",
+                            templateData: templateData,
+                            subject: $"[TruLoad] Weight Ticket — {transaction.TicketNumber ?? transaction.Id.ToString()}");
+                    }
+                }
+
+                var discrepancy = Math.Abs(transaction.WeightDiscrepancyKg ?? 0);
+                var toleranceExceeded = transaction.ToleranceApplied
+                    && transaction.GvwToleranceKg > 0
+                    && discrepancy > transaction.GvwToleranceKg
+                    && !transaction.ToleranceExceptionApproved;
+
+                if (toleranceExceeded && org != null)
+                {
+                    var managerRoleNames = new[] { "Commercial Weighing Manager", "Station Manager" };
+                    var managers = await _dbContext.Users
+                        .AsNoTracking()
+                        .Where(u =>
+                            u.OrganizationId == org.Id &&
+                            u.DeletedAt == null &&
+                            !string.IsNullOrEmpty(u.Email) &&
+                            _dbContext.UserRoles
+                                .Join(_dbContext.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, r.Name })
+                                .Where(x => x.UserId == u.Id && managerRoleNames.Contains(x.Name))
+                                .Any())
+                        .Select(u => new { u.Email, u.FullName })
+                        .ToListAsync();
+
+                    var alertData = new Dictionary<string, object>(templateData)
+                    {
+                        ["discrepancy_kg"] = discrepancy,
+                        ["expected_net_kg"] = transaction.ExpectedNetWeightKg ?? 0,
+                        ["tolerance_display"] = transaction.GvwToleranceDisplay ?? $"{transaction.GvwToleranceKg} kg",
+                    };
+
+                    foreach (var manager in managers)
+                    {
+                        await _notificationService.SendEmailAsync(
+                            templateName: "truload/tolerance_exception_alert",
+                            recipientEmail: manager.Email!,
+                            recipientName: manager.FullName ?? "Manager",
+                            templateData: alertData,
+                            subject: $"[TruLoad] Tolerance Exception — {transaction.TicketNumber ?? transaction.Id.ToString()}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[CommercialWeighing] Failed to send completion notifications for transaction {Id}", transaction.Id);
+            }
+        });
     }
 
     private static List<CommercialAxleWeightDto> ParsePassWeights(string? industryMetadata, string passKey)
