@@ -183,6 +183,17 @@ public class AuthController : ControllerBase
         var roles = await _userManager.GetRolesAsync(user);
         var isSuperUser = roles.Contains("SUPERUSER", StringComparer.OrdinalIgnoreCase);
 
+        // For superusers: resolve the requested org so their login response carries that org's context
+        // (e.g. admin@codevertexitsolutions.com logging into /truload-demo/ gets TRULOAD-DEMO data)
+        Organization? superuserContextOrg = null;
+        if (isSuperUser && !string.IsNullOrWhiteSpace(request.OrganizationCode))
+        {
+            var codeTrimmed = request.OrganizationCode.Trim();
+            superuserContextOrg = await _organizationRepository.GetByCodeAsync(codeTrimmed)
+                ?? await _organizationRepository.GetByCodeAsync(codeTrimmed.ToUpperInvariant())
+                ?? await _organizationRepository.GetByCodeAsync(codeTrimmed.ToLowerInvariant());
+        }
+
         // Superusers can log in to any org/station (platform admin); skip tenant org/station validation
         if (!isSuperUser && !string.IsNullOrWhiteSpace(request.OrganizationCode))
         {
@@ -271,7 +282,7 @@ public class AuthController : ControllerBase
         }
 
         // Complete login (shared logic for normal login and post-2FA verification)
-        return await CompleteLoginAsync(user, require2FASetup);
+        return await CompleteLoginAsync(user, require2FASetup, superuserContextOrg);
     }
 
     /// <summary>
@@ -279,7 +290,7 @@ public class AuthController : ControllerBase
     /// Used by both Login() and the 2FA verify endpoint.
     /// When require2FASetup is true, response includes requires2FASetup so frontend can force user to enable 2FA from profile.
     /// </summary>
-    private async Task<IActionResult> CompleteLoginAsync(ApplicationUser user, bool require2FASetup = false)
+    private async Task<IActionResult> CompleteLoginAsync(ApplicationUser user, bool require2FASetup = false, Organization? contextOrg = null)
     {
         var roles = await _userManager.GetRolesAsync(user);
 
@@ -340,24 +351,25 @@ public class AuthController : ControllerBase
 
         var isSuperUser = roles.Contains("SUPERUSER", StringComparer.OrdinalIgnoreCase);
 
-        // Resolve organization for frontend routing and tenant-mode enforcement
-        string? organizationCode = null;
-        string? tenantType = null;
+        // Resolve organization for frontend routing and tenant-mode enforcement.
+        // For superusers: use contextOrg (the org they logged into) if provided,
+        // so they see that tenant's data rather than their home org's data.
+        var isSuperUserForContext = roles.Contains("SUPERUSER", StringComparer.OrdinalIgnoreCase);
+        Organization? resolvedOrg = (isSuperUserForContext && contextOrg != null)
+            ? contextOrg
+            : (user.OrganizationId.HasValue ? await _organizationRepository.GetByIdAsync(user.OrganizationId.Value) : null);
+
+        string? organizationCode = resolvedOrg?.Code;
+        string? tenantType = resolvedOrg?.TenantType;
         string? tenantUseCase = null;
         List<string>? enabledModules = null;
-        if (user.OrganizationId.HasValue)
+        if (resolvedOrg != null)
         {
-            var org = await _organizationRepository.GetByIdAsync(user.OrganizationId.Value);
-            organizationCode = org?.Code;
-            tenantType = org?.TenantType;
-            if (org != null)
-            {
-                tenantUseCase = string.Equals(org.TenantType, TenantModules.TenantTypeCommercialWeighing, StringComparison.OrdinalIgnoreCase) ? "Commercial" : "Enforcement";
-                // Use the same resolver as profile endpoint — falls back to DefaultCommercialWeighingModules
-                // for commercial tenants when EnabledModulesJson is empty
-                enabledModules = ResolveEnabledModulesForOrg(org);
-            }
+            tenantUseCase = string.Equals(resolvedOrg.TenantType, TenantModules.TenantTypeCommercialWeighing, StringComparison.OrdinalIgnoreCase) ? "Commercial" : "Enforcement";
+            enabledModules = ResolveEnabledModulesForOrg(resolvedOrg);
         }
+
+        var resolvedOrgId = resolvedOrg?.Id ?? user.OrganizationId ?? (await _organizationRepository.GetByCodeAsync("KURA"))?.Id;
 
         var response = new
         {
@@ -372,7 +384,7 @@ public class AuthController : ControllerBase
                 roles = roles,
                 permissions = uniquePermissions,
                 isSuperUser,
-                organizationId = user.OrganizationId ?? (await _organizationRepository.GetByCodeAsync("KURA"))?.Id,
+                organizationId = resolvedOrgId,
                 organizationCode,
                 tenantType,
                 tenantUseCase,

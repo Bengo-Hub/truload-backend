@@ -38,6 +38,7 @@ public class UserSeeder
         await SeedMiddlewareServiceUserAsync();
         await SeedTruLoadDemoAdminAsync();
         await SeedCommercialDemoUsersAsync();
+        await SeedEnforcementDemoUsersAsync();
         await SeedTransporterPortalDemoUsersAsync();
     }
 
@@ -513,6 +514,101 @@ public class UserSeeder
             }
 
             Console.WriteLine($"✓ Seeded {userData.Label}: {userData.Email} → TRULOAD-DEMO org, role: {userData.RoleName}");
+            Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY)");
+        }
+    }
+
+    /// <summary>
+    /// Seeds demo enforcement users linked to ENFORCEMENT-DEMO org.
+    /// These provide a working demo login for the enforcement use-case at /enforcement-demo/auth/login.
+    /// </summary>
+    private async Task SeedEnforcementDemoUsersAsync()
+    {
+        var demoOrg = await _context.Organizations
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(o => o.Code == "ENFORCEMENT-DEMO");
+
+        if (demoOrg == null)
+        {
+            Console.WriteLine("⚠ ENFORCEMENT-DEMO organization not found, skipping enforcement demo user seed");
+            return;
+        }
+
+        var hqStation = await _context.Stations
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(s => s.OrganizationId == demoOrg.Id && s.IsHq);
+
+        var demoUsers = new[]
+        {
+            new
+            {
+                Email = "manager@enforcement.truload.codevertexitsolutions.com",
+                FullName = "Demo Station Manager",
+                Phone = "+254700000020",
+                RoleName = "Station Manager",
+                Label = "enforcement station manager"
+            },
+            new
+            {
+                Email = "officer@enforcement.truload.codevertexitsolutions.com",
+                FullName = "Demo Enforcement Officer",
+                Phone = "+254700000021",
+                RoleName = "Enforcement Officer",
+                Label = "enforcement officer"
+            }
+        };
+
+        foreach (var userData in demoUsers)
+        {
+            var role = await _roleManager.FindByNameAsync(userData.RoleName);
+            if (role == null)
+            {
+                Console.WriteLine($"⚠ Role '{userData.RoleName}' not found, skipping {userData.Label} seed");
+                continue;
+            }
+
+            var existing = await _userManager.FindByEmailAsync(userData.Email);
+            if (existing != null)
+            {
+                var currentRoles = await _userManager.GetRolesAsync(existing);
+                if (!currentRoles.Contains(userData.RoleName))
+                {
+                    if (currentRoles.Any()) await _userManager.RemoveFromRolesAsync(existing, currentRoles);
+                    await _userManager.AddToRoleAsync(existing, userData.RoleName);
+                    Console.WriteLine($"✓ Repaired role for {userData.Email}: assigned {userData.RoleName}");
+                }
+                else
+                {
+                    Console.WriteLine($"✓ Demo {userData.Label} {userData.Email} already exists, skipping seed");
+                }
+                continue;
+            }
+
+            var user = new ApplicationUser
+            {
+                Email = userData.Email,
+                NormalizedEmail = userData.Email.ToUpper(),
+                UserName = userData.Email,
+                NormalizedUserName = userData.Email.ToUpper(),
+                FullName = userData.FullName,
+                PhoneNumber = userData.Phone,
+                OrganizationId = demoOrg.Id,
+                StationId = hqStation?.Id,
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true,
+                TwoFactorEnabled = false,
+                LockoutEnabled = false
+            };
+
+            var createResult = await _userManager.CreateAsync(user, DefaultPassword);
+            if (!createResult.Succeeded)
+            {
+                Console.WriteLine($"⚠ Failed to create {userData.Label}: {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
+                continue;
+            }
+
+            await _userManager.AddToRoleAsync(user, userData.RoleName);
+            Console.WriteLine($"✓ Seeded {userData.Label}: {userData.Email} → ENFORCEMENT-DEMO org, role: {userData.RoleName}");
             Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY)");
         }
     }

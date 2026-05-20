@@ -109,6 +109,27 @@ public class UserManagementSeeder
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             },
+            // Demo enforcement organization — separate from real enforcement agencies (KURA/KENHA/KERRA)
+            // Accessible via /{orgCode}/auth/login for demo/onboarding purposes
+            new Organization
+            {
+                Id = Guid.NewGuid(),
+                Code = "ENFORCEMENT-DEMO",
+                Name = "TruLoad Demo Enforcement Agency",
+                OrgType = "Government",
+                TenantType = "AxleLoadEnforcement",
+                ContactEmail = "demo@enforcement.truload.codevertexitsolutions.com",
+                ContactPhone = "+254700000030",
+                Address = "Nairobi, Kenya",
+                PrimaryColor = "#1a5276",
+                SecondaryColor = "#d4ac0d",
+                LogoUrl = "/images/logos/court-of-arms-kenya.png",
+                PlatformLogoUrl = "/images/logos/court-of-arms-kenya.png",
+                LoginPageImageUrl = "/images/background-images/login-background-image.png",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
             // Demo commercial weighing organization — TenantType = CommercialWeighing
             // SsoTenantSlug matches the auth-api "truload" tenant for PKCE/SSO login
             new Organization
