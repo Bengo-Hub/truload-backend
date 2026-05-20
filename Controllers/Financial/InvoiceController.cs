@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using TruLoad.Backend.Authorization.Attributes;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Financial;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Services.Interfaces.Financial;
@@ -21,15 +23,18 @@ public class InvoiceController : ControllerBase
     private readonly IInvoiceService _invoiceService;
     private readonly IPdfService _pdfService;
     private readonly ITenantContext _tenantContext;
+    private readonly TruLoadDbContext _context;
 
     public InvoiceController(
         IInvoiceService invoiceService,
         IPdfService pdfService,
-        ITenantContext tenantContext)
+        ITenantContext tenantContext,
+        TruLoadDbContext context)
     {
         _invoiceService = invoiceService;
         _pdfService = pdfService;
         _tenantContext = tenantContext;
+        _context = context;
     }
 
     /// <summary>
@@ -222,6 +227,27 @@ public class InvoiceController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Permanently delete an invoice and all its related records from the database.
+    /// Superuser-only — this action is irreversible.
+    /// </summary>
+    [HttpDelete("api/v1/invoices/{id}/hard")]
+    [Authorize(Roles = "Superuser")]
+    public async Task<IActionResult> HardDelete(Guid id, CancellationToken ct)
+    {
+        var invoice = await _context.Invoices
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(i => i.Id == id, ct);
+
+        if (invoice == null)
+            return NotFound(new { message = "Invoice not found" });
+
+        _context.Invoices.Remove(invoice);
+        await _context.SaveChangesAsync(ct);
+
+        return NoContent();
     }
 
     private Guid GetCurrentUserId()

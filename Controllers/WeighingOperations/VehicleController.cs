@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using TruLoad.Backend.Authorization.Attributes;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Data.Repositories.Weighing;
 
@@ -14,10 +15,12 @@ namespace TruLoad.Backend.Controllers.WeighingOperations;
 public class VehicleController : ControllerBase
 {
     private readonly IVehicleRepository _vehicleRepository;
+    private readonly ITenantContext _tenantContext;
 
-    public VehicleController(IVehicleRepository vehicleRepository)
+    public VehicleController(IVehicleRepository vehicleRepository, ITenantContext tenantContext)
     {
         _vehicleRepository = vehicleRepository;
+        _tenantContext = tenantContext;
     }
 
     [HttpGet("{id}")]
@@ -35,12 +38,15 @@ public class VehicleController : ControllerBase
         [FromQuery] string? search,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
-        [FromQuery] Guid? transporterId = null)
+        [FromQuery] Guid? transporterId = null,
+        [FromQuery] bool scopeToOrg = false)
     {
         if (page < 1) page = 1;
         if (pageSize < 1 || pageSize > 200) pageSize = 20;
 
-        var (items, total) = await _vehicleRepository.SearchPagedAsync(search, page, pageSize, transporterId);
+        // When scopeToOrg=true (tare register), only show vehicles with tare history for this tenant
+        var orgFilter = scopeToOrg ? _tenantContext.OrganizationId : (Guid?)null;
+        var (items, total) = await _vehicleRepository.SearchPagedAsync(search, page, pageSize, transporterId, orgFilter);
         return Ok(new { items, totalCount = total, page, pageSize });
     }
 

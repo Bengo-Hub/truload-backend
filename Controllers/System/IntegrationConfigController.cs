@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.DTOs.Financial;
+using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.System;
 
 namespace TruLoad.Backend.Controllers.System;
@@ -15,13 +16,16 @@ namespace TruLoad.Backend.Controllers.System;
 public class IntegrationConfigController : ControllerBase
 {
     private readonly IIntegrationConfigService _integrationConfigService;
+    private readonly IECitizenService _eCitizenService;
     private readonly ILogger<IntegrationConfigController> _logger;
 
     public IntegrationConfigController(
         IIntegrationConfigService integrationConfigService,
+        IECitizenService eCitizenService,
         ILogger<IntegrationConfigController> logger)
     {
         _integrationConfigService = integrationConfigService;
+        _eCitizenService = eCitizenService;
         _logger = logger;
     }
 
@@ -69,6 +73,8 @@ public class IntegrationConfigController : ControllerBase
 
     /// <summary>
     /// Test connectivity to an integration provider.
+    /// For eCitizen Pesaflow: clears the OAuth token cache and attempts a fresh token request.
+    /// For other providers: verifies credentials are present and decryptable.
     /// </summary>
     [HttpPost("api/v1/system/integrations/{providerName}/test")]
     [HasPermission("config.read")]
@@ -76,21 +82,25 @@ public class IntegrationConfigController : ControllerBase
     {
         try
         {
-            var credentials = await _integrationConfigService.GetDecryptedCredentialsAsync(providerName, ct);
-            var config = await _integrationConfigService.GetByProviderAsync(providerName, ct);
+            if (providerName == "ecitizen_pesaflow")
+            {
+                var (success, message) = await _eCitizenService.TestConnectivityAsync(ct);
+                return Ok(new { success, provider = providerName, message });
+            }
 
+            // Generic fallback: verify credentials are present and decryptable
+            var config = await _integrationConfigService.GetByProviderAsync(providerName, ct);
             if (config == null)
                 return NotFound(new { message = $"Integration config not found: {providerName}" });
 
+            var credentials = await _integrationConfigService.GetDecryptedCredentialsAsync(providerName, ct);
             return Ok(new
             {
-                success = true,
+                success = credentials.Count > 0,
                 provider = providerName,
-                baseUrl = config.BaseUrl,
-                environment = config.Environment,
-                hasCredentials = credentials.Count > 0,
-                credentialKeys = credentials.Keys.ToList(),
-                message = "Configuration is valid and credentials are decryptable"
+                message = credentials.Count > 0
+                    ? "Configuration is valid and credentials are decryptable"
+                    : "No credentials found — please configure the integration first"
             });
         }
         catch (Exception ex)

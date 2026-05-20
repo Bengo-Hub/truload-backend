@@ -57,11 +57,42 @@ public class IntegrationConfigService : IIntegrationConfigService
         var existing = await _context.IntegrationConfigs
             .FirstOrDefaultAsync(c => c.ProviderName == request.ProviderName && c.DeletedAt == null, ct);
 
-        var credentialsJson = JsonSerializer.Serialize(request.Credentials);
-        var encryptedCredentials = _encryptionService.Encrypt(credentialsJson);
-
         if (existing != null)
         {
+            // Merge: keep existing credential values for any keys not explicitly provided in the update.
+            // This prevents partial edits (e.g. rotating only ApiKey) from wiping other fields.
+            Dictionary<string, string> mergedCredentials;
+            if (request.Credentials != null && request.Credentials.Count > 0)
+            {
+                try
+                {
+                    var existingJson = _encryptionService.Decrypt(existing.EncryptedCredentials);
+                    mergedCredentials = JsonSerializer.Deserialize<Dictionary<string, string>>(existingJson)
+                        ?? new Dictionary<string, string>();
+                }
+                catch
+                {
+                    mergedCredentials = new Dictionary<string, string>();
+                }
+
+                foreach (var kvp in request.Credentials)
+                    mergedCredentials[kvp.Key] = kvp.Value;
+            }
+            else
+            {
+                // No credentials sent — keep existing unchanged
+                mergedCredentials = new Dictionary<string, string>();
+                try
+                {
+                    var existingJson = _encryptionService.Decrypt(existing.EncryptedCredentials);
+                    mergedCredentials = JsonSerializer.Deserialize<Dictionary<string, string>>(existingJson)
+                        ?? mergedCredentials;
+                }
+                catch { /* keep empty if decrypt fails */ }
+            }
+
+            var encryptedCredentials = _encryptionService.Encrypt(JsonSerializer.Serialize(mergedCredentials));
+
             existing.DisplayName = request.DisplayName;
             existing.BaseUrl = request.BaseUrl;
             existing.EncryptedCredentials = encryptedCredentials;
@@ -70,7 +101,8 @@ public class IntegrationConfigService : IIntegrationConfigService
             existing.Environment = request.Environment;
             existing.Description = request.Description;
             existing.IsActive = request.IsActive; // allow toggling integration activation from UI
-            existing.CredentialsRotatedAt = DateTime.UtcNow;
+            existing.CredentialsRotatedAt = request.Credentials != null && request.Credentials.Count > 0
+                ? DateTime.UtcNow : existing.CredentialsRotatedAt;
             existing.UpdatedAt = DateTime.UtcNow;
 
             // Auto-generate URLs
@@ -79,12 +111,13 @@ public class IntegrationConfigService : IIntegrationConfigService
         }
         else
         {
+            var newCredentialsJson = JsonSerializer.Serialize(request.Credentials ?? new Dictionary<string, string>());
             var config = new IntegrationConfig
             {
                 ProviderName = request.ProviderName,
                 DisplayName = request.DisplayName,
                 BaseUrl = request.BaseUrl,
-                EncryptedCredentials = encryptedCredentials,
+                EncryptedCredentials = _encryptionService.Encrypt(newCredentialsJson),
                 EndpointsJson = request.EndpointsJson,
                 AppBaseUrl = request.AppBaseUrl,
                 Environment = request.Environment,

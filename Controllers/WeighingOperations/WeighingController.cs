@@ -1296,4 +1296,46 @@ public class WeighingController : ControllerBase
             }).ToList() ?? new()
         };
     }
+
+    /// <summary>
+    /// Permanently delete a weighing transaction and all its related records from the database.
+    /// Superuser-only — this action is irreversible.
+    /// </summary>
+    [HttpDelete("{id}/hard")]
+    [Authorize(Roles = "Superuser")]
+    public async Task<IActionResult> HardDeleteTransaction(Guid id, CancellationToken ct)
+    {
+        var transaction = await _context.WeighingTransactions
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.Id == id, ct);
+
+        if (transaction == null)
+            return NotFound(new { message = "Weighing transaction not found" });
+
+        _context.WeighingTransactions.Remove(transaction);
+        await _context.SaveChangesAsync(ct);
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Permanently delete a tare record from the database.
+    /// Superuser-only — this action is irreversible.
+    /// </summary>
+    [HttpDelete("tares/{id}/hard")]
+    [Authorize(Roles = "Superuser")]
+    public async Task<IActionResult> HardDeleteTare(Guid id, CancellationToken ct)
+    {
+        var tare = await _context.VehicleTareHistory
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.Id == id, ct);
+
+        if (tare == null)
+            return NotFound(new { message = "Tare record not found" });
+
+        _context.VehicleTareHistory.Remove(tare);
+        await _context.SaveChangesAsync(ct);
+
+        return NoContent();
+    }
 }

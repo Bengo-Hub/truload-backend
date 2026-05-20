@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using TruLoad.Backend.Authorization.Attributes;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Financial;
 using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Middleware;
@@ -21,15 +23,18 @@ public class ReceiptController : ControllerBase
     private readonly IReceiptService _receiptService;
     private readonly IPdfService _pdfService;
     private readonly ITenantContext _tenantContext;
+    private readonly TruLoadDbContext _context;
 
     public ReceiptController(
         IReceiptService receiptService,
         IPdfService pdfService,
-        ITenantContext tenantContext)
+        ITenantContext tenantContext,
+        TruLoadDbContext context)
     {
         _receiptService = receiptService;
         _pdfService = pdfService;
         _tenantContext = tenantContext;
+        _context = context;
     }
 
     /// <summary>
@@ -289,6 +294,27 @@ public class ReceiptController : ControllerBase
         {
             return StatusCode(500, $"Failed to generate receipt PDF: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Permanently delete a receipt and all its related records from the database.
+    /// Superuser-only — this action is irreversible.
+    /// </summary>
+    [HttpDelete("api/v1/receipts/{id}/hard")]
+    [Authorize(Roles = "Superuser")]
+    public async Task<IActionResult> HardDelete(Guid id, CancellationToken ct)
+    {
+        var receipt = await _context.Receipts
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.Id == id, ct);
+
+        if (receipt == null)
+            return NotFound(new { message = "Receipt not found" });
+
+        _context.Receipts.Remove(receipt);
+        await _context.SaveChangesAsync(ct);
+
+        return NoContent();
     }
 
     private Guid GetCurrentUserId()

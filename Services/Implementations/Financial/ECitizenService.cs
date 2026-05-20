@@ -46,6 +46,48 @@ public class ECitizenService : IECitizenService
         _logger = logger;
     }
 
+    public async Task<(bool Success, string Message)> TestConnectivityAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var config = await _integrationConfigService.GetByProviderAsync(ProviderName, ct);
+            if (config == null)
+                return (false, "Integration not configured");
+            if (!config.IsActive)
+                return (false, "Integration is disabled — enable it first");
+
+            // Clear cached token so we force a fresh OAuth request
+            try
+            {
+                var db = _redis.GetDatabase();
+                await db.KeyDeleteAsync(RedisTokenKey);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to clear Redis cache before connectivity test");
+            }
+
+            var token = await GetAccessTokenAsync(ct);
+            if (string.IsNullOrEmpty(token))
+                return (false, "OAuth token request returned an empty token");
+
+            return (true, $"OAuth token acquired successfully from {config.BaseUrl}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return (false, $"Configuration error: {ex.Message}");
+        }
+        catch (HttpRequestException ex)
+        {
+            return (false, $"Network error reaching eCitizen: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "eCitizen connectivity test failed");
+            return (false, $"Test failed: {ex.Message}");
+        }
+    }
+
     public async Task<bool> IsAvailableAsync(CancellationToken ct = default)
     {
         try
@@ -280,7 +322,8 @@ public class ECitizenService : IECitizenService
             ?? throw new InvalidOperationException("eCitizen integration config not found");
 
         var apiKey = credentials.GetValueOrDefault("ApiKey")!;
-        var apiClientId = credentials.GetValueOrDefault("ApiClientId") ?? ServiceId;
+        var apiClientId = credentials.GetValueOrDefault("ApiClientId")
+            ?? throw new InvalidOperationException("ApiClientId not found in eCitizen credentials");
 
         // Build secure hash for status query per Pesaflow spec Section 5:
         // data_string = api_client_id + ref_no (no secret appended)

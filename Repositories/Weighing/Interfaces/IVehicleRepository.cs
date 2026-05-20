@@ -7,7 +7,7 @@ public interface IVehicleRepository
     Task<Vehicle?> GetByIdAsync(Guid id);
     Task<Vehicle?> GetByRegNoAsync(string regNo);
     Task<IEnumerable<Vehicle>> SearchAsync(string query);
-    Task<(IEnumerable<Vehicle> Items, int TotalCount)> SearchPagedAsync(string? search, int page, int pageSize, Guid? transporterId = null);
+    Task<(IEnumerable<Vehicle> Items, int TotalCount)> SearchPagedAsync(string? search, int page, int pageSize, Guid? transporterId = null, Guid? organizationId = null);
     Task<Vehicle> CreateAsync(Vehicle vehicle);
     Task UpdateAsync(Vehicle vehicle);
 }

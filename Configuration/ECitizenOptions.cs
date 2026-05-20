@@ -13,4 +13,5 @@ public class ECitizenOptions
     public string ApiKey { get; set; } = string.Empty;
     public string ApiSecret { get; set; } = string.Empty;
     public string ApiClientId { get; set; } = string.Empty;
+    public string ServiceId { get; set; } = string.Empty;
 }

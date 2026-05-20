@@ -51,7 +51,7 @@ public class VehicleRepository : IVehicleRepository
         return await q.OrderBy(v => v.RegNo).Take(500).ToListAsync();
     }
 
-    public async Task<(IEnumerable<Vehicle> Items, int TotalCount)> SearchPagedAsync(string? search, int page, int pageSize, Guid? transporterId = null)
+    public async Task<(IEnumerable<Vehicle> Items, int TotalCount)> SearchPagedAsync(string? search, int page, int pageSize, Guid? transporterId = null, Guid? organizationId = null)
     {
         var q = _context.Vehicles
             .AsNoTracking()
@@ -70,6 +70,10 @@ public class VehicleRepository : IVehicleRepository
 
         if (transporterId.HasValue)
             q = q.Where(v => v.TransporterId == transporterId.Value);
+
+        // Scope to vehicles that have tare history for this org (used by tare register)
+        if (organizationId.HasValue && organizationId.Value != Guid.Empty)
+            q = q.Where(v => v.TareHistory.Any(h => h.OrganizationId == organizationId.Value));
 
         var total = await q.CountAsync();
         var items = await q

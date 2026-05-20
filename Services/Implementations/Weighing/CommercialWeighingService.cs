@@ -485,11 +485,13 @@ public class CommercialWeighingService : ICommercialWeighingService
 
     public async Task<List<VehicleTareHistoryDto>> GetVehicleTareHistoryAsync(Guid vehicleId)
     {
+        var orgId = _tenantContext.OrganizationId;
         var history = await _dbContext.VehicleTareHistory
             .AsNoTracking()
             .Include(h => h.Vehicle)
             .Include(h => h.Station)
-            .Where(h => h.VehicleId == vehicleId)
+            .Where(h => h.VehicleId == vehicleId &&
+                        (orgId == Guid.Empty || h.OrganizationId == orgId))
             .OrderByDescending(h => h.WeighedAt)
             .ToListAsync();
 

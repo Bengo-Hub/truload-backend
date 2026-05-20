@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.CaseManagement;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Services.Interfaces.CaseManagement;
@@ -16,15 +18,18 @@ public class CaseRegisterController : ControllerBase
     private readonly ICaseRegisterService _caseRegisterService;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<CaseRegisterController> _logger;
+    private readonly TruLoadDbContext _context;
 
     public CaseRegisterController(
         ICaseRegisterService caseRegisterService,
         ITenantContext tenantContext,
-        ILogger<CaseRegisterController> logger)
+        ILogger<CaseRegisterController> logger,
+        TruLoadDbContext context)
     {
         _caseRegisterService = caseRegisterService;
         _tenantContext = tenantContext;
         _logger = logger;
+        _context = context;
     }
 
     /// <summary>
@@ -307,13 +312,34 @@ public class CaseRegisterController : ControllerBase
     }
 
     /// <summary>
-    /// Delete a case
+    /// Delete a case (soft delete)
     /// </summary>
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var deleted = await _caseRegisterService.DeleteCaseAsync(id);
         if (!deleted) return NotFound();
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Permanently delete a case and all its related records from the database.
+    /// Superuser-only — this action is irreversible.
+    /// </summary>
+    [HttpDelete("{id}/hard")]
+    [Authorize(Roles = "Superuser")]
+    public async Task<IActionResult> HardDelete(Guid id, CancellationToken ct)
+    {
+        var caseRecord = await _context.CaseRegisters
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
+
+        if (caseRecord == null)
+            return NotFound(new { message = "Case not found" });
+
+        _context.CaseRegisters.Remove(caseRecord);
+        await _context.SaveChangesAsync(ct);
+
         return NoContent();
     }
 }
