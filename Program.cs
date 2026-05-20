@@ -527,6 +527,7 @@ builder.Services.AddHangfireServer(options =>
 
 // Register background job services
 builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.PesaflowInvoiceSyncJob>();
+builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.StaleWeighingNotificationJob>();
 builder.Services.AddScoped<TruLoad.Backend.Services.Implementations.Shared.NotificationBackgroundJob>();
 
 // Hangfire job retention: auto-delete succeeded/failed jobs after 48 hours
@@ -829,6 +830,16 @@ Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.Report
     "report-schedule-runner",
     job => job.ExecuteAsync(),
     "*/5 * * * *", // Every 5 minutes — checks for due reports
+    new Hangfire.RecurringJobOptions
+    {
+        TimeZone = TimeZoneInfo.Utc,
+        QueueName = "default"
+    });
+
+Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.StaleWeighingNotificationJob>(
+    "stale-weighing-alert",
+    j => j.ExecuteAsync(),
+    "*/30 * * * *", // Every 30 minutes
     new Hangfire.RecurringJobOptions
     {
         TimeZone = TimeZoneInfo.Utc,

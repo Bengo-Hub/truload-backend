@@ -1,9 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Weighing;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
+using TruLoad.Backend.Services.Interfaces.Subscription;
 using TruLoad.Backend.Services.Interfaces.Weighing;
 
 namespace TruLoad.Backend.Controllers.WeighingOperations;
@@ -16,15 +20,24 @@ public class CommercialWeighingController : ControllerBase
 {
     private readonly ICommercialWeighingService _commercialWeighingService;
     private readonly IPdfService _pdfService;
+    private readonly ISubscriptionService _subscriptionService;
+    private readonly ITenantContext _tenantContext;
+    private readonly TruLoadDbContext _db;
     private readonly ILogger<CommercialWeighingController> _logger;
 
     public CommercialWeighingController(
         ICommercialWeighingService commercialWeighingService,
         IPdfService pdfService,
+        ISubscriptionService subscriptionService,
+        ITenantContext tenantContext,
+        TruLoadDbContext db,
         ILogger<CommercialWeighingController> logger)
     {
         _commercialWeighingService = commercialWeighingService;
         _pdfService = pdfService;
+        _subscriptionService = subscriptionService;
+        _tenantContext = tenantContext;
+        _db = db;
         _logger = logger;
     }
 
@@ -44,6 +57,28 @@ public class CommercialWeighingController : ControllerBase
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userGuid))
             return Unauthorized("User ID not found in claims");
+
+        // Subscription guard — fail-open if subscriptions-api is unreachable
+        try
+        {
+            var org = await _db.Organizations
+                .AsNoTracking()
+                .IgnoreQueryFilters()
+                .Where(o => o.Id == _tenantContext.OrganizationId)
+                .Select(o => new { o.SsoTenantSlug, o.TenantType })
+                .FirstOrDefaultAsync();
+
+            if (org != null && org.TenantType == "CommercialWeighing" && !string.IsNullOrWhiteSpace(org.SsoTenantSlug))
+            {
+                var sub = await _subscriptionService.GetTenantSubscriptionAsync(org.SsoTenantSlug);
+                if (sub.Status is not ("ACTIVE" or "TRIAL"))
+                    return StatusCode(402, new { code = "subscription_inactive", message = "Your subscription is inactive. Please renew to continue weighing.", upgrade = true });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[CommercialWeighing] Subscription check failed for org {OrgId} — proceeding (fail-open)", _tenantContext.OrganizationId);
+        }
 
         try
         {
@@ -502,6 +537,31 @@ public class CommercialWeighingController : ControllerBase
         {
             _logger.LogError(ex, "Error fetching pending commercial transactions for station {StationId}", stationId);
             return StatusCode(500, "An error occurred while fetching pending transactions.");
+        }
+    }
+
+    /// <summary>
+    /// Finds open first-weight-only transactions for a specific vehicle plate within the configured time threshold.
+    /// Called by the capture screen when an operator enters a plate number, to detect vehicles that need a second
+    /// pass rather than starting a new transaction.
+    /// </summary>
+    [HttpGet("pending-by-plate/{regNo}")]
+    [Authorize(Policy = "Permission:weighing.read")]
+    [ProducesResponseType(typeof(List<CommercialWeighingResultDto>), 200)]
+    public async Task<IActionResult> GetPendingByPlate(string regNo, [FromQuery] int thresholdHours = 8)
+    {
+        if (string.IsNullOrWhiteSpace(regNo))
+            return BadRequest(new { message = "regNo is required" });
+
+        try
+        {
+            var results = await _commercialWeighingService.GetPendingByPlateAsync(regNo, thresholdHours);
+            return Ok(results);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching pending commercial transactions for plate {RegNo}", regNo);
+            return StatusCode(500, "An error occurred while looking up pending transactions.");
         }
     }
 }

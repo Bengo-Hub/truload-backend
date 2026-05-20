@@ -454,6 +454,10 @@ public class WeighingTransaction : TenantAwareEntity
     [MaxLength(200)]
     public string? SnapshotDestinationName { get; set; }
 
+    // ── Stale Alert Fields ──
+    /// <summary>When a stale-transaction alert was last sent for this record. Prevents duplicate emails.</summary>
+    public DateTime? StaleAlertSentAt { get; set; }
+
     // ── Void Fields ──
     /// <summary>When the transaction was voided (null if not voided).</summary>
     public DateTime? VoidedAt { get; set; }

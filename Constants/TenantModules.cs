@@ -23,6 +23,7 @@ public static class TenantModules
     public const string SetupActs = "setup_acts";
     public const string SetupSettings = "setup_settings";
     public const string SetupSystemConfig = "setup_system_config";
+    public const string SetupNotifications = "setup_notifications";
     // Commercial-only modules
     public const string TareRegister = "tare_register";
     public const string SetupTolerance = "setup_tolerance";
@@ -45,7 +46,7 @@ public static class TenantModules
     {
         Dashboard, Weighing, Reporting, Users, Shifts, Technical,
         FinancialInvoices, FinancialReceipts,
-        SetupWeighingMetadata, SetupSettings, SetupSystemConfig, SetupSecurity,
+        SetupWeighingMetadata, SetupSettings, SetupSystemConfig, SetupSecurity, SetupNotifications,
         TareRegister, SetupTolerance, Billing
     };
 

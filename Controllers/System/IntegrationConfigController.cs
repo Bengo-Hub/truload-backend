@@ -59,6 +59,11 @@ public class IntegrationConfigController : ControllerBase
     /// Create or update an integration configuration.
     /// Credentials are encrypted before storage.
     /// </summary>
+    // Notification channel providers (SMS, SMTP email) are managed by the centralized
+    // notifications-service and must not be configured here.
+    private static readonly HashSet<string> NotificationManagedProviders =
+        new(StringComparer.OrdinalIgnoreCase) { "sms_twilio", "sms_africastalking", "email_smtp" };
+
     [HttpPut("api/v1/system/integrations/{providerName}")]
     [HasPermission("config.update")]
     public async Task<IActionResult> Upsert(
@@ -66,6 +71,12 @@ public class IntegrationConfigController : ControllerBase
         [FromBody] UpsertIntegrationConfigRequest request,
         CancellationToken ct)
     {
+        if (NotificationManagedProviders.Contains(providerName))
+            return BadRequest(new
+            {
+                message = $"Provider '{providerName}' is managed by the notifications-service. Configure it in the notifications admin panel."
+            });
+
         request.ProviderName = providerName;
         var result = await _integrationConfigService.CreateOrUpdateAsync(request, ct);
         return Ok(result);

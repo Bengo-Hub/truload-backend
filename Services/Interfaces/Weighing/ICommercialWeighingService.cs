@@ -102,4 +102,10 @@ public interface ICommercialWeighingService
     /// Gets pending commercial weighing transactions (first weight captured, awaiting second pass) for a station.
     /// </summary>
     Task<List<CommercialWeighingResultDto>> GetPendingCommercialTransactionsAsync(Guid stationId);
+
+    /// <summary>
+    /// Finds open first-weight-only transactions for a vehicle plate within the configured time threshold.
+    /// Used by the capture screen to detect vehicles that need a second pass rather than a new transaction.
+    /// </summary>
+    Task<List<CommercialWeighingResultDto>> GetPendingByPlateAsync(string vehicleRegNo, int thresholdHours = 8);
 }

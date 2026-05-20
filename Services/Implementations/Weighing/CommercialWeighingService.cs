@@ -22,6 +22,7 @@ public class CommercialWeighingService : ICommercialWeighingService
     private readonly IVehicleRepository _vehicleRepository;
     private readonly IDocumentNumberService _documentNumberService;
     private readonly ITreasuryService _treasuryService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<CommercialWeighingService> _logger;
 
     public CommercialWeighingService(
@@ -30,6 +31,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         IVehicleRepository vehicleRepository,
         IDocumentNumberService documentNumberService,
         ITreasuryService treasuryService,
+        IConfiguration configuration,
         ILogger<CommercialWeighingService> logger)
     {
         _dbContext = dbContext;
@@ -37,6 +39,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         _vehicleRepository = vehicleRepository;
         _documentNumberService = documentNumberService;
         _treasuryService = treasuryService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -406,8 +409,10 @@ public class CommercialWeighingService : ICommercialWeighingService
             dto.InvoiceStatus = invoice.Status;
             dto.InvoiceAmountKes = invoice.AmountDue;
             dto.TreasuryIntentId = invoice.TreasuryIntentId;
+            var payPortalBase = _configuration["Treasury:PayPortalBaseUrl"]
+                ?? "https://books.codevertexitsolutions.com/pay";
             dto.TreasuryPaymentUrl = !string.IsNullOrWhiteSpace(invoice.TreasuryIntentId)
-                ? $"https://books.codevertexitsolutions.com/pay?intent_id={invoice.TreasuryIntentId}"
+                ? $"{payPortalBase}?intent_id={invoice.TreasuryIntentId}"
                 : null;
         }
 
@@ -636,6 +641,34 @@ public class CommercialWeighingService : ICommercialWeighingService
                 t.VoidedAt == null)
             .OrderByDescending(t => t.FirstWeightAt)
             .Take(20)
+            .ToListAsync();
+
+        return transactions.Select(MapToCommercialResultDto).ToList();
+    }
+
+    public async Task<List<CommercialWeighingResultDto>> GetPendingByPlateAsync(string vehicleRegNo, int thresholdHours = 8)
+    {
+        var orgId = _tenantContext.OrganizationId;
+        var cutoff = DateTime.UtcNow.AddHours(-thresholdHours);
+        var regNo = vehicleRegNo.Trim().ToUpperInvariant();
+
+        var transactions = await _dbContext.WeighingTransactions
+            .AsNoTracking()
+            .Include(t => t.Vehicle)
+            .Include(t => t.Driver)
+            .Include(t => t.Transporter)
+            .Include(t => t.Cargo)
+            .Include(t => t.Origin)
+            .Include(t => t.Destination)
+            .Where(t =>
+                t.OrganizationId == orgId &&
+                t.WeighingMode == "commercial" &&
+                t.CaptureStatus == "first_weight_captured" &&
+                t.VoidedAt == null &&
+                t.Vehicle != null && t.Vehicle.RegNo == regNo &&
+                t.FirstWeightAt.HasValue && t.FirstWeightAt.Value >= cutoff)
+            .OrderByDescending(t => t.FirstWeightAt)
+            .Take(5)
             .ToListAsync();
 
         return transactions.Select(MapToCommercialResultDto).ToList();

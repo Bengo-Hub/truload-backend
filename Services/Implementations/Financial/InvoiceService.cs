@@ -15,15 +15,18 @@ public class InvoiceService : IInvoiceService
 {
     private readonly TruLoadDbContext _context;
     private readonly INotificationService _notificationService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<InvoiceService> _logger;
 
     public InvoiceService(
         TruLoadDbContext context,
         INotificationService notificationService,
+        IConfiguration configuration,
         ILogger<InvoiceService> logger)
     {
         _context = context;
         _notificationService = notificationService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -428,9 +431,8 @@ public class InvoiceService : IInvoiceService
             InvoiceType = invoice.InvoiceType ?? "enforcement_fine",
             TreasuryIntentId = invoice.TreasuryIntentId,
             TreasuryIntentStatus = invoice.TreasuryIntentStatus,
-            // Generate treasury pay URL for commercial invoices with a payment intent
             TreasuryPaymentUrl = !string.IsNullOrWhiteSpace(invoice.TreasuryIntentId)
-                ? $"https://books.codevertexitsolutions.com/pay?intent_id={invoice.TreasuryIntentId}"
+                ? $"{_configuration["Treasury:PayPortalBaseUrl"] ?? "https://books.codevertexitsolutions.com/pay"}?intent_id={invoice.TreasuryIntentId}"
                 : null,
             CreatedAt = invoice.CreatedAt,
             UpdatedAt = invoice.UpdatedAt

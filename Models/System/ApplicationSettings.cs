@@ -129,6 +129,7 @@ public static class SettingKeys
     public const string WeighingMaxReweighCycles = "weighing.max_reweigh_cycles";
     public const string WeighingOperationalToleranceKg = "weighing.operational_tolerance_kg";
     public const string WeighingScaleTestRequired = "weighing.scale_test_required";
+    public const string CommercialPendingWeighingThresholdHours = "commercial.pending_weighing_threshold_hours";
 
     // Financial
     public const string FinancialDefaultForexRate = "financial.default_forex_rate";

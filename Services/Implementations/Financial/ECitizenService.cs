@@ -71,7 +71,7 @@ public class ECitizenService : IECitizenService
             if (string.IsNullOrEmpty(token))
                 return (false, "OAuth token request returned an empty token");
 
-            return (true, $"OAuth token acquired successfully from {config.BaseUrl}");
+            return (true, $"OAuth token acquired successfully from {NormalizeBaseUrl(config.BaseUrl)}");
         }
         catch (InvalidOperationException ex)
         {
@@ -137,7 +137,8 @@ public class ECitizenService : IECitizenService
         // Pesaflow OAuth: POST JSON body with key + secret (not Basic auth)
         var oauthPayload = JsonSerializer.Serialize(new { key = apiKey, secret = apiSecret });
 
-        var request = new HttpRequestMessage(HttpMethod.Post, $"{config.BaseUrl}/api/oauth/generate/token")
+        var baseUrl = NormalizeBaseUrl(config.BaseUrl);
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/oauth/generate/token")
         {
             Content = new StringContent(oauthPayload, Encoding.UTF8, "application/json")
         };
@@ -234,7 +235,8 @@ public class ECitizenService : IECitizenService
             ["sendSTK"] = "false"
         };
 
-        var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{config.BaseUrl}/PaymentAPI/iframev2.1.php")
+        var baseUrl = NormalizeBaseUrl(config.BaseUrl);
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/PaymentAPI/iframev2.1.php")
         {
             Content = new FormUrlEncodedContent(formData)
         };
@@ -331,7 +333,8 @@ public class ECitizenService : IECitizenService
         var dataString = $"{apiClientId}{invoiceRefNo}";
         var secureHash = ComputeSecureHash(dataString, apiKey);
 
-        var url = $"{config.BaseUrl}/api/invoice/payment/status?api_client_id={apiClientId}&ref_no={Uri.EscapeDataString(invoiceRefNo)}&secure_hash={Uri.EscapeDataString(secureHash)}";
+        var baseUrl = NormalizeBaseUrl(config.BaseUrl);
+        var url = $"{baseUrl}/api/invoice/payment/status?api_client_id={apiClientId}&ref_no={Uri.EscapeDataString(invoiceRefNo)}&secure_hash={Uri.EscapeDataString(secureHash)}";
 
         var token = await GetAccessTokenAsync(ct);
         var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -369,6 +372,23 @@ public class ECitizenService : IECitizenService
                 ? DateTime.TryParse(pd.GetString(), out var dt) ? dt : null
                 : null
         };
+    }
+
+    /// Strips known Pesaflow path suffixes from the stored base_url so callers
+    /// always get the bare domain root (e.g. https://payments.ecitizen.go.ke).
+    private static string NormalizeBaseUrl(string? rawBaseUrl)
+    {
+        var url = rawBaseUrl?.TrimEnd('/') ?? "https://payments.ecitizen.go.ke";
+        // Strip common Pesaflow path segments that might have been saved by mistake
+        foreach (var suffix in new[] { "/PaymentAPI/iframev2.1.php", "/PaymentAPI" })
+        {
+            if (url.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+            {
+                url = url[..^suffix.Length];
+                break;
+            }
+        }
+        return url;
     }
 
     /// <summary>

@@ -590,6 +590,21 @@ public class SystemConfigurationSeeder
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.CommercialPendingWeighingThresholdHours,
+                SettingValue = "8",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryWeighing,
+                DisplayName = "Commercial Pending Weighing Threshold (hours)",
+                Description = "Hours after first weight capture before a commercial transaction is considered stale and managers are notified",
+                DefaultValue = "8",
+                IsEditable = true,
+                SortOrder = 3,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
 
             // Financial Settings
             new ApplicationSettings
