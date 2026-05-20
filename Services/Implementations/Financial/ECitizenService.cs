@@ -150,7 +150,8 @@ public class ECitizenService : IECitizenService
         {
             _logger.LogError("Pesaflow OAuth token request failed: {StatusCode} {Body}",
                 response.StatusCode, responseBody);
-            throw new HttpRequestException($"Pesaflow OAuth failed: {response.StatusCode}");
+            var truncated = responseBody.Length > 200 ? responseBody[..200] : responseBody;
+            throw new HttpRequestException($"Pesaflow OAuth failed: {response.StatusCode} — {truncated}");
         }
 
         using var doc = JsonDocument.Parse(responseBody);
