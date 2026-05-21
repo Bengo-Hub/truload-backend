@@ -235,7 +235,7 @@ public class AxleConfigurationController : ControllerBase
             {
                 existing.Notes = request.Notes;
                 existing.UpdatedAt = DateTime.UtcNow;
-                var stdUpdated = await _repository.UpdateDerivedConfigAsync(existing, cancellationToken);
+                await _repository.UpdateStandardConfigAsync(existing, cancellationToken);
                 var stdResult = await _repository.GetByIdAsync(id, includeWeightReferences: true, cancellationToken);
                 return Ok(MapToResponseDto(stdResult!));
             }

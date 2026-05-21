@@ -151,6 +151,25 @@ public class AxleConfigurationRepository : IAxleConfigurationRepository
         return existing;
     }
 
+    public async Task<AxleConfiguration> UpdateStandardConfigAsync(
+        AxleConfiguration config,
+        CancellationToken cancellationToken = default)
+    {
+        var existing = await _context.AxleConfigurations
+            .FindAsync(new object[] { config.Id }, cancellationToken)
+            ?? throw new KeyNotFoundException($"Axle configuration {config.Id} not found");
+
+        existing.ToleranceKg = config.ToleranceKg;
+        existing.Notes = config.Notes;
+        existing.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Updated standard axle configuration {AxleCode} tolerance to {ToleranceKg}",
+            existing.AxleCode, existing.ToleranceKg);
+
+        return existing;
+    }
+
     public async Task<bool> SoftDeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var config = await _context.AxleConfigurations.FindAsync(new object[] { id }, cancellationToken);

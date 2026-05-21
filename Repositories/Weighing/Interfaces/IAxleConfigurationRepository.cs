@@ -41,10 +41,18 @@ public interface IAxleConfigurationRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Update an existing derived configuration
-    /// Standard configurations cannot be modified
+    /// Update an existing derived configuration (structural fields + tolerance).
+    /// Standard configurations cannot be modified via this method.
     /// </summary>
     Task<AxleConfiguration> UpdateDerivedConfigAsync(
+        AxleConfiguration config,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Update only tolerance and notes on a standard (immutable-structure) configuration.
+    /// Standard configs prohibit structural changes but allow tolerance overrides.
+    /// </summary>
+    Task<AxleConfiguration> UpdateStandardConfigAsync(
         AxleConfiguration config,
         CancellationToken cancellationToken = default);
 

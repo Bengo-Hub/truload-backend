@@ -271,7 +271,14 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
         result.GvwToleranceDisplay = axleConfigTolerance.HasValue
             ? $"{gvwToleranceKg:N0} kg (config)"
             : BuildToleranceDisplay(gvwToleranceSetting, gvwToleranceKg);
-        result.AxleToleranceDisplay = BuildToleranceDisplay(axleToleranceSetting, groupResults.FirstOrDefault()?.ToleranceKg ?? 0);
+        var firstGroupToleranceKg = groupResults.FirstOrDefault()?.ToleranceKg ?? 0;
+        bool hasConfigAxleTolerance = firstGroupToleranceKg > 0 &&
+            transaction.WeighingAxles.Any(a =>
+                a.AxleConfiguration?.ToleranceKg > 0 ||
+                a.AxleConfiguration?.TolerancePercentage > 0);
+        result.AxleToleranceDisplay = hasConfigAxleTolerance
+            ? $"{firstGroupToleranceKg:N0} kg (config)"
+            : BuildToleranceDisplay(axleToleranceSetting, firstGroupToleranceKg);
         result.GvwOverloadKg = Math.Max(0, result.GvwMeasuredKg - result.GvwEffectiveLimitKg);
 
         // Calculate fees in the act's charging currency
@@ -422,36 +429,15 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
     /// <summary>
     /// Calculate tolerance for an axle group using DB-driven tolerance settings.
     /// Fallback chain:
-    ///   1. Act-specific (e.g. EAC_AXLE_TOLERANCE = 5%)
-    ///   2. Standard law by axle type (STANDARD_LAW_SINGLE = 5% for singles, STANDARD_LAW_GROUP = 0% for groups)
-    ///   3. Config-specific (per AxleConfiguration.ToleranceKg/Percentage)
+    ///   1. Config-specific (per AxleConfiguration.ToleranceKg/Percentage) — highest priority
+    ///   2. Act-specific (e.g. EAC_AXLE_TOLERANCE = 5%)
+    ///   3. Standard law by axle type (STANDARD_LAW_SINGLE = 5% for singles, STANDARD_LAW_GROUP = 0% for groups)
     ///   4. 0% (strict)
     /// No hardcoded percentage fallbacks — the DB is the single source of truth.
     /// </summary>
     private async Task<int> CalculateGroupToleranceAsync(List<WeighingAxle> axles, int groupPermissibleKg, string legalFramework)
     {
-        // 1. Act-Specific Regulatory Tolerance (highest priority)
-        //    e.g. TRAFFIC_ACT_AXLE_TOLERANCE = 0%, EAC_AXLE_TOLERANCE = 5%
-        var toleranceKg = await _toleranceRepository.CalculateToleranceKgAsync(
-            legalFramework, "AXLE", groupPermissibleKg);
-        if (toleranceKg > 0)
-            return toleranceKg;
-
-        // 2. Standard Law Tolerance by axle type
-        //    Single axles (Steering/SingleDrive) → STANDARD_LAW_SINGLE (5%)
-        //    Grouped axles (Tandem/Tridem/Quad) → STANDARD_LAW_GROUP (0%)
-        bool isSingleAxle = axles.Count <= 1;
-        var standardCode = isSingleAxle ? "STANDARD_LAW_SINGLE" : "STANDARD_LAW_GROUP";
-        var standardSetting = await _toleranceRepository.GetByCodeAsync(standardCode);
-        if (standardSetting != null)
-        {
-            if (standardSetting.ToleranceKg.HasValue && standardSetting.ToleranceKg.Value > 0)
-                return standardSetting.ToleranceKg.Value;
-            if (standardSetting.TolerancePercentage > 0)
-                return (int)Math.Round(groupPermissibleKg * (standardSetting.TolerancePercentage / 100m));
-        }
-
-        // 3. Config-Specific Tolerance (per-axle configuration overrides)
+        // 1. Config-Specific Tolerance (highest priority — per-axle configuration overrides global settings)
         //    If multiple axles in group have different tolerances, use the MAX
         var configTolerances = axles
             .Select(a => {
@@ -464,6 +450,27 @@ public class AxleGroupAggregationService : IAxleGroupAggregationService
 
         if (configTolerances.Any(t => t > 0))
             return configTolerances.Max();
+
+        // 2. Act-Specific Regulatory Tolerance
+        //    e.g. TRAFFIC_ACT_AXLE_TOLERANCE = 0%, EAC_AXLE_TOLERANCE = 5%
+        var toleranceKg = await _toleranceRepository.CalculateToleranceKgAsync(
+            legalFramework, "AXLE", groupPermissibleKg);
+        if (toleranceKg > 0)
+            return toleranceKg;
+
+        // 3. Standard Law Tolerance by axle type
+        //    Single axles (Steering/SingleDrive) → STANDARD_LAW_SINGLE (5%)
+        //    Grouped axles (Tandem/Tridem/Quad) → STANDARD_LAW_GROUP (0%)
+        bool isSingleAxle = axles.Count <= 1;
+        var standardCode = isSingleAxle ? "STANDARD_LAW_SINGLE" : "STANDARD_LAW_GROUP";
+        var standardSetting = await _toleranceRepository.GetByCodeAsync(standardCode);
+        if (standardSetting != null)
+        {
+            if (standardSetting.ToleranceKg.HasValue && standardSetting.ToleranceKg.Value > 0)
+                return standardSetting.ToleranceKg.Value;
+            if (standardSetting.TolerancePercentage > 0)
+                return (int)Math.Round(groupPermissibleKg * (standardSetting.TolerancePercentage / 100m));
+        }
 
         // 4. Strict (0%) — no tolerance found
         return 0;
