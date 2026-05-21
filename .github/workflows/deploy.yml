@@ -275,6 +275,7 @@ jobs:
         # Shared database passwords are already injected above; avoid duplicate keys here
         # .NET secrets are already injected above as well
         ASPNET_SECRET: ${{ secrets.ASPNET_SECRET }}
+        SUPERSET_ADMIN_PASSWORD: ${{ secrets.SUPERSET_ADMIN_PASSWORD }}
       run: |
         chmod +x build.sh
         # Export all required environment variables for build.sh and child scripts
@@ -285,6 +286,7 @@ jobs:
         export RABBITMQ_NAMESPACE="${RABBITMQ_NAMESPACE}"
         export JWT_SECRET="${JWT_SECRET}"
         export ASPNET_SECRET="${ASPNET_SECRET}"
+        export SUPERSET_ADMIN_PASSWORD="${SUPERSET_ADMIN_PASSWORD}"
         export NAMESPACE="${NAMESPACE}"
         export ENV_SECRET_NAME="${ENV_SECRET_NAME}"
         export APP_NAME="${APP_NAME}"

@@ -218,6 +218,15 @@ if kubectl -n "$NAMESPACE" get secret "$ENV_SECRET_NAME" >/dev/null 2>&1; then
       success "Added JWT__Secret to secret"
     fi
   fi
+
+  # Add Superset admin password — required by Program.cs production guard
+  if [[ -n "${SUPERSET_ADMIN_PASSWORD:-}" ]]; then
+    if ! kubectl -n "$NAMESPACE" get secret "$ENV_SECRET_NAME" -o jsonpath='{.data.Superset__Password}' 2>/dev/null | grep -q .; then
+      info "Adding Superset__Password to secret..."
+      kubectl -n "$NAMESPACE" patch secret "$ENV_SECRET_NAME" -p "{\"stringData\":{\"Superset__Password\":\"$SUPERSET_ADMIN_PASSWORD\"}}" || warn "Failed to add Superset__Password"
+      success "Added Superset__Password to secret"
+    fi
+  fi
 fi
 
 # Export variables for migration/seeding scripts
