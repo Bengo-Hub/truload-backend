@@ -116,6 +116,10 @@ public class StaleWeighingNotificationJob
                     ["threshold_hours"] = thresholdHours,
                 };
 
+                // Derive the tenant slug from the org code so the notifications-api
+                // resolves the correct SMTP settings and branding (not the platform default).
+                var tenantSlug = org.Code.ToLowerInvariant();
+
                 foreach (var manager in managers)
                 {
                     var sent = await notificationService.SendEmailAsync(
@@ -124,7 +128,8 @@ public class StaleWeighingNotificationJob
                         recipientName: manager.FullName ?? "Manager",
                         templateData: templateData,
                         subject: $"[TruLoad] Stale Weighing Transaction — {plateNo}",
-                        cancellationToken: ct);
+                        cancellationToken: ct,
+                        tenantSlug: tenantSlug);
 
                     if (!sent)
                         _logger.LogWarning("[StaleWeighingNotificationJob] Failed to send stale alert to {Email} for transaction {Id}", manager.Email, transaction.Id);

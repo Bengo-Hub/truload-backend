@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Repositories.UserManagement.Interfaces;
 
 namespace TruLoad.Backend.Controllers.Shared;
@@ -41,8 +42,8 @@ public class PublicController : ControllerBase
                 id = o.Id,
                 code = o.Code,
                 name = o.Name,
-                logoUrl = o.LogoUrl,
-                platformLogoUrl = o.PlatformLogoUrl,
+                logoUrl = o.LogoUrl ?? "/images/" + BrandingConstants.Logos.TruLoadLogoSvg,
+                platformLogoUrl = o.PlatformLogoUrl ?? "/images/" + BrandingConstants.Logos.TruLoadLogoSvg,
                 loginPageImageUrl = o.LoginPageImageUrl,
                 primaryColor = o.PrimaryColor,
                 secondaryColor = o.SecondaryColor,

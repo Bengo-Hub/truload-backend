@@ -27,7 +27,8 @@ public interface INotificationService
         string recipientName,
         Dictionary<string, object> templateData,
         string? subject = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? tenantSlug = null);
 
     /// <summary>
     /// Send SMS notification.

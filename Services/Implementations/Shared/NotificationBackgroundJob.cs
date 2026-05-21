@@ -28,9 +28,10 @@ public class NotificationBackgroundJob
         string recipientEmail,
         string recipientName,
         Dictionary<string, object> templateData,
-        string? subject = null)
+        string? subject = null,
+        string? tenantSlug = null)
     {
-        _logger.LogInformation("Processing background email job for {Email} using template {Template}", 
+        _logger.LogInformation("Processing background email job for {Email} using template {Template}",
             recipientEmail, templateName);
 
         var success = await _notificationService.SendEmailAsync(
@@ -38,7 +39,9 @@ public class NotificationBackgroundJob
             recipientEmail,
             recipientName,
             templateData,
-            subject);
+            subject,
+            CancellationToken.None,
+            tenantSlug);
 
         if (!success)
         {

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Constants;
 using TruLoad.Backend.DTOs.Auth;
 using TruLoad.Backend.Models;
@@ -858,7 +859,7 @@ public class AuthController : ControllerBase
         {
             tenantType = org.TenantType ?? "AxleLoadEnforcement",
             name = org.Name,
-            logoUrl = org.LogoUrl,
+            logoUrl = org.LogoUrl ?? "/images/" + BrandingConstants.Logos.TruLoadLogoSvg,
             ssoTenantSlug = org.SsoTenantSlug,
             organizationCode = org.Code
         });

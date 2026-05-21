@@ -110,9 +110,15 @@ public static class BrandingConstants
         public const string NtsaLogo = "ntsa-logo.png";
 
         /// <summary>
-        /// Default TruLoad platform logo, used as fallback when org has no custom logo.
+        /// Default TruLoad platform logo (PNG), used as fallback in PDF documents.
         /// </summary>
         public const string TruLoadLogo = "truload-logo.png";
+
+        /// <summary>
+        /// Default TruLoad platform logo (SVG), used as fallback in email brand_logo_url and API responses.
+        /// SVG scales cleanly in email clients and login pages.
+        /// </summary>
+        public const string TruLoadLogoSvg = "truload-logo.svg";
     }
 
     /// <summary>

@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
+using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Configuration;
 using TruLoad.Backend.DTOs.Notifications;
 using TruLoad.Backend.DTOs.Shared;
@@ -111,21 +112,22 @@ public class NotificationService : INotificationService
             if (!string.IsNullOrWhiteSpace(org.ContactPhone))
                 branding["brand_phone"] = org.ContactPhone;
 
-            // Build absolute logo URL so email clients can load it
+            // Build absolute logo URL so email clients can load it.
+            // Fallback order: PlatformLogoUrl → LogoUrl → truload-logo.svg (always set).
             var logoPath = org.PlatformLogoUrl ?? org.LogoUrl;
-            if (!string.IsNullOrWhiteSpace(logoPath))
+            if (string.IsNullOrWhiteSpace(logoPath))
+                logoPath = "/images/" + BrandingConstants.Logos.TruLoadLogoSvg;
+
+            if (logoPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                logoPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
-                if (logoPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                    logoPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                {
-                    branding["brand_logo_url"] = logoPath;
-                }
-                else if (!string.IsNullOrWhiteSpace(_options.PublicBaseUrl))
-                {
-                    var baseUrl = _options.PublicBaseUrl.TrimEnd('/');
-                    var path = logoPath.StartsWith('/') ? logoPath : "/" + logoPath;
-                    branding["brand_logo_url"] = baseUrl + path;
-                }
+                branding["brand_logo_url"] = logoPath;
+            }
+            else if (!string.IsNullOrWhiteSpace(_options.PublicBaseUrl))
+            {
+                var baseUrl = _options.PublicBaseUrl.TrimEnd('/');
+                var path = logoPath.StartsWith('/') ? logoPath : "/" + logoPath;
+                branding["brand_logo_url"] = baseUrl + path;
             }
 
             return branding;
@@ -143,11 +145,14 @@ public class NotificationService : INotificationService
         string recipientName,
         Dictionary<string, object> templateData,
         string? subject = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? tenantSlug = null)
     {
         try
         {
-            // Start with tenant branding as baseline; caller-provided values take precedence
+            // Start with tenant branding as baseline; caller-provided values take precedence.
+            // Background jobs (no ITenantContext) must pass tenantSlug explicitly so the
+            // notifications-api resolves the correct tenant SMTP and brand settings.
             var branding = await GetTenantBrandingAsync(cancellationToken);
             var enhancedData = branding != null
                 ? new Dictionary<string, object>(branding)
@@ -170,7 +175,7 @@ public class NotificationService : INotificationService
             var request = new NotificationMessageRequest
             {
                 Channel = "email",
-                Tenant = GetTenantSlug(),
+                Tenant = tenantSlug ?? GetTenantSlug(),
                 Template = templateName,
                 Data = enhancedData,
                 To = new List<string> { recipientEmail },

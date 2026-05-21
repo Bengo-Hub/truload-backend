@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.Authorization.Attributes;
+using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Constants;
 using TruLoad.Backend.DTOs.User;
 using TruLoad.Backend.Middleware;
@@ -294,8 +295,8 @@ public class OrganizationsController : ControllerBase
             ContactEmail = org.ContactEmail,
             ContactPhone = org.ContactPhone,
             Address = org.Address,
-            LogoUrl = org.LogoUrl,
-            PlatformLogoUrl = org.PlatformLogoUrl,
+            LogoUrl = org.LogoUrl ?? "/images/" + BrandingConstants.Logos.TruLoadLogoSvg,
+            PlatformLogoUrl = org.PlatformLogoUrl ?? "/images/" + BrandingConstants.Logos.TruLoadLogoSvg,
             LoginPageImageUrl = org.LoginPageImageUrl,
             PrimaryColor = org.PrimaryColor,
             SecondaryColor = org.SecondaryColor,
