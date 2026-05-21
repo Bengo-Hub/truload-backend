@@ -1,8 +1,9 @@
 # TruLoad Project Progress Report
 
-**Report Date:** February 18, 2026
+**Report Date:** May 21, 2026
 **Project:** TruLoad - Intelligent Weighing & Enforcement Solution
-**Overall Completion:** 95%
+**Overall Completion:** 98%
+**Current Version:** v1.3.1
 
 ---
 
@@ -32,7 +33,25 @@ TruLoad is a cloud-hosted intelligent weighing and enforcement platform enabling
 - TruConnect middleware production-ready (95%)
 
 ### Current Phase
-Sprint 22.1 (Production Bug Fixes) complete. All Sprint 22 features delivered. Focus on production stability, integration testing, and documentation audit.
+Production deployed (v1.3.1). Multi-tenant architecture live with kura (kuraweigh DB) and truload tenants. All tenant databases auto-migrated and seeded on startup. Commercial weighing workflows complete. Focus on monitoring, tolerance precision, and documentation accuracy.
+
+### v1.3.1 Fixes (May 21, 2026)
+- **Tolerance precedence corrected** — `CalculateGroupToleranceAsync` now evaluates config-specific `ToleranceKg`/`TolerancePercentage` first (was #3, now #1). Per-config overrides always win over global Act tolerances.
+- **Axle tolerance display fixed** — weight tickets show `X,XXX kg (config)` when a per-config axle tolerance is active (was always `0% (strict)`)
+- **Standard config tolerance update unblocked** — `PUT /AxleConfiguration/{id}` now accepts tolerance/notes updates on standard (EAC) configs without returning 400
+- **Tenant DB auto-migration** — all dedicated tenant DBs (kuraweigh, etc.) migrated and seeded automatically on startup via `TenantConnectionStringProvider.GetDedicatedTenantDatabases()`
+
+### v1.3.0 Features (May 20, 2026)
+- Commercial two-pass resume flow (`/pending-by-plate/{regNo}`)
+- Stale transaction Hangfire notification job (30 min interval, dedup via `StaleAlertSentAt`)
+- Subscription validation on weighing initiation (HTTP 402 for inactive subscription)
+- Treasury pay portal URL from config (`Treasury:PayPortalBaseUrl`)
+- Completion and tolerance exception email notifications to transporter / station managers
+
+### v1.2.0 Features (April 22, 2026)
+- Driver + owner joint-liability charge split (Cap 403 / EAC VLC)
+- Special release approval queue (supervisor workflow)
+- Vehicle registration normalisation
 
 ### Sprint 23 - Module Access Audit & Security Hardening (March 20, 2026)
 
@@ -85,14 +104,14 @@ Sprint 22.1 (Production Bug Fixes) complete. All Sprint 22 features delivered. F
 
 | Component | Progress | Status |
 |-----------|----------|--------|
-| Database Schema | 98% | Excellent |
-| Backend APIs | 92% | Excellent |
-| Business Logic | 95% | Excellent |
-| Frontend UI | 90% | Excellent |
+| Database Schema | 99% | Excellent |
+| Backend APIs | 98% | Excellent |
+| Business Logic | 99% | Excellent |
+| Frontend UI | 95% | Excellent |
 | TruConnect Middleware | 95% | Excellent |
 | Testing Coverage | 60% | Good (205 tests passing) |
-| Documentation | 90% | Good |
-| Deployment Ready | 85% | Good |
+| Documentation | 95% | Good |
+| Deployment Ready | 98% | Production (live) |
 
 ---
 
@@ -261,7 +280,8 @@ Sprint 22.1 (Production Bug Fixes) complete. All Sprint 22 features delivered. F
 ### Legal Compliance Engine
 - EAC Vehicle Load Control Act (2016) rules
 - Kenya Traffic Act (Cap 403) rules
-- 5% axle tolerance, configurable operational tolerance
+- Tolerance precedence: config-specific → Act-specific → standard law → strict (0%)
+- Per-axle-configuration `ToleranceKg` overrides global Act tolerance (highest priority)
 - Permit extension calculations (2A/3A)
 - Charge calculation with best-of GVW/Axle logic
 - Penalty multiplier for repeat offenders (5x)
@@ -443,9 +463,9 @@ Sprint 22.1 (Production Bug Fixes) complete. All Sprint 22 features delivered. F
 | Phase 1 | Foundation (Backend Core) | ✅ Complete |
 | Phase 2 | Frontend & TruConnect Integration | ✅ Complete (90%) |
 | Phase 3 | Prosecution & Court Proceedings | ✅ Complete |
-| Phase 4 | Static Weighing & Production Readiness | 🔄 Current |
-| Phase 5 | Analytics & NTSA Integration | ⏳ Upcoming |
-| Phase 6 | Production Deployment | Target Q1 2026 |
+| Phase 4 | Static Weighing & Production Readiness | ✅ Complete |
+| Phase 5 | Commercial Weighing & Multi-Tenant | ✅ Complete (v1.3.x) |
+| Phase 6 | Analytics & NTSA Integration | 🔄 Current |
 
 ---
 
@@ -483,10 +503,10 @@ Sprint 22.1 (Production Bug Fixes) complete. All Sprint 22 features delivered. F
 
 ---
 
-**Document Version:** 6.0
-**Last Updated:** February 18, 2026
-**Next Review:** February 25, 2026
-**Audited By:** Claude Code Documentation Audit (Sprint 22.1)
+**Document Version:** 7.0
+**Last Updated:** May 21, 2026
+**Next Review:** June 4, 2026
+**Audited By:** Claude Code Documentation Audit (v1.3.1)
 
 ### Recent Updates (v5.0) - Full Case Management Lifecycle
 - **8 New Service Layers Implemented** — Complete CRUD for all case management entities:

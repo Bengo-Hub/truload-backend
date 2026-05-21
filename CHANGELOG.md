@@ -5,6 +5,31 @@ All notable changes to TruLoad Backend will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] — 2026-05-21
+
+### Bug Fixes
+- fix(enforcement): axle config tolerance now highest priority in `CalculateGroupToleranceAsync`
+- fix(enforcement): axle tolerance display shows "X kg (config)" when per-config override is active
+- fix(axle-config): standard config tolerance/notes updates no longer return 400
+- feat(infra): auto-migrate and seed all dedicated tenant databases on startup
+
+## [1.3.0] — 2026-05-20
+
+### Features
+- feat(commercial): two-pass resume flow — `GET /commercial-weighing/pending-by-plate/{regNo}`
+- feat(commercial): stale transaction notification job (Hangfire, 30 min interval)
+- feat(commercial): completion and tolerance exception notifications
+- feat(commercial): subscription validation before weighing initiation (HTTP 402 on inactive)
+- feat(config): `Treasury:PayPortalBaseUrl` read from config (was hardcoded)
+- feat(seeding): `commercial.pending_weighing_threshold_hours` system setting seeded
+
+## [1.2.0] — 2026-04-22
+
+### Features
+- feat(enforcement): driver + owner joint-liability charge split (Cap 403 / EAC VLC)
+- feat(enforcement): special release approval queue (supervisor workflow)
+- feat(vehicles): vehicle registration normalisation
+
 ## [1.1.2](https://github.com/Bengo-Hub/truload-backend/compare/v1.1.1...v1.1.2) (2026-04-20)
 
 
