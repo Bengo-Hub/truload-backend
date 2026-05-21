@@ -539,7 +539,7 @@ var app = builder.Build();
 // ── Startup database helpers ─────────────────────────────────────────────────
 //
 // Seeding version — increment this number to force a re-seed of ALL databases.
-const int SeedingVersion = 27;
+const int SeedingVersion = 28;
 const string SeedingName = "InitialSeed";
 
 // Builds a direct-to-PostgreSQL connection string for migrations.

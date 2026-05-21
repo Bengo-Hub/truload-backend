@@ -43,7 +43,15 @@ public class CommercialReportGenerator : BaseReportGenerator
         Def("driver-productivity", "Driver Productivity Report",
             "Per driver: trip count, total net weight, average turnaround time. Date range filter."),
         Def("quality-commodity", "Quality & Commodity Report",
-            "Quality deduction stats by cargo type for transactions with deductions or industry metadata. Date range filter.")
+            "Quality deduction stats by cargo type for transactions with deductions or industry metadata. Date range filter."),
+        Def("shift-performance", "Shift Performance Report",
+            "Group by shift: total transactions, total net weight (kg), average cycle time (minutes), overloads and tolerance exceptions. Date range + station filter."),
+        Def("transaction-audit-log", "Transaction Audit Log",
+            "All commercial transactions including voided ones: ticket, vehicle, weights, quality deductions, status, void info, created by. Date range filter."),
+        Def("pending-transactions", "Pending Transactions Report",
+            "Transactions with first weight captured but no second weight and not voided. Shows hours pending. Date range + station filter."),
+        Def("monthly-reconciliation", "Monthly Reconciliation Report",
+            "Monthly summary: total transactions, net weight, fees, tolerance exceptions, voided count, completed count, average net weight. Date range filter.")
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -61,6 +69,10 @@ public class CommercialReportGenerator : BaseReportGenerator
             "fleet-utilization" => await GenerateFleetUtilizationAsync(filters, format, ct),
             "driver-productivity" => await GenerateDriverProductivityAsync(filters, format, ct),
             "quality-commodity" => await GenerateQualityCommodityAsync(filters, format, ct),
+            "shift-performance" => await GenerateShiftPerformanceAsync(filters, format, ct),
+            "transaction-audit-log" => await GenerateTransactionAuditLogAsync(filters, format, ct),
+            "pending-transactions" => await GeneratePendingTransactionsAsync(filters, format, ct),
+            "monthly-reconciliation" => await GenerateMonthlyReconciliationAsync(filters, format, ct),
             _ => throw new ArgumentException($"Unknown commercial report type: {reportType}")
         };
     }
@@ -908,6 +920,393 @@ public class CommercialReportGenerator : BaseReportGenerator
         };
 
         return PdfResult(doc, filters, "quality_commodity", from, to);
+    }
+
+    // =====================================================================
+    // Shift Performance Report
+    // =====================================================================
+
+    private async Task<ReportResult> GenerateShiftPerformanceAsync(
+        ReportFilterParams filters, string format, CancellationToken ct)
+    {
+        var (from, to) = GetDateRange(filters);
+
+        // Base: all commercial transactions (include pending/voided for full shift picture)
+        var query = _context.WeighingTransactions
+            .Where(w => w.DeletedAt == null)
+            .Where(w => w.WeighingMode == "commercial")
+            .Where(w => w.WeighedAt >= from && w.WeighedAt <= to);
+
+        if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
+            query = query.Where(w => w.StationId == stationId);
+
+        // Join with the operator's active UserShift on the date of the transaction
+        // to group by shift. We do this client-side by correlating WeighedByUserId + date
+        // with user_shifts. Fetch raw transaction data first, then correlate in-memory.
+        var txns = await query
+            .Include(w => w.Station)
+            .Select(w => new
+            {
+                w.Id,
+                w.WeighedAt,
+                w.WeighedByUserId,
+                StationName = w.Station != null ? w.Station.Name : "-",
+                w.FirstWeightAt,
+                w.SecondWeightAt,
+                w.NetWeightKg,
+                w.ToleranceExceeded,
+                w.CaptureStatus,
+                w.VoidedAt,
+                w.OverloadKg
+            })
+            .ToListAsync(ct);
+
+        // Pull all user-shifts relevant to the date range to correlate in-memory
+        var userIds = txns.Select(t => t.WeighedByUserId).Distinct().ToList();
+        var fromDate = DateOnly.FromDateTime(from);
+        var toDate = DateOnly.FromDateTime(to);
+
+        var userShifts = await _context.UserShifts
+            .Where(us => userIds.Contains(us.UserId))
+            .Where(us => us.StartsOn <= toDate && (us.EndsOn == null || us.EndsOn >= fromDate))
+            .Include(us => us.WorkShift)
+            .ToListAsync(ct);
+
+        // Group by shift name + date
+        var grouped = txns
+            .GroupBy(t =>
+            {
+                var txDate = DateOnly.FromDateTime(t.WeighedAt);
+                var shift = userShifts
+                    .Where(us => us.UserId == t.WeighedByUserId
+                                 && us.StartsOn <= txDate
+                                 && (us.EndsOn == null || us.EndsOn >= txDate))
+                    .Select(us => us.WorkShift?.Name)
+                    .FirstOrDefault() ?? "Unassigned";
+                return new { Date = txDate, ShiftName = shift, StationName = t.StationName };
+            })
+            .Select(g =>
+            {
+                var twoPassData = g
+                    .Where(t => t.FirstWeightAt != null && t.SecondWeightAt != null)
+                    .ToList();
+                var avgCycleMin = twoPassData.Count > 0
+                    ? twoPassData.Average(t => (t.SecondWeightAt!.Value - t.FirstWeightAt!.Value).TotalMinutes)
+                    : 0;
+                return new
+                {
+                    g.Key.Date,
+                    g.Key.ShiftName,
+                    g.Key.StationName,
+                    TotalTransactions = g.Count(),
+                    TotalNetWeightKg = g.Sum(t => (long)(t.NetWeightKg ?? 0)),
+                    AvgCycleMin = avgCycleMin,
+                    Overloads = g.Count(t => t.OverloadKg > 0),
+                    ToleranceExceptions = g.Count(t => t.ToleranceExceeded),
+                    Voided = g.Count(t => t.VoidedAt != null)
+                };
+            })
+            .OrderBy(r => r.Date).ThenBy(r => r.ShiftName)
+            .ToList();
+
+        var headers = new[]
+        {
+            "Date", "Shift", "Station", "Total Transactions", "Total Net Weight (kg)",
+            "Avg Cycle Time (min)", "Overloads", "Tolerance Exceptions", "Voided"
+        };
+
+        var csvRows = grouped.Select(r => new[]
+        {
+            r.Date.ToString("dd/MM/yyyy"),
+            r.ShiftName,
+            r.StationName,
+            r.TotalTransactions.ToString(),
+            FormatNumber(r.TotalNetWeightKg),
+            r.AvgCycleMin > 0 ? $"{r.AvgCycleMin:F1}" : "-",
+            r.Overloads.ToString(),
+            r.ToleranceExceptions.ToString(),
+            r.Voided.ToString()
+        });
+
+        if (format == "csv")
+            return CsvResult(GenerateCsv(headers, csvRows), "shift_performance", from, to);
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Shift Performance Report", headers, csvRows, from, to), "shift_performance", from, to);
+
+        var doc = new CommercialReportDocumentBase
+        {
+            ReportTitle = "Shift Performance Report",
+            ReportSubtitle = "Commercial weighing activity grouped by shift and date",
+            DateFrom = from,
+            DateTo = to,
+            Headers = headers,
+            Rows = csvRows.ToArray(),
+            SummaryItems =
+            [
+                ("Total Transactions", FormatNumber(grouped.Sum(r => r.TotalTransactions))),
+                ("Total Net Weight", $"{FormatNumber(grouped.Sum(r => r.TotalNetWeightKg))} kg"),
+                ("Tolerance Exceptions", FormatNumber(grouped.Sum(r => r.ToleranceExceptions))),
+                ("Voided", FormatNumber(grouped.Sum(r => r.Voided)))
+            ]
+        };
+
+        return PdfResult(doc, filters, "shift_performance", from, to);
+    }
+
+    // =====================================================================
+    // Transaction Audit Log
+    // =====================================================================
+
+    private async Task<ReportResult> GenerateTransactionAuditLogAsync(
+        ReportFilterParams filters, string format, CancellationToken ct)
+    {
+        var (from, to) = GetDateRange(filters);
+
+        // Include ALL commercial transactions regardless of CaptureStatus or void, for audit purposes
+        var query = _context.WeighingTransactions
+            .Where(w => w.DeletedAt == null)
+            .Where(w => w.WeighingMode == "commercial")
+            .Where(w => w.WeighedAt >= from && w.WeighedAt <= to);
+
+        if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
+            query = query.Where(w => w.StationId == stationId);
+
+        var rows = await query
+            .Include(w => w.Transporter)
+            .Include(w => w.WeighedByUser)
+            .OrderBy(w => w.WeighedAt)
+            .Take(filters.PageSize)
+            .Select(w => new
+            {
+                w.TicketNumber,
+                VehicleReg = w.VehicleRegNumber,
+                TransporterName = w.Transporter != null ? w.Transporter.Name : "-",
+                w.FirstWeightKg,
+                w.SecondWeightKg,
+                w.NetWeightKg,
+                w.QualityDeductionKg,
+                w.AdjustedNetWeightKg,
+                w.CaptureStatus,
+                w.VoidedAt,
+                w.VoidReason,
+                CreatedBy = w.WeighedByUser != null ? w.WeighedByUser.FullName : "-",
+                CreatedAt = w.WeighedAt
+            })
+            .ToListAsync(ct);
+
+        var headers = new[]
+        {
+            "Ticket #", "Vehicle Reg", "Transporter",
+            "First Weight (kg)", "Second Weight (kg)", "Net Weight (kg)",
+            "Quality Deduction (kg)", "Adjusted Net (kg)",
+            "Status", "Voided At", "Void Reason", "Created By", "Created At"
+        };
+
+        var csvRows = rows.Select(r => new[]
+        {
+            r.TicketNumber,
+            r.VehicleReg,
+            r.TransporterName,
+            r.FirstWeightKg.HasValue ? FormatNumber(r.FirstWeightKg.Value) : "-",
+            r.SecondWeightKg.HasValue ? FormatNumber(r.SecondWeightKg.Value) : "-",
+            r.NetWeightKg.HasValue ? FormatNumber(r.NetWeightKg.Value) : "-",
+            r.QualityDeductionKg.HasValue ? FormatNumber(r.QualityDeductionKg.Value) : "-",
+            r.AdjustedNetWeightKg.HasValue ? FormatNumber(r.AdjustedNetWeightKg.Value) : "-",
+            r.CaptureStatus,
+            r.VoidedAt.HasValue ? r.VoidedAt.Value.ToString("dd/MM/yyyy HH:mm") : "-",
+            r.VoidReason ?? "-",
+            r.CreatedBy,
+            r.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+        });
+
+        if (format == "csv")
+            return CsvResult(GenerateCsv(headers, csvRows), "transaction_audit_log", from, to);
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Transaction Audit Log", headers, csvRows, from, to), "transaction_audit_log", from, to);
+
+        var voidedCount = rows.Count(r => r.VoidedAt.HasValue);
+        var completedCount = rows.Count(r => r.CaptureStatus == "captured");
+
+        var doc = new CommercialReportDocumentBase
+        {
+            ReportTitle = "Transaction Audit Log",
+            ReportSubtitle = "Full commercial transaction audit trail including voided records",
+            DateFrom = from,
+            DateTo = to,
+            Headers = headers,
+            Rows = csvRows.ToArray(),
+            SummaryItems =
+            [
+                ("Total Records", FormatNumber(rows.Count)),
+                ("Completed", FormatNumber(completedCount)),
+                ("Voided", FormatNumber(voidedCount)),
+                ("Total Net Weight", $"{FormatNumber(rows.Where(r => r.NetWeightKg.HasValue).Sum(r => (long)r.NetWeightKg!.Value))} kg")
+            ]
+        };
+
+        return PdfResult(doc, filters, "transaction_audit_log", from, to);
+    }
+
+    // =====================================================================
+    // Pending Transactions Report
+    // =====================================================================
+
+    private async Task<ReportResult> GeneratePendingTransactionsAsync(
+        ReportFilterParams filters, string format, CancellationToken ct)
+    {
+        var (from, to) = GetDateRange(filters);
+
+        var query = _context.WeighingTransactions
+            .Where(w => w.DeletedAt == null)
+            .Where(w => w.WeighingMode == "commercial")
+            .Where(w => w.CaptureStatus == "first_weight_captured")
+            .Where(w => w.VoidedAt == null)
+            .Where(w => w.FirstWeightAt >= from && w.FirstWeightAt <= to);
+
+        if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
+            query = query.Where(w => w.StationId == stationId);
+
+        var now = DateTime.UtcNow;
+        var rows = await query
+            .Include(w => w.Station)
+            .Include(w => w.Transporter)
+            .OrderBy(w => w.FirstWeightAt)
+            .Take(filters.PageSize)
+            .Select(w => new
+            {
+                w.TicketNumber,
+                VehicleReg = w.VehicleRegNumber,
+                TransporterName = w.Transporter != null ? w.Transporter.Name : "-",
+                StationName = w.Station != null ? w.Station.Name : "-",
+                w.FirstWeightAt,
+                w.FirstWeightKg
+            })
+            .ToListAsync(ct);
+
+        var headers = new[]
+        {
+            "Ticket #", "Vehicle Reg", "Transporter", "Station",
+            "First Weight At", "Hours Pending", "First Weight (kg)"
+        };
+
+        var csvRows = rows.Select(r => new[]
+        {
+            r.TicketNumber,
+            r.VehicleReg,
+            r.TransporterName,
+            r.StationName,
+            r.FirstWeightAt.HasValue ? r.FirstWeightAt.Value.ToString("dd/MM/yyyy HH:mm") : "-",
+            r.FirstWeightAt.HasValue ? $"{(now - r.FirstWeightAt.Value).TotalHours:F1}" : "-",
+            r.FirstWeightKg.HasValue ? FormatNumber(r.FirstWeightKg.Value) : "-"
+        });
+
+        if (format == "csv")
+            return CsvResult(GenerateCsv(headers, csvRows), "pending_transactions", from, to);
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Pending Transactions Report", headers, csvRows, from, to), "pending_transactions", from, to);
+
+        var avgHoursPending = rows.Count > 0 && rows.Any(r => r.FirstWeightAt.HasValue)
+            ? rows.Where(r => r.FirstWeightAt.HasValue).Average(r => (now - r.FirstWeightAt!.Value).TotalHours)
+            : 0;
+
+        var doc = new CommercialReportDocumentBase
+        {
+            ReportTitle = "Pending Transactions Report",
+            ReportSubtitle = "Transactions with first weight captured awaiting second weight",
+            DateFrom = from,
+            DateTo = to,
+            Headers = headers,
+            Rows = csvRows.ToArray(),
+            SummaryItems =
+            [
+                ("Pending Count", FormatNumber(rows.Count)),
+                ("Avg Hours Pending", avgHoursPending > 0 ? $"{avgHoursPending:F1}" : "N/A"),
+                ("Oldest Pending", rows.Count > 0 && rows[0].FirstWeightAt.HasValue
+                    ? rows[0].FirstWeightAt!.Value.ToString("dd/MM/yyyy HH:mm")
+                    : "N/A")
+            ]
+        };
+
+        return PdfResult(doc, filters, "pending_transactions", from, to);
+    }
+
+    // =====================================================================
+    // Monthly Reconciliation Report
+    // =====================================================================
+
+    private async Task<ReportResult> GenerateMonthlyReconciliationAsync(
+        ReportFilterParams filters, string format, CancellationToken ct)
+    {
+        var (from, to) = GetDateRange(filters);
+
+        var query = _context.WeighingTransactions
+            .Where(w => w.DeletedAt == null)
+            .Where(w => w.WeighingMode == "commercial")
+            .Where(w => w.WeighedAt >= from && w.WeighedAt <= to);
+
+        if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
+            query = query.Where(w => w.StationId == stationId);
+
+        var monthlyData = await query
+            .GroupBy(w => new { w.WeighedAt.Year, w.WeighedAt.Month })
+            .Select(g => new
+            {
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                TotalTransactions = g.Count(),
+                TotalNetWeightKg = g.Sum(x => (long)(x.NetWeightKg ?? 0)),
+                TotalFeeKes = g.Sum(x => x.TotalFeeKes),
+                ToleranceExceptions = g.Count(x => x.ToleranceExceeded),
+                VoidedCount = g.Count(x => x.VoidedAt != null),
+                CompletedCount = g.Count(x => x.CaptureStatus == "captured" && x.VoidedAt == null),
+                AvgNetWeightKg = g.Where(x => x.NetWeightKg != null && x.NetWeightKg > 0).Any()
+                    ? (int)g.Where(x => x.NetWeightKg != null && x.NetWeightKg > 0).Average(x => x.NetWeightKg!.Value)
+                    : 0
+            })
+            .OrderBy(r => r.Year).ThenBy(r => r.Month)
+            .ToListAsync(ct);
+
+        var headers = new[]
+        {
+            "Month", "Total Transactions", "Total Net Weight (kg)",
+            "Total Fee (KES)", "Tolerance Exceptions", "Voided", "Completed", "Avg Net Weight (kg)"
+        };
+
+        var csvRows = monthlyData.Select(r => new[]
+        {
+            new DateTime(r.Year, r.Month, 1).ToString("MMMM yyyy"),
+            r.TotalTransactions.ToString(),
+            FormatNumber(r.TotalNetWeightKg),
+            $"{r.TotalFeeKes:N2}",
+            r.ToleranceExceptions.ToString(),
+            r.VoidedCount.ToString(),
+            r.CompletedCount.ToString(),
+            FormatNumber(r.AvgNetWeightKg)
+        });
+
+        if (format == "csv")
+            return CsvResult(GenerateCsv(headers, csvRows), "monthly_reconciliation", from, to);
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel("Monthly Reconciliation Report", headers, csvRows, from, to), "monthly_reconciliation", from, to);
+
+        var doc = new CommercialReportDocumentBase
+        {
+            ReportTitle = "Monthly Reconciliation Report",
+            ReportSubtitle = "Monthly summary of commercial weighing activity",
+            DateFrom = from,
+            DateTo = to,
+            Headers = headers,
+            Rows = csvRows.ToArray(),
+            SummaryItems =
+            [
+                ("Months", monthlyData.Count.ToString()),
+                ("Total Transactions", FormatNumber(monthlyData.Sum(r => r.TotalTransactions))),
+                ("Total Net Weight", $"{FormatNumber(monthlyData.Sum(r => r.TotalNetWeightKg))} kg"),
+                ("Total Fees", $"{monthlyData.Sum(r => r.TotalFeeKes):N2} KES")
+            ]
+        };
+
+        return PdfResult(doc, filters, "monthly_reconciliation", from, to);
     }
 
     // =====================================================================

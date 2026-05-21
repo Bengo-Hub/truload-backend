@@ -227,6 +227,10 @@ public static class UserManagementModuleDbContextConfiguration
             entity.Property(e => e.CreatedAt)
                 .HasColumnName("created_at");
 
+            entity.Property(e => e.TareGracePeriodDays)
+                .HasColumnName("tare_grace_period_days")
+                .HasDefaultValue(0);
+
             entity.HasIndex(e => e.Code)
                 .IsUnique()
                 .HasDatabaseName("idx_organizations_code");

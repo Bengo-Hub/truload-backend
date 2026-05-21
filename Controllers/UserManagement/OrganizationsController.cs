@@ -225,6 +225,8 @@ public class OrganizationsController : ControllerBase
             org.CommercialWeighingFeeKes = request.CommercialWeighingFeeKes.Value;
         if (request.DefaultTareExpiryDays.HasValue)
             org.DefaultTareExpiryDays = request.DefaultTareExpiryDays.Value > 0 ? request.DefaultTareExpiryDays.Value : null;
+        if (request.TareGracePeriodDays.HasValue && request.TareGracePeriodDays.Value >= 0)
+            org.TareGracePeriodDays = request.TareGracePeriodDays.Value;
         if (!string.IsNullOrWhiteSpace(request.WeighingBusinessModel))
         {
             var valid = new[] { "ThirdPartyWeighbridge", "FacilityOwnedScale" };
@@ -234,8 +236,8 @@ public class OrganizationsController : ControllerBase
         }
 
         var updated = await _organizationRepository.UpdateAsync(org, cancellationToken);
-        _logger.LogInformation("Commercial settings updated for org {OrgId}: fee={Fee}, tareExpiry={Expiry}, model={Model}",
-            orgId, org.CommercialWeighingFeeKes, org.DefaultTareExpiryDays, org.WeighingBusinessModel);
+        _logger.LogInformation("Commercial settings updated for org {OrgId}: fee={Fee}, tareExpiry={Expiry}, graceDays={Grace}, model={Model}",
+            orgId, org.CommercialWeighingFeeKes, org.DefaultTareExpiryDays, org.TareGracePeriodDays, org.WeighingBusinessModel);
         return Ok(MapToDto(updated));
     }
 
@@ -306,6 +308,7 @@ public class OrganizationsController : ControllerBase
             // Commercial-only fields — always populated so frontend can handle switching
             CommercialWeighingFeeKes = isCommercial ? org.CommercialWeighingFeeKes : null,
             DefaultTareExpiryDays = isCommercial ? org.DefaultTareExpiryDays : null,
+            TareGracePeriodDays = isCommercial ? org.TareGracePeriodDays : 0,
             PaymentGateway = isCommercial ? org.PaymentGateway : null,
             WeighingBusinessModel = isCommercial ? org.WeighingBusinessModel : null,
         };

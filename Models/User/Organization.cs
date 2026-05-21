@@ -74,6 +74,14 @@ public class Organization
     public int? DefaultTareExpiryDays { get; set; } = 90;
 
     /// <summary>
+    /// Optional grace period in days past tare expiry before the system hard-blocks
+    /// the use of a stored tare. 0 = no grace period (block immediately on expiry).
+    /// For example, if DefaultTareExpiryDays = 90 and TareGracePeriodDays = 5,
+    /// tares are blocked only after 95 days since last measurement.
+    /// </summary>
+    public int TareGracePeriodDays { get; set; } = 0;
+
+    /// <summary>
     /// Payment gateway used for invoices: "ecitizen_pesaflow" (default, enforcement) | "treasury" (commercial).
     /// </summary>
     public string PaymentGateway { get; set; } = "ecitizen_pesaflow";

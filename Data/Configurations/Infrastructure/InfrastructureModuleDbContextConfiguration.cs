@@ -112,6 +112,14 @@ namespace TruLoad.Backend.Data.Configurations.Infrastructure
                     .HasMaxLength(50)
                     .HasDefaultValue("General");
 
+                entity.Property(e => e.MoistureTargetPercent)
+                    .HasColumnName("moisture_target_percent")
+                    .HasColumnType("decimal(5,2)");
+
+                entity.Property(e => e.ForeignMatterLimitPercent)
+                    .HasColumnName("foreign_matter_limit_percent")
+                    .HasColumnType("decimal(5,2)");
+
                 entity.Property(e => e.IsActive)
                     .HasColumnName("is_active")
                     .HasDefaultValue(true);

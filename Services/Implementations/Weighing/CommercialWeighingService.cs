@@ -326,17 +326,35 @@ public class CommercialWeighingService : ICommercialWeighingService
                 tareWeightKg = vehicle.LastTareWeightKg.Value;
                 tareSource = "stored";
 
-                // Check tare expiry
+                // Check tare expiry (honouring org-level grace period)
                 if (vehicle.LastTareWeighedAt.HasValue)
                 {
                     var expiryDays = vehicle.TareExpiryDays ?? 90;
-                    if (vehicle.LastTareWeighedAt.Value.AddDays(expiryDays) < DateTime.UtcNow)
+
+                    // Load org-level grace period so soft-expired tares are not hard-blocked immediately
+                    var orgGraceDays = 0;
+                    var orgId = _tenantContext.OrganizationId;
+                    if (orgId != Guid.Empty)
                     {
+                        var org = await _dbContext.Organizations
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(o => o.Id == orgId);
+                        if (org != null)
+                            orgGraceDays = org.TareGracePeriodDays;
+                    }
+
+                    var effectiveExpiryDays = expiryDays + orgGraceDays;
+                    if (vehicle.LastTareWeighedAt.Value.AddDays(effectiveExpiryDays) < DateTime.UtcNow)
+                    {
+                        var daysElapsed = (DateTime.UtcNow - vehicle.LastTareWeighedAt.Value).Days;
                         _logger.LogWarning(
-                            "Stored tare for vehicle {VehicleId} expired ({ExpiryDays} days). Last measured: {LastTareAt}",
-                            transaction.VehicleId, expiryDays, vehicle.LastTareWeighedAt.Value);
+                            "Stored tare for vehicle {VehicleId} expired ({ExpiryDays} days + {GraceDays} grace = {Effective} effective). " +
+                            "Last measured: {LastTareAt}. Days elapsed: {DaysElapsed}",
+                            transaction.VehicleId, expiryDays, orgGraceDays, effectiveExpiryDays,
+                            vehicle.LastTareWeighedAt.Value, daysElapsed);
                         throw new InvalidOperationException(
-                            $"Stored tare for this vehicle expired {(DateTime.UtcNow - vehicle.LastTareWeighedAt.Value).Days} days ago. " +
+                            $"Stored tare for this vehicle expired {daysElapsed} days ago " +
+                            $"(expiry: {expiryDays} days, grace: {orgGraceDays} days). " +
                             "Re-weigh the empty vehicle or provide a manual override tare weight.");
                     }
                 }

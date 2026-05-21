@@ -23,6 +23,7 @@ public class OrganizationDto
     // Commercial weighing settings — only populated for CommercialWeighing tenants
     public decimal? CommercialWeighingFeeKes { get; set; }
     public int? DefaultTareExpiryDays { get; set; }
+    public int TareGracePeriodDays { get; set; }
     public string? PaymentGateway { get; set; }
     public string? WeighingBusinessModel { get; set; }
 }
@@ -84,6 +85,11 @@ public class UpdateCommercialSettingsRequest
     public decimal? CommercialWeighingFeeKes { get; set; }
     /// <summary>Org-wide tare expiry in days. Set to 0 to clear (no expiry).</summary>
     public int? DefaultTareExpiryDays { get; set; }
+    /// <summary>
+    /// Optional grace period in days past tare expiry before hard-blocking.
+    /// 0 = no grace (block immediately on expiry). Must be >= 0.
+    /// </summary>
+    public int? TareGracePeriodDays { get; set; }
     /// <summary>Business model: "ThirdPartyWeighbridge" or "FacilityOwnedScale".</summary>
     public string? WeighingBusinessModel { get; set; }
 }
