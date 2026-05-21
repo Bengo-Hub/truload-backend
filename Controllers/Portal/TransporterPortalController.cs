@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using System.Text;
+using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.DTOs.Portal;
 using TruLoad.Backend.Services.Interfaces.Portal;
 
@@ -378,6 +380,210 @@ public class TransporterPortalController : ControllerBase
         {
             _logger.LogError(ex, "Error generating portal report {ReportId}", reportId);
             return StatusCode(500, "An error occurred while generating the report.");
+        }
+    }
+
+    // ── Team Management ──
+
+    /// <summary>
+    /// Gets all active team members for the current user's transporter portal.
+    /// </summary>
+    [HttpGet("team")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(List<PortalTeamMemberDto>), 200)]
+    public async Task<IActionResult> GetTeamAsync()
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var result = await _portalService.GetTeamMembersAsync(userId.Value);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting portal team members");
+            return StatusCode(500, "An error occurred while retrieving team members.");
+        }
+    }
+
+    /// <summary>
+    /// Invites a new team member by email. Only the portal owner may invite.
+    /// </summary>
+    [HttpPost("team/invite")]
+    [Produces("application/json")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    public async Task<IActionResult> InviteAsync([FromBody] InviteTeamMemberRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized("User ID not found in claims");
+
+        var userEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
+        var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? userEmail;
+
+        try
+        {
+            var (success, message) = await _portalService.InviteTeamMemberAsync(
+                userId.Value, userEmail, userName, request);
+
+            if (!success) return BadRequest(new { message });
+            return Ok(new { message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error inviting portal team member");
+            return StatusCode(500, "An error occurred while sending the invitation.");
+        }
+    }
+
+    /// <summary>
+    /// Removes a team member from the portal. Only the portal owner may remove members.
+    /// </summary>
+    [HttpDelete("team/{targetUserId:guid}")]
+    [Produces("application/json")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> RemoveAsync(Guid targetUserId)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var (success, message) = await _portalService.RemoveTeamMemberAsync(userId.Value, targetUserId);
+
+            if (!success) return BadRequest(new { message });
+            return Ok(new { message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing portal team member {TargetUserId}", targetUserId);
+            return StatusCode(500, "An error occurred while removing the team member.");
+        }
+    }
+
+    /// <summary>
+    /// Accepts a portal invitation using a secure token. Any authenticated user may call this.
+    /// </summary>
+    [HttpPost("team/accept")]
+    [Produces("application/json")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    public async Task<IActionResult> AcceptInviteAsync([FromBody] AcceptPortalInviteRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized("User ID not found in claims");
+
+        var userEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
+
+        try
+        {
+            var (success, message) = await _portalService.AcceptInviteAsync(userId.Value, userEmail, request);
+
+            if (!success) return BadRequest(new { message });
+            return Ok(new { message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error accepting portal invite");
+            return StatusCode(500, "An error occurred while accepting the invitation.");
+        }
+    }
+
+    /// <summary>
+    /// Downloads a ZIP archive of all completed ticket PDFs in a date range.
+    /// Requires DataExport subscription feature.
+    /// </summary>
+    [HttpGet("weighings/bulk-download")]
+    [HasPermission("portal.export")]
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(400)]
+    public async Task<IActionResult> BulkDownloadTickets(
+        [FromQuery] DateTime fromDate,
+        [FromQuery] DateTime toDate,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var (zipBytes, fileName) = await _portalService.BulkDownloadTicketsAsync(
+                userId.Value, fromDate, toDate, cancellationToken);
+            return File(zipBytes, "application/zip", fileName);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { code = "feature_locked", message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating bulk ticket ZIP for portal user {UserId}", userId);
+            return StatusCode(500, "An error occurred while generating the ticket archive.");
+        }
+    }
+
+    /// <summary>
+    /// Imports vehicles from a CSV file. Returns import summary.
+    /// </summary>
+    [HttpPost("vehicles/import")]
+    [HasPermission("portal.manage_fleet")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(403)]
+    public async Task<IActionResult> ImportVehicles(IFormFile file, CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized("User ID not found in claims");
+
+        if (file == null || file.Length == 0)
+            return BadRequest("No file provided or file is empty.");
+
+        try
+        {
+            var (imported, skipped, errors) = await _portalService.ImportVehiclesAsync(
+                userId.Value, file, cancellationToken);
+
+            return Ok(new { imported, skipped, errors });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { code = "feature_locked", message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error importing vehicles for portal user {UserId}", userId);
+            return StatusCode(500, "An error occurred while importing vehicles.");
         }
     }
 

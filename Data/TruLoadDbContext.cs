@@ -29,6 +29,8 @@ using TruLoad.Backend.Data.Configurations.Offline;
 using Microsoft.EntityFrameworkCore.Metadata;
 using TruLoad.Backend.Models.Notifications;
 using TruLoad.Backend.Models.Views;
+using TruLoad.Backend.Models.Portal;
+using TruLoad.Backend.Data.Configurations.Portal;
 
 
 namespace TruLoad.Backend.Data;
@@ -227,6 +229,10 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     public DbSet<ApplicationSettings> ApplicationSettings { get; set; } = null!;
     public DbSet<ScheduledReport> ScheduledReports { get; set; } = null!;
 
+    // ===== Portal: Team Management =====
+    public DbSet<PortalTeamMembership> PortalTeamMemberships { get; set; } = null!;
+    public DbSet<PortalTeamInvitation> PortalTeamInvitations { get; set; } = null!;
+
     // ===== Auth: Refresh Tokens & Push Subscriptions =====
     public DbSet<TruLoad.Backend.Models.Identity.RefreshToken> RefreshTokens { get; set; } = null!;
     public DbSet<PushSubscription> PushSubscriptions { get; set; } = null!;
@@ -279,6 +285,7 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
         modelBuilder.ApplyProsecutionConfigurations();
         modelBuilder.ApplyFinancialConfigurations();
         modelBuilder.ApplyOfflineConfigurations();
+        modelBuilder.ApplyPortalConfigurations();
 
         // ===== Database Views & Keyless Entities Configuration =====
         modelBuilder.Entity<ActiveVehicleTag>(e => { e.HasNoKey(); e.ToView("active_vehicle_tags"); });

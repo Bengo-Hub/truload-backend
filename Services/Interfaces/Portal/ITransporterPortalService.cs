@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using TruLoad.Backend.DTOs.Portal;
 
 namespace TruLoad.Backend.Services.Interfaces.Portal;
@@ -63,6 +64,41 @@ public interface ITransporterPortalService
     /// Generates a PDF ticket for a specific weighing. Verifies transporter ownership.
     /// </summary>
     Task<(byte[] Bytes, string FileName)> DownloadWeighingPdfAsync(Guid userId, Guid weighingId);
+
+    /// <summary>
+    /// Gets all active team members for the transporter linked to userId.
+    /// </summary>
+    Task<List<PortalTeamMemberDto>> GetTeamMembersAsync(Guid userId);
+
+    /// <summary>
+    /// Invites a new team member by email. Only the owner (PortalAccountId) may invite.
+    /// Sends an invitation email with a secure token link.
+    /// </summary>
+    Task<(bool Success, string Message)> InviteTeamMemberAsync(
+        Guid userId, string userEmail, string userName, InviteTeamMemberRequest request);
+
+    /// <summary>
+    /// Removes a team member from the transporter's portal. Only the owner may remove members.
+    /// </summary>
+    Task<(bool Success, string Message)> RemoveTeamMemberAsync(Guid userId, Guid targetUserId);
+
+    /// <summary>
+    /// Accepts a portal invitation by token. Sets up a team membership for the calling user.
+    /// </summary>
+    Task<(bool Success, string Message)> AcceptInviteAsync(
+        Guid userId, string userEmail, AcceptPortalInviteRequest request);
+
+    /// <summary>
+    /// Generates a ZIP archive of completed commercial weighing ticket PDFs in the given date range.
+    /// Requires DataExport feature. Capped at 500 transactions.
+    /// </summary>
+    Task<(byte[] Bytes, string FileName)> BulkDownloadTicketsAsync(Guid userId, DateTime fromDate, DateTime toDate, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Imports vehicles from a CSV file (registration, make, model, axle_count, tare_weight_kg).
+    /// Returns counts of imported/skipped rows plus per-row error messages.
+    /// </summary>
+    Task<(int Imported, int Skipped, List<string> Errors)> ImportVehiclesAsync(Guid userId, IFormFile file, CancellationToken cancellationToken);
 }
 
 /// <summary>

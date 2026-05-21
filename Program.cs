@@ -528,6 +528,8 @@ builder.Services.AddHangfireServer(options =>
 // Register background job services
 builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.PesaflowInvoiceSyncJob>();
 builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.StaleWeighingNotificationJob>();
+builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.PortalDailySummaryJob>();
+builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.PortalAnomalyAlertJob>();
 builder.Services.AddScoped<TruLoad.Backend.Services.Implementations.Shared.NotificationBackgroundJob>();
 
 // Hangfire job retention: auto-delete succeeded/failed jobs after 48 hours
@@ -918,6 +920,26 @@ Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.StaleW
     "stale-weighing-alert",
     j => j.ExecuteAsync(),
     "*/30 * * * *", // Every 30 minutes
+    new Hangfire.RecurringJobOptions
+    {
+        TimeZone = TimeZoneInfo.Utc,
+        QueueName = "default"
+    });
+
+Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.PortalDailySummaryJob>(
+    "portal-daily-summary",
+    job => job.ExecuteAsync(),
+    "0 4 * * *", // 04:00 UTC = 07:00 EAT
+    new Hangfire.RecurringJobOptions
+    {
+        TimeZone = TimeZoneInfo.Utc,
+        QueueName = "default"
+    });
+
+Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.PortalAnomalyAlertJob>(
+    "portal-anomaly-alert",
+    job => job.ExecuteAsync(),
+    "0 * * * *", // Hourly
     new Hangfire.RecurringJobOptions
     {
         TimeZone = TimeZoneInfo.Utc,

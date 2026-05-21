@@ -1,9 +1,15 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.IO;
+using System.IO.Compression;
+using System.Security.Cryptography;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Portal;
 using TruLoad.Backend.DTOs.Weighing;
+using TruLoad.Backend.Models.Portal;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using TruLoad.Backend.Services.Interfaces.Portal;
+using TruLoad.Backend.Services.Interfaces.Shared;
 using TruLoad.Backend.Services.Interfaces.Subscription;
 
 namespace TruLoad.Backend.Services.Implementations.Portal;
@@ -18,17 +24,20 @@ public class TransporterPortalService : ITransporterPortalService
     private readonly TruLoadDbContext _dbContext;
     private readonly ISubscriptionService _subscriptionService;
     private readonly IPdfService _pdfService;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<TransporterPortalService> _logger;
 
     public TransporterPortalService(
         TruLoadDbContext dbContext,
         ISubscriptionService subscriptionService,
         IPdfService pdfService,
+        INotificationService notificationService,
         ILogger<TransporterPortalService> logger)
     {
         _dbContext = dbContext;
         _subscriptionService = subscriptionService;
         _pdfService = pdfService;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -486,19 +495,489 @@ public class TransporterPortalService : ITransporterPortalService
         return await ResolvePortalSubscriptionAsync(transporter);
     }
 
+    public async Task<List<PortalTeamMemberDto>> GetTeamMembersAsync(Guid userId)
+    {
+        var transporter = await GetTransporterForUserAsync(userId);
+
+        // Owner entry
+        var ownerEntry = new PortalTeamMemberDto
+        {
+            UserId = transporter.PortalAccountId ?? Guid.Empty,
+            UserEmail = transporter.PortalAccountEmail ?? string.Empty,
+            UserName = transporter.Name,
+            Role = "admin",
+            JoinedAt = transporter.CreatedAt,
+            IsOwner = true
+        };
+
+        var members = await _dbContext.PortalTeamMemberships
+            .AsNoTracking()
+            .Where(m => m.TransporterId == transporter.Id && m.IsActive)
+            .Select(m => new PortalTeamMemberDto
+            {
+                UserId = m.UserId,
+                UserEmail = m.UserEmail,
+                UserName = m.UserName,
+                Role = m.Role,
+                JoinedAt = m.CreatedAt,
+                IsOwner = false
+            })
+            .ToListAsync();
+
+        var result = new List<PortalTeamMemberDto> { ownerEntry };
+        result.AddRange(members);
+        return result;
+    }
+
+    public async Task<(bool Success, string Message)> InviteTeamMemberAsync(
+        Guid userId, string userEmail, string userName, InviteTeamMemberRequest request)
+    {
+        // Only the transporter owner can invite
+        var transporter = await _dbContext.Transporters
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.PortalAccountId == userId && t.IsActive);
+
+        if (transporter == null)
+            return (false, "Only the portal owner (admin) can invite team members.");
+
+        var role = request.Role.ToLowerInvariant();
+        if (role != "manager" && role != "viewer")
+            return (false, "Role must be 'manager' or 'viewer'.");
+
+        // Check for existing active membership
+        var existingMembership = await _dbContext.PortalTeamMemberships
+            .AnyAsync(m => m.TransporterId == transporter.Id &&
+                           m.UserEmail == request.Email &&
+                           m.IsActive);
+
+        if (existingMembership)
+            return (false, $"{request.Email} is already an active team member.");
+
+        // Check for pending (non-expired, non-revoked, non-accepted) invitation
+        var existingInvite = await _dbContext.PortalTeamInvitations
+            .AnyAsync(i => i.TransporterId == transporter.Id &&
+                           i.InvitedEmail == request.Email &&
+                           !i.IsRevoked &&
+                           i.AcceptedAt == null &&
+                           i.ExpiresAt > DateTime.UtcNow);
+
+        if (existingInvite)
+            return (false, $"A pending invitation already exists for {request.Email}.");
+
+        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+        var expiresAt = DateTime.UtcNow.AddDays(7);
+
+        var invitation = new PortalTeamInvitation
+        {
+            Id = Guid.NewGuid(),
+            TransporterId = transporter.Id,
+            InvitedEmail = request.Email,
+            Role = role,
+            Token = token,
+            CreatedByUserId = userId,
+            ExpiresAt = expiresAt,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.PortalTeamInvitations.Add(invitation);
+        await _dbContext.SaveChangesAsync();
+
+        // Send invitation email (fire-and-forget style; don't fail the invite if email fails)
+        try
+        {
+            await _notificationService.SendEmailAsync(
+                "truload/portal_team_invite",
+                request.Email,
+                request.Email,
+                new Dictionary<string, object>
+                {
+                    ["transporter_name"] = transporter.Name,
+                    ["role"] = role,
+                    ["invite_url"] = $"https://truload.co.ke/portal/invite/accept?token={token}",
+                    ["expires_at"] = expiresAt.ToString("yyyy-MM-dd")
+                },
+                subject: $"You've been invited to {transporter.Name}'s TruLoad Portal",
+                cancellationToken: CancellationToken.None,
+                tenantSlug: null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send invitation email to {Email} for transporter {TransporterId}",
+                request.Email, transporter.Id);
+        }
+
+        _logger.LogInformation(
+            "Portal team invitation sent: TransporterId={TransporterId}, Email={Email}, Role={Role}, InvitedBy={UserId}",
+            transporter.Id, request.Email, role, userId);
+
+        return (true, $"Invitation sent to {request.Email}.");
+    }
+
+    public async Task<(bool Success, string Message)> RemoveTeamMemberAsync(Guid userId, Guid targetUserId)
+    {
+        // Only the transporter owner can remove members
+        var transporter = await _dbContext.Transporters
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.PortalAccountId == userId && t.IsActive);
+
+        if (transporter == null)
+            return (false, "Only the portal owner (admin) can remove team members.");
+
+        if (targetUserId == userId)
+            return (false, "You cannot remove yourself as the portal owner.");
+
+        var membership = await _dbContext.PortalTeamMemberships
+            .FirstOrDefaultAsync(m => m.TransporterId == transporter.Id &&
+                                      m.UserId == targetUserId &&
+                                      m.IsActive);
+
+        if (membership == null)
+            return (false, "Team member not found.");
+
+        membership.IsActive = false;
+        membership.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Portal team member removed: TransporterId={TransporterId}, TargetUserId={TargetUserId}, RemovedBy={UserId}",
+            transporter.Id, targetUserId, userId);
+
+        return (true, "Team member removed successfully.");
+    }
+
+    public async Task<(bool Success, string Message)> AcceptInviteAsync(
+        Guid userId, string userEmail, AcceptPortalInviteRequest request)
+    {
+        var invitation = await _dbContext.PortalTeamInvitations
+            .Include(i => i.Transporter)
+            .FirstOrDefaultAsync(i => i.Token == request.Token &&
+                                      !i.IsRevoked &&
+                                      i.AcceptedAt == null &&
+                                      i.ExpiresAt > DateTime.UtcNow);
+
+        if (invitation == null)
+            return (false, "Invitation not found, expired, or already used.");
+
+        if (invitation.Transporter == null || !invitation.Transporter.IsActive)
+            return (false, "The transporter for this invitation is no longer active.");
+
+        // Upsert membership
+        var existing = await _dbContext.PortalTeamMemberships
+            .FirstOrDefaultAsync(m => m.TransporterId == invitation.TransporterId && m.UserId == userId);
+
+        if (existing != null)
+        {
+            existing.IsActive = true;
+            existing.Role = invitation.Role;
+            existing.UserEmail = userEmail;
+            existing.UserName = request.UserName;
+            existing.InvitedByUserId = invitation.CreatedByUserId;
+            existing.UpdatedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            var membership = new PortalTeamMembership
+            {
+                Id = Guid.NewGuid(),
+                TransporterId = invitation.TransporterId,
+                UserId = userId,
+                UserEmail = userEmail,
+                UserName = request.UserName,
+                Role = invitation.Role,
+                InvitedByUserId = invitation.CreatedByUserId,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _dbContext.PortalTeamMemberships.Add(membership);
+        }
+
+        invitation.AcceptedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Portal invitation accepted: TransporterId={TransporterId}, UserId={UserId}, Role={Role}",
+            invitation.TransporterId, userId, invitation.Role);
+
+        return (true, "Invitation accepted. You now have access to the portal.");
+    }
+
+    public async Task<(byte[] Bytes, string FileName)> BulkDownloadTicketsAsync(
+        Guid userId, DateTime fromDate, DateTime toDate, CancellationToken cancellationToken)
+    {
+        var transporter = await GetTransporterForUserAsync(userId);
+        var limits = await ResolvePortalSubscriptionAsync(transporter);
+
+        if (!limits.Features.DataExport)
+            throw new UnauthorizedAccessException("Bulk ticket download requires a Standard or Premium subscription with the data export feature.");
+
+        const int maxTransactions = 500;
+
+        var transactions = await _dbContext.WeighingTransactions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Include(w => w.Vehicle)
+            .Include(w => w.Driver)
+            .Include(w => w.Organization)
+            .Include(w => w.Station)
+            .Include(w => w.Cargo)
+            .Include(w => w.Origin)
+            .Include(w => w.Destination)
+            .Where(w => w.TransporterId == transporter.Id &&
+                        w.WeighingMode == "commercial" &&
+                        w.ControlStatus == "Complete" &&
+                        w.WeighedAt >= fromDate &&
+                        w.WeighedAt <= toDate)
+            .OrderByDescending(w => w.WeighedAt)
+            .Take(maxTransactions)
+            .ToListAsync(cancellationToken);
+
+        if (!transactions.Any())
+            throw new InvalidOperationException("No completed commercial weighing transactions found in the specified date range.");
+
+        var pdfs = new List<(string TicketNo, byte[] PdfBytes)>();
+
+        foreach (var tx in transactions)
+        {
+            try
+            {
+                var result = new CommercialWeighingResultDto
+                {
+                    Id = tx.Id,
+                    TicketNumber = tx.TicketNumber,
+                    ControlStatus = tx.ControlStatus,
+                    WeighingMode = tx.WeighingMode,
+                    WeighingScaleType = tx.WeighingScaleType,
+                    VehicleId = tx.VehicleId,
+                    VehicleRegNumber = tx.VehicleRegNumber,
+                    VehicleMake = tx.Vehicle?.Make,
+                    VehicleModel = tx.Vehicle?.Model,
+                    DriverId = tx.DriverId,
+                    DriverName = tx.Driver != null ? $"{tx.Driver.FullNames} {tx.Driver.Surname}" : null,
+                    TransporterId = tx.TransporterId,
+                    TransporterName = transporter.Name,
+                    StationId = tx.StationId ?? Guid.Empty,
+                    StationName = tx.Station?.Name,
+                    TareWeightKg = tx.TareWeightKg,
+                    GrossWeightKg = tx.GrossWeightKg,
+                    NetWeightKg = tx.NetWeightKg,
+                    FirstWeightKg = tx.FirstWeightKg,
+                    FirstWeightType = tx.FirstWeightType,
+                    FirstWeightAt = tx.FirstWeightAt,
+                    SecondWeightKg = tx.SecondWeightKg,
+                    SecondWeightType = tx.SecondWeightType,
+                    SecondWeightAt = tx.SecondWeightAt,
+                    TareSource = tx.TareSource,
+                    QualityDeductionKg = tx.QualityDeductionKg,
+                    AdjustedNetWeightKg = tx.AdjustedNetWeightKg,
+                    ConsignmentNo = tx.ConsignmentNo,
+                    OrderReference = tx.OrderReference,
+                    ExpectedNetWeightKg = tx.ExpectedNetWeightKg,
+                    WeightDiscrepancyKg = tx.WeightDiscrepancyKg,
+                    SealNumbers = tx.SealNumbers,
+                    Remarks = tx.Remarks,
+                    SourceLocation = tx.Origin?.Name,
+                    DestinationLocation = tx.Destination?.Name,
+                    CargoType = tx.Cargo?.Name,
+                    ToleranceExceeded = tx.ToleranceExceeded,
+                };
+
+                var stationId = tx.StationId ?? Guid.Empty;
+                var pdfBytes = await _pdfService.GenerateCommercialWeightTicketAsync(result, stationId);
+                pdfs.Add((tx.TicketNumber, pdfBytes));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to generate PDF for ticket {TicketNumber} during bulk download", tx.TicketNumber);
+            }
+        }
+
+        if (!pdfs.Any())
+            throw new InvalidOperationException("Failed to generate any ticket PDFs for the specified date range.");
+
+        using var ms = new MemoryStream();
+        using (var archive = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var (ticketNo, pdfBytes) in pdfs)
+            {
+                var entry = archive.CreateEntry($"{ticketNo}.pdf");
+                using var entryStream = entry.Open();
+                await entryStream.WriteAsync(pdfBytes, cancellationToken);
+            }
+        }
+        ms.Position = 0;
+        var zipBytes = ms.ToArray();
+        var fileName = $"tickets_{fromDate:yyyyMMdd}_{toDate:yyyyMMdd}.zip";
+        return (zipBytes, fileName);
+    }
+
+    public async Task<(int Imported, int Skipped, List<string> Errors)> ImportVehiclesAsync(
+        Guid userId, IFormFile file, CancellationToken cancellationToken)
+    {
+        var transporter = await GetTransporterForUserAsync(userId);
+        var limits = await ResolvePortalSubscriptionAsync(transporter);
+
+        int imported = 0;
+        int skipped = 0;
+        var errors = new List<string>();
+
+        using var reader = new StreamReader(file.OpenReadStream());
+
+        // Skip header line
+        var header = await reader.ReadLineAsync(cancellationToken);
+        if (header == null)
+            return (0, 0, new List<string> { "File is empty." });
+
+        // Get current vehicle count for limit check
+        var currentVehicleCount = await _dbContext.Vehicles
+            .IgnoreQueryFilters()
+            .CountAsync(v => v.TransporterId == transporter.Id && v.IsActive, cancellationToken);
+
+        int rowIndex = 1;
+        while (!reader.EndOfStream)
+        {
+            var line = await reader.ReadLineAsync(cancellationToken);
+            rowIndex++;
+
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            var columns = line.Split(',');
+
+            // Parse registration (required)
+            var registration = columns.Length > 0 ? columns[0].Trim().Trim('"') : string.Empty;
+            if (string.IsNullOrWhiteSpace(registration))
+            {
+                errors.Add($"Row {rowIndex}: registration is required");
+                skipped++;
+                continue;
+            }
+            if (registration.Length > 20)
+            {
+                errors.Add($"Row {rowIndex}: registration '{registration}' exceeds 20 characters");
+                skipped++;
+                continue;
+            }
+
+            // Check vehicle limit
+            if (limits.MaxVehicles != -1 && currentVehicleCount + imported >= limits.MaxVehicles)
+            {
+                errors.Add($"Row {rowIndex}: vehicle limit ({limits.MaxVehicles}) reached — upgrade your subscription to import more");
+                skipped++;
+                continue;
+            }
+
+            var make = columns.Length > 1 ? columns[1].Trim().Trim('"') : null;
+            var model = columns.Length > 2 ? columns[2].Trim().Trim('"') : null;
+            // axle_count (column 4) is not a Vehicle field we persist directly
+            int? tareWeightKg = null;
+            if (columns.Length > 4 && !string.IsNullOrWhiteSpace(columns[4]))
+            {
+                if (int.TryParse(columns[4].Trim().Trim('"'), out var tw))
+                    tareWeightKg = tw;
+                else
+                {
+                    errors.Add($"Row {rowIndex}: tare_weight_kg '{columns[4].Trim()}' is not a valid integer");
+                    skipped++;
+                    continue;
+                }
+            }
+
+            // Check if vehicle already linked to this transporter
+            var existingForTransporter = await _dbContext.Vehicles
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .AnyAsync(v => v.TransporterId == transporter.Id &&
+                               v.RegNo == registration, cancellationToken);
+
+            if (existingForTransporter)
+            {
+                skipped++;
+                continue;
+            }
+
+            // Look for an existing vehicle record across all orgs
+            var existingVehicle = await _dbContext.Vehicles
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(v => v.RegNo == registration, cancellationToken);
+
+            if (existingVehicle != null)
+            {
+                // Re-link to this transporter
+                existingVehicle.TransporterId = transporter.Id;
+                if (!string.IsNullOrWhiteSpace(make)) existingVehicle.Make = make;
+                if (!string.IsNullOrWhiteSpace(model)) existingVehicle.Model = model;
+                if (tareWeightKg.HasValue) existingVehicle.DefaultTareWeightKg = tareWeightKg;
+                existingVehicle.UpdatedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                // Create a new vehicle record
+                var newVehicle = new Models.Weighing.Vehicle
+                {
+                    RegNo = registration,
+                    Make = string.IsNullOrWhiteSpace(make) ? null : make,
+                    Model = string.IsNullOrWhiteSpace(model) ? null : model,
+                    DefaultTareWeightKg = tareWeightKg,
+                    TransporterId = transporter.Id,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                };
+                _dbContext.Vehicles.Add(newVehicle);
+            }
+
+            imported++;
+        }
+
+        if (imported > 0)
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return (imported, skipped, errors);
+    }
+
     // ── Private helpers ──
 
     private async Task<Models.Weighing.Transporter> GetTransporterForUserAsync(Guid userId)
     {
+        // Owner lookup
         var transporter = await _dbContext.Transporters
             .IgnoreQueryFilters()
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.PortalAccountId == userId && t.IsActive);
 
-        if (transporter == null)
-            throw new InvalidOperationException("No transporter linked to this portal account. Please register first.");
+        if (transporter != null) return transporter;
 
-        return transporter;
+        // Team member lookup
+        var membership = await _dbContext.PortalTeamMemberships
+            .Include(m => m.Transporter)
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.IsActive && m.Transporter!.IsActive);
+
+        if (membership?.Transporter != null) return membership.Transporter;
+
+        throw new InvalidOperationException("No transporter linked to this portal account. Please register first.");
+    }
+
+    /// <summary>
+    /// Returns "admin"|"manager"|"viewer"|null for the user on the given transporter.
+    /// Owner = "admin".
+    /// </summary>
+    private async Task<string?> GetTeamRoleAsync(Guid userId, Guid transporterId)
+    {
+        var transporter = await _dbContext.Transporters
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == transporterId);
+
+        if (transporter?.PortalAccountId == userId)
+            return "admin";
+
+        var membership = await _dbContext.PortalTeamMemberships
+            .AsNoTracking()
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.TransporterId == transporterId && m.IsActive);
+
+        return membership?.Role;
     }
 
     /// <summary>

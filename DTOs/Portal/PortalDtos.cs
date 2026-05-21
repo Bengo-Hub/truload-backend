@@ -2,6 +2,47 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TruLoad.Backend.DTOs.Portal;
 
+// ── Team Management DTOs ──
+
+/// <summary>
+/// A team member on a transporter's portal account.
+/// </summary>
+public class PortalTeamMemberDto
+{
+    public Guid UserId { get; set; }
+    public string UserEmail { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+    public string Role { get; set; } = "viewer";
+    public DateTime JoinedAt { get; set; }
+    public bool IsOwner { get; set; }
+}
+
+/// <summary>
+/// Request to invite a team member to the portal.
+/// </summary>
+public class InviteTeamMemberRequest
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+
+    /// <summary>"manager" or "viewer"</summary>
+    [Required]
+    public string Role { get; set; } = "viewer";
+}
+
+/// <summary>
+/// Request to accept a portal invitation.
+/// </summary>
+public class AcceptPortalInviteRequest
+{
+    [Required]
+    public string Token { get; set; } = string.Empty;
+
+    [Required]
+    public string UserName { get; set; } = string.Empty;
+}
+
 // ── Request DTOs ──
 
 /// <summary>
