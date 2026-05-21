@@ -129,7 +129,7 @@ public class SubscriptionService : ISubscriptionService
 
         try
         {
-            var response = await _httpClient.GetAsync($"{baseUrl}/api/v1/plans?active=true", ct);
+            var response = await _httpClient.GetAsync($"{baseUrl}/api/v1/plans?service=truload&active=true", ct);
             if (!response.IsSuccessStatusCode)
                 return "[]";
             return await response.Content.ReadAsStringAsync(ct);
