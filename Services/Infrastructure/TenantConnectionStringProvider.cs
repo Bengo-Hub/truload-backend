@@ -55,4 +55,16 @@ public sealed class TenantConnectionStringProvider
 
     public bool HasTenantDatabase(string tenantSlug) =>
         _tenantMap.ContainsKey(tenantSlug.ToLowerInvariant());
+
+    /// <summary>
+    /// Returns all tenant-specific connection strings that differ from the default.
+    /// Used at startup to apply migrations to every dedicated tenant database.
+    /// </summary>
+    public IReadOnlyList<(string Slug, string ConnectionString)> GetDedicatedTenantDatabases()
+    {
+        return _tenantMap
+            .Where(kv => !string.Equals(kv.Value, _defaultConnectionString, StringComparison.OrdinalIgnoreCase))
+            .Select(kv => (kv.Key, kv.Value))
+            .ToList();
+    }
 }

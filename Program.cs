@@ -536,113 +536,191 @@ GlobalJobFilters.Filters.Add(new AutomaticRetryAttribute { Attempts = 3 });
 // ===== App Configuration =====
 var app = builder.Build();
 
-// Apply pending migrations and seed database automatically on startup
+// ── Startup database helpers ─────────────────────────────────────────────────
+//
+// Seeding version — increment this number to force a re-seed of ALL databases.
+const int SeedingVersion = 27;
+const string SeedingName = "InitialSeed";
+
+// Builds a direct-to-PostgreSQL connection string for migrations.
+// EF Core advisory locks require a persistent session, which PgBouncer transaction-mode
+// pooling doesn't provide. Set Database:DirectHost in config (K8s env: DATABASE__DIRECTHOST)
+// to the raw PostgreSQL host (bypassing PgBouncer). Falls back to the host already in
+// the connection string (safe for dev where PgBouncer isn't used).
+string BuildMigrationConnectionString(string cs)
+{
+    var b = new Npgsql.NpgsqlConnectionStringBuilder(cs);
+    var directHost = builder.Configuration["Database:DirectHost"];
+    if (!string.IsNullOrWhiteSpace(directHost))
+    {
+        b.Host = directHost;
+        b.Port = int.TryParse(builder.Configuration["Database:DirectPort"], out var p) ? p : 5432;
+    }
+    b.Pooling = false;
+    return b.ConnectionString;
+}
+
+// Applies any pending EF Core migrations to the given database.
+async Task ApplyMigrationsAsync(string migCs, string dbLabel)
+{
+    var opts = new DbContextOptionsBuilder<TruLoadDbContext>()
+        .UseNpgsql(migCs, o => o.UseVector())
+        .Options;
+    using var ctx = new TruLoadDbContext(opts);
+    var pending = ctx.Database.GetPendingMigrations().ToList();
+    if (pending.Count == 0)
+    {
+        Log.Information("[{Db}] ✓ No pending migrations", dbLabel);
+        return;
+    }
+    Log.Information("[{Db}] Applying {Count} pending migration(s): {Names}",
+        dbLabel, pending.Count, string.Join(", ", pending));
+    ctx.Database.Migrate();
+    Log.Information("[{Db}] ✓ Migrations applied", dbLabel);
+}
+
+// Seeds a database using the full TruLoad seeder.
+// Builds a scoped mini-DI container so RoleManager/UserManager are bound to the
+// correct DbContext — avoids any coupling with the main app's DI scope.
+async Task SeedDatabaseAsync(string migCs, string dbLabel)
+{
+    // Build a lightweight DI container with just what the seeder needs.
+    var services = new ServiceCollection();
+    services.AddLogging(lb => lb.AddSerilog());
+    services.AddDbContext<TruLoadDbContext>(o => o.UseNpgsql(migCs, npg => npg.UseVector()));
+    services.AddIdentity<ApplicationUser, ApplicationRole>(o =>
+    {
+        // Match main app's permissive password options so the seeder's hashed passwords pass.
+        o.Password.RequireDigit = false;
+        o.Password.RequiredLength = 1;
+        o.Password.RequireNonAlphanumeric = false;
+        o.Password.RequireUppercase = false;
+        o.Password.RequireLowercase = false;
+        o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        o.Lockout.MaxFailedAccessAttempts = 5;
+        o.Lockout.AllowedForNewUsers = true;
+        o.User.RequireUniqueEmail = true;
+        o.SignIn.RequireConfirmedEmail = false;
+    })
+    .AddEntityFrameworkStores<TruLoadDbContext>()
+    .AddDefaultTokenProviders();
+
+    await using var sp = services.BuildServiceProvider();
+    using var scope = sp.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
+
+    var alreadySeeded = await db.DatabaseSeedingHistory
+        .AsNoTracking()
+        .AnyAsync(s => s.SeedingName == SeedingName && s.Version == SeedingVersion && s.IsCompleted);
+
+    if (alreadySeeded)
+    {
+        Log.Information("[{Db}] ✓ Seeding already completed (v{Version})", dbLabel, SeedingVersion);
+        return;
+    }
+
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+
+    Log.Information("[{Db}] Starting seeding v{Version}...", dbLabel, SeedingVersion);
+    await TruLoad.Data.Seeders.DatabaseSeeder.SeedAsync(db, roleManager, userManager, seedLogger);
+    sw.Stop();
+
+    db.DatabaseSeedingHistory.Add(new TruLoad.Backend.Models.Infrastructure.DatabaseSeedingHistory
+    {
+        SeedingName = SeedingName,
+        Version = SeedingVersion,
+        IsCompleted = true,
+        DurationMs = sw.ElapsedMilliseconds,
+        Notes = "Initial database seeding completed",
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow
+    });
+    await db.SaveChangesAsync();
+    Log.Information("[{Db}] ✓ Seeding completed in {Duration}ms", dbLabel, sw.ElapsedMilliseconds);
+}
+
+// Refreshes all PostgreSQL materialized views for the given database.
+async Task RefreshMaterializedViewsAsync(string migCs, string dbLabel)
+{
+    var opts = new DbContextOptionsBuilder<TruLoadDbContext>()
+        .UseNpgsql(migCs, o => o.UseVector())
+        .Options;
+    using var ctx = new TruLoadDbContext(opts);
+    try
+    {
+        await ctx.Database.ExecuteSqlRawAsync("SELECT refresh_all_materialized_views();");
+        Log.Information("[{Db}] ✓ Materialized views refreshed", dbLabel);
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "[{Db}] Failed to refresh materialized views — will retry via Hangfire", dbLabel);
+    }
+}
+
+// ── Startup: apply migrations + seeding to ALL databases ────────────────────
 try
 {
+    // --- Default database ---
+    var defaultCs = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+    var defaultLabel = defaultCs.Database ?? "default";
+    var defaultMigCs = BuildMigrationConnectionString(connectionString);
+
+    Log.Information("=== DB startup: {Db} (default) ===", defaultLabel);
+    await ApplyMigrationsAsync(defaultMigCs, defaultLabel);
+    await SeedDatabaseAsync(defaultMigCs, defaultLabel);
+
+    // IntegrationConfig seeder runs on the default DB only (platform-wide integrations).
     using (var scope = app.Services.CreateScope())
     {
-        var dbContext = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        var dbCtx = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
+        var encSvc = scope.ServiceProvider.GetRequiredService<IEncryptionService>();
+        var intLogger = scope.ServiceProvider.GetRequiredService<ILogger<TruLoad.Backend.Data.Seeders.SystemConfiguration.IntegrationConfigSeeder>>();
+        var intSeeder = new TruLoad.Backend.Data.Seeders.SystemConfiguration.IntegrationConfigSeeder(
+            dbCtx, encSvc, builder.Configuration, intLogger);
+        await intSeeder.SeedAsync();
+        Log.Information("[{Db}] ✓ Integration config seeding completed", defaultLabel);
+    }
 
-        Log.Information("Checking pending migrations...");
+    await RefreshMaterializedViewsAsync(defaultMigCs, defaultLabel);
 
-        // Migrations must bypass PgBouncer: EF Core uses session-scoped advisory locks
-        // which PgBouncer transaction pooling releases between transactions, causing Migrate() to fail.
-        var migConnBuilder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
-        migConnBuilder.Host = "postgresql.infra.svc.cluster.local";
-        migConnBuilder.Port = 5432;
-        migConnBuilder.Pooling = false;
-        var migrationOptions = new DbContextOptionsBuilder<TruLoadDbContext>()
-            .UseNpgsql(migConnBuilder.ConnectionString, o => o.UseVector())
-            .Options;
-        using var migrationContext = new TruLoadDbContext(migrationOptions);
+    // --- Dedicated per-tenant databases ---
+    var tenantDbs = tenantConnProvider.GetDedicatedTenantDatabases();
+    if (tenantDbs.Count == 0)
+    {
+        Log.Information("No dedicated tenant databases configured — all tenants share the default DB");
+    }
+    else
+    {
+        Log.Information("Found {Count} dedicated tenant database(s): {Slugs}",
+            tenantDbs.Count, string.Join(", ", tenantDbs.Select(t => t.Slug)));
 
-        var pendingMigrations = migrationContext.Database.GetPendingMigrations().ToList();
-
-        if (pendingMigrations.Any())
+        foreach (var (slug, tenantCs) in tenantDbs)
         {
-            Log.Information("Applying {Count} pending migrations directly via PostgreSQL (bypassing PgBouncer)...", pendingMigrations.Count);
-            migrationContext.Database.Migrate();
-            Log.Information("✓ Migrations applied successfully");
-        }
-        else
-        {
-            Log.Information("✓ Database is up to date (no pending migrations)");
-        }
+            var tenantLabel = new Npgsql.NpgsqlConnectionStringBuilder(tenantCs).Database ?? slug;
+            var tenantMigCs = BuildMigrationConnectionString(tenantCs);
 
-
-
-        // Check if initial seeding has already been completed
-        var seedingVersion = 27; // Increment this when you need to re-seed
-        var seedingName = "InitialSeed";
-
-        var existingSeed = await dbContext.DatabaseSeedingHistory
-            .AsNoTracking()
-            .Where(s => s.SeedingName == seedingName && s.Version == seedingVersion && s.IsCompleted)
-            .FirstOrDefaultAsync();
-
-        if (existingSeed != null)
-        {
-            Log.Information("✓ Database seeding already completed (Version {Version} on {Date})",
-                existingSeed.Version, existingSeed.CreatedAt);
-        }
-        else
-        {
-            // Run idempotent seeder - get required Identity managers from DI
-            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-
-            var startTime = DateTime.UtcNow;
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-
-            Log.Information("Starting database seeding (Version {Version})...", seedingVersion);
-            await TruLoad.Data.Seeders.DatabaseSeeder.SeedAsync(dbContext, roleManager, userManager, logger);
-
-            sw.Stop();
-
-            // Record successful seeding
-            var seedingRecord = new TruLoad.Backend.Models.Infrastructure.DatabaseSeedingHistory
+            Log.Information("=== DB startup: {Db} (tenant: {Slug}) ===", tenantLabel, slug);
+            try
             {
-                SeedingName = seedingName,
-                Version = seedingVersion,
-                IsCompleted = true,
-                DurationMs = sw.ElapsedMilliseconds,
-                Notes = $"Initial database seeding completed",
-                CreatedAt = startTime,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            dbContext.DatabaseSeedingHistory.Add(seedingRecord);
-            await dbContext.SaveChangesAsync();
-
-            Log.Information("✓ Database seeding completed in {Duration}ms", sw.ElapsedMilliseconds);
-        }
-
-        // Seed IntegrationConfig for eCitizen/Pesaflow (all environments)
-        var encryptionService = scope.ServiceProvider.GetRequiredService<IEncryptionService>();
-        var integrationLogger = scope.ServiceProvider.GetRequiredService<ILogger<TruLoad.Backend.Data.Seeders.SystemConfiguration.IntegrationConfigSeeder>>();
-        var integrationSeeder = new TruLoad.Backend.Data.Seeders.SystemConfiguration.IntegrationConfigSeeder(
-            dbContext, encryptionService, builder.Configuration, integrationLogger);
-        await integrationSeeder.SeedAsync();
-        Log.Information("✓ Integration config seeding completed");
-
-        // Initialize materialized views on startup
-        try
-        {
-            var mvService = scope.ServiceProvider.GetRequiredService<IMaterializedViewService>();
-            await mvService.RefreshAllAsync();
-            Log.Information("✓ Materialized views refreshed on startup");
-        }
-        catch (Exception mvEx)
-        {
-            Log.Warning(mvEx, "Failed to refresh materialized views on startup — will retry via Hangfire");
+                await ApplyMigrationsAsync(tenantMigCs, tenantLabel);
+                await SeedDatabaseAsync(tenantMigCs, tenantLabel);
+                await RefreshMaterializedViewsAsync(tenantMigCs, tenantLabel);
+            }
+            catch (Exception ex)
+            {
+                // Log and continue — a failing tenant DB must not block the whole app.
+                Log.Error(ex, "DB startup failed for tenant {Slug} ({Db}) — continuing", slug, tenantLabel);
+            }
         }
     }
 }
 catch (Exception ex)
 {
-    Log.Error(ex, "Failed to apply database migrations or seeding");
-    // Don't fail startup if migrations fail - let health check handle it
+    Log.Error(ex, "DB startup failed — migrations/seeding incomplete");
+    // Don't abort startup; the health check will surface the issue.
 }
 
 // Load rate limit settings from DB (uses defaults if DB unavailable)
