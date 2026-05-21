@@ -242,12 +242,15 @@ public class CaseRegisterController : ControllerBase
     {
         try
         {
+            var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
+            var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+            if ((to - from).TotalDays > 365) return BadRequest("Date range may not exceed 365 days for analytics queries.");
             var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
             var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
             var criteria = new CaseSearchCriteria
             {
-                CreatedFrom = dateFrom,
-                CreatedTo = dateTo,
+                CreatedFrom = from,
+                CreatedTo = to,
                 StationId = effectiveStationId,
                 PageSize = 10000
             };
@@ -280,6 +283,7 @@ public class CaseRegisterController : ControllerBase
         {
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
             var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+            if ((to - from).TotalDays > 365) return BadRequest("Date range may not exceed 365 days for analytics queries.");
             var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
             var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
             var criteria = new CaseSearchCriteria

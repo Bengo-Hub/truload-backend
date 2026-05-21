@@ -6,8 +6,11 @@ We release patches for security vulnerabilities in the following versions:
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.2.x   | :white_check_mark: |
-| 0.1.x   | :x:                |
+| 1.3.x   | :white_check_mark: |
+| 1.2.x   | :x:                |
+| 1.1.x   | :x:                |
+| 1.0.x   | :x:                |
+| 0.x     | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -203,28 +206,33 @@ catch (Exception ex)
 
 ### Implemented
 
-- ✅ JWT-based authentication with refresh tokens
-- ✅ Permission-based authorization (77 permissions)
-- ✅ Password hashing with ASP.NET Core Identity
+- ✅ JWT-based authentication with refresh tokens (`Services/Implementations/Auth/JwtService.cs`)
+- ✅ Permission-based authorization (121 granular permissions, `Services/Implementations/Authorization/PermissionService.cs`)
+- ✅ Password hashing with ASP.NET Core Identity + DynamicPasswordValidator (DB-driven policy)
 - ✅ HTTPS enforcement in production
 - ✅ Input validation with FluentValidation
 - ✅ Parameterized database queries via EF Core
 - ✅ Structured logging with Serilog
 - ✅ Global exception handling middleware
 - ✅ CORS configuration
-- ✅ Health check endpoints
+- ✅ Health check endpoints (PostgreSQL + Redis)
 - ✅ Soft delete for data retention
-- ✅ Audit trails for sensitive operations
+- ✅ Comprehensive audit trails (all 121 permissions tracked, `Middleware/AuditMiddleware.cs`)
+- ✅ Rate limiting — DB-driven, per-endpoint policies (`Middleware/RateLimitingConfiguration.cs`, loaded via `AddTruLoadRateLimiting`)
+- ✅ Two-factor authentication (TOTP + recovery codes, `Services/Implementations/Auth/TwoFactorService.cs`)
+- ✅ Security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy)
+- ✅ Automated database backups (`Services/BackgroundJobs/BackupScheduleJob.cs`, cron 02:00 UTC)
+- ✅ Multi-tenant isolation — dedicated DB per tenant (kuraweigh) + row-level org_id filter for shared tenants
+- ✅ Portal team membership isolation — team members can only access their linked transporter's data
+- ✅ Account lockout (5 failed attempts → 15-minute lockout)
+- ✅ Account activity security log (all login attempts visible under Settings > Security Log)
 
-### Planned
+### Planned / In Progress
 
-- ⏳ Rate limiting on authentication endpoints
 - ⏳ IP whitelisting for admin endpoints
-- ⏳ Two-factor authentication (2FA)
-- ⏳ Security headers middleware (CSP, etc.)
-- ⏳ Automated security scanning in CI/CD
-- ⏳ Penetration testing
-- ⏳ GDPR compliance tooling
+- ⏳ Automated security scanning in CI/CD pipeline
+- ⏳ Formal penetration testing engagement
+- ⏳ GDPR right-to-erasure tooling (data erasure workflow)
 
 ## Common Vulnerabilities & Mitigations
 
@@ -357,6 +365,6 @@ For security concerns, contact:
 
 ---
 
-**Last Updated**: February 2, 2026
+**Last Updated**: May 21, 2026
 
 This security policy is subject to change. Please check regularly for updates.

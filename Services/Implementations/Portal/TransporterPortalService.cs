@@ -704,6 +704,21 @@ public class TransporterPortalService : ITransporterPortalService
         return (true, "Invitation accepted. You now have access to the portal.");
     }
 
+    public async Task<int> CountBulkDownloadTicketsAsync(
+        Guid userId, DateTime fromDate, DateTime toDate, CancellationToken cancellationToken)
+    {
+        var transporter = await GetTransporterForUserAsync(userId);
+        return await _dbContext.WeighingTransactions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(w => w.TransporterId == transporter.Id &&
+                        w.WeighingMode == "commercial" &&
+                        w.ControlStatus == "Complete" &&
+                        w.WeighedAt >= fromDate &&
+                        w.WeighedAt <= toDate)
+            .CountAsync(cancellationToken);
+    }
+
     public async Task<(byte[] Bytes, string FileName)> BulkDownloadTicketsAsync(
         Guid userId, DateTime fromDate, DateTime toDate, CancellationToken cancellationToken)
     {

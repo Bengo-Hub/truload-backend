@@ -30,6 +30,12 @@ public class AxleGroupAggregationServiceTests
         _mockGvwFeeRepository = new Mock<IAxleFeeScheduleRepository>();
         _mockDemeritRepository = new Mock<IDemeritPointsRepository>();
 
+        // Single-axle groups (Steering/SingleDrive) get 5% regulatory tolerance under standard law.
+        // Grouped axles (Tandem/Tridem/Quad) get 0% — STANDARD_LAW_GROUP is not set up so falls through to 0.
+        _mockToleranceRepository
+            .Setup(r => r.GetByCodeAsync("STANDARD_LAW_SINGLE"))
+            .ReturnsAsync(new ToleranceSetting { TolerancePercentage = 5m });
+
         _service = new AxleGroupAggregationService(
             _mockWeighingRepository.Object,
             _mockToleranceRepository.Object,

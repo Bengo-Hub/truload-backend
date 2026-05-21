@@ -47,9 +47,12 @@ public class PermissionSeedingTests : IAsyncLifetime
         var allPermissions = await _context!.Permissions.ToListAsync();
         var byCategory = await _context.Permissions.GroupBy(p => p.Category).Select(g => new { Category = g.Key, Count = g.Count() }).ToListAsync();
 
-        // Assert - verify exactly 121 permissions across 14 categories
-        allPermissions.Should().HaveCount(121, "PermissionSeeder should create exactly 121 default permissions");
-        byCategory.Should().HaveCount(14, "Permissions should be distributed across 14 categories");
+        // Assert - verify exactly 130 permissions across 16 categories
+        // Counts: Weighing=12, Yard=8, Tag=8, Case=15, Prosecution=8, User=10, Station=12,
+        //         Configuration=10, Analytics=8, Financial=10, Vehicle=3, Transporter=4,
+        //         Driver=3, System=10, Technical=4, Portal=5
+        allPermissions.Should().HaveCount(130, "PermissionSeeder should create exactly 130 default permissions");
+        byCategory.Should().HaveCount(16, "Permissions should be distributed across 16 categories");
         byCategory.Should().Contain(c => c.Category == "Weighing" && c.Count == 12);
         byCategory.Should().Contain(c => c.Category == "Yard" && c.Count == 8);
         byCategory.Should().Contain(c => c.Category == "Tag" && c.Count == 8);
@@ -64,6 +67,8 @@ public class PermissionSeedingTests : IAsyncLifetime
         byCategory.Should().Contain(c => c.Category == "Transporter" && c.Count == 4);
         byCategory.Should().Contain(c => c.Category == "Driver" && c.Count == 3);
         byCategory.Should().Contain(c => c.Category == "System" && c.Count == 10);
+        byCategory.Should().Contain(c => c.Category == "Technical" && c.Count == 4);
+        byCategory.Should().Contain(c => c.Category == "Portal" && c.Count == 5);
     }
 
     [Fact]

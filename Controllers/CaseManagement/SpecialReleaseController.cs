@@ -67,6 +67,7 @@ public class SpecialReleaseController : ControllerBase
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 20)
     {
+        pageSize = Math.Clamp(pageSize, 1, 500);
         var result = await _specialReleaseService.GetPendingApprovalsAsync(caseNo, releaseType, from, to, pageNumber, pageSize);
         return Ok(result);
     }

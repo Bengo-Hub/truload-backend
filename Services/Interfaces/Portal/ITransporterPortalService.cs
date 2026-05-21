@@ -95,6 +95,12 @@ public interface ITransporterPortalService
     Task<(byte[] Bytes, string FileName)> BulkDownloadTicketsAsync(Guid userId, DateTime fromDate, DateTime toDate, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Returns the count of completed commercial transactions in the given date range for the transporter.
+    /// Used to decide sync vs async bulk download path.
+    /// </summary>
+    Task<int> CountBulkDownloadTicketsAsync(Guid userId, DateTime fromDate, DateTime toDate, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Imports vehicles from a CSV file (registration, make, model, axle_count, tare_weight_kg).
     /// Returns counts of imported/skipped rows plus per-row error messages.
     /// </summary>

@@ -535,6 +535,7 @@ public class WeighingService : IWeighingService
         transaction.GvwToleranceDisplay = complianceResult.GvwToleranceDisplay;
         transaction.AxleToleranceDisplay = complianceResult.AxleToleranceDisplay;
         transaction.OperationalAllowanceUsed = complianceResult.OperationalAllowanceUsed;
+        transaction.IsSentToYard = complianceResult.ShouldSendToYard;
         transaction.ToleranceApplied = complianceResult.GvwToleranceKg > 0 || complianceResult.GroupResults.Any(g => g.ToleranceKg > 0);
 
         // Populate AxleType on each axle from group results (for ticket display)

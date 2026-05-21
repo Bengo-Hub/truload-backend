@@ -1,11 +1,14 @@
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.IO;
 using System.Security.Claims;
 using System.Text;
 using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.DTOs.Portal;
+using TruLoad.Backend.Services.BackgroundJobs;
 using TruLoad.Backend.Services.Interfaces.Portal;
 
 namespace TruLoad.Backend.Controllers.Portal;
@@ -17,13 +20,16 @@ namespace TruLoad.Backend.Controllers.Portal;
 public class TransporterPortalController : ControllerBase
 {
     private readonly ITransporterPortalService _portalService;
+    private readonly IBackgroundJobClient _jobs;
     private readonly ILogger<TransporterPortalController> _logger;
 
     public TransporterPortalController(
         ITransporterPortalService portalService,
+        IBackgroundJobClient jobs,
         ILogger<TransporterPortalController> logger)
     {
         _portalService = portalService;
+        _jobs = jobs;
         _logger = logger;
     }
 
@@ -69,6 +75,7 @@ public class TransporterPortalController : ControllerBase
     {
         var userId = GetUserId();
         if (userId == null) return Unauthorized("User ID not found in claims");
+        pageSize = Math.Clamp(pageSize, 1, 500);
 
         try
         {
@@ -275,6 +282,7 @@ public class TransporterPortalController : ControllerBase
     {
         var userId = GetUserId();
         if (userId == null) return Unauthorized("User ID not found in claims");
+        pageSize = Math.Clamp(pageSize, 1, 500);
 
         try
         {
@@ -512,12 +520,17 @@ public class TransporterPortalController : ControllerBase
     }
 
     /// <summary>
-    /// Downloads a ZIP archive of all completed ticket PDFs in a date range.
+    /// Downloads a ZIP archive of completed ticket PDFs in a date range.
+    /// For ≤50 tickets: returns the ZIP synchronously.
+    /// For >50 tickets: enqueues a background job and returns 202 Accepted with a jobId.
+    /// Poll GET /portal/weighings/bulk-download/{jobId}/status, then download via
+    /// GET /portal/weighings/bulk-download/{jobId}.
     /// Requires DataExport subscription feature.
     /// </summary>
     [HttpGet("weighings/bulk-download")]
     [HasPermission("portal.export")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(403)]
     [ProducesResponseType(400)]
     public async Task<IActionResult> BulkDownloadTickets(
@@ -528,8 +541,30 @@ public class TransporterPortalController : ControllerBase
         var userId = GetUserId();
         if (userId == null) return Unauthorized("User ID not found in claims");
 
+        const int syncThreshold = 50;
+
         try
         {
+            var count = await _portalService.CountBulkDownloadTicketsAsync(
+                userId.Value, fromDate, toDate, cancellationToken);
+
+            if (count == 0)
+                return BadRequest("No completed commercial weighing transactions found in the specified date range.");
+
+            if (count > syncThreshold)
+            {
+                var jobId = Guid.NewGuid().ToString("N");
+                _jobs.Enqueue<BulkDownloadJob>(j => j.ExecuteAsync(jobId, userId.Value, fromDate, toDate));
+                return Accepted(new
+                {
+                    jobId,
+                    ticketCount = count,
+                    statusUrl = $"/api/v1/portal/weighings/bulk-download/{jobId}/status",
+                    downloadUrl = $"/api/v1/portal/weighings/bulk-download/{jobId}",
+                    message = $"{count} tickets queued for background generation. Poll statusUrl until status is 'ready'."
+                });
+            }
+
             var (zipBytes, fileName) = await _portalService.BulkDownloadTicketsAsync(
                 userId.Value, fromDate, toDate, cancellationToken);
             return File(zipBytes, "application/zip", fileName);
@@ -547,6 +582,51 @@ public class TransporterPortalController : ControllerBase
             _logger.LogError(ex, "Error generating bulk ticket ZIP for portal user {UserId}", userId);
             return StatusCode(500, "An error occurred while generating the ticket archive.");
         }
+    }
+
+    /// <summary>
+    /// Polls the status of an async bulk download job.
+    /// Returns { status: "pending" | "ready" | "failed", message? }.
+    /// </summary>
+    [HttpGet("weighings/bulk-download/{jobId}/status")]
+    [HasPermission("portal.export")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(404)]
+    public IActionResult GetBulkDownloadStatus(string jobId)
+    {
+        var zipPath = Path.Combine(BulkDownloadJob.TempDir, $"{jobId}.zip");
+        var errorPath = Path.Combine(BulkDownloadJob.TempDir, $"{jobId}.error");
+
+        if (global::System.IO.File.Exists(zipPath))
+            return Ok(new { status = "ready", downloadUrl = $"/api/v1/portal/weighings/bulk-download/{jobId}" });
+
+        if (global::System.IO.File.Exists(errorPath))
+        {
+            var error = global::System.IO.File.ReadAllText(errorPath);
+            return Ok(new { status = "failed", message = error });
+        }
+
+        return Ok(new { status = "pending" });
+    }
+
+    /// <summary>
+    /// Downloads a completed async bulk ticket ZIP. The file is cleaned up after download.
+    /// </summary>
+    [HttpGet("weighings/bulk-download/{jobId}")]
+    [HasPermission("portal.export")]
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(404)]
+    public IActionResult DownloadBulkZip(string jobId)
+    {
+        var zipPath = Path.Combine(BulkDownloadJob.TempDir, $"{jobId}.zip");
+        if (!global::System.IO.File.Exists(zipPath))
+            return NotFound("Bulk download ZIP not found. The file may have expired or the job is still running.");
+
+        var bytes = global::System.IO.File.ReadAllBytes(zipPath);
+        // Clean up after serving to free disk space
+        try { global::System.IO.File.Delete(zipPath); } catch { /* best-effort */ }
+
+        return File(bytes, "application/zip", $"tickets_{jobId}.zip");
     }
 
     /// <summary>

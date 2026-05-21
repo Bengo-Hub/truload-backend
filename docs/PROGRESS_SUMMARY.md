@@ -35,7 +35,44 @@ TruLoad is a cloud-hosted intelligent weighing and enforcement platform enabling
 ### Current Phase
 Production deployed (v1.3.1). Multi-tenant architecture live with kura (kuraweigh DB) and truload tenants. All tenant databases auto-migrated and seeded on startup. Commercial weighing workflows complete. Focus on monitoring, tolerance precision, and documentation accuracy.
 
-### v1.3.1 Fixes (May 21, 2026)
+### v1.3.1 Production Readiness (May 21, 2026)
+
+**Code Fixes**
+- **Response compression** — Confirmed `AddTruLoadResponseCompression` + `UseTruLoadResponseCompression` fully wired with Brotli + Gzip
+- **Security headers** — Added `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` to all responses
+- **Page size caps** — Capped user-supplied `pageSize` at 500 on all list endpoints; added 365-day date-range guard on analytics aggregation endpoints
+- **Superset startup guard** — Production startup now throws if `Superset:Password` is a known default value (`admin123`, `changeme`, etc.)
+- **Async bulk ZIP download** — Portal bulk ticket downloads >50 tickets now return 202 Accepted with a Hangfire-queued `BulkDownloadJob`; added `/bulk-download/{jobId}/status` and `/bulk-download/{jobId}` poll/download endpoints
+
+**Features (same sprint)**
+- **Portal team management** — `PortalTeamMembership` + `PortalTeamInvitation` models; `GET/POST/DELETE /portal/team` + `POST /portal/team/accept` endpoints; token-based invite with 7-day expiry
+- **Portal daily summary job** — `PortalDailySummaryJob` runs at 04:00 UTC; emails each portal transporter yesterday's weighing summary
+- **Portal anomaly alert job** — `PortalAnomalyAlertJob` runs hourly; detects >5% weight discrepancy and emails transporter
+- **CargoType quality fields** — `MoistureTargetPercent` and `ForeignMatterLimitPercent` added to `CargoType` for quality deduction calculations
+- **TareGracePeriodDays** — `Organization.TareGracePeriodDays` allows configurable grace period past tare expiry before hard-blocking single-pass
+- **4 commercial reports** — `shift-performance`, `transaction-audit-log`, `pending-transactions`, `monthly-reconciliation` added to `CommercialReportGenerator`
+- **Bulk vehicle CSV import** — `POST /portal/vehicles/import` parses `registration, make, model, axle_count, tare_weight_kg` CSV
+
+**Test Fixes (0 failures across 243 tests)**
+- `WeighingService` — Added missing `transaction.IsSentToYard = complianceResult.ShouldSendToYard` mapping; compliance result was fully calculated but yard-send flag was never persisted back
+- `AxleGroupAggregationServiceTests` — Added `STANDARD_LAW_SINGLE` (5%) mock setup; tests relying on single-axle tolerance were getting 0% because mock was unset
+- `WeighingServiceTests` — Added mock setup for `CalculateComplianceAsync`, `DeleteAxlesByTransactionIdAsync`, `SaveTransactionWithNewAxlesAsync`, and `UpdateTransactionAsync` which the service calls but tests did not mock
+- `PermissionSeedingTests` — Updated to reflect current seeder: 130 permissions across 16 categories (was 121/14; Technical and Portal categories added in v1.3.x)
+- New background job tests: `PortalDailySummaryJobTests` (4 tests), `StaleWeighingNotificationJobTests` (8 tests), `PortalAnomalyAlertJobTests` (7 tests)
+
+**Documentation**
+- `SECURITY.md` updated to v1.3.x; rate limiting and 2FA moved from Planned → Implemented
+- Created `truload-docs/docs/technical/MULTI_TENANCY.md`, `BACKGROUND_JOBS.md`, `COMPLIANCE_ENGINE.md`, `performance-tuning.md`
+- Created `truload-docs/docs/operations/PROCEDURES.md`, `SECRET_ROTATION.md`, `MONITORING.md`
+- Created `truload-docs/docs/portal/team.md`, `portal/invite.md`, `billing/index.md`
+- Updated `mkdocs.yml` nav with all new pages
+- Archived `docs/REGULATORY_COMPLIANCE_REPORT.md` and `docs/plan.md` to `docs/archive/`
+
+**Migrations**
+- `AddCargoTypeQualityFieldsAndOrgTareGrace` — adds columns to `cargo_types` and `organizations`
+- `AddPortalTeamManagement` — creates `portal_team_memberships` and `portal_team_invitations` tables
+
+**Earlier v1.3.1 Fixes**
 - **Tolerance precedence corrected** — `CalculateGroupToleranceAsync` now evaluates config-specific `ToleranceKg`/`TolerancePercentage` first (was #3, now #1). Per-config overrides always win over global Act tolerances.
 - **Axle tolerance display fixed** — weight tickets show `X,XXX kg (config)` when a per-config axle tolerance is active (was always `0% (strict)`)
 - **Standard config tolerance update unblocked** — `PUT /AxleConfiguration/{id}` now accepts tolerance/notes updates on standard (EAC) configs without returning 400

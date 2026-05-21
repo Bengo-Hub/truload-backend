@@ -272,6 +272,15 @@ var jwtIssuer = builder.Configuration["Jwt:Issuer"]
 var jwtAudience = builder.Configuration["Jwt:Audience"]
     ?? throw new InvalidOperationException("JWT audience not configured.");
 
+// Guard against default Superset credentials shipping to production.
+if (builder.Environment.IsProduction())
+{
+    var supersetPassword = builder.Configuration["Superset:Password"];
+    if (supersetPassword is "admin123" or "changeme" or "password" or "admin" or null or "")
+        throw new InvalidOperationException(
+            "Superset:Password is set to a default or empty value. Set a real password via Kubernetes Secret (SUPERSET__PASSWORD).");
+}
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -530,6 +539,7 @@ builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.PesaflowInvoi
 builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.StaleWeighingNotificationJob>();
 builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.PortalDailySummaryJob>();
 builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.PortalAnomalyAlertJob>();
+builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.BulkDownloadJob>();
 builder.Services.AddScoped<TruLoad.Backend.Services.Implementations.Shared.NotificationBackgroundJob>();
 
 // Hangfire job retention: auto-delete succeeded/failed jobs after 48 hours
@@ -738,6 +748,17 @@ catch (Exception ex)
 
 // Response Compression - MUST be first for all downstream responses
 app.UseTruLoadResponseCompression();
+
+// Security headers — applied to every response
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["X-Permitted-Cross-Domain-Policies"] = "none";
+    context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
+    await next();
+});
 
 // Ensure media directory exists and is writable (avoid permission errors on first upload).
 var mediaOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<MediaUploadOptions>>().Value;

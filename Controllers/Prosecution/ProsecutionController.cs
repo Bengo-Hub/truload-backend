@@ -356,6 +356,7 @@ public class ProsecutionController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
+        pageSize = Math.Clamp(pageSize, 1, 500);
         var result = await _prosecutionService.GetHabitualOffendersAsync(
             minConvictions, fromDate, toDate, pageNumber, pageSize, ct);
         return Ok(result);

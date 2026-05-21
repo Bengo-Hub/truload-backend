@@ -236,6 +236,7 @@ public class CourtHearingController : ControllerBase
     {
         var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
         var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+        if ((to - from).TotalDays > 365) return BadRequest("Date range may not exceed 365 days for analytics queries.");
 
         var criteria = new CourtHearingSearchCriteria
         {

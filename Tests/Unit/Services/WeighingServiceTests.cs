@@ -89,6 +89,19 @@ public class WeighingServiceTests
             .Setup(s => s.DetermineAxleType(It.IsAny<int>(), It.IsAny<string>()))
             .Returns("SingleDrive");
 
+        // Default mock for repository write operations used in CaptureWeightsAsync / CalculateComplianceAsync
+        _mockWeighingRepository
+            .Setup(r => r.DeleteAxlesByTransactionIdAsync(It.IsAny<Guid>()))
+            .Returns(Task.CompletedTask);
+
+        _mockWeighingRepository
+            .Setup(r => r.SaveTransactionWithNewAxlesAsync(It.IsAny<WeighingTransaction>()))
+            .Returns(Task.CompletedTask);
+
+        _mockWeighingRepository
+            .Setup(r => r.UpdateTransactionAsync(It.IsAny<WeighingTransaction>()))
+            .ReturnsAsync((WeighingTransaction t) => t);
+
         _service = new WeighingService(
             _mockWeighingRepository.Object,
             _mockAxleConfigurationRepository.Object,
@@ -190,11 +203,22 @@ public class WeighingServiceTests
         _mockWeighingRepository.Setup(r => r.GetTransactionByIdAsync(transactionId))
             .ReturnsAsync(transaction);
 
-        _mockWeighingRepository.Setup(r => r.UpdateTransactionAsync(It.IsAny<WeighingTransaction>()))
-            .ReturnsAsync(transaction);
-
         _mockAxleConfigurationRepository.Setup(r => r.GetByIdAsync(configId, true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(config);
+
+        _mockAxleGroupAggregationService
+            .Setup(s => s.CalculateComplianceAsync(transactionId))
+            .ReturnsAsync(new WeighingComplianceResultDto
+            {
+                IsCompliant = true,
+                OverallStatus = "Compliant",
+                GvwMeasuredKg = 11000,
+                GvwPermissibleKg = 20000,
+                GvwOverloadKg = 0,
+                ShouldSendToYard = false,
+                GroupResults = [],
+                ViolationReasons = []
+            });
 
         // Act
         var result = await _service.CaptureWeightsAsync(transactionId, axles);
@@ -238,9 +262,23 @@ public class WeighingServiceTests
 
         _mockWeighingRepository.Setup(r => r.GetTransactionByIdAsync(transactionId))
             .ReturnsAsync(transaction);
-        
+
         _mockAxleConfigurationRepository.Setup(r => r.GetByIdAsync(configId, true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(config);
+
+        _mockAxleGroupAggregationService
+            .Setup(s => s.CalculateComplianceAsync(transactionId))
+            .ReturnsAsync(new WeighingComplianceResultDto
+            {
+                IsCompliant = false,
+                OverallStatus = "Overloaded",
+                GvwMeasuredKg = 12000,
+                GvwPermissibleKg = 10000,
+                GvwOverloadKg = 2000,
+                ShouldSendToYard = true,
+                GroupResults = [],
+                ViolationReasons = ["GVW Overload: 2000kg"]
+            });
 
         // Act
         var result = await _service.CalculateComplianceAsync(transactionId);
@@ -287,9 +325,23 @@ public class WeighingServiceTests
 
         _mockWeighingRepository.Setup(r => r.GetTransactionByIdAsync(transactionId))
             .ReturnsAsync(transaction);
-        
+
         _mockAxleConfigurationRepository.Setup(r => r.GetByIdAsync(configId, true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(config);
+
+        _mockAxleGroupAggregationService
+            .Setup(s => s.CalculateComplianceAsync(transactionId))
+            .ReturnsAsync(new WeighingComplianceResultDto
+            {
+                IsCompliant = false,
+                OverallStatus = "Warning",
+                GvwMeasuredKg = 10150,
+                GvwPermissibleKg = 10000,
+                GvwOverloadKg = 150,
+                ShouldSendToYard = false,
+                GroupResults = [],
+                ViolationReasons = []
+            });
 
         // Act
         var result = await _service.CalculateComplianceAsync(transactionId);
