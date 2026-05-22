@@ -480,6 +480,9 @@ builder.Services.AddHttpClient<ITreasuryService, TreasuryService>(c =>
 builder.Services.AddHttpClient<ISubscriptionService, SubscriptionService>(c =>
     c.Timeout = TimeSpan.FromSeconds(15));
 
+// NATS-driven subscription cache invalidation
+builder.Services.AddHostedService<TruLoad.Backend.Services.Background.SubscriptionCacheInvalidationService>();
+
 // KeNHA & NTSA integration services
 builder.Services.AddHttpClient<IKeNHAService, KeNHAService>(c =>
     c.Timeout = TimeSpan.FromSeconds(15));

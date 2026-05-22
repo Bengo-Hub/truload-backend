@@ -61,25 +61,33 @@ public class JwtService : IJwtService
         // Add organization/station/department (mandatory fallback to KURA for organization)
         var orgId = user.OrganizationId;
         string? orgCode = null;
+        TruLoad.Backend.Models.Organization? org = null;
         if (!orgId.HasValue)
         {
             // Fallback to KURA organization if not explicitly assigned
             var kura = _context.Organizations.AsNoTracking().FirstOrDefault(o => o.Code == "KURA");
-            if (kura != null) { orgId = kura.Id; orgCode = kura.Code; }
+            if (kura != null) { orgId = kura.Id; orgCode = kura.Code; org = kura; }
         }
         else
         {
-            var org = _context.Organizations.AsNoTracking().FirstOrDefault(o => o.Id == orgId);
+            org = _context.Organizations.AsNoTracking().FirstOrDefault(o => o.Id == orgId);
             orgCode = org?.Code;
         }
 
         if (orgId.HasValue)
-            claims.Add(new Claim("organization_id", orgId.Value.ToString()));
+            claims.Add(new Claim("org_id", orgId.Value.ToString()));
 
         // org_code lets the middleware route to the correct per-tenant DB even when
         // the org UUID differs between the shared truload DB and a dedicated tenant DB.
         if (!string.IsNullOrWhiteSpace(orgCode))
             claims.Add(new Claim("org_code", orgCode));
+
+        // Bypass claims — mirrors auth-api JWT embedding for Go services
+        if (!string.IsNullOrWhiteSpace(org?.BillingMode))
+            claims.Add(new Claim("billing_mode", org.BillingMode));
+
+        if (org?.IsDemo == true)
+            claims.Add(new Claim("is_demo", "true"));
 
         if (user.StationId.HasValue)
             claims.Add(new Claim("station_id", user.StationId.Value.ToString()));

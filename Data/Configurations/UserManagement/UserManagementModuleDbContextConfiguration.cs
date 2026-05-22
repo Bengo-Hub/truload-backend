@@ -231,6 +231,14 @@ public static class UserManagementModuleDbContextConfiguration
                 .HasColumnName("tare_grace_period_days")
                 .HasDefaultValue(0);
 
+            entity.Property(e => e.BillingMode)
+                .HasColumnName("billing_mode")
+                .HasMaxLength(50);
+
+            entity.Property(e => e.IsDemo)
+                .HasColumnName("is_demo")
+                .HasDefaultValue(false);
+
             entity.HasIndex(e => e.Code)
                 .IsUnique()
                 .HasDatabaseName("idx_organizations_code");

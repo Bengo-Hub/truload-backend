@@ -38,8 +38,25 @@ public class SubscriptionEnforcementMiddleware
         }
 
         var orgIdClaim = context.User.FindFirst("org_id")?.Value
+                         ?? context.User.FindFirst("organization_id")?.Value
                          ?? context.User.FindFirst(ClaimTypes.GroupSid)?.Value;
         if (!Guid.TryParse(orgIdClaim, out var orgId))
+        {
+            await _next(context);
+            return;
+        }
+
+        // Service-charge tenants pay per-transaction — bypass subscription gating entirely
+        var billingModeClaim = context.User.FindFirst("billing_mode")?.Value;
+        if (billingModeClaim == "service_charge")
+        {
+            await _next(context);
+            return;
+        }
+
+        // Demo orgs — bypass for sales/training organisations
+        var isDemoClaim = context.User.FindFirst("is_demo")?.Value;
+        if (isDemoClaim == "true")
         {
             await _next(context);
             return;
@@ -71,6 +88,13 @@ public class SubscriptionEnforcementMiddleware
                 .FirstOrDefaultAsync(o => o.Id == orgId);
 
             if (org == null || org.TenantType != "CommercialWeighing")
+            {
+                await _next(context);
+                return;
+            }
+
+            // Belt-and-suspenders: honour org model bypass even when JWT claims are stale
+            if (org.BillingMode == "service_charge" || org.IsDemo)
             {
                 await _next(context);
                 return;

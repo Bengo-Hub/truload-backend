@@ -92,6 +92,19 @@ public class Organization
     /// </summary>
     public string? SsoTenantSlug { get; set; }
 
+    /// <summary>
+    /// Billing model override. "service_charge" = tenant pays per-transaction; bypass subscription gating.
+    /// Null or empty = standard subscription model (default).
+    /// Mirrors the billing_mode tenant metadata in auth-api.
+    /// </summary>
+    public string? BillingMode { get; set; }
+
+    /// <summary>
+    /// Demo org flag. When true, bypass all subscription enforcement.
+    /// Used for sales/training organisations. Mirrors auth-api is_demo tenant metadata.
+    /// </summary>
+    public bool IsDemo { get; set; } = false;
+
     // ── Operational Allowance ────────────────────────────────────────────────────
 
     /// <summary>
