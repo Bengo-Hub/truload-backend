@@ -216,8 +216,25 @@ public class TenantContextMiddleware
         {
             if (isSuperuser)
             {
-                // Platform owner with no explicit tenant → cross-tenant mode
-                _logger.LogDebug("Superuser without explicit tenant — operating in cross-tenant mode");
+                // Superuser without explicit tenant: use JWT org claims to route to their
+                // home DB. This ensures /auth/profile and other self-referential requests
+                // resolve to the correct DB even without X-Org-ID/X-Org-Slug headers.
+                // Explicit tenant overrides (X-Org-Slug / X-Org-ID) from Layer 1 still
+                // take precedence and allow managing other tenants' data.
+                var orgIdClaim = context.User.FindFirst("org_id") ??
+                                 context.User.FindFirst("organization_id") ??
+                                 context.User.FindFirst("tenant_id");
+
+                if (orgIdClaim != null && Guid.TryParse(orgIdClaim.Value, out var claimOrgId))
+                {
+                    orgId = claimOrgId;
+                    _logger.LogDebug("Resolved Superuser OrgId from JWT claims (home DB): {OrgId}", orgId);
+                }
+                else
+                {
+                    // No org claim — truly cross-tenant (e.g. service accounts, internal calls)
+                    _logger.LogDebug("Superuser without org claim — operating in cross-tenant mode");
+                }
             }
             else
             {
