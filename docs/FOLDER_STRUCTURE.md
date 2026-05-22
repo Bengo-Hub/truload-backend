@@ -278,6 +278,8 @@ Controllers/
 
 ```
 Services/
+├── Background/                          # ASP.NET Core IHostedService (long-lived, event-driven)
+│   └── SubscriptionCacheInvalidationService.cs  # NATS → Redis cache invalidation
 ├── Implementations/
 │   ├── Auth/
 │   │   ├── PermissionService.cs
@@ -305,6 +307,12 @@ Services/
         ├── IComplianceService.cs
         └── IWeighingService.cs
 ```
+
+**`Services/Background/` rules:**
+- Only ASP.NET Core `BackgroundService` / `IHostedService` implementations live here — **not** Hangfire jobs
+- Hangfire jobs go in `Services/Implementations/Jobs/` or a `Jobs/` folder at root level
+- Background services are registered via `builder.Services.AddHostedService<T>()` in `Program.cs`
+- Use `IServiceScopeFactory` to resolve scoped services (e.g., `TruLoadDbContext`) — never inject scoped services directly into a singleton `BackgroundService`
 
 **RULES:**
 - ✅ Interfaces in `Services/Interfaces/{Module}/`

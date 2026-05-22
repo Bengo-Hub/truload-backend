@@ -1,9 +1,9 @@
 # TruLoad Project Progress Report
 
-**Report Date:** May 21, 2026
+**Report Date:** May 22, 2026
 **Project:** TruLoad - Intelligent Weighing & Enforcement Solution
-**Overall Completion:** 98%
-**Current Version:** v1.3.1
+**Overall Completion:** 99%
+**Current Version:** v1.3.2
 
 ---
 
@@ -34,6 +34,45 @@ TruLoad is a cloud-hosted intelligent weighing and enforcement platform enabling
 
 ### Current Phase
 Production deployed (v1.3.1). Multi-tenant architecture live with kura (kuraweigh DB) and truload tenants. All tenant databases auto-migrated and seeded on startup. Commercial weighing workflows complete. Focus on monitoring, tolerance precision, and documentation accuracy.
+
+### v1.3.2 — Subscription Uniform Integration (May 22, 2026)
+
+**Critical Bug Fix**
+- **JWT claim name misalignment** — `JwtService.GenerateAccessToken` was emitting `organization_id` but `SubscriptionEnforcementMiddleware` was reading `org_id`, causing subscription enforcement to be completely non-functional for all commercial tenants. Fixed: JWT now emits `org_id`; middleware gains backward-compat fallback to `organization_id` for existing sessions.
+
+**Database Migration**
+- `AddOrganizationBypassFields` (`20260522000928`) — adds two columns to `organizations`:
+  - `billing_mode VARCHAR(50)` nullable — `"service_charge"` bypasses subscription gating (tenants billed per-transaction)
+  - `is_demo BOOLEAN DEFAULT FALSE` — demo/training orgs bypass all subscription enforcement
+
+**Subscription Bypass Logic**
+- `SubscriptionEnforcementMiddleware` now has JWT fast-path bypass:
+  - `billing_mode == "service_charge"` claim → pass through (no Redis lookup, no DB query)
+  - `is_demo == "true"` claim → pass through
+  - Belt-and-suspenders org model check on cache miss for stale tokens
+- `JwtService.GenerateAccessToken` embeds `billing_mode` and `is_demo` claims directly from the loaded `Organization` record (no extra DB query — org already loaded for `org_code`)
+- Mirrors the uniform bypass pattern deployed across all Go services (ordering, pos, inventory, logistics, treasury, marketflow)
+
+**NATS Cache Invalidation**
+- Added `NATS.Net` NuGet package
+- New `Services/Background/SubscriptionCacheInvalidationService` (`BackgroundService`):
+  - Subscribes to `tenant.subscription.updated` NATS subject
+  - Resolves `tenant_slug` (from event payload) → `Organization.SsoTenantSlug` → `org.Id` via DB query
+  - Deletes `sub:status:{orgId}` Redis key to force re-fetch from subscriptions-api
+  - Controlled by `Nats:Enabled` config flag (defaults `false` — safe for dev without NATS)
+- Registered in `Program.cs` via `AddHostedService<SubscriptionCacheInvalidationService>()`
+- **Key difference from Go services**: Go services use `tenant:{slug}` Redis keys; truload uses `sub:status:{orgId}`. The NATS subscriber handles the slug→UUID resolution transparently.
+
+**Configuration**
+- New `appsettings.json` section: `"Nats": { "Url": "nats://localhost:4222", "Enabled": false }`
+- Production K8s env overrides: `NATS__URL`, `NATS__ENABLED=true`
+
+**Frontend — No Changes Required**
+- `truload-frontend` `use-subscription.ts` already reads `billing_mode` and `is_demo` from JWT
+- `subscription-banner.tsx` already passes `isServiceCharge` and `isDemo` props to shared-ui-lib v0.1.10
+- Frontend activates automatically once backend starts embedding the bypass claims in tokens
+
+---
 
 ### v1.3.1 Production Readiness (May 21, 2026)
 

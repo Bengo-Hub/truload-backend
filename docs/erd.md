@@ -107,22 +107,51 @@ ASP.NET Core Identity users with TruLoad-specific extensions.
 - One-to-many with `audit_logs` (actor_id)
 
 #### organizations
-Organizations/companies (transporters, government agencies, etc.).
+Organizations/companies (weighbridge operators, transporters, government agencies, etc.).
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Organization ID |
-| code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Organization code |
+| code | VARCHAR(50) | UNIQUE, NOT NULL, INDEX | Organization code (tenant slug) |
 | name | VARCHAR(255) | NOT NULL | Organization name |
 | org_type | VARCHAR(50) | CHECK | Type: government, transporter, contractor |
+| tenant_type | VARCHAR(50) | | Tenant classification (e.g., `CommercialWeighing`, `Enforcement`) |
 | contact_email | VARCHAR(255) | | Contact email |
 | contact_phone | VARCHAR(50) | | Contact phone |
+| sso_tenant_slug | VARCHAR(100) | INDEX | Slug matching the auth-api / subscriptions-api tenant slug |
 | is_active | BOOLEAN | DEFAULT TRUE | Active status |
+| is_default | BOOLEAN | DEFAULT FALSE | Whether this is the platform default org |
+| weighing_business_model | VARCHAR(50) | | Business model: `enforcement`, `commercial`, `hybrid` |
+| default_tare_expiry_days | INTEGER | | Default tare expiry for commercial weighing (days) |
+| tare_grace_period_days | INTEGER | | Grace period before stored tare is rejected |
+| commercial_weighing_fee_kes | DECIMAL(18,2) | | Default per-transaction fee in KES |
+| payment_gateway | VARCHAR(50) | | Payment gateway: `pesaflow`, `mpesa`, etc. |
+| enabled_modules_json | TEXT | | JSON array of enabled module codes |
+| logo_url | VARCHAR(500) | | Organisation logo URL |
+| platform_logo_url | VARCHAR(500) | | Platform logo displayed on login screen |
+| login_page_image_url | VARCHAR(500) | | Background image on login page |
+| primary_color | VARCHAR(20) | | Primary brand colour (hex) |
+| secondary_color | VARCHAR(20) | | Secondary brand colour (hex) |
+| billing_mode | VARCHAR(50) | | `"service_charge"` = per-transaction billing; bypass subscription gating |
+| is_demo | BOOLEAN | DEFAULT FALSE | Demo/training org; bypasses all subscription enforcement |
 | created_at | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
 
 **Indexes:**
 - `idx_organizations_code` ON organizations(code)
+- `idx_organizations_sso_slug` ON organizations(sso_tenant_slug) WHERE sso_tenant_slug IS NOT NULL
 - `idx_organizations_active` ON organizations(is_active) WHERE is_active = TRUE
+
+**Bypass Modes (subscription enforcement):**
+
+| `billing_mode` | `is_demo` | Effect |
+|---|---|---|
+| `"service_charge"` | — | Pays per-transaction via treasury; subscription gate bypassed |
+| — | `true` | Demo/training org; subscription gate bypassed |
+| (null) | `false` | Standard subscription model — must have ACTIVE or TRIAL subscription |
+
+Both fields are embedded as JWT claims (`billing_mode`, `is_demo`) by `JwtService.GenerateAccessToken`, enabling a fast-path bypass in `SubscriptionEnforcementMiddleware` without any Redis or DB lookup.
+
+**Migration:** `20260522000928_AddOrganizationBypassFields`
 
 #### departments
 Departments within organizations.

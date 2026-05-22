@@ -8,13 +8,90 @@ This document provides detailed integration information for external services an
 
 ## Table of Contents
 
-1. [Notifications Service Integration](#notifications-service-integration)
-2. [Apache Superset Integration](#apache-superset-integration)
+1. [Subscriptions Service Integration](#subscriptions-service-integration)
+2. [Notifications Service Integration](#notifications-service-integration)
+3. [Apache Superset Integration](#apache-superset-integration)
 3. [Vector Database (pgvector) Integration](#vector-database-pgvector-integration)
 4. [ONNX Runtime Integration](#onnx-runtime-integration)
 5. [TruConnect Microservice Integration](#truconnect-microservice-integration)
 6. [eCitizen Payment Gateway Integration](#ecitizen-payment-gateway-integration)
 7. [Third-Party API Integrations](#third-party-api-integrations)
+
+---
+
+## Subscriptions Service Integration
+
+### Overview
+
+TruLoad integrates with the platform-wide `subscriptions-api` to gate access for commercial tenants (`TenantType == "CommercialWeighing"`). Subscription status is cached in Redis and invalidated in real-time via NATS events.
+
+### Architecture
+
+| Component | Class / Location |
+|-----------|-----------------|
+| HTTP subscription check | `Services/Interfaces/ISubscriptionService.cs` → `SubscriptionService.cs` |
+| Per-request enforcement | `Middleware/SubscriptionEnforcementMiddleware.cs` |
+| NATS cache invalidation | `Services/Background/SubscriptionCacheInvalidationService.cs` |
+| Redis cache key | `sub:status:{orgId}` — TTL 60 seconds |
+
+### Enforcement Flow
+
+```
+authenticated request
+  → billing_mode JWT claim == "service_charge"  → bypass ✅
+  → is_demo JWT claim == "true"                 → bypass ✅
+  → skip exempt paths (/auth, /portal, /health, /hangfire)
+  → read Redis: sub:status:{orgId}
+      hit  → ACTIVE / TRIAL → pass through ✅
+           → EXPIRED / SUSPENDED / NONE → 402 ❌
+      miss → load org from DB
+          not CommercialWeighing / BillingMode=service_charge / IsDemo → bypass ✅
+          call subscriptions-api → cache 60 s → enforce
+```
+
+On failure (subscriptions-api unreachable), the request is **passed through** (fail-open) to avoid blocking legitimate weighing operations.
+
+### Configuration
+
+```json
+"Subscriptions": {
+  "ApiUrl": "http://subscriptions-api.platform.svc.cluster.local:8080",
+  "ServiceJwt": "..."
+}
+```
+
+Production env overrides (K8s secret):
+```
+SUBSCRIPTIONS__APIURL=http://subscriptions-api.platform.svc.cluster.local:8080
+SUBSCRIPTIONS__SERVICEJWT=<service-to-service JWT>
+```
+
+### NATS Cache Invalidation
+
+`SubscriptionCacheInvalidationService` is an ASP.NET Core `BackgroundService` that subscribes to the `tenant.subscription.updated` NATS subject. When subscriptions-api publishes a plan or status change event, this service:
+
+1. Parses `tenant_slug` from the event payload (supports flat `{ tenant_slug }` and nested `{ payload: { tenant_slug } }` formats)
+2. Resolves `tenant_slug → Organization.SsoTenantSlug → org.Id` via a scoped DB query
+3. Deletes `sub:status:{orgId}` from Redis — next request re-fetches from subscriptions-api
+
+**Why not `tenant:{slug}` like Go services?** TruLoad predates the uniform Redis key pattern and uses `sub:status:{orgId}` (org UUID). The service handles the slug→UUID translation transparently.
+
+NATS configuration:
+
+```json
+"Nats": {
+  "Url": "nats://localhost:4222",
+  "Enabled": false
+}
+```
+
+Set `Nats:Enabled = true` in production (K8s env `NATS__ENABLED=true`, `NATS__URL=nats://nats.platform.svc.cluster.local:4222`). Defaults to `false` so local dev without NATS does not fail at startup.
+
+NuGet package: `NATS.Net`
+
+### Bypass Modes
+
+See `Organization.BillingMode` and `Organization.IsDemo` in the ERD for configuration details. Both values are embedded as JWT claims at login time by `JwtService.GenerateAccessToken`, enabling a fast-path bypass before any Redis or DB lookup.
 
 ---
 
