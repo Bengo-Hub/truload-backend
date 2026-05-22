@@ -3,10 +3,10 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Financial;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.System;
 
@@ -20,14 +20,18 @@ namespace TruLoad.Backend.Services.Implementations.Financial;
 public class ECitizenService : IECitizenService
 {
     private const string ProviderName = "ecitizen_pesaflow";
-    private const string RedisTokenKey = "ecitizen:oauth:token";
     private const string ServiceId = "235330"; // Pesaflow service ID
+
+    // Tenant-aware Redis key — each org gets its own cached OAuth token.
+    // A single shared key would cause truload-default test tokens to be served to KURA live requests.
+    private string RedisTokenKey => $"ecitizen:oauth:token:{_tenantContext.OrganizationCode.ToLowerInvariant()}";
 
     private readonly HttpClient _httpClient;
     private readonly TruLoadDbContext _context;
     private readonly IIntegrationConfigService _integrationConfigService;
     private readonly IReceiptService _receiptService;
     private readonly IConnectionMultiplexer _redis;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<ECitizenService> _logger;
 
     public ECitizenService(
@@ -36,6 +40,7 @@ public class ECitizenService : IECitizenService
         IIntegrationConfigService integrationConfigService,
         IReceiptService receiptService,
         IConnectionMultiplexer redis,
+        ITenantContext tenantContext,
         ILogger<ECitizenService> logger)
     {
         _httpClient = httpClient;
@@ -43,6 +48,7 @@ public class ECitizenService : IECitizenService
         _integrationConfigService = integrationConfigService;
         _receiptService = receiptService;
         _redis = redis;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 

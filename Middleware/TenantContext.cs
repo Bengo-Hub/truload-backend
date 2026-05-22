@@ -57,6 +57,7 @@ public class TenantContextMiddleware
 
     // Header names for explicit tenant selection
     public const string OrgIdHeader = "X-Org-ID";
+    public const string OrgSlugHeader = "X-Org-Slug";
     public const string StationIdHeader = "X-Station-ID";
 
     // Default organization code when no tenant can be resolved (for non-superusers without headers/claims)
@@ -175,6 +176,32 @@ public class TenantContextMiddleware
             orgId = headerOrgId;
             isExplicit = true;
             _logger.LogDebug("Resolved OrgId from header: {OrgId}", orgId);
+        }
+
+        // Layer 1b: X-Org-Slug — used by superusers who pass the URL org slug (e.g. "kura")
+        // instead of a GUID. Looked up against the default DB so dedicated-DB tenants still route correctly.
+        if (!orgId.HasValue &&
+            context.Request.Headers.TryGetValue(OrgSlugHeader, out var orgSlugHeader))
+        {
+            var slug = orgSlugHeader.FirstOrDefault()?.Trim();
+            if (!string.IsNullOrEmpty(slug))
+            {
+                var slugOrg = await dbContext.Organizations
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(o => o.Code == slug.ToUpper() && o.IsActive);
+
+                if (slugOrg != null)
+                {
+                    orgId = slugOrg.Id;
+                    tenantContext.OrganizationCode = slugOrg.Code;
+                    isExplicit = true;
+                    _logger.LogDebug("Resolved OrgId from X-Org-Slug ({Slug}): {OrgId}", slug, orgId);
+                }
+                else
+                {
+                    _logger.LogDebug("X-Org-Slug '{Slug}' not found in organizations table", slug);
+                }
+            }
         }
 
         if (context.Request.Headers.TryGetValue(StationIdHeader, out var stationIdHeader) &&

@@ -35,8 +35,10 @@ public class ECitizenServiceTests
             .Options;
         var db = new TruLoadDbContext(options);
 
+        var mockTenantContext = Mock.Of<TruLoad.Backend.Middleware.ITenantContext>(t => t.OrganizationCode == "TEST");
         var svc = new ECitizenService(httpClient, db, Mock.Of<TruLoad.Backend.Services.Interfaces.System.IIntegrationConfigService>(),
             Mock.Of<TruLoad.Backend.Services.Interfaces.Financial.IReceiptService>(), Mock.Of<StackExchange.Redis.IConnectionMultiplexer>(),
+            mockTenantContext,
             Mock.Of<ILogger<ECitizenService>>());
 
         // Expected value from Python test (base64 of lowercase hex of HMAC-SHA256)

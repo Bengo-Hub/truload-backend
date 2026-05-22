@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Financial;
 using TruLoad.Backend.Infrastructure.Security;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Services.Interfaces.System;
 
@@ -11,13 +12,14 @@ namespace TruLoad.Backend.Services.Implementations.System;
 
 /// <summary>
 /// Manages integration configurations with encrypted credential storage.
-/// Provides in-memory caching with 5-minute TTL for decrypted configs.
+/// Provides in-memory caching with 5-minute TTL for decrypted configs, keyed per tenant.
 /// </summary>
 public class IntegrationConfigService : IIntegrationConfigService
 {
     private readonly TruLoadDbContext _context;
     private readonly IEncryptionService _encryptionService;
     private readonly IMemoryCache _cache;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<IntegrationConfigService> _logger;
 
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
@@ -26,11 +28,13 @@ public class IntegrationConfigService : IIntegrationConfigService
         TruLoadDbContext context,
         IEncryptionService encryptionService,
         IMemoryCache cache,
+        ITenantContext tenantContext,
         ILogger<IntegrationConfigService> logger)
     {
         _context = context;
         _encryptionService = encryptionService;
         _cache = cache;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -135,8 +139,8 @@ public class IntegrationConfigService : IIntegrationConfigService
 
         await _context.SaveChangesAsync(ct);
 
-        // Invalidate cache
-        _cache.Remove($"integration:credentials:{request.ProviderName}");
+        // Invalidate cache for this tenant + provider
+        _cache.Remove($"integration:credentials:{_tenantContext.OrganizationCode}:{request.ProviderName}");
 
         _logger.LogInformation("Integration config created/updated for provider {Provider}", request.ProviderName);
 
@@ -145,7 +149,7 @@ public class IntegrationConfigService : IIntegrationConfigService
 
     public async Task<Dictionary<string, string>> GetDecryptedCredentialsAsync(string providerName, CancellationToken ct = default)
     {
-        var cacheKey = $"integration:credentials:{providerName}";
+        var cacheKey = $"integration:credentials:{_tenantContext.OrganizationCode}:{providerName}";
 
         if (_cache.TryGetValue(cacheKey, out Dictionary<string, string>? cached) && cached != null)
             return cached;
