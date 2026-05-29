@@ -285,6 +285,8 @@ public class ManualReconcileRequest
     public decimal AmountPaid { get; set; }
 
     [Required]
+    [AllowedValues("cash", "mobile_money", "bank_transfer", "card", "pesaflow",
+        ErrorMessage = "Channel must be one of: cash, mobile_money, bank_transfer, card, pesaflow")]
     [MaxLength(50)]
     public string Channel { get; set; } = "cash";
 
