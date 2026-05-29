@@ -1,26 +1,34 @@
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using TruLoad.Backend.Services.Interfaces.Financial;
+using TruLoad.Backend.Services.Interfaces.System;
 
 namespace TruLoad.Backend.Services.Implementations.Financial;
 
 /// <summary>
-/// HTTP client for the treasury-api payment intent endpoints.
-/// Used by commercial tenants (PaymentGateway = "treasury").
-/// Service-to-service auth uses a bearer token from the TREASURY_SERVICE_JWT env var.
+/// HTTP client for treasury-api S2S payment intent endpoints.
+/// Auth: X-API-Key header using credentials from IntegrationConfig DB,
+/// falling back to INTERNAL_SERVICE_KEY env var.
 /// </summary>
 public class TreasuryService : ITreasuryService
 {
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
+    private readonly IIntegrationConfigService _integrationConfigService;
     private readonly ILogger<TreasuryService> _logger;
 
-    public TreasuryService(HttpClient httpClient, IConfiguration configuration, ILogger<TreasuryService> logger)
+    private const string ProviderName = "treasury_service";
+
+    public TreasuryService(
+        HttpClient httpClient,
+        IConfiguration configuration,
+        IIntegrationConfigService integrationConfigService,
+        ILogger<TreasuryService> logger)
     {
         _httpClient = httpClient;
         _configuration = configuration;
+        _integrationConfigService = integrationConfigService;
         _logger = logger;
     }
 
@@ -31,10 +39,7 @@ public class TreasuryService : ITreasuryService
         string description,
         CancellationToken ct = default)
     {
-        var baseUrl = _configuration["Treasury:ApiUrl"]
-            ?? throw new InvalidOperationException("Treasury:ApiUrl is not configured");
-        var serviceJwt = _configuration["Treasury:ServiceJwt"]
-            ?? throw new InvalidOperationException("Treasury:ServiceJwt is not configured");
+        var (apiKey, baseUrl) = await ResolveConfigAsync(ct);
 
         var body = new
         {
@@ -42,19 +47,21 @@ public class TreasuryService : ITreasuryService
             reference_type = "weighing_invoice",
             payment_method = "pending",
             currency = "KES",
-            amount = amountKes,
+            amount = amountKes.ToString("F2"),
             source_service = "truload",
             description
         };
 
-        var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/v1/{tenantSlug}/payments/intents")
+        var request = new HttpRequestMessage(HttpMethod.Post,
+            $"{baseUrl}/api/v1/s2s/{tenantSlug}/payments/intents")
         {
             Content = new StringContent(
                 JsonSerializer.Serialize(body),
                 Encoding.UTF8,
                 "application/json")
         };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", serviceJwt);
+        request.Headers.Add("X-API-Key", apiKey);
+        request.Headers.Add("Idempotency-Key", referenceId);
 
         var response = await _httpClient.SendAsync(request, ct);
         var json = await response.Content.ReadAsStringAsync(ct);
@@ -80,14 +87,11 @@ public class TreasuryService : ITreasuryService
         string intentId,
         CancellationToken ct = default)
     {
-        var baseUrl = _configuration["Treasury:ApiUrl"]
-            ?? throw new InvalidOperationException("Treasury:ApiUrl is not configured");
-        var serviceJwt = _configuration["Treasury:ServiceJwt"]
-            ?? throw new InvalidOperationException("Treasury:ServiceJwt is not configured");
+        var (apiKey, baseUrl) = await ResolveConfigAsync(ct);
 
         var request = new HttpRequestMessage(HttpMethod.Get,
-            $"{baseUrl}/api/v1/{tenantSlug}/payments/intents/{intentId}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", serviceJwt);
+            $"{baseUrl}/api/v1/s2s/{tenantSlug}/payments/intents/{intentId}");
+        request.Headers.Add("X-API-Key", apiKey);
 
         var response = await _httpClient.SendAsync(request, ct);
         var json = await response.Content.ReadAsStringAsync(ct);
@@ -106,6 +110,34 @@ public class TreasuryService : ITreasuryService
             result.Status,
             result.Amount,
             result.Currency);
+    }
+
+    // Resolves (apiKey, baseUrl) from IntegrationConfig DB first, then falls back to env/config.
+    private async Task<(string apiKey, string baseUrl)> ResolveConfigAsync(CancellationToken ct)
+    {
+        string? apiKey = null;
+        string? baseUrl = null;
+
+        try
+        {
+            var creds = await _integrationConfigService.GetDecryptedCredentialsAsync(ProviderName, ct);
+            creds.TryGetValue("api_key", out apiKey);
+            var config = await _integrationConfigService.GetByProviderAsync(ProviderName, ct);
+            baseUrl = config?.BaseUrl;
+        }
+        catch (InvalidOperationException)
+        {
+            _logger.LogDebug("treasury_service integration config not found, using env fallback");
+        }
+
+        apiKey ??= _configuration["INTERNAL_SERVICE_KEY"]
+            ?? throw new InvalidOperationException(
+                "Treasury API key not configured. Set INTERNAL_SERVICE_KEY or configure treasury_service integration.");
+
+        baseUrl ??= _configuration["Treasury:ApiUrl"]
+            ?? throw new InvalidOperationException("Treasury:ApiUrl not configured");
+
+        return (apiKey, baseUrl.TrimEnd('/'));
     }
 
     private static readonly JsonSerializerOptions _jsonOptions = new()

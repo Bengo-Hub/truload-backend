@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Services.Interfaces.Shared;
+using TruLoad.Backend.Services.Interfaces.System;
 
 namespace TruLoad.Backend.Controllers.Financial;
 
@@ -20,17 +21,20 @@ public class TreasuryWebhookController : ControllerBase
 {
     private readonly TruLoadDbContext _dbContext;
     private readonly INotificationService _notificationService;
+    private readonly IIntegrationConfigService _integrationConfigService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<TreasuryWebhookController> _logger;
 
     public TreasuryWebhookController(
         TruLoadDbContext dbContext,
         INotificationService notificationService,
+        IIntegrationConfigService integrationConfigService,
         IConfiguration configuration,
         ILogger<TreasuryWebhookController> logger)
     {
         _dbContext = dbContext;
         _notificationService = notificationService;
+        _integrationConfigService = integrationConfigService;
         _configuration = configuration;
         _logger = logger;
     }
@@ -47,8 +51,16 @@ public class TreasuryWebhookController : ControllerBase
         using var reader = new StreamReader(Request.Body, Encoding.UTF8);
         var rawBody = await reader.ReadToEndAsync();
 
-        // Verify HMAC signature
-        var webhookSecret = _configuration["Treasury:WebhookSecret"];
+        // Resolve webhook secret: IntegrationConfig DB first, then config fallback
+        string? webhookSecret = null;
+        try
+        {
+            var creds = await _integrationConfigService.GetDecryptedCredentialsAsync("treasury_service");
+            creds.TryGetValue("webhook_secret", out webhookSecret);
+        }
+        catch { /* no active config — fall through */ }
+        webhookSecret ??= _configuration["Treasury:WebhookSecret"];
+
         if (!string.IsNullOrWhiteSpace(webhookSecret))
         {
             var signature = Request.Headers["X-Treasury-Signature"].FirstOrDefault();
