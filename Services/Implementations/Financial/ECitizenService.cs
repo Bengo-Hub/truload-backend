@@ -210,7 +210,7 @@ public class ECitizenService : IECitizenService
         // Pesaflow expects amount with two decimal places
         var amount = invoice.AmountDue.ToString("F2");
         var clientIdNumber = request.ClientIdNumber ?? "";
-        var billDesc = "Overload Fine";
+        var billDesc = "Axle Load Overload Fine";
 
         // Log resolved identifiers (non-secret) to aid debugging when Pesaflow rejects service IDs
         _logger.LogDebug("Pesaflow identifiers resolved: apiClientId={ApiClientId}, serviceId={ServiceId}, invoiceNo={InvoiceNo}",
