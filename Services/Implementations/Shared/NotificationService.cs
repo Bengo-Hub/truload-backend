@@ -146,31 +146,32 @@ public class NotificationService : INotificationService
         Dictionary<string, object> templateData,
         string? subject = null,
         CancellationToken cancellationToken = default,
-        string? tenantSlug = null)
+        string? tenantSlug = null,
+        IEnumerable<string>? cc = null)
     {
         try
         {
-            // Start with tenant branding as baseline; caller-provided values take precedence.
-            // Background jobs (no ITenantContext) must pass tenantSlug explicitly so the
-            // notifications-api resolves the correct tenant SMTP and brand settings.
             var branding = await GetTenantBrandingAsync(cancellationToken);
             var enhancedData = branding != null
                 ? new Dictionary<string, object>(branding)
                 : new Dictionary<string, object>();
 
-            // Merge caller-provided data (overrides branding defaults)
             foreach (var kvp in templateData)
                 enhancedData[kvp.Key] = kvp.Value;
 
-            // Always inject recipient identity
             enhancedData["name"] = recipientName;
             enhancedData["recipient_name"] = recipientName;
 
             var metadata = new Dictionary<string, object>();
             if (!string.IsNullOrWhiteSpace(subject))
-            {
                 metadata["subject"] = subject;
-            }
+
+            var ccList = cc?
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Select(e => e.Trim())
+                .Where(e => !e.Equals(recipientEmail, StringComparison.OrdinalIgnoreCase))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
             var request = new NotificationMessageRequest
             {
@@ -179,6 +180,7 @@ public class NotificationService : INotificationService
                 Template = templateName,
                 Data = enhancedData,
                 To = new List<string> { recipientEmail },
+                Cc = ccList?.Count > 0 ? ccList : null,
                 Metadata = metadata.Count > 0 ? metadata : null
             };
 
@@ -191,6 +193,91 @@ public class NotificationService : INotificationService
             return false;
         }
     }
+
+    // Maps workflow key → group name for group-default recipient resolution.
+    private static readonly Dictionary<string, string> WorkflowGroupMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["overloadAlert"]            = "weighing",
+        ["weighingCompleted"]        = "weighing",
+        ["toleranceExceptionRaised"] = "weighing",
+        ["staleWeighingAlert"]       = "weighing",
+        ["qualityDeductionApplied"]  = "weighing",
+        ["caseCreated"]              = "cases",
+        ["caseEscalated"]            = "cases",
+        ["invoiceIssued"]            = "invoices",
+        ["invoiceOverdue"]           = "invoices",
+        ["weighingTicketReady"]      = "receipts",
+    };
+
+    public async Task<bool> SendWorkflowEmailAsync(
+        string workflowKey,
+        string templateName,
+        string? primaryRecipientEmail,
+        string? primaryRecipientName,
+        Dictionary<string, object> templateData,
+        string? subject = null,
+        CancellationToken ct = default,
+        string? tenantSlug = null)
+    {
+        var prefs = await GetWorkflowPreferencesAsync(ct);
+        var item = GetWorkflowItemByKey(prefs, workflowKey);
+        if (!item.EmailEnabled) return false;
+
+        // Collect CC: group defaults + per-workflow CC, excluding primary
+        var cc = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (WorkflowGroupMap.TryGetValue(workflowKey, out var group))
+        {
+            var groupPrefs = GetWorkflowGroupByName(prefs, group);
+            foreach (var e in groupPrefs.DefaultRecipients.Where(e => !string.IsNullOrWhiteSpace(e)))
+                cc.Add(e.Trim());
+        }
+
+        foreach (var e in item.CcRecipients.Where(e => !string.IsNullOrWhiteSpace(e)))
+            cc.Add(e.Trim());
+
+        if (!string.IsNullOrWhiteSpace(primaryRecipientEmail))
+            cc.Remove(primaryRecipientEmail);
+
+        return await SendEmailAsync(
+            templateName,
+            primaryRecipientEmail ?? cc.FirstOrDefault() ?? string.Empty,
+            primaryRecipientName ?? string.Empty,
+            templateData,
+            subject,
+            ct,
+            tenantSlug: tenantSlug,
+            cc: cc.Count > 0 ? (primaryRecipientEmail != null ? cc : cc.Skip(1)) : null);
+    }
+
+    private static WorkflowPreferenceItem GetWorkflowItemByKey(WorkflowPreferencesDto prefs, string key) =>
+        key.ToLowerInvariant() switch
+        {
+            "overloadalert"            => prefs.OverloadAlert,
+            "casecreated"              => prefs.CaseCreated,
+            "caseescalated"            => prefs.CaseEscalated,
+            "invoiceissued"            => prefs.InvoiceIssued,
+            "invoiceoverdue"           => prefs.InvoiceOverdue,
+            "weighingcompleted"        => prefs.WeighingCompleted,
+            "scheduledreport"          => prefs.ScheduledReport,
+            "userregistered"           => prefs.UserRegistered,
+            "passwordchanged"          => prefs.PasswordChanged,
+            "weighingticketready"      => prefs.WeighingTicketReady,
+            "toleranceexceptionraised" => prefs.ToleranceExceptionRaised,
+            "staleweighingalert"       => prefs.StaleWeighingAlert,
+            "qualitydeductionapplied"  => prefs.QualityDeductionApplied,
+            _                          => new WorkflowPreferenceItem(),
+        };
+
+    private static WorkflowGroupPreferences GetWorkflowGroupByName(WorkflowPreferencesDto prefs, string group) =>
+        group switch
+        {
+            "weighing" => prefs.WeighingGroup,
+            "cases"    => prefs.CasesGroup,
+            "invoices" => prefs.InvoicesGroup,
+            "receipts" => prefs.ReceiptsGroup,
+            _          => new WorkflowGroupPreferences(),
+        };
 
     public async Task<bool> SendSmsAsync(
         string phoneNumber,

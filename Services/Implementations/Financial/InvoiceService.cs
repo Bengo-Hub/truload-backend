@@ -201,14 +201,13 @@ public class InvoiceService : IInvoiceService
         {
             try
             {
-                var prefs = await _notificationService.GetWorkflowPreferencesAsync();
-                if (!prefs.InvoiceIssued.EmailEnabled) return;
                 var officer = await _context.Users.AsNoTracking()
                     .Where(u => u.Id == capturedUserId && !string.IsNullOrEmpty(u.Email))
                     .Select(u => new { u.Email, u.FullName })
                     .FirstOrDefaultAsync();
                 if (officer == null) return;
-                await _notificationService.SendEmailAsync(
+                await _notificationService.SendWorkflowEmailAsync(
+                    "invoiceIssued",
                     "truload/invoice_issued",
                     officer.Email!,
                     officer.FullName ?? "Officer",

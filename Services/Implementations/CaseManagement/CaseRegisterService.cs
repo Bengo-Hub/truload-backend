@@ -184,9 +184,8 @@ public class CaseRegisterService : ICaseRegisterService
             {
                 try
                 {
-                    var prefs = await _notificationService.GetWorkflowPreferencesAsync();
-                    if (!prefs.CaseCreated.EmailEnabled) return;
-                    await _notificationService.SendEmailAsync(
+                    await _notificationService.SendWorkflowEmailAsync(
+                        "caseCreated",
                         "truload/case_created",
                         capturedUserEmail,
                         capturedUserName,
@@ -446,14 +445,13 @@ public class CaseRegisterService : ICaseRegisterService
         {
             try
             {
-                var prefs = await _notificationService.GetWorkflowPreferencesAsync();
-                if (!prefs.CaseEscalated.EmailEnabled) return;
                 var manager = await _context.Users.AsNoTracking()
                     .Where(u => u.Id == capturedCaseManagerUserId && !string.IsNullOrEmpty(u.Email))
                     .Select(u => new { u.Email, u.FullName })
                     .FirstOrDefaultAsync();
                 if (manager == null) return;
-                await _notificationService.SendEmailAsync(
+                await _notificationService.SendWorkflowEmailAsync(
+                    "caseEscalated",
                     "truload/case_escalated",
                     manager.Email!,
                     manager.FullName ?? "Case Manager",

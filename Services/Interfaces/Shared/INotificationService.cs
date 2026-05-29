@@ -28,6 +28,22 @@ public interface INotificationService
         Dictionary<string, object> templateData,
         string? subject = null,
         CancellationToken cancellationToken = default,
+        string? tenantSlug = null,
+        IEnumerable<string>? cc = null);
+
+    /// <summary>
+    /// Send a workflow email to the primary recipient plus any configured group-default and per-workflow CC
+    /// recipients. Checks EmailEnabled before sending. Individual user-targeted workflows (userRegistered,
+    /// passwordChanged, weighingTicketReady) should still use SendEmailAsync directly.
+    /// </summary>
+    Task<bool> SendWorkflowEmailAsync(
+        string workflowKey,
+        string templateName,
+        string? primaryRecipientEmail,
+        string? primaryRecipientName,
+        Dictionary<string, object> templateData,
+        string? subject = null,
+        CancellationToken ct = default,
         string? tenantSlug = null);
 
     /// <summary>

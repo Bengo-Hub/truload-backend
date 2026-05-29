@@ -34,10 +34,20 @@ public class WorkflowPreferenceItem
     public bool EmailEnabled { get; set; }
     public bool PushEnabled { get; set; }
     public bool SmsEnabled { get; set; }
+    /// <summary>Additional CC addresses for this specific workflow.</summary>
+    public List<string> CcRecipients { get; set; } = new();
+}
+
+/// <summary>Pool/group-level default recipients shared across all workflows in the group.</summary>
+public class WorkflowGroupPreferences
+{
+    /// <summary>Email addresses that always receive every notification in this workflow group.</summary>
+    public List<string> DefaultRecipients { get; set; } = new();
 }
 
 public class WorkflowPreferencesDto
 {
+    // ── Per-workflow toggles ───────────────────────────────────────────────────
     public WorkflowPreferenceItem OverloadAlert { get; set; } = new() { EmailEnabled = true };
     public WorkflowPreferenceItem CaseCreated { get; set; } = new() { EmailEnabled = true };
     public WorkflowPreferenceItem CaseEscalated { get; set; } = new() { EmailEnabled = true };
@@ -52,6 +62,16 @@ public class WorkflowPreferencesDto
     public WorkflowPreferenceItem ToleranceExceptionRaised { get; set; } = new() { EmailEnabled = true, PushEnabled = true };
     public WorkflowPreferenceItem StaleWeighingAlert { get; set; } = new() { EmailEnabled = true };
     public WorkflowPreferenceItem QualityDeductionApplied { get; set; } = new() { EmailEnabled = true };
+
+    // ── Group-level default recipients ────────────────────────────────────────
+    /// <summary>Weighing: overloadAlert, weighingCompleted, toleranceExceptionRaised, staleWeighingAlert, qualityDeductionApplied</summary>
+    public WorkflowGroupPreferences WeighingGroup { get; set; } = new();
+    /// <summary>Cases: caseCreated, caseEscalated</summary>
+    public WorkflowGroupPreferences CasesGroup { get; set; } = new();
+    /// <summary>Invoices: invoiceIssued, invoiceOverdue</summary>
+    public WorkflowGroupPreferences InvoicesGroup { get; set; } = new();
+    /// <summary>Receipts: weighingTicketReady</summary>
+    public WorkflowGroupPreferences ReceiptsGroup { get; set; } = new();
 }
 
 public class RegisterDeviceTokenRequest

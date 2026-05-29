@@ -1470,9 +1470,6 @@ public class WeighingService : IWeighingService
         {
             try
             {
-                var prefs = await _notificationService.GetWorkflowPreferencesAsync();
-                if (!prefs.OverloadAlert.EmailEnabled) return;
-
                 var officer = await _dbContext.Users.AsNoTracking()
                     .Where(u => u.Id == officerId && !string.IsNullOrEmpty(u.Email))
                     .Select(u => new { u.Email, u.FullName })
@@ -1485,7 +1482,8 @@ public class WeighingService : IWeighingService
                         .Select(s => s.Name).FirstOrDefaultAsync() ?? "Unknown Station"
                     : "Unknown Station";
 
-                await _notificationService.SendEmailAsync(
+                await _notificationService.SendWorkflowEmailAsync(
+                    "overloadAlert",
                     "truload/overload_alert",
                     officer.Email!,
                     officer.FullName ?? "Officer",

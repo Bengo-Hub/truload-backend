@@ -528,8 +528,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         {
             try
             {
-                var prefs = await _notificationService.GetWorkflowPreferencesAsync();
-                if (!prefs.QualityDeductionApplied.EmailEnabled || !transaction.TransporterId.HasValue) return;
+                if (!transaction.TransporterId.HasValue) return;
 
                 var transporter = await _dbContext.Transporters
                     .AsNoTracking()
@@ -546,10 +545,11 @@ public class CommercialWeighingService : ICommercialWeighingService
                     ["reason"] = reason ?? string.Empty,
                 };
 
-                await _notificationService.SendEmailAsync(
+                await _notificationService.SendWorkflowEmailAsync(
+                    workflowKey: "qualityDeductionApplied",
                     templateName: "truload/quality_deduction_applied",
-                    recipientEmail: transporter.Email,
-                    recipientName: transporter.Name ?? "Transporter",
+                    primaryRecipientEmail: transporter.Email,
+                    primaryRecipientName: transporter.Name ?? "Transporter",
                     templateData: data,
                     subject: $"[TruLoad] Quality Deduction Applied — {transaction.TicketNumber ?? transaction.Id.ToString()}");
             }
@@ -932,19 +932,18 @@ public class CommercialWeighingService : ICommercialWeighingService
                     ["weighed_at"] = (transaction.SecondWeightAt ?? DateTime.UtcNow).ToString("yyyy-MM-dd HH:mm"),
                 };
 
-                var prefs = await _notificationService.GetWorkflowPreferencesAsync();
-
-                if (transaction.TransporterId.HasValue && prefs.WeighingTicketReady.EmailEnabled)
+                if (transaction.TransporterId.HasValue)
                 {
                     var transporter = await _dbContext.Transporters
                         .AsNoTracking()
                         .FirstOrDefaultAsync(t => t.Id == transaction.TransporterId.Value);
                     if (transporter != null && !string.IsNullOrWhiteSpace(transporter.Email))
                     {
-                        await _notificationService.SendEmailAsync(
+                        await _notificationService.SendWorkflowEmailAsync(
+                            workflowKey: "weighingTicketReady",
                             templateName: "truload/weight_ticket",
-                            recipientEmail: transporter.Email,
-                            recipientName: transporter.Name ?? "Transporter",
+                            primaryRecipientEmail: transporter.Email,
+                            primaryRecipientName: transporter.Name ?? "Transporter",
                             templateData: templateData,
                             subject: $"[TruLoad] Weight Ticket — {transaction.TicketNumber ?? transaction.Id.ToString()}");
                     }
@@ -952,8 +951,7 @@ public class CommercialWeighingService : ICommercialWeighingService
 
                 var discrepancy = Math.Abs(transaction.WeightDiscrepancyKg ?? 0);
 
-                if (transaction.ToleranceExceeded && !transaction.ToleranceExceptionApproved && org != null
-                    && prefs.ToleranceExceptionRaised.EmailEnabled)
+                if (transaction.ToleranceExceeded && !transaction.ToleranceExceptionApproved && org != null)
                 {
                     var managerRoleNames = new[] { "Commercial Weighing Manager", "Station Manager" };
                     var managers = await _dbContext.Users
@@ -976,14 +974,28 @@ public class CommercialWeighingService : ICommercialWeighingService
                         ["tolerance_display"] = transaction.GvwToleranceDisplay ?? $"{transaction.GvwToleranceKg} kg",
                     };
 
-                    foreach (var manager in managers)
+                    var subject = $"[TruLoad] Tolerance Exception — {transaction.TicketNumber ?? transaction.Id.ToString()}";
+                    // First manager gets the workflow email (includes group defaults + CC in prefs)
+                    var first = managers.FirstOrDefault();
+                    if (first != null)
+                    {
+                        await _notificationService.SendWorkflowEmailAsync(
+                            workflowKey: "toleranceExceptionRaised",
+                            templateName: "truload/tolerance_exception_alert",
+                            primaryRecipientEmail: first.Email!,
+                            primaryRecipientName: first.FullName ?? "Manager",
+                            templateData: alertData,
+                            subject: subject);
+                    }
+                    // Remaining managers each get a direct email
+                    foreach (var manager in managers.Skip(1))
                     {
                         await _notificationService.SendEmailAsync(
                             templateName: "truload/tolerance_exception_alert",
                             recipientEmail: manager.Email!,
                             recipientName: manager.FullName ?? "Manager",
                             templateData: alertData,
-                            subject: $"[TruLoad] Tolerance Exception — {transaction.TicketNumber ?? transaction.Id.ToString()}");
+                            subject: subject);
                     }
                 }
             }

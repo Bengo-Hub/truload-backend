@@ -120,17 +120,32 @@ public class StaleWeighingNotificationJob
                 // resolves the correct SMTP settings and branding (not the platform default).
                 var tenantSlug = org.Code.ToLowerInvariant();
 
-                foreach (var manager in managers)
+                var alertSubject = $"[TruLoad] Stale Weighing Transaction — {plateNo}";
+                // First manager gets workflow email (includes group defaults + per-workflow CC from prefs)
+                var firstManager = managers.First();
+                var sent = await notificationService.SendWorkflowEmailAsync(
+                    workflowKey: "staleWeighingAlert",
+                    templateName: "truload/stale_weighing_alert",
+                    primaryRecipientEmail: firstManager.Email!,
+                    primaryRecipientName: firstManager.FullName ?? "Manager",
+                    templateData: templateData,
+                    subject: alertSubject,
+                    ct: ct,
+                    tenantSlug: tenantSlug);
+                if (!sent)
+                    _logger.LogWarning("[StaleWeighingNotificationJob] Failed to send stale alert to {Email} for transaction {Id}", firstManager.Email, transaction.Id);
+
+                // Remaining managers each get a direct email
+                foreach (var manager in managers.Skip(1))
                 {
-                    var sent = await notificationService.SendEmailAsync(
+                    sent = await notificationService.SendEmailAsync(
                         templateName: "truload/stale_weighing_alert",
                         recipientEmail: manager.Email!,
                         recipientName: manager.FullName ?? "Manager",
                         templateData: templateData,
-                        subject: $"[TruLoad] Stale Weighing Transaction — {plateNo}",
+                        subject: alertSubject,
                         cancellationToken: ct,
                         tenantSlug: tenantSlug);
-
                     if (!sent)
                         _logger.LogWarning("[StaleWeighingNotificationJob] Failed to send stale alert to {Email} for transaction {Id}", manager.Email, transaction.Id);
                 }

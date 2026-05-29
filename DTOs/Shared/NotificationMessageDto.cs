@@ -32,6 +32,11 @@ public class NotificationMessageRequest
     public required List<string> To { get; set; }
 
     /// <summary>
+    /// CC recipients (email channel only). These addresses receive a copy alongside the primary To recipients.
+    /// </summary>
+    public List<string>? Cc { get; set; }
+
+    /// <summary>
     /// Additional metadata (e.g., subject for email, provider preference)
     /// </summary>
     public Dictionary<string, object>? Metadata { get; set; }
