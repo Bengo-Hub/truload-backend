@@ -44,7 +44,7 @@ public class OrganizationPaymentSettingsController : ControllerBase
     }
 
     [HttpPut]
-    [Authorize(Policy = "Permission:config.write")]
+    [Authorize(Policy = "Permission:config.update")]
     [ProducesResponseType(typeof(PaymentSettingsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update([FromBody] PaymentSettingsDto request, CancellationToken ct)
