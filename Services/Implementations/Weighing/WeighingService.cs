@@ -380,6 +380,7 @@ public class WeighingService : IWeighingService
         {
             var previousStatus = transaction.CaptureStatus;
             transaction.CaptureStatus = "captured";
+            transaction.ProcessingTimeSeconds = (int)(DateTime.UtcNow - transaction.WeighedAt).TotalSeconds;
             if (previousStatus == "auto")
             {
                 transaction.CaptureSource = "frontend";
@@ -606,6 +607,8 @@ public class WeighingService : IWeighingService
                         $"Vehicle {transaction.VehicleRegNumber} is overloaded. Case {caseDto.CaseNo} created.",
                         "error",
                         $"/weighing/transactions/{transaction.Id}");
+
+                    _ = SendOverloadAlertEmailAsync(transaction, caseDto.CaseNo);
                 }
             }
             catch (Exception ex)
@@ -787,6 +790,8 @@ public class WeighingService : IWeighingService
                         $"Vehicle {transaction.VehicleRegNumber} is overloaded by {transaction.OverloadKg:N0}kg. Case {caseDto.CaseNo} created.",
                         "error",
                         $"/weighing/transactions/{transaction.Id}");
+
+                    _ = SendOverloadAlertEmailAsync(transaction, caseDto.CaseNo);
                 }
             }
             catch (Exception ex)
@@ -1312,6 +1317,7 @@ public class WeighingService : IWeighingService
         {
             // Update existing auto-weigh record for final capture
             transaction.CaptureStatus = "captured";
+            transaction.ProcessingTimeSeconds = (int)(DateTime.UtcNow - transaction.WeighedAt).TotalSeconds;
             transaction.CaptureSource = request.CaptureSource ?? "frontend";
             transaction.SyncAt = DateTime.UtcNow;
 
@@ -1449,5 +1455,53 @@ public class WeighingService : IWeighingService
             throw new KeyNotFoundException($"Weighing transaction {transactionId} not found");
 
         return await _pdfService.GenerateWeightTicketAsync(transaction);
+    }
+
+    private Task SendOverloadAlertEmailAsync(WeighingTransaction transaction, string caseNo)
+    {
+        var officerId = transaction.WeighedByUserId;
+        var vehicleReg = transaction.VehicleRegNumber;
+        var overloadKg = transaction.OverloadKg;
+        var ticketNo = transaction.TicketNumber;
+        var stationId = transaction.StationId;
+        var transactionId = transaction.Id;
+
+        return Task.Run(async () =>
+        {
+            try
+            {
+                var prefs = await _notificationService.GetWorkflowPreferencesAsync();
+                if (!prefs.OverloadAlert.EmailEnabled) return;
+
+                var officer = await _dbContext.Users.AsNoTracking()
+                    .Where(u => u.Id == officerId && !string.IsNullOrEmpty(u.Email))
+                    .Select(u => new { u.Email, u.FullName })
+                    .FirstOrDefaultAsync();
+                if (officer == null) return;
+
+                var stationName = stationId.HasValue
+                    ? await _dbContext.Stations.AsNoTracking()
+                        .Where(s => s.Id == stationId.Value)
+                        .Select(s => s.Name).FirstOrDefaultAsync() ?? "Unknown Station"
+                    : "Unknown Station";
+
+                await _notificationService.SendEmailAsync(
+                    "truload/overload_alert",
+                    officer.Email!,
+                    officer.FullName ?? "Officer",
+                    new Dictionary<string, object>
+                    {
+                        ["vehicle_reg"] = vehicleReg,
+                        ["overload_kg"] = overloadKg,
+                        ["ticket_no"] = ticketNo,
+                        ["station_name"] = stationName,
+                        ["case_no"] = caseNo
+                    });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send overload alert email for transaction {Id}", transactionId);
+            }
+        });
     }
 }

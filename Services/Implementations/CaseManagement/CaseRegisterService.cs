@@ -173,6 +173,37 @@ public class CaseRegisterService : ICaseRegisterService
             "info",
             $"/cases/{created.Id}");
 
+        if (!string.IsNullOrEmpty(user?.Email))
+        {
+            var capturedCaseNo = caseNo;
+            var capturedUserEmail = user.Email;
+            var capturedUserName = user.FullName ?? "Officer";
+            var capturedStationName = user.Station?.Name ?? "Unknown Station";
+            var capturedViolationDetails = request.ViolationDetails ?? string.Empty;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var prefs = await _notificationService.GetWorkflowPreferencesAsync();
+                    if (!prefs.CaseCreated.EmailEnabled) return;
+                    await _notificationService.SendEmailAsync(
+                        "truload/case_created",
+                        capturedUserEmail,
+                        capturedUserName,
+                        new Dictionary<string, object>
+                        {
+                            ["case_no"] = capturedCaseNo,
+                            ["station_name"] = capturedStationName,
+                            ["violation_details"] = capturedViolationDetails
+                        });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to send case created email for case {CaseNo}", capturedCaseNo);
+                }
+            });
+        }
+
         return MapToDto(created);
     }
 
@@ -408,6 +439,34 @@ public class CaseRegisterService : ICaseRegisterService
             $"Case {caseRegister.CaseNo} has been escalated to you by {userId}.",
             "warning",
             $"/cases/{id}");
+
+        var capturedCaseNo = caseRegister.CaseNo;
+        var capturedCaseManagerUserId = caseManager.UserId;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var prefs = await _notificationService.GetWorkflowPreferencesAsync();
+                if (!prefs.CaseEscalated.EmailEnabled) return;
+                var manager = await _context.Users.AsNoTracking()
+                    .Where(u => u.Id == capturedCaseManagerUserId && !string.IsNullOrEmpty(u.Email))
+                    .Select(u => new { u.Email, u.FullName })
+                    .FirstOrDefaultAsync();
+                if (manager == null) return;
+                await _notificationService.SendEmailAsync(
+                    "truload/case_escalated",
+                    manager.Email!,
+                    manager.FullName ?? "Case Manager",
+                    new Dictionary<string, object>
+                    {
+                        ["case_no"] = capturedCaseNo
+                    });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send case escalated email for case {CaseNo}", capturedCaseNo);
+            }
+        });
 
         return MapToDto(updated);
     }

@@ -243,22 +243,32 @@ public class YardService : IYardService
         }
         if (dateTo.HasValue)
         {
-            var to = DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc);
-            query = query.Where(y => y.EnteredAt <= to);
+            var to = DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc);
+            query = query.Where(y => y.EnteredAt < to);
         }
 
-        var stats = await query
-            .GroupBy(_ => 1)
-            .Select(g => new YardStatisticsDto
-            {
-                TotalPending = g.Count(y => y.Status == "pending"),
-                ReleasedToday = g.Count(y => y.Status == "released" && y.ReleasedAt.HasValue && y.ReleasedAt.Value.Date == today),
-                TotalEntriesToday = g.Count(y => y.EnteredAt.Date == today),
-                Escalated = g.Count(y => y.Status == "escalated")
-            })
-            .FirstOrDefaultAsync(ct);
+        var entries = await query
+            .Select(y => new { y.Status, y.EnteredAt, y.ReleasedAt })
+            .ToListAsync(ct);
 
-        return stats ?? new YardStatisticsDto();
+        if (entries.Count == 0)
+            return new YardStatisticsDto();
+
+        var releasedWithTime = entries
+            .Where(y => y.ReleasedAt.HasValue)
+            .Select(y => (y.ReleasedAt!.Value - y.EnteredAt).TotalHours)
+            .ToList();
+
+        return new YardStatisticsDto
+        {
+            TotalPending = entries.Count(y => y.Status == "pending"),
+            ReleasedToday = entries.Count(y => y.Status == "released" && y.ReleasedAt.HasValue && y.ReleasedAt.Value.Date == today),
+            TotalEntriesToday = entries.Count(y => y.EnteredAt.Date == today),
+            Escalated = entries.Count(y => y.Status == "escalated"),
+            AvgProcessingHours = releasedWithTime.Count > 0
+                ? Math.Round(releasedWithTime.Average(), 1)
+                : 0
+        };
     }
 
     private async Task<bool> GetIsCaseClosedAsync(Guid weighingId, CancellationToken ct)

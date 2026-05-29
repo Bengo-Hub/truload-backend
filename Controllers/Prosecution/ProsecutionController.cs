@@ -263,7 +263,9 @@ public class ProsecutionController : ControllerBase
         var trendData = await _context.ProsecutionCases
             .AsNoTracking()
             .Where(p => p.CreatedAt >= from && p.CreatedAt < to && p.DeletedAt == null)
-            .Where(p => !effectiveStationId.HasValue || p.StationId == effectiveStationId)
+            .Where(p => !effectiveStationId.HasValue || p.StationId == effectiveStationId
+                || (p.StationId == null && p.WeighingId.HasValue &&
+                    _context.WeighingTransactions.Any(wt => wt.Id == p.WeighingId.Value && wt.StationId == effectiveStationId)))
             .GroupBy(p => p.CreatedAt.Date)
             .OrderBy(g => g.Key)
             .Select(g => new { Date = g.Key, Total = g.Count() })
@@ -274,7 +276,9 @@ public class ProsecutionController : ControllerBase
             .AsNoTracking()
             .Where(r => r.DeletedAt == null && r.PaymentDate >= from && r.PaymentDate < to)
             .Where(r => r.Invoice != null && r.Invoice.ProsecutionCaseId != null)
-            .Where(r => !effectiveStationId.HasValue || r.Invoice!.ProsecutionCase!.StationId == effectiveStationId)
+            .Where(r => !effectiveStationId.HasValue || r.Invoice!.ProsecutionCase!.StationId == effectiveStationId
+                || (r.Invoice!.ProsecutionCase!.StationId == null && r.Invoice!.ProsecutionCase!.WeighingId.HasValue &&
+                    _context.WeighingTransactions.Any(wt => wt.Id == r.Invoice!.ProsecutionCase!.WeighingId.Value && wt.StationId == effectiveStationId)))
             .GroupBy(r => r.PaymentDate.Date)
             .Select(g => new { Date = g.Key, Count = g.Count() })
             .ToListAsync(ct);
@@ -310,7 +314,9 @@ public class ProsecutionController : ControllerBase
         var grouped = await _context.ProsecutionCases
             .AsNoTracking()
             .Where(p => p.CreatedAt >= from && p.CreatedAt < to && p.DeletedAt == null)
-            .Where(p => !effectiveStationId.HasValue || p.StationId == effectiveStationId)
+            .Where(p => !effectiveStationId.HasValue || p.StationId == effectiveStationId
+                || (p.StationId == null && p.WeighingId.HasValue &&
+                    _context.WeighingTransactions.Any(wt => wt.Id == p.WeighingId.Value && wt.StationId == effectiveStationId)))
             .GroupBy(p => p.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync(ct);

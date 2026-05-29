@@ -1,6 +1,6 @@
 {
-  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6IjU4ODIwMjYwNDE0MTYwNDE3NzYxODMyNDAifQ.L9mN3DusIwMvsazUX1BXwa8DE5-HQ6lEW_rBFCXmJZE",
-  "expires_at": 1776186779.2311397,
-  "expires_in": 3599,
-  "cached_at": "2026-04-14T16:14:00.231143+00:00"
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6IjI0MDIwMjYwNTIyMTMwNTE3Nzk0NTc5MjYifQ.anSVqx43ltAghx39tXhWmuXWIZvqhLSJbLtxgqK2p0c",
+  "expires_at": 1779461466.7234423,
+  "cached_at": "2026-05-22T13:52:07.723446+00:00",
+  "cache_ttl_s": 3539
 }

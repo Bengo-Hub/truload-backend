@@ -193,6 +193,39 @@ public class InvoiceService : IInvoiceService
             "info",
             $"/financial/invoices/{invoice.Id}");
 
+        var capturedInvoiceNo = invoiceNo;
+        var capturedAmountDue = amountDue;
+        var capturedCurrency = chargingCurrency;
+        var capturedUserId = userId;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var prefs = await _notificationService.GetWorkflowPreferencesAsync();
+                if (!prefs.InvoiceIssued.EmailEnabled) return;
+                var officer = await _context.Users.AsNoTracking()
+                    .Where(u => u.Id == capturedUserId && !string.IsNullOrEmpty(u.Email))
+                    .Select(u => new { u.Email, u.FullName })
+                    .FirstOrDefaultAsync();
+                if (officer == null) return;
+                await _notificationService.SendEmailAsync(
+                    "truload/invoice_issued",
+                    officer.Email!,
+                    officer.FullName ?? "Officer",
+                    new Dictionary<string, object>
+                    {
+                        ["invoice_no"] = capturedInvoiceNo,
+                        ["amount_due"] = capturedAmountDue.ToString("N2"),
+                        ["currency"] = capturedCurrency,
+                        ["due_date"] = DateTime.UtcNow.AddDays(30).ToString("yyyy-MM-dd")
+                    });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send invoice issued email for invoice {InvoiceNo}", capturedInvoiceNo);
+            }
+        });
+
         return (await GetByIdAsync(invoice.Id, ct))!;
     }
 
@@ -297,12 +330,22 @@ public class InvoiceService : IInvoiceService
             .Where(i => i.Currency == "USD")
             .SumAsync(i => i.AmountDue, ct);
 
-        // Per-currency breakdown for receipts
-        var receipts = receiptsBase;
-        var totalAmountPaidKes = await receipts
+        // Per-currency breakdown for receipts — scoped to pending invoices for balance calculation.
+        // receiptsBase includes all receipts in range; using it causes negative balance when all invoices
+        // are paid (pendingAmountDue = 0, allReceipts = 100K → balance = -100K).
+        var receiptsOnPendingBase = _context.Receipts
+            .Where(r => r.DeletedAt == null && r.Invoice != null && r.Invoice.Status == "pending");
+        if (stationId.HasValue)
+            receiptsOnPendingBase = receiptsOnPendingBase.Where(r => r.StationId == stationId.Value);
+        if (dateFrom.HasValue)
+            receiptsOnPendingBase = receiptsOnPendingBase.Where(r => r.PaymentDate >= DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc));
+        if (dateTo.HasValue)
+            receiptsOnPendingBase = receiptsOnPendingBase.Where(r => r.PaymentDate < DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc));
+
+        var totalAmountPaidKes = await receiptsOnPendingBase
             .Where(r => r.Currency == "KES")
             .SumAsync(r => r.AmountPaid, ct);
-        var totalAmountPaidUsd = await receipts
+        var totalAmountPaidUsd = await receiptsOnPendingBase
             .Where(r => r.Currency == "USD")
             .SumAsync(r => r.AmountPaid, ct);
 

@@ -255,11 +255,22 @@ public class ProsecutionService : IProsecutionService
         var defaultForexRateResponse = await _currencyService.GetCurrentRateAsync("USD", "KES", ct);
         var defaultForexRate = defaultForexRateResponse.Rate;
 
+        // Inherit StationId from weighing transaction so station-scoped filters include this case.
+        // HQ users (StationId=null in tenant context) don't have ApplyTenantMetadata populate it,
+        // so we resolve it explicitly from the weighing.
+        Guid? weighingStationId = null;
+        if (caseRegister.WeighingId.HasValue)
+            weighingStationId = await _context.WeighingTransactions
+                .Where(wt => wt.Id == caseRegister.WeighingId.Value)
+                .Select(wt => wt.StationId)
+                .FirstOrDefaultAsync(ct);
+
         var prosecutionCase = new ProsecutionCase
         {
             Id = Guid.NewGuid(),
             CaseRegisterId = caseRegisterId,
             WeighingId = caseRegister.WeighingId,
+            StationId = weighingStationId,
             ProsecutionOfficerId = userId,
             ActId = request.ActId,
             GvwOverloadKg = chargeCalculation?.GvwOverloadKg ?? 0,
@@ -330,7 +341,9 @@ public class ProsecutionService : IProsecutionService
         var cases = _context.ProsecutionCases.Where(p => p.DeletedAt == null);
 
         if (stationId.HasValue)
-            cases = cases.Where(p => p.StationId == stationId.Value);
+            cases = cases.Where(p => p.StationId == stationId.Value
+                || (p.StationId == null && p.WeighingId.HasValue &&
+                    _context.WeighingTransactions.Any(wt => wt.Id == p.WeighingId.Value && wt.StationId == stationId.Value)));
         if (dateFrom.HasValue)
         {
             var from = DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc);

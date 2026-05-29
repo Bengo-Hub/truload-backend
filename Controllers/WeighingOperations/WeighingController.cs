@@ -142,7 +142,7 @@ public class WeighingController : ControllerBase
             if (dateFrom.HasValue)
                 query = query.Where(x => x.wt.WeighedAt >= dateFrom.Value);
             if (dateTo.HasValue)
-                query = query.Where(x => x.wt.WeighedAt <= dateTo.Value.AddDays(1));
+                query = query.Where(x => x.wt.WeighedAt < dateTo.Value.Date.AddDays(1));
             if (stationId.HasValue)
                 query = query.Where(x => x.wt.StationId == stationId.Value);
 
@@ -194,7 +194,7 @@ public class WeighingController : ControllerBase
             if (dateFrom.HasValue)
                 query = query.Where(x => x.wt.WeighedAt >= dateFrom.Value);
             if (dateTo.HasValue)
-                query = query.Where(x => x.wt.WeighedAt <= dateTo.Value.AddDays(1));
+                query = query.Where(x => x.wt.WeighedAt < dateTo.Value.Date.AddDays(1));
             if (stationId.HasValue)
                 query = query.Where(x => x.wt.StationId == stationId.Value);
 
@@ -751,8 +751,8 @@ public class WeighingController : ControllerBase
                 overloadedCount = await q.CountAsync(wt => wt.ControlStatus == "Overloaded" || wt.ControlStatus == "OVERLOAD", ct);
                 warningCount = totalWeighings - legalCount - overloadedCount;
                 complianceRate = totalWeighings > 0 ? Math.Round((decimal)legalCount / totalWeighings * 100, 1) : 0;
-                var directRows = await q.Select(wt => new { wt.TotalFeeUsd, wt.OverloadKg }).ToListAsync(ct);
-                totalFeesKes = directRows.Sum(r => r.TotalFeeUsd);
+                var directRows = await q.Select(wt => new { wt.TotalFeeKes, wt.OverloadKg }).ToListAsync(ct);
+                totalFeesKes = directRows.Sum(r => r.TotalFeeKes);
                 var overloadedRows = directRows.Where(r => r.OverloadKg > 0).ToList();
                 avgOverloadKg = overloadedRows.Any()
                     ? Math.Round((decimal)overloadedRows.Average(r => (double)r.OverloadKg), 0)
@@ -781,9 +781,9 @@ public class WeighingController : ControllerBase
                     todayLegal = await todayQuery.CountAsync(wt => wt.ControlStatus == "Compliant" || wt.ControlStatus == "LEGAL", ct);
                     todayOverloaded = await todayQuery.CountAsync(wt => wt.ControlStatus == "Overloaded" || wt.ControlStatus == "OVERLOAD", ct);
                     var todayRows = await todayQuery
-                        .Select(wt => new { wt.TotalFeeUsd, wt.OverloadKg })
+                        .Select(wt => new { wt.TotalFeeKes, wt.OverloadKg })
                         .ToListAsync(ct);
-                    todayFees = todayRows.Sum(r => r.TotalFeeUsd);
+                    todayFees = todayRows.Sum(r => r.TotalFeeKes);
                     var overloadedToday = todayRows.Where(r => r.OverloadKg > 0).ToList();
                     todayAvgOverload = overloadedToday.Any()
                         ? Math.Round((decimal)overloadedToday.Average(r => (double)r.OverloadKg), 0)
@@ -1175,8 +1175,8 @@ public class WeighingController : ControllerBase
             ScaleTestResult = transaction.ScaleTest?.Result,
             ScaleTestCarriedAt = transaction.ScaleTest?.CarriedAt,
 
-            // Timing
-            TimeTakenSeconds = (int)(transaction.WeighedAt - transaction.CreatedAt).TotalSeconds,
+            // Timing — ProcessingTimeSeconds is set at CaptureStatus="captured"; null for pre-migration records
+            TimeTakenSeconds = transaction.ProcessingTimeSeconds,
 
             // Deck weights from axle groupings (A/B/C/D) — only for static/multideck
             DeckAWeightKg = isMultiDeck ? NullIfZero(axles.Where(a => a.AxleGrouping == "A").Sum(a => a.MeasuredWeightKg)) : null,

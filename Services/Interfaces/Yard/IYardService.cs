@@ -54,4 +54,5 @@ public class YardStatisticsDto
     public int ReleasedToday { get; set; }
     public int TotalEntriesToday { get; set; }
     public int Escalated { get; set; }
+    public double AvgProcessingHours { get; set; }
 }

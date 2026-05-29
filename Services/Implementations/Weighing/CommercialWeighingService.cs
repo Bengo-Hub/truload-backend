@@ -255,6 +255,7 @@ public class CommercialWeighingService : ICommercialWeighingService
 
         transaction.ControlStatus = transaction.ToleranceExceeded ? "ToleranceExceeded" : "Complete";
         transaction.CaptureStatus = "captured";
+        transaction.ProcessingTimeSeconds = (int)(DateTime.UtcNow - transaction.WeighedAt).TotalSeconds;
         transaction.UpdatedAt = DateTime.UtcNow;
 
         // Store per-deck/axle weights for second pass in IndustryMetadata JSON
@@ -393,6 +394,7 @@ public class CommercialWeighingService : ICommercialWeighingService
 
         transaction.ControlStatus = transaction.ToleranceExceeded ? "ToleranceExceeded" : "Complete";
         transaction.CaptureStatus = "captured";
+        transaction.ProcessingTimeSeconds = (int)(DateTime.UtcNow - transaction.WeighedAt).TotalSeconds;
         transaction.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync();

@@ -461,6 +461,12 @@ public class WeighingTransaction : TenantAwareEntity
     [MaxLength(200)]
     public string? SnapshotDestinationName { get; set; }
 
+    /// <summary>
+    /// Time taken from WeighedAt (session start) to CaptureStatus = "captured" (weights finalized).
+    /// Null for records created before this column was added.
+    /// </summary>
+    public int? ProcessingTimeSeconds { get; set; }
+
     // ── Stale Alert Fields ──
     /// <summary>When a stale-transaction alert was last sent for this record. Prevents duplicate emails.</summary>
     public DateTime? StaleAlertSentAt { get; set; }
