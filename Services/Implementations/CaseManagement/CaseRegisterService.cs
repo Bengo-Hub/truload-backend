@@ -89,8 +89,8 @@ public class CaseRegisterService : ICaseRegisterService
         }
         if (criteria.CreatedTo.HasValue)
         {
-            var to = DateTime.SpecifyKind(criteria.CreatedTo.Value, DateTimeKind.Utc);
-            countQuery = countQuery.Where(c => c.CreatedAt <= to);
+            var to = DateTime.SpecifyKind(criteria.CreatedTo.Value.Date.AddDays(1), DateTimeKind.Utc);
+            countQuery = countQuery.Where(c => c.CreatedAt < to);
         }
         if (criteria.EscalatedToCaseManager.HasValue)
             countQuery = countQuery.Where(c => c.EscalatedToCaseManager == criteria.EscalatedToCaseManager.Value);
@@ -447,8 +447,8 @@ public class CaseRegisterService : ICaseRegisterService
         }
         if (dateTo.HasValue)
         {
-            var to = DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc);
-            cases = cases.Where(c => c.CreatedAt <= to);
+            var to = DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc);
+            cases = cases.Where(c => c.CreatedAt < to);
         }
 
         var total = await cases.CountAsync();

@@ -264,8 +264,9 @@ public class InvoiceService : IInvoiceService
         }
         if (dateTo.HasValue)
         {
-            var to = DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc);
-            invoices = invoices.Where(i => i.GeneratedAt <= to);
+            // Use exclusive upper bound for end-of-day so same-day records are included
+            var to = DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc);
+            invoices = invoices.Where(i => i.GeneratedAt < to);
         }
 
         var total = await invoices.CountAsync(ct);
@@ -284,7 +285,7 @@ public class InvoiceService : IInvoiceService
         if (dateFrom.HasValue)
             receiptsBase = receiptsBase.Where(r => r.PaymentDate >= DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc));
         if (dateTo.HasValue)
-            receiptsBase = receiptsBase.Where(r => r.PaymentDate <= DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc));
+            receiptsBase = receiptsBase.Where(r => r.PaymentDate < DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc));
         var totalAmountPaid = await receiptsBase.SumAsync(r => r.AmountPaid, ct);
 
         // Per-currency breakdown for pending invoices

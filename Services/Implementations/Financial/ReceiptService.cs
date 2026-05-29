@@ -327,7 +327,7 @@ public class ReceiptService : IReceiptService
         if (dateFrom.HasValue)
             receipts = receipts.Where(r => r.PaymentDate >= DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc));
         if (dateTo.HasValue)
-            receipts = receipts.Where(r => r.PaymentDate <= DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc));
+            receipts = receipts.Where(r => r.PaymentDate < DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc));
 
         var total = await receipts.CountAsync(ct);
 

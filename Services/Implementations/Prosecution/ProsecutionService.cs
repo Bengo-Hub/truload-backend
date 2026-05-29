@@ -338,8 +338,8 @@ public class ProsecutionService : IProsecutionService
         }
         if (dateTo.HasValue)
         {
-            var to = DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc);
-            cases = cases.Where(p => p.CreatedAt <= to);
+            var to = DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc);
+            cases = cases.Where(p => p.CreatedAt < to);
         }
 
         var total = await cases.CountAsync(ct);

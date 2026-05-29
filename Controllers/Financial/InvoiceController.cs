@@ -9,6 +9,7 @@ using TruLoad.Backend.DTOs.Financial;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
+using TruLoad.Backend.DTOs.Shared;
 
 namespace TruLoad.Backend.Controllers.Financial;
 
@@ -24,17 +25,20 @@ public class InvoiceController : ControllerBase
     private readonly IPdfService _pdfService;
     private readonly ITenantContext _tenantContext;
     private readonly TruLoadDbContext _context;
+    private readonly IReceiptService _receiptService;
 
     public InvoiceController(
         IInvoiceService invoiceService,
         IPdfService pdfService,
         ITenantContext tenantContext,
-        TruLoadDbContext context)
+        TruLoadDbContext context,
+        IReceiptService receiptService)
     {
         _invoiceService = invoiceService;
         _pdfService = pdfService;
         _tenantContext = tenantContext;
         _context = context;
+        _receiptService = receiptService;
     }
 
     /// <summary>
@@ -207,20 +211,21 @@ public class InvoiceController : ControllerBase
             var invoice = await _invoiceService.GetByIdAsync(id, ct);
             if (invoice == null) return NotFound("Invoice not found");
 
-            // Only allow reconciliation of pending invoices
             if (invoice.Status?.ToLower() != "pending")
                 return BadRequest($"Invoice is already {invoice.Status}. Only pending invoices can be reconciled.");
 
-            // Record as paid with provided channel and reference
-            var updated = await _invoiceService.MarkAsPaidAsync(
-                id,
-                request.AmountPaid,
-                request.Channel,
-                request.Reference,
-                request.Notes,
-                GetCurrentUserId(),
-                ct);
+            // Use ReceiptService so case-closing and memo creation run automatically
+            await _receiptService.RecordPaymentAsync(id, new RecordPaymentRequest
+            {
+                AmountPaid = request.AmountPaid,
+                Currency = invoice.Currency,
+                PaymentMethod = request.Channel,
+                TransactionReference = request.Reference,
+                Notes = request.Notes,
+                IdempotencyKey = Guid.NewGuid()
+            }, GetCurrentUserId(), ct);
 
+            var updated = await _invoiceService.GetByIdAsync(id, ct);
             return Ok(updated);
         }
         catch (InvalidOperationException ex)

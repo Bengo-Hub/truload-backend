@@ -234,8 +234,14 @@ public class ECitizenService : IECitizenService
             ["clientEmail"] = request.ClientEmail ?? "",
             ["amountExpected"] = amount,
             ["callBackURLOnSuccess"] = config.CallbackUrl ?? "",
-            ["callBackURLOnFailure"] = config.CallbackFailureUrl ?? "",
-            ["callBackURLOnTimeout"] = config.CallbackTimeoutUrl ?? "",
+            ["callBackURLOnFailure"] = config.CallbackFailureUrl
+                ?? (!string.IsNullOrEmpty(config.AppBaseUrl)
+                    ? $"{config.AppBaseUrl.TrimEnd('/')}/api/v1/payments/callback/failure"
+                    : ""),
+            ["callBackURLOnTimeout"] = config.CallbackTimeoutUrl
+                ?? (!string.IsNullOrEmpty(config.AppBaseUrl)
+                    ? $"{config.AppBaseUrl.TrimEnd('/')}/api/v1/payments/callback/timeout"
+                    : ""),
             ["notificationURL"] = config.WebhookUrl ?? "",
             ["secureHash"] = secureHash,
             ["format"] = "json",
