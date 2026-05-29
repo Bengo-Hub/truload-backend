@@ -103,6 +103,10 @@ public class ReceiptService : IReceiptService
 
         var invoice = await _context.Invoices
             .Include(i => i.Receipts)
+            .Include(i => i.Weighing)
+            .Include(i => i.ProsecutionCase)
+            .ThenInclude(p => p!.Weighing)
+            .ThenInclude(w => w!.Station)
             .Include(i => i.ProsecutionCase)
             .ThenInclude(p => p!.CaseRegister)
             .ThenInclude(c => c!.CaseStatus)
@@ -145,6 +149,10 @@ public class ReceiptService : IReceiptService
             // System-driven flows (webhook/reconcile jobs) may not have an authenticated officer context.
             // Persist null instead of Guid.Empty to avoid FK violations on asp_net_users.
             ReceivedById = userId == Guid.Empty ? null : userId,
+            // Populate StationId for revenue-by-station analytics
+            StationId = invoice.Weighing?.StationId
+                ?? invoice.ProsecutionCase?.Weighing?.StationId
+                ?? invoice.CaseRegister?.StationId,
             PaymentDate = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

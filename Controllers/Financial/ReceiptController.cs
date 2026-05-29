@@ -152,27 +152,18 @@ public class ReceiptController : ControllerBase
         try
         {
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-            var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+            var to = dateTo.HasValue
+                ? DateTime.SpecifyKind(dateTo.Value.Date, DateTimeKind.Utc).AddDays(1).AddTicks(-1)
+                : DateTime.UtcNow;
 
-            var criteria = new ReceiptSearchCriteria
-            {
-                PaymentDateFrom = from,
-                PaymentDateTo = to
-            };
-
-            var result = await _receiptService.SearchAsync(criteria, ct);
-
-            // For now, group by payment method as proxy since we don't have station on receipt
-            // In production, you would join with invoice → weighing → station
-            var grouped = result.Items
-                .GroupBy(r => r.PaymentMethod ?? "Unknown")
-                .Select(g => new
-                {
-                    name = g.Key,
-                    revenue = g.Sum(r => r.AmountPaid),
-                    transactions = g.Count()
-                })
-                .ToList();
+            var grouped = await _context.Receipts
+                .AsNoTracking()
+                .Include(r => r.Station)
+                .Where(r => r.DeletedAt == null && r.PaymentDate >= from && r.PaymentDate <= to)
+                .GroupBy(r => r.Station != null ? r.Station.Name : "Unknown")
+                .Select(g => new { name = g.Key, revenue = g.Sum(r => r.AmountPaid), transactions = g.Count() })
+                .OrderByDescending(g => g.revenue)
+                .ToListAsync(ct);
 
             return Ok(grouped);
         }
@@ -195,18 +186,14 @@ public class ReceiptController : ControllerBase
         try
         {
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddMonths(-12);
-            var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+            var to = dateTo.HasValue
+                ? DateTime.SpecifyKind(dateTo.Value.Date, DateTimeKind.Utc).AddDays(1).AddTicks(-1)
+                : DateTime.UtcNow;
 
-            var criteria = new ReceiptSearchCriteria
-            {
-                PaymentDateFrom = from,
-                PaymentDateTo = to
-            };
-
-            var result = await _receiptService.SearchAsync(criteria, ct);
-
-            var monthly = result.Items
-                .GroupBy(r => new { r.CreatedAt.Year, r.CreatedAt.Month })
+            var monthly = await _context.Receipts
+                .AsNoTracking()
+                .Where(r => r.DeletedAt == null && r.PaymentDate >= from && r.PaymentDate <= to)
+                .GroupBy(r => new { r.PaymentDate.Year, r.PaymentDate.Month })
                 .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
                 .Select(g => new MonthlyRevenueDto
                 {
@@ -214,7 +201,7 @@ public class ReceiptController : ControllerBase
                     Revenue = g.Sum(r => r.AmountPaid),
                     TransactionCount = g.Count()
                 })
-                .ToList();
+                .ToListAsync(ct);
 
             return Ok(monthly);
         }
@@ -237,17 +224,13 @@ public class ReceiptController : ControllerBase
         try
         {
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-            var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+            var to = dateTo.HasValue
+                ? DateTime.SpecifyKind(dateTo.Value.Date, DateTimeKind.Utc).AddDays(1).AddTicks(-1)
+                : DateTime.UtcNow;
 
-            var criteria = new ReceiptSearchCriteria
-            {
-                PaymentDateFrom = from,
-                PaymentDateTo = to
-            };
-
-            var result = await _receiptService.SearchAsync(criteria, ct);
-
-            var methods = result.Items
+            var methods = await _context.Receipts
+                .AsNoTracking()
+                .Where(r => r.DeletedAt == null && r.PaymentDate >= from && r.PaymentDate <= to)
                 .GroupBy(r => r.PaymentMethod ?? "Unknown")
                 .Select(g => new PaymentMethodDistributionDto
                 {
@@ -256,7 +239,7 @@ public class ReceiptController : ControllerBase
                     Count = g.Count(),
                     Percentage = 0
                 })
-                .ToList();
+                .ToListAsync(ct);
 
             var total = methods.Sum(m => m.Amount);
             foreach (var m in methods)

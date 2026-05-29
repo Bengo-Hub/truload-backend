@@ -362,6 +362,8 @@ public class ECitizenService : IECitizenService
 
         _logger.LogInformation("Pesaflow PaymentStatus for {InvoiceRef}: {StatusCode}",
             invoiceRefNo, response.StatusCode);
+        _logger.LogDebug("Pesaflow PaymentStatus raw response for {InvoiceRef}: {Body}",
+            invoiceRefNo, responseBody);
 
         if (!response.IsSuccessStatusCode)
             return null;
@@ -698,6 +700,10 @@ public class ECitizenService : IECitizenService
             {
                 var confirmedStatus = status!;
                 var effectiveAmount = amountPaid ?? confirmedStatus.AmountPaid;
+                // Cap at invoice amount — Pesaflow returns penalty + eCitizen service fee;
+                // only record the invoice amount (the service fee is eCitizen's charge, not ours).
+                if (effectiveAmount > invoice.AmountDue)
+                    effectiveAmount = invoice.AmountDue;
                 // For alternate-ref flows the M-Pesa ref from Pesaflow is the real transaction reference
                 var effectiveReference = confirmedStatus.PaymentReference ?? transactionReference;
 

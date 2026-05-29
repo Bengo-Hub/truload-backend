@@ -253,20 +253,39 @@ public class ProsecutionController : ControllerBase
         CancellationToken ct)
     {
         var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-        var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+        // Use exclusive upper bound (day+1) so records from dateTo day are included
+        var to = dateTo.HasValue
+            ? DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc)
+            : DateTime.UtcNow.Date.AddDays(1).ToUniversalTime();
         var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
         var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
 
         var trendData = await _context.ProsecutionCases
             .AsNoTracking()
-            .Where(p => p.CreatedAt >= from && p.CreatedAt <= to && p.DeletedAt == null)
+            .Where(p => p.CreatedAt >= from && p.CreatedAt < to && p.DeletedAt == null)
             .Where(p => !effectiveStationId.HasValue || p.StationId == effectiveStationId)
             .GroupBy(p => p.CreatedAt.Date)
             .OrderBy(g => g.Key)
             .Select(g => new { Date = g.Key, Total = g.Count() })
             .ToListAsync(ct);
 
-        var trend = trendData.Select(d => new { name = d.Date.ToString("MMM dd"), total = d.Total }).ToList();
+        // Build paid-per-day lookup from receipts in the same date range
+        var paidByDate = await _context.Receipts
+            .AsNoTracking()
+            .Where(r => r.DeletedAt == null && r.PaymentDate >= from && r.PaymentDate < to)
+            .Where(r => r.Invoice != null && r.Invoice.ProsecutionCaseId != null)
+            .Where(r => !effectiveStationId.HasValue || r.Invoice!.ProsecutionCase!.StationId == effectiveStationId)
+            .GroupBy(r => r.PaymentDate.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        var paidLookup = paidByDate.ToDictionary(k => k.Date, v => v.Count);
+        var trend = trendData.Select(d => new
+        {
+            name = d.Date.ToString("MMM dd"),
+            newCases = d.Total,
+            paid = paidLookup.GetValueOrDefault(d.Date, 0)
+        }).ToList();
         return Ok(trend);
     }
 
@@ -282,13 +301,15 @@ public class ProsecutionController : ControllerBase
         CancellationToken ct)
     {
         var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-        var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+        var to = dateTo.HasValue
+            ? DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc)
+            : DateTime.UtcNow.Date.AddDays(1).ToUniversalTime();
         var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
         var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
 
         var grouped = await _context.ProsecutionCases
             .AsNoTracking()
-            .Where(p => p.CreatedAt >= from && p.CreatedAt <= to && p.DeletedAt == null)
+            .Where(p => p.CreatedAt >= from && p.CreatedAt < to && p.DeletedAt == null)
             .Where(p => !effectiveStationId.HasValue || p.StationId == effectiveStationId)
             .GroupBy(p => p.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
@@ -300,7 +321,7 @@ public class ProsecutionController : ControllerBase
             .Select(g => new
             {
                 name = g.Status,
-                count = g.Count,
+                value = g.Count,
                 percentage = total > 0 ? Math.Round((decimal)g.Count / total * 100, 1) : 0
             })
             .ToList();

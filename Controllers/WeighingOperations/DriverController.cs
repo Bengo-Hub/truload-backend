@@ -155,8 +155,8 @@ public class DriverController : ControllerBase
                 {
                     name = d.FullName,
                     idNo = d.IdNoOrPassport,
-                    totalCases = d.TotalCases,
-                    openCases = d.OpenCases,
+                    violations = d.TotalCases,
+                    points = d.OpenCases,
                     totalFeesCharged = d.TotalFeesCharged,
                     lastViolation = d.LastViolationDate,
                     isRepeatOffender = d.IsRepeatOffender,

@@ -843,12 +843,14 @@ public class WeighingController : ControllerBase
             var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
             var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-            var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+            var to = dateTo.HasValue
+                ? DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc)
+                : DateTime.UtcNow.Date.AddDays(1).ToUniversalTime();
 
             // Server-side GROUP BY using composite index IX_weighing_transactions_station_status_date
             var trendData = await _context.WeighingTransactions
                 .AsNoTracking()
-                .Where(wt => wt.WeighedAt >= from && wt.WeighedAt <= to && wt.DeletedAt == null)
+                .Where(wt => wt.WeighedAt >= from && wt.WeighedAt < to && wt.DeletedAt == null)
                 .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId)
                 .GroupBy(wt => wt.WeighedAt.Date)
                 .OrderBy(g => g.Key)
@@ -896,7 +898,9 @@ public class WeighingController : ControllerBase
             var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
             var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-            var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+            var to = dateTo.HasValue
+                ? DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc)
+                : DateTime.UtcNow.Date.AddDays(1).ToUniversalTime();
 
             var cacheKey = $"dashboard:overload-dist:{from:yyyyMMdd}:{to:yyyyMMdd}:{effectiveStationId}";
             var cached = await _cacheService.GetStringAsync(cacheKey, ct);
@@ -906,7 +910,7 @@ public class WeighingController : ControllerBase
             // Project only the overload percentage from DB (avoids loading full records)
             var pcts = await _context.WeighingTransactions
                 .AsNoTracking()
-                .Where(wt => wt.WeighedAt >= from && wt.WeighedAt <= to && wt.DeletedAt == null)
+                .Where(wt => wt.WeighedAt >= from && wt.WeighedAt < to && wt.DeletedAt == null)
                 .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId)
                 .Where(wt => wt.ControlStatus == "OVERLOAD" && wt.GvwPermissibleKg > 0)
                 .Select(wt => (double)wt.OverloadKg / (double)wt.GvwPermissibleKg * 100)
@@ -961,7 +965,9 @@ public class WeighingController : ControllerBase
             var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
             var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
             var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-            var to = dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+            var to = dateTo.HasValue
+                ? DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc)
+                : DateTime.UtcNow.Date.AddDays(1).ToUniversalTime();
 
             var cacheKey = $"dashboard:vehicle-dist:{from:yyyyMMdd}:{to:yyyyMMdd}:{effectiveStationId}";
             var cached = await _cacheService.GetStringAsync(cacheKey, ct);
@@ -971,7 +977,7 @@ public class WeighingController : ControllerBase
             // Server-side GroupBy by WeighingType — avoids loading full records + axle joins
             var data = await _context.WeighingTransactions
                 .AsNoTracking()
-                .Where(wt => wt.WeighedAt >= from && wt.WeighedAt <= to && wt.DeletedAt == null)
+                .Where(wt => wt.WeighedAt >= from && wt.WeighedAt < to && wt.DeletedAt == null)
                 .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId)
                 .GroupBy(wt => wt.WeighingType)
                 .OrderBy(g => g.Key)
