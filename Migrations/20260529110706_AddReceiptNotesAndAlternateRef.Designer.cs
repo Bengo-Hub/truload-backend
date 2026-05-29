@@ -3,6 +3,7 @@ using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Backend.Migrations
 {
     [DbContext(typeof(TruLoadDbContext))]
-    partial class TruLoadDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260529110706_AddReceiptNotesAndAlternateRef")]
+    partial class AddReceiptNotesAndAlternateRef
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -4502,23 +4505,8 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("org_type");
 
-                    b.Property<string>("PaymentBankAccountNumber")
-                        .HasColumnType("text");
-
-                    b.Property<string>("PaymentBankBranch")
-                        .HasColumnType("text");
-
-                    b.Property<string>("PaymentBankName")
-                        .HasColumnType("text");
-
                     b.Property<string>("PaymentGateway")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("PaymentMpesaPaybillNumber")
-                        .HasColumnType("text");
-
-                    b.Property<string>("PaymentMpesaTillNumber")
                         .HasColumnType("text");
 
                     b.Property<string>("PlatformLogoUrl")

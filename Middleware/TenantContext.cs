@@ -30,6 +30,13 @@ public interface ITenantContext
     /// Indicates whether the tenant was resolved from headers (explicit) or fallback.
     /// </summary>
     bool IsExplicitTenant { get; }
+
+    /// <summary>
+    /// True when the request originated from a test domain (kuraweightest.*)
+    /// or includes X-Env: test. Forces routing to the shared truload DB instead of
+    /// any dedicated tenant DB, allowing test access to live-branded domains.
+    /// </summary>
+    bool IsTestMode { get; }
 }
 
 /// <summary>
@@ -41,6 +48,7 @@ public class TenantContext : ITenantContext
     public Guid? StationId { get; set; }
     public string OrganizationCode { get; set; } = string.Empty;
     public bool IsExplicitTenant { get; set; }
+    public bool IsTestMode { get; set; }
 }
 
 /// <summary>
@@ -77,6 +85,21 @@ public class TenantContextMiddleware
             await _next(context);
             return;
         }
+
+        // Resolve test mode before tenant resolution so it can gate DB routing.
+        // Priority: X-Env header > origin/host domain auto-detection.
+        var isTestMode = context.Request.Headers.TryGetValue("X-Env", out var envHeader)
+            && string.Equals(envHeader.FirstOrDefault(), "test", StringComparison.OrdinalIgnoreCase);
+
+        if (!isTestMode)
+        {
+            var origin = context.Request.Headers["Origin"].FirstOrDefault() ?? "";
+            var host = context.Request.Host.Host;
+            isTestMode = origin.Contains("kuraweightest", StringComparison.OrdinalIgnoreCase)
+                || host.Contains("kuraweightest", StringComparison.OrdinalIgnoreCase);
+        }
+
+        tenantContext.IsTestMode = isTestMode;
 
         // Use an inner scope so this lookup doesn't consume the request-scoped TruLoadDbContext.
         // Controllers inject TruLoadDbContext later; the factory reads ITenantContext.OrganizationCode

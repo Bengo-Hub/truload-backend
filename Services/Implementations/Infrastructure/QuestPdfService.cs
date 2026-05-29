@@ -352,9 +352,34 @@ public class QuestPdfService : IPdfService
             orgLogoFile = await ResolveOrgLogoFromStationAsync(stationId.Value);
         }
 
+        // Fetch org payment settings from the station's organization
+        InvoiceDocument.OrgPaymentConfig? paymentConfig = null;
+        if (stationId.HasValue && stationId.Value != Guid.Empty)
+        {
+            var org = await _context.Stations
+                .Where(s => s.Id == stationId.Value)
+                .Select(s => new
+                {
+                    s.Organization.PaymentBankName,
+                    s.Organization.PaymentBankBranch,
+                    s.Organization.PaymentBankAccountNumber,
+                    s.Organization.PaymentMpesaPaybillNumber,
+                    s.Organization.PaymentMpesaTillNumber,
+                })
+                .FirstOrDefaultAsync(ct);
+
+            if (org != null)
+                paymentConfig = new InvoiceDocument.OrgPaymentConfig(
+                    org.PaymentBankName,
+                    org.PaymentBankBranch,
+                    org.PaymentBankAccountNumber,
+                    org.PaymentMpesaPaybillNumber,
+                    org.PaymentMpesaTillNumber);
+        }
+
         // Commercial/treasury invoices should not show the eCitizen secondary logo
         var showSecondaryLogo = invoice.InvoiceType != "commercial_weighing_fee";
-        var document = new InvoiceDocument(invoice, organizationName, orgLogoFile: orgLogoFile, showSecondaryLogo: showSecondaryLogo);
+        var document = new InvoiceDocument(invoice, organizationName, orgLogoFile: orgLogoFile, showSecondaryLogo: showSecondaryLogo, paymentConfig: paymentConfig);
         return document.Generate();
     }
 

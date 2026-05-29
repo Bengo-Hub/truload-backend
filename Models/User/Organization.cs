@@ -114,6 +114,19 @@ public class Organization
     /// </summary>
     public int? OperationalAllowanceKg { get; set; }
 
+    // ── Payment Settings ────────────────────────────────────────────────────────
+
+    /// <summary>Bank name for manual payment instructions on invoices.</summary>
+    public string? PaymentBankName { get; set; }
+    /// <summary>Bank branch for invoice payment instructions.</summary>
+    public string? PaymentBankBranch { get; set; }
+    /// <summary>Bank account number for invoice payment instructions.</summary>
+    public string? PaymentBankAccountNumber { get; set; }
+    /// <summary>M-Pesa Paybill business number for invoice payment instructions.</summary>
+    public string? PaymentMpesaPaybillNumber { get; set; }
+    /// <summary>M-Pesa Till number (alternative to Paybill) for invoice payment instructions.</summary>
+    public string? PaymentMpesaTillNumber { get; set; }
+
     // ── Audit ───────────────────────────────────────────────────────────────────
 
     public bool IsActive { get; set; } = true;

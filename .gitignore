@@ -70,3 +70,24 @@ Tests/e2e/compliancee2e/TEST_CRITICAL.md
 Tests/e2e/compliancee2e/TEST_FATAL.md
 Tests/e2e/test_credentials.py
 Tests/e2e/.truload_auth_cache.json
+
+# Pesaflow / eCitizen e2e: credentials, tokens, and generated request/response logs
+# NEVER commit these — they contain live API keys, secrets, and bearer tokens
+Tests/e2e/.env.production
+Tests/e2e/.env.staging
+Tests/e2e/.env.*.local
+Tests/e2e/.pesaflow_token_cache.json
+Tests/e2e/.truload_auth_cache.json
+Tests/e2e/.expired_test.json
+Tests/e2e/oauth_request_*.json
+Tests/e2e/oauth_response_*.json
+Tests/e2e/pesaflow_local_invoice_*.json
+Tests/e2e/pesaflow_last_post_payload.json
+Tests/e2e/pesaflow_api_test.md
+Tests/e2e/pesaflow_invoice_e2e.md
+Tests/e2e/pesaflow_callback_reconciliation_e2e.md
+# Root-level stray artifacts
+.pesaflow_token_cache.json
+oauth_test_run.json
+oauth_request_*.json
+oauth_response_*.json

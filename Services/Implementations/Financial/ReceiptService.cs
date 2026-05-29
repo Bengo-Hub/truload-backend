@@ -139,6 +139,8 @@ public class ReceiptService : IReceiptService
             Currency = request.Currency,
             PaymentMethod = request.PaymentMethod,
             TransactionReference = request.TransactionReference,
+            AlternateReference = request.AlternateReference,
+            Notes = request.Notes,
             IdempotencyKey = request.IdempotencyKey,
             // System-driven flows (webhook/reconcile jobs) may not have an authenticated officer context.
             // Persist null instead of Guid.Empty to avoid FK violations on asp_net_users.
@@ -386,6 +388,8 @@ public class ReceiptService : IReceiptService
             Currency = receipt.Currency,
             PaymentMethod = receipt.PaymentMethod,
             TransactionReference = receipt.TransactionReference,
+            AlternateReference = receipt.AlternateReference,
+            Notes = receipt.Notes,
             IdempotencyKey = receipt.IdempotencyKey,
             ReceivedById = receipt.ReceivedById,
             ReceivedByName = receipt.ReceivedBy?.FullName,

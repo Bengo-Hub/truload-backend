@@ -59,6 +59,19 @@ public class Receipt : TenantAwareEntity
     /// </summary>
     public string? PaymentChannel { get; set; }
 
+    /// <summary>
+    /// Alternate eCitizen/Pesaflow reference used to verify this payment when
+    /// the original invoice reference could not be used (e.g. iframe blocked on live).
+    /// </summary>
+    public string? AlternateReference { get; set; }
+
+    /// <summary>
+    /// Reconciliation notes explaining why the payment was recorded, especially
+    /// when an alternate reference was used. Required when AlternateReference differs
+    /// from the invoice's pesaflow reference.
+    /// </summary>
+    public string? Notes { get; set; }
+
     // Navigation properties
     public Invoice? Invoice { get; set; }
     public ApplicationUser? ReceivedBy { get; set; }

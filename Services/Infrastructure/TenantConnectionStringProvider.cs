@@ -41,10 +41,15 @@ public sealed class TenantConnectionStringProvider
 
     /// <summary>
     /// Returns the connection string for the given tenant slug.
+    /// When isTestMode is true (X-Env: test or kuraweightest domain), always returns the
+    /// shared default so test requests hit the truload DB regardless of tenant slug.
     /// Falls back to the shared default when no dedicated DB is configured.
     /// </summary>
-    public string Resolve(string? tenantSlug)
+    public string Resolve(string? tenantSlug, bool isTestMode = false)
     {
+        if (isTestMode)
+            return _defaultConnectionString;
+
         if (!string.IsNullOrWhiteSpace(tenantSlug)
             && _tenantMap.TryGetValue(tenantSlug.ToLowerInvariant(), out var tenantCs))
         {

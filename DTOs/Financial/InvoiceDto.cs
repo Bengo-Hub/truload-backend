@@ -30,6 +30,8 @@ public class InvoiceDto
     public decimal? PesaflowAmountNet { get; set; }
     public decimal? PesaflowTotalAmount { get; set; }
     public string? PesaflowSyncStatus { get; set; }
+    /// <summary>"iframe" for test/sandbox, "redirect" for live (eCitizen X-Frame-Options: DENY)</summary>
+    public string PesaflowCheckoutMode { get; set; } = "iframe";
     /// <summary>Invoice type: "enforcement_fine" or "commercial_weighing_fee"</summary>
     public string InvoiceType { get; set; } = "enforcement_fine";
     /// <summary>Treasury payment intent ID (for commercial tenants using treasury gateway)</summary>

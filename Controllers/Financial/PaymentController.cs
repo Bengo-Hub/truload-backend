@@ -74,24 +74,37 @@ public class PaymentController : ControllerBase
 
     /// <summary>
     /// Reconcile a single invoice against Pesaflow.
+    /// Supports an optional AlternateReference for cases where the payment was made
+    /// to a different eCitizen reference (e.g. when the original checkout iframe failed).
+    /// When AlternateReference is provided, Pesaflow is queried using that ref,
+    /// the returned amount is validated against the invoice amount, and Notes is required.
     /// </summary>
-    [HttpPost("api/v1/invoices/{invoiceId}/reconcile")]
+    [HttpPost("api/v1/invoices/{invoiceId}/pesaflow-reconcile")]
     [HasPermission("invoice.update")]
     public async Task<IActionResult> ReconcileInvoice(
         Guid invoiceId,
         [FromBody] ReconcileInvoiceRequest request,
         CancellationToken ct)
     {
-        var success = await _eCitizenService.ReconcileInvoiceAsync(
-            invoiceId, 
-            request.TransactionReference, 
-            request.AmountPaid, 
-            ct);
+        try
+        {
+            var success = await _eCitizenService.ReconcileInvoiceAsync(
+                invoiceId,
+                request.TransactionReference,
+                request.AmountPaid,
+                request.AlternateReference,
+                request.Notes,
+                ct);
 
-        if (!success)
-            return BadRequest(new { success = false, message = "Reconciliation failed. Payment could not be verified on Pesaflow." });
+            if (!success)
+                return BadRequest(new { success = false, message = "Reconciliation failed. Payment could not be verified on Pesaflow." });
 
-        return Ok(new { success = true, message = "Invoice reconciled successfully" });
+            return Ok(new { success = true, message = "Invoice reconciled successfully" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
     }
 }
 
@@ -99,4 +112,15 @@ public class ReconcileInvoiceRequest
 {
     public string? TransactionReference { get; set; }
     public decimal? AmountPaid { get; set; }
+    /// <summary>
+    /// Alternate eCitizen/Pesaflow reference to query when the original could not be paid
+    /// (e.g. iframe blocked). Pesaflow is queried with this ref; amount must match within
+    /// 10% of the invoice amount. Notes is required when this differs from the invoice ref.
+    /// </summary>
+    public string? AlternateReference { get; set; }
+    /// <summary>
+    /// Reconciliation notes — stored on the receipt. Required on the frontend when
+    /// AlternateReference is provided and differs from the original invoice reference.
+    /// </summary>
+    public string? Notes { get; set; }
 }

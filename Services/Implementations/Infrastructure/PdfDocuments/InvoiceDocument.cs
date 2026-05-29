@@ -17,14 +17,23 @@ public class InvoiceDocument : BaseDocument
     private readonly string? _organizationAddress;
     private readonly string _orgLogoFile;
     private readonly bool _showSecondaryLogo;
+    private readonly OrgPaymentConfig? _payment;
 
-    public InvoiceDocument(Invoice invoice, string? organizationName = null, string? organizationAddress = null, string? orgLogoFile = null, bool showSecondaryLogo = true)
+    public record OrgPaymentConfig(
+        string? BankName,
+        string? BankBranch,
+        string? BankAccountNumber,
+        string? MpesaPaybillNumber,
+        string? MpesaTillNumber);
+
+    public InvoiceDocument(Invoice invoice, string? organizationName = null, string? organizationAddress = null, string? orgLogoFile = null, bool showSecondaryLogo = true, OrgPaymentConfig? paymentConfig = null)
     {
         _invoice = invoice;
         _organizationName = organizationName ?? "Kenya Urban Roads Authority (KURA)";
         _organizationAddress = organizationAddress ?? "P.O. Box 00100-1234, Nairobi, Kenya";
         _orgLogoFile = ResolveOrgLogo(orgLogoFile);
         _showSecondaryLogo = showSecondaryLogo;
+        _payment = paymentConfig;
     }
 
     public override byte[] Generate()
@@ -388,26 +397,51 @@ public class InvoiceDocument : BaseDocument
 
     private void ComposePaymentInstructions(IContainer container)
     {
+        var hasBankDetails = !string.IsNullOrWhiteSpace(_payment?.BankAccountNumber);
+        var hasMpesaPaybill = !string.IsNullOrWhiteSpace(_payment?.MpesaPaybillNumber);
+        var hasMpesaTill = !string.IsNullOrWhiteSpace(_payment?.MpesaTillNumber);
+        var hasAnyPaymentConfig = hasBankDetails || hasMpesaPaybill || hasMpesaTill;
+
         container.Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(10).Column(col =>
         {
             col.Item().Text("PAYMENT INSTRUCTIONS").FontSize(10).SemiBold().FontColor(KuraBlue);
+
+            if (!hasAnyPaymentConfig)
+            {
+                col.Item().PaddingTop(5).Text("Contact the authority for payment instructions.").FontSize(9).Italic();
+                return;
+            }
+
             col.Item().PaddingTop(5).Row(row =>
             {
-                row.RelativeItem().Column(bank =>
+                if (hasBankDetails)
                 {
-                    bank.Item().Text("Bank Transfer:").FontSize(9).SemiBold();
-                    bank.Item().Text("Bank: Kenya Commercial Bank").FontSize(9);
-                    bank.Item().Text("Account: 1234567890").FontSize(9);
-                    bank.Item().Text("Branch: Nairobi Main").FontSize(9);
-                    bank.Item().Text($"Reference: {_invoice.PesaflowInvoiceNumber ?? _invoice.InvoiceNo}").FontSize(9).SemiBold();
-                });
-                row.RelativeItem().Column(mpesa =>
+                    row.RelativeItem().Column(bank =>
+                    {
+                        bank.Item().Text("Bank Transfer:").FontSize(9).SemiBold();
+                        if (!string.IsNullOrWhiteSpace(_payment!.BankName))
+                            bank.Item().Text($"Bank: {_payment.BankName}").FontSize(9);
+                        bank.Item().Text($"Account: {_payment.BankAccountNumber}").FontSize(9);
+                        if (!string.IsNullOrWhiteSpace(_payment.BankBranch))
+                            bank.Item().Text($"Branch: {_payment.BankBranch}").FontSize(9);
+                        bank.Item().Text($"Reference: {_invoice.PesaflowInvoiceNumber ?? _invoice.InvoiceNo}").FontSize(9).SemiBold();
+                    });
+                }
+
+                if (hasMpesaPaybill || hasMpesaTill)
                 {
-                    mpesa.Item().Text("M-Pesa Paybill:").FontSize(9).SemiBold();
-                    mpesa.Item().Text("Business No: 123456").FontSize(9);
-                    mpesa.Item().Text($"Account: {_invoice.PesaflowInvoiceNumber ?? _invoice.InvoiceNo}").FontSize(9);
-                    mpesa.Item().PaddingTop(3).Text("Till No: 654321").FontSize(9).SemiBold();
-                });
+                    row.RelativeItem().Column(mpesa =>
+                    {
+                        mpesa.Item().Text("M-Pesa:").FontSize(9).SemiBold();
+                        if (hasMpesaPaybill)
+                        {
+                            mpesa.Item().Text($"Business No: {_payment!.MpesaPaybillNumber}").FontSize(9);
+                            mpesa.Item().Text($"Account: {_invoice.PesaflowInvoiceNumber ?? _invoice.InvoiceNo}").FontSize(9);
+                        }
+                        if (hasMpesaTill)
+                            mpesa.Item().PaddingTop(hasMpesaPaybill ? 3 : 0).Text($"Till No: {_payment!.MpesaTillNumber}").FontSize(9).SemiBold();
+                    });
+                }
             });
         });
     }

@@ -20,6 +20,8 @@ public class ReceiptDto
     public string? ReceivedByName { get; set; }
     public DateTime PaymentDate { get; set; }
     public string? PaymentChannel { get; set; }
+    public string? AlternateReference { get; set; }
+    public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -48,6 +50,18 @@ public class RecordPaymentRequest
     /// External transaction reference (e.g., M-Pesa code)
     /// </summary>
     public string? TransactionReference { get; set; }
+
+    /// <summary>
+    /// Alternate eCitizen/Pesaflow reference used to verify this payment when the
+    /// original invoice ref could not be used. Stored for audit trail.
+    /// </summary>
+    public string? AlternateReference { get; set; }
+
+    /// <summary>
+    /// Reconciliation notes — required when AlternateReference differs from the
+    /// invoice's Pesaflow reference.
+    /// </summary>
+    public string? Notes { get; set; }
 
     /// <summary>
     /// Client-generated idempotency key for duplicate prevention

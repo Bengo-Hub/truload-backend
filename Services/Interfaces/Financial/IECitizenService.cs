@@ -17,5 +17,5 @@ public interface IECitizenService
     bool VerifyWebhookToken(string tokenHash, string expectedData, string apiKey);
     Task<WebhookProcessingResult> ProcessWebhookNotificationAsync(PesaflowIpnPayload payload, CancellationToken ct = default);
     Task<int> ReconcileUnpaidInvoicesAsync(CancellationToken ct = default);
-    Task<bool> ReconcileInvoiceAsync(Guid invoiceId, string? transactionReference, decimal? amountPaid, CancellationToken ct = default);
+    Task<bool> ReconcileInvoiceAsync(Guid invoiceId, string? transactionReference, decimal? amountPaid, string? alternateReference = null, string? notes = null, CancellationToken ct = default);
 }

@@ -30,6 +30,11 @@ public class PesaflowInvoiceResponse
     public decimal? TotalAmount { get; set; }
     public string? Currency { get; set; }
     public string? Message { get; set; }
+    /// <summary>
+    /// "iframe" for test/sandbox environments (eCitizen allows embedding).
+    /// "redirect" for production (live eCitizen returns X-Frame-Options: DENY — must open in new tab).
+    /// </summary>
+    public string CheckoutMode { get; set; } = "iframe";
 }
 
 /// <summary>

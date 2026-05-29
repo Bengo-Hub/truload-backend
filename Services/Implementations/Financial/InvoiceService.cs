@@ -39,7 +39,9 @@ public class InvoiceService : IInvoiceService
             .Include(i => i.Receipts)
             .FirstOrDefaultAsync(i => i.Id == id && i.DeletedAt == null, ct);
 
-        return invoice == null ? null : MapToDto(invoice);
+        if (invoice == null) return null;
+        var checkoutMode = await ResolveCheckoutModeAsync(ct);
+        return MapToDto(invoice, checkoutMode);
     }
 
     public async Task<IEnumerable<InvoiceDto>> GetByProsecutionIdAsync(Guid prosecutionCaseId, CancellationToken ct = default)
@@ -52,7 +54,8 @@ public class InvoiceService : IInvoiceService
             .OrderByDescending(i => i.GeneratedAt)
             .ToListAsync(ct);
 
-        return invoices.Select(MapToDto);
+        var checkoutMode = await ResolveCheckoutModeAsync(ct);
+        return invoices.Select(i => MapToDto(i, checkoutMode));
     }
 
     public async Task<PagedResponse<InvoiceDto>> SearchAsync(InvoiceSearchCriteria criteria, CancellationToken ct = default)
@@ -113,8 +116,9 @@ public class InvoiceService : IInvoiceService
             .Take(criteria.PageSize)
             .ToListAsync(ct);
 
+        var checkoutMode = await ResolveCheckoutModeAsync(ct);
         return PagedResponse<InvoiceDto>.Create(
-            invoices.Select(MapToDto).ToList(),
+            invoices.Select(i => MapToDto(i, checkoutMode)).ToList(),
             totalCount,
             criteria.PageNumber,
             criteria.PageSize);
@@ -124,8 +128,20 @@ public class InvoiceService : IInvoiceService
     {
         var prosecutionCase = await _context.ProsecutionCases
             .Include(p => p.Act)
+            .Include(p => p.Weighing).ThenInclude(w => w!.Driver)
             .FirstOrDefaultAsync(p => p.Id == prosecutionCaseId && p.DeletedAt == null, ct)
             ?? throw new InvalidOperationException($"Prosecution case {prosecutionCaseId} not found");
+
+        // Enforcement invoices require driver details for eCitizen invoice generation
+        var driver = prosecutionCase.Weighing?.Driver;
+        if (driver == null)
+            throw new InvalidOperationException(
+                "A driver must be linked to this weighing transaction before generating an invoice. Please capture driver details first.");
+
+        if (string.IsNullOrWhiteSpace(driver.IdNumber))
+            throw new InvalidOperationException(
+                $"Driver '{driver.FullNames} {driver.Surname}' is missing a National ID number. " +
+                "National ID is required for eCitizen invoice generation. Please update driver details first.");
 
         // Check for existing pending invoice
         var existingInvoice = await _context.Invoices
@@ -366,6 +382,7 @@ public class InvoiceService : IInvoiceService
             Currency = invoice.Currency,
             PaymentMethod = channel,
             TransactionReference = reference,
+            Notes = notes,
             IdempotencyKey = Guid.NewGuid(),
             ReceivedById = userId == Guid.Empty ? null : userId,
             PaymentChannel = channel,
@@ -394,7 +411,17 @@ public class InvoiceService : IInvoiceService
         return $"INV-{year}-{(count + 1):D6}";
     }
 
-    private InvoiceDto MapToDto(Invoice invoice)
+    private async Task<string> ResolveCheckoutModeAsync(CancellationToken ct)
+    {
+        var env = await _context.IntegrationConfigs
+            .Where(c => c.ProviderName == "ecitizen_pesaflow" && c.IsActive)
+            .Select(c => c.Environment)
+            .FirstOrDefaultAsync(ct);
+        return (env?.ToLowerInvariant() == "production" || env?.ToLowerInvariant() == "live")
+            ? "redirect" : "iframe";
+    }
+
+    private InvoiceDto MapToDto(Invoice invoice, string checkoutMode = "iframe")
     {
         var amountPaid = invoice.Receipts?.Where(r => r.DeletedAt == null).Sum(r => r.AmountPaid) ?? 0;
         var paidAt = invoice.Receipts?
@@ -428,6 +455,7 @@ public class InvoiceService : IInvoiceService
             PesaflowAmountNet = invoice.PesaflowAmountNet,
             PesaflowTotalAmount = invoice.PesaflowTotalAmount,
             PesaflowSyncStatus = invoice.PesaflowSyncStatus,
+            PesaflowCheckoutMode = checkoutMode,
             InvoiceType = invoice.InvoiceType ?? "enforcement_fine",
             TreasuryIntentId = invoice.TreasuryIntentId,
             TreasuryIntentStatus = invoice.TreasuryIntentStatus,

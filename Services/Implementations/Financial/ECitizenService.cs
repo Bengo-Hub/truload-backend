@@ -294,6 +294,9 @@ public class ECitizenService : IECitizenService
             invoice.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync(ct);
 
+            var env = config.Environment?.ToLowerInvariant() ?? "test";
+            var checkoutMode = (env == "production" || env == "live") ? "redirect" : "iframe";
+
             return new PesaflowInvoiceResponse
             {
                 Success = true,
@@ -303,7 +306,8 @@ public class ECitizenService : IECitizenService
                 AmountNet = amountNet,
                 TotalAmount = amountExpected,
                 Currency = invoice.Currency,
-                Message = "Invoice created on Pesaflow via iframe endpoint"
+                Message = "Invoice created on Pesaflow via iframe endpoint",
+                CheckoutMode = checkoutMode
             };
         }
         catch (Exception ex)
@@ -634,7 +638,7 @@ public class ECitizenService : IECitizenService
         return reconciled;
     }
 
-    public async Task<bool> ReconcileInvoiceAsync(Guid invoiceId, string? transactionReference, decimal? amountPaid, CancellationToken ct = default)
+    public async Task<bool> ReconcileInvoiceAsync(Guid invoiceId, string? transactionReference, decimal? amountPaid, string? alternateReference = null, string? notes = null, CancellationToken ct = default)
     {
         var invoice = await _context.Invoices
             .Include(i => i.Receipts)
@@ -650,14 +654,45 @@ public class ECitizenService : IECitizenService
 
         try
         {
-            // Query Pesaflow status
-            var status = await QueryPaymentStatusForAnyReferenceAsync(invoice, transactionReference, ct);
+            // When an alternate reference is provided (payment went to a different eCitizen ref),
+            // query Pesaflow directly with that ref and validate the amount matches the invoice
+            // before reconciling under the original invoice reference.
+            var useAlternateRef = !string.IsNullOrWhiteSpace(alternateReference)
+                && !string.Equals(alternateReference.Trim(), invoice.PesaflowInvoiceNumber, StringComparison.OrdinalIgnoreCase);
+
+            PesaflowPaymentStatusResponse? status;
+            if (useAlternateRef)
+            {
+                status = await QueryPaymentStatusAsync(alternateReference!.Trim(), ct);
+
+                if (!IsPaymentConfirmed(status))
+                {
+                    _logger.LogWarning("Alternate reference {AltRef} for invoice {InvoiceNo} is not confirmed paid on Pesaflow. Status: {Status}",
+                        alternateReference, invoice.InvoiceNo, status?.Status ?? "NULL");
+                    return false;
+                }
+
+                // Validate that the paid amount is within 10% of the invoice amount
+                // (accommodates service charges and minor rounding differences)
+                var tolerance = Math.Max(invoice.AmountDue * 0.10m, 100m);
+                if (Math.Abs(status!.AmountPaid - invoice.AmountDue) > tolerance)
+                {
+                    throw new InvalidOperationException(
+                        $"Alternate reference {alternateReference} was paid {invoice.Currency} {status.AmountPaid:N2} " +
+                        $"but invoice amount is {invoice.Currency} {invoice.AmountDue:N2} — " +
+                        $"difference exceeds tolerance ({invoice.Currency} {tolerance:N2}). Please verify the reference.");
+                }
+            }
+            else
+            {
+                status = await QueryPaymentStatusForAnyReferenceAsync(invoice, transactionReference, ct);
+            }
 
             if (IsPaymentConfirmed(status))
             {
                 var confirmedStatus = status!;
-                // Check if receipt already exists
                 var effectiveAmount = amountPaid ?? confirmedStatus.AmountPaid;
+                // For alternate-ref flows the M-Pesa ref from Pesaflow is the real transaction reference
                 var effectiveReference = confirmedStatus.PaymentReference ?? transactionReference;
 
                 if (string.IsNullOrEmpty(effectiveReference))
@@ -677,6 +712,9 @@ public class ECitizenService : IECitizenService
                         Currency = invoice.Currency,
                         PaymentMethod = "pesaflow",
                         TransactionReference = effectiveReference,
+                        // Preserve the alternate ref and notes on the receipt for audit trail
+                        AlternateReference = useAlternateRef ? alternateReference : null,
+                        Notes = notes,
                         IdempotencyKey = Guid.NewGuid()
                     };
 
@@ -701,12 +739,12 @@ public class ECitizenService : IECitizenService
                     await EnsureCaseClosedForPaidInvoiceAsync(invoice, Guid.Empty, ct);
                     await _context.SaveChangesAsync(ct);
 
-                    _logger.LogInformation("Successfully reconciled invoice {InvoiceNo} manually", invoice.InvoiceNo);
+                    _logger.LogInformation("Successfully reconciled invoice {InvoiceNo} manually (alternateRef={AltRef})",
+                        invoice.InvoiceNo, useAlternateRef ? alternateReference : "none");
                     return true;
                 }
                 else if (existingReceipt)
                 {
-                    // If receipt exists but invoice wasn't marked paid, update it now
                     if (invoice.Status != "paid")
                     {
                         invoice.Status = "paid";
@@ -717,8 +755,8 @@ public class ECitizenService : IECitizenService
                     return true;
                 }
             }
-            
-            _logger.LogWarning("Pesaflow did not confirm payment for invoice {InvoiceNo}. Status: {Status}", 
+
+            _logger.LogWarning("Pesaflow did not confirm payment for invoice {InvoiceNo}. Status: {Status}",
                 invoice.InvoiceNo, status?.Status ?? "NULL");
             return false;
         }

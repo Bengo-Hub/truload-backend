@@ -215,7 +215,7 @@ builder.Services.AddDbContext<TruLoadDbContext>((serviceProvider, options) =>
     var orgCode = tenantCtx?.OrganizationCode;
     var tenantSlug = !string.IsNullOrWhiteSpace(orgCode) ? orgCode.ToLower() : null;
 
-    var resolvedConnString = tenantConnProvider.Resolve(tenantSlug);
+    var resolvedConnString = tenantConnProvider.Resolve(tenantSlug, tenantCtx?.IsTestMode ?? false);
     options.UseNpgsql(resolvedConnString, npgsqlOptions => npgsqlOptions.UseVector());
 });
 
