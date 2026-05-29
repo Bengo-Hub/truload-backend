@@ -156,14 +156,29 @@ public class ReceiptController : ControllerBase
                 ? DateTime.SpecifyKind(dateTo.Value.Date, DateTimeKind.Utc).AddDays(1).AddTicks(-1)
                 : DateTime.UtcNow;
 
-            var grouped = await _context.Receipts
+            var rawReceipts = await _context.Receipts
                 .AsNoTracking()
                 .Include(r => r.Station)
                 .Where(r => r.DeletedAt == null && r.PaymentDate >= from && r.PaymentDate <= to)
-                .GroupBy(r => r.Station != null ? r.Station.Name : "Unknown")
-                .Select(g => new { name = g.Key, revenue = g.Sum(r => r.AmountPaid), transactions = g.Count() })
-                .OrderByDescending(g => g.revenue)
+                .Select(r => new { StationId = r.StationId, StationName = r.Station != null ? r.Station.Name : "Unknown", r.Currency, r.AmountPaid })
                 .ToListAsync(ct);
+
+            var grouped = rawReceipts
+                .GroupBy(r => new { r.StationId, r.StationName })
+                .Select(g => new RevenueByStationDto
+                {
+                    StationId = g.Key.StationId ?? Guid.Empty,
+                    StationName = g.Key.StationName,
+                    RevenueKes = g.Where(r => r.Currency == "KES").Sum(r => r.AmountPaid),
+                    RevenueUsd = g.Where(r => r.Currency == "USD").Sum(r => r.AmountPaid),
+                    Count = g.Count()
+                })
+                .OrderByDescending(g => g.RevenueKes + g.RevenueUsd)
+                .ToList();
+
+            var total = grouped.Sum(g => g.RevenueKes + g.RevenueUsd);
+            foreach (var g in grouped)
+                g.Percentage = total > 0 ? Math.Round((g.RevenueKes + g.RevenueUsd) / total * 100, 1) : 0;
 
             return Ok(grouped);
         }
@@ -190,18 +205,23 @@ public class ReceiptController : ControllerBase
                 ? DateTime.SpecifyKind(dateTo.Value.Date, DateTimeKind.Utc).AddDays(1).AddTicks(-1)
                 : DateTime.UtcNow;
 
-            var monthly = await _context.Receipts
+            var rawMonthly = await _context.Receipts
                 .AsNoTracking()
                 .Where(r => r.DeletedAt == null && r.PaymentDate >= from && r.PaymentDate <= to)
-                .GroupBy(r => new { r.PaymentDate.Year, r.PaymentDate.Month })
+                .Select(r => new { r.PaymentDate.Year, r.PaymentDate.Month, r.Currency, r.AmountPaid })
+                .ToListAsync(ct);
+
+            var monthly = rawMonthly
+                .GroupBy(r => new { r.Year, r.Month })
                 .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
                 .Select(g => new MonthlyRevenueDto
                 {
                     Name = new DateTime(g.Key.Year, g.Key.Month, 1, 0, 0, 0, DateTimeKind.Utc).ToString("MMM yyyy"),
-                    Revenue = g.Sum(r => r.AmountPaid),
+                    RevenueKes = g.Where(r => r.Currency == "KES").Sum(r => r.AmountPaid),
+                    RevenueUsd = g.Where(r => r.Currency == "USD").Sum(r => r.AmountPaid),
                     TransactionCount = g.Count()
                 })
-                .ToListAsync(ct);
+                .ToList();
 
             return Ok(monthly);
         }

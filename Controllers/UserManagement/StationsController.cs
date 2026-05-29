@@ -227,24 +227,50 @@ public class StationsController : ControllerBase
         try
         {
             var orgId = _tenantContext.OrganizationId;
-            var stationIds = (await _stationRepository.GetByOrganizationIdAsync(orgId, ct))
-                .Select(s => s.Id)
-                .ToHashSet();
+            var stations = await _stationRepository.GetByOrganizationIdAsync(orgId, ct);
+            var stationMap = stations.ToDictionary(s => s.Id, s => s.Name);
+            var stationIds = stationMap.Keys.ToHashSet();
 
-            var result = await _context.MvStationPerformanceScorecards
+            var from = (dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30)).Date;
+            var toExclusive = (dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow).Date.AddDays(1);
+
+            var rows = await _context.WeighingTransactions
                 .AsNoTracking()
-                .Where(s => s.StationId.HasValue && stationIds.Contains(s.StationId.Value))
-                .Select(s => new
+                .Where(wt => wt.DeletedAt == null
+                    && wt.StationId.HasValue && stationIds.Contains(wt.StationId.Value)
+                    && wt.WeighedAt >= from && wt.WeighedAt < toExclusive)
+                .Select(wt => new
                 {
-                    name = s.StationName,
-                    stationCode = s.StationCode,
-                    weighings = s.TotalWeighings,
-                    weighings30d = s.WeighingsLast30Days,
-                    compliance = s.ComplianceRatePct,
-                    revenue = s.TotalRevenueUsd ?? 0,
-                    revenue30d = s.RevenueLast30Days ?? 0
+                    wt.StationId,
+                    wt.ControlStatus,
+                    wt.TotalFeeKes,
+                    wt.TotalFeeUsd,
+                    wt.ProcessingTimeSeconds
                 })
                 .ToListAsync(ct);
+
+            var result = rows
+                .GroupBy(r => r.StationId!.Value)
+                .Select(g =>
+                {
+                    var total = g.Count();
+                    var overloaded = g.Count(r => r.ControlStatus == "Overloaded" || r.ControlStatus == "OVERLOAD");
+                    var legal = g.Count(r => r.ControlStatus == "Compliant" || r.ControlStatus == "LEGAL");
+                    var processingTimes = g.Where(r => r.ProcessingTimeSeconds.HasValue).Select(r => r.ProcessingTimeSeconds!.Value).ToList();
+                    return new StationPerformanceDto
+                    {
+                        StationId = g.Key,
+                        StationName = stationMap.TryGetValue(g.Key, out var name) ? name : "Unknown",
+                        TotalWeighings = total,
+                        OverloadedCount = overloaded,
+                        ComplianceRate = total > 0 ? Math.Round((decimal)legal / total * 100, 1) : 0,
+                        RevenueKes = g.Sum(r => r.TotalFeeKes),
+                        RevenueUsd = g.Sum(r => r.TotalFeeUsd),
+                        AvgProcessingTime = processingTimes.Any() ? Math.Round((decimal)processingTimes.Average(), 0) : 0
+                    };
+                })
+                .OrderByDescending(s => s.RevenueKes + s.RevenueUsd)
+                .ToList();
 
             return Ok(result);
         }

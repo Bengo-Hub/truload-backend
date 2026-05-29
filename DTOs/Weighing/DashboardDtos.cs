@@ -11,6 +11,7 @@ public class WeighingStatisticsDto
     public int WarningCount { get; set; }
     public decimal ComplianceRate { get; set; }
     public decimal TotalFeesKes { get; set; }
+    public decimal TotalFeesUsd { get; set; }
     public decimal AvgOverloadKg { get; set; }
 }
 
@@ -45,7 +46,8 @@ public class StationPerformanceDto
     public int TotalWeighings { get; set; }
     public int OverloadedCount { get; set; }
     public decimal ComplianceRate { get; set; }
-    public decimal Revenue { get; set; }
+    public decimal RevenueKes { get; set; }
+    public decimal RevenueUsd { get; set; }
     public decimal AvgProcessingTime { get; set; }
 }
 
@@ -56,7 +58,8 @@ public class RevenueByStationDto
 {
     public Guid StationId { get; set; }
     public string StationName { get; set; } = string.Empty;
-    public decimal Revenue { get; set; }
+    public decimal RevenueKes { get; set; }
+    public decimal RevenueUsd { get; set; }
     public int Count { get; set; }
     public decimal Percentage { get; set; }
 }
@@ -67,7 +70,8 @@ public class RevenueByStationDto
 public class MonthlyRevenueDto
 {
     public string Name { get; set; } = string.Empty; // "Jan 2024"
-    public decimal Revenue { get; set; }
+    public decimal RevenueKes { get; set; }
+    public decimal RevenueUsd { get; set; }
     public int TransactionCount { get; set; }
 }
 
