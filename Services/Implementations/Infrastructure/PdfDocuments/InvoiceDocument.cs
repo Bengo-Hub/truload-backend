@@ -45,12 +45,12 @@ public class InvoiceDocument : BaseDocument
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(1.0f, Unit.Centimetre);
+                page.Margin(0.7f, Unit.Centimetre);
                 page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(9.5f).FontFamily("Inter"));
+                page.DefaultTextStyle(x => x.FontSize(9f).FontFamily("Inter"));
 
                 page.Header().Element(ComposeHeader);
-                page.Content().PaddingVertical(8).Element(ComposeContent);
+                page.Content().PaddingVertical(4).Element(ComposeContent);
                 page.Footer().Element(ComposeOfficialFooter);
             });
         }).GeneratePdf();
@@ -69,17 +69,17 @@ public class InvoiceDocument : BaseDocument
                 row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (primaryLogo != null)
-                        logoCol.Item().Height(LogoHeight).Image(primaryLogo, ImageScaling.FitArea);
+                        logoCol.Item().Height(65).Image(primaryLogo, ImageScaling.FitArea);
                 });
 
                 row.RelativeItem().PaddingHorizontal(5).Column(org =>
                 {
                     org.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
-                        .FontSize(10).SemiBold();
+                        .FontSize(9).SemiBold();
                     if (!string.IsNullOrWhiteSpace(_organizationName))
-                        org.Item().AlignCenter().Text(_organizationName).FontSize(13).SemiBold().FontColor(KuraBlue);
+                        org.Item().AlignCenter().Text(_organizationName).FontSize(12).SemiBold().FontColor(KuraBlue);
                     if (!string.IsNullOrWhiteSpace(_organizationAddress))
-                        org.Item().AlignCenter().Text(_organizationAddress).FontSize(8.5f);
+                        org.Item().AlignCenter().Text(_organizationAddress).FontSize(8f);
                     if (!string.IsNullOrWhiteSpace(_organizationContact))
                         org.Item().AlignCenter().Text(_organizationContact).FontSize(7.5f);
                 });
@@ -87,29 +87,29 @@ public class InvoiceDocument : BaseDocument
                 row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
                 {
                     if (secondaryLogo != null)
-                        logoCol.Item().Height(LogoHeight).Image(secondaryLogo, ImageScaling.FitArea);
+                        logoCol.Item().Height(65).Image(secondaryLogo, ImageScaling.FitArea);
                 });
             });
 
             // Invoice badge
-            col.Item().PaddingTop(6).AlignCenter()
-                .Background(KuraBlue).Padding(6)
-                .Text("INVOICE").FontSize(15).Bold().FontColor(Colors.White);
+            col.Item().PaddingTop(4).AlignCenter()
+                .Background(KuraBlue).Padding(4)
+                .Text("INVOICE").FontSize(13).Bold().FontColor(Colors.White);
 
             // Invoice details row
-            col.Item().PaddingTop(10).Row(row =>
+            col.Item().PaddingTop(6).Row(row =>
             {
                 row.RelativeItem().Column(c =>
                 {
-                    c.Item().Text($"Invoice No: {_invoice.InvoiceNo}").FontSize(11).SemiBold();
-                    c.Item().Text($"Case No: {_invoice.ProsecutionCase?.CaseRegister?.CaseNo ?? "N/A"}").FontSize(10);
-                    c.Item().Text($"Certificate No: {_invoice.ProsecutionCase?.CertificateNo ?? "N/A"}").FontSize(10);
+                    c.Item().Text($"Invoice No: {_invoice.InvoiceNo}").FontSize(10).SemiBold();
+                    c.Item().Text($"Case No: {_invoice.ProsecutionCase?.CaseRegister?.CaseNo ?? "N/A"}").FontSize(9);
+                    c.Item().Text($"Certificate No: {_invoice.ProsecutionCase?.CertificateNo ?? "N/A"}").FontSize(9);
                 });
                 row.ConstantItem(150).AlignRight().Column(c =>
                 {
-                    c.Item().Text($"Date: {_invoice.GeneratedAt:dd/MM/yyyy}").FontSize(10);
-                    c.Item().Text($"Due Date: {_invoice.DueDate:dd/MM/yyyy}").FontSize(10).SemiBold().FontColor(GetDueDateColor());
-                    c.Item().Text($"Status: {GetStatusDisplay()}").FontSize(10).SemiBold().FontColor(GetStatusColor());
+                    c.Item().Text($"Date: {_invoice.GeneratedAt:dd/MM/yyyy}").FontSize(9);
+                    c.Item().Text($"Due Date: {_invoice.DueDate:dd/MM/yyyy}").FontSize(9).SemiBold().FontColor(GetDueDateColor());
+                    c.Item().Text($"Status: {GetStatusDisplay()}").FontSize(9).SemiBold().FontColor(GetStatusColor());
                 });
             });
 
@@ -121,14 +121,14 @@ public class InvoiceDocument : BaseDocument
     {
         container.Column(col =>
         {
-            col.Spacing(10);
+            col.Spacing(6);
 
             // Vehicle Details Section
             col.Item().Row(row =>
             {
                 row.RelativeItem().Column(billTo =>
                 {
-                    billTo.Item().Text("VEHICLE DETAILS:").FontSize(10).SemiBold();
+                    billTo.Item().Text("VEHICLE DETAILS:").FontSize(9).SemiBold();
                     billTo.Item().PaddingLeft(10).Column(c =>
                     {
                         c.Item().Text($"Reg No: {_invoice.ProsecutionCase?.Weighing?.VehicleRegNumber ?? "N/A"}").SemiBold();
@@ -139,24 +139,24 @@ public class InvoiceDocument : BaseDocument
             });
 
             // Charge Details Table
-            col.Item().PaddingTop(10).Text("CHARGE DETAILS").FontSize(11).SemiBold();
+            col.Item().Text("CHARGE DETAILS").FontSize(10).SemiBold();
             col.Item().Element(ComposeChargeTable);
 
             // Payment Summary
-            col.Item().PaddingTop(10).Row(row =>
+            col.Item().Row(row =>
             {
                 row.RelativeItem(); // Spacer
                 row.ConstantItem(250).Element(ComposePaymentSummary);
             });
 
             // Payment Instructions
-            col.Item().PaddingTop(15).Element(ComposePaymentInstructions);
+            col.Item().PaddingTop(4).Element(ComposePaymentInstructions);
 
             // Terms and Conditions
-            col.Item().PaddingTop(15).Element(ComposeTermsAndConditions);
+            col.Item().PaddingTop(4).Element(ComposeTermsAndConditions);
 
             // Signature
-            col.Item().PaddingTop(20).Row(row =>
+            col.Item().PaddingTop(6).Row(row =>
             {
                 row.RelativeItem().Element(c => ComposeSignatureBlock(c, "Issuing Officer"));
             });
@@ -191,8 +191,8 @@ public class InvoiceDocument : BaseDocument
                         header.Cell().Element(HeaderStyle).AlignRight().Text("Qty/Kg");
                         header.Cell().Element(HeaderStyle).AlignRight().Text("Amount (KES)");
                         static IContainer HeaderStyle(IContainer c) =>
-                            c.DefaultTextStyle(x => x.SemiBold().FontSize(9).FontColor(Colors.White))
-                             .Background(Colors.Grey.Darken2).PaddingVertical(5).PaddingHorizontal(5);
+                            c.DefaultTextStyle(x => x.SemiBold().FontSize(8.5f).FontColor(Colors.White))
+                             .Background(Colors.Grey.Darken2).PaddingVertical(4).PaddingHorizontal(5);
                     });
 
                     if (prosecution != null)
@@ -255,8 +255,8 @@ public class InvoiceDocument : BaseDocument
                         header.Cell().Element(HeaderStyle).AlignRight().Text("Amount (USD)");
                         header.Cell().Element(HeaderStyle).AlignRight().Text("Amount (KES)");
                         static IContainer HeaderStyle(IContainer c) =>
-                            c.DefaultTextStyle(x => x.SemiBold().FontSize(9).FontColor(Colors.White))
-                             .Background(Colors.Grey.Darken2).PaddingVertical(5).PaddingHorizontal(5);
+                            c.DefaultTextStyle(x => x.SemiBold().FontSize(8.5f).FontColor(Colors.White))
+                             .Background(Colors.Grey.Darken2).PaddingVertical(4).PaddingHorizontal(5);
                     });
 
                     if (prosecution != null)
@@ -307,27 +307,27 @@ public class InvoiceDocument : BaseDocument
                 }
 
                 static IContainer CellStyle(IContainer c) =>
-                    c.PaddingVertical(4)
+                    c.PaddingVertical(3)
                      .PaddingHorizontal(5)
                      .BorderBottom(0.5f)
                      .BorderColor(Colors.Grey.Lighten2)
-                     .DefaultTextStyle(t => t.FontSize(9));
+                     .DefaultTextStyle(t => t.FontSize(8.5f));
 
                 static IContainer NoteStyle(IContainer c) =>
-                    c.PaddingVertical(3)
+                    c.PaddingVertical(2)
                      .PaddingHorizontal(5)
                      .Background(Colors.Grey.Lighten4)
-                     .DefaultTextStyle(t => t.FontSize(8));
+                     .DefaultTextStyle(t => t.FontSize(7.5f));
 
                 static IContainer SeparatorStyle(IContainer c) =>
-                    c.PaddingVertical(3).PaddingHorizontal(5)
+                    c.PaddingVertical(2).PaddingHorizontal(5)
                      .Background(Colors.Red.Lighten5)
-                     .DefaultTextStyle(t => t.FontSize(8));
+                     .DefaultTextStyle(t => t.FontSize(7.5f));
 
                 static IContainer TotalStyle(IContainer c) =>
-                    c.PaddingVertical(5).PaddingHorizontal(5)
+                    c.PaddingVertical(3).PaddingHorizontal(5)
                      .Background(Colors.Grey.Lighten4)
-                     .DefaultTextStyle(t => t.FontSize(10).SemiBold());
+                     .DefaultTextStyle(t => t.FontSize(9.5f).SemiBold());
             });
 
             if (!isTrafficAct && prosecution != null)
@@ -347,7 +347,7 @@ public class InvoiceDocument : BaseDocument
 
         container.Border(1).BorderColor(Colors.Black).Column(col =>
         {
-            col.Item().Background(Colors.Grey.Lighten4).Padding(5).Row(r =>
+            col.Item().Background(Colors.Grey.Lighten4).Padding(4).Row(r =>
             {
                 r.RelativeItem().Text($"Subtotal ({invoiceCurrency}):").SemiBold();
                 r.ConstantItem(80).AlignRight().Text($"{invoiceCurrency} {_invoice.AmountDue:N2}");
@@ -361,13 +361,13 @@ public class InvoiceDocument : BaseDocument
                     ? _invoice.AmountDue * forexRate
                     : forexRate > 0 ? _invoice.AmountDue / forexRate : 0m;
 
-                col.Item().Padding(5).Row(r =>
+                col.Item().Padding(4).Row(r =>
                 {
                     r.RelativeItem().Text("Exchange Rate (1 USD):").FontSize(9);
                     r.ConstantItem(80).AlignRight().Text($"KES {forexRate:N2}").FontSize(9);
                 });
 
-                col.Item().Padding(5).Row(r =>
+                col.Item().Padding(4).Row(r =>
                 {
                     r.RelativeItem().Text($"Amount Due ({equivalentCurrency}):").SemiBold();
                     r.ConstantItem(80).AlignRight().Text($"{equivalentCurrency} {equivalentAmount:N2}").SemiBold();
@@ -376,14 +376,14 @@ public class InvoiceDocument : BaseDocument
 
             if (amountPaid > 0)
             {
-                col.Item().Background(Colors.Green.Lighten4).Padding(5).Row(r =>
+                col.Item().Background(Colors.Green.Lighten4).Padding(4).Row(r =>
                 {
                     r.RelativeItem().Text("Amount Paid:").FontColor(Colors.Green.Darken2);
                     r.ConstantItem(80).AlignRight().Text($"{invoiceCurrency} {amountPaid:N2}").FontColor(Colors.Green.Darken2);
                 });
 
                 var balance = _invoice.AmountDue - amountPaid;
-                col.Item().Background(balance > 0 ? Colors.Orange.Lighten4 : Colors.Green.Lighten3).Padding(5).Row(r =>
+                col.Item().Background(balance > 0 ? Colors.Orange.Lighten4 : Colors.Green.Lighten3).Padding(4).Row(r =>
                 {
                     r.RelativeItem().Text("BALANCE DUE:").Bold();
                     r.ConstantItem(80).AlignRight().Text($"{invoiceCurrency} {balance:N2}").Bold();
@@ -391,10 +391,10 @@ public class InvoiceDocument : BaseDocument
             }
             else
             {
-                col.Item().Background(Colors.Blue.Lighten4).Padding(5).Row(r =>
+                col.Item().Background(Colors.Blue.Lighten4).Padding(4).Row(r =>
                 {
-                    r.RelativeItem().Text($"TOTAL DUE ({invoiceCurrency}):").Bold().FontSize(11);
-                    r.ConstantItem(80).AlignRight().Text($"{invoiceCurrency} {_invoice.AmountDue:N2}").Bold().FontSize(11);
+                    r.RelativeItem().Text($"TOTAL DUE ({invoiceCurrency}):").Bold().FontSize(10);
+                    r.ConstantItem(80).AlignRight().Text($"{invoiceCurrency} {_invoice.AmountDue:N2}").Bold().FontSize(10);
                 });
             }
         });
@@ -407,17 +407,17 @@ public class InvoiceDocument : BaseDocument
         var hasMpesaTill = !string.IsNullOrWhiteSpace(_payment?.MpesaTillNumber);
         var hasAnyPaymentConfig = hasBankDetails || hasMpesaPaybill || hasMpesaTill;
 
-        container.Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(10).Column(col =>
+        container.Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(6).Column(col =>
         {
-            col.Item().Text("PAYMENT INSTRUCTIONS").FontSize(10).SemiBold().FontColor(KuraBlue);
+            col.Item().Text("PAYMENT INSTRUCTIONS").FontSize(9).SemiBold().FontColor(KuraBlue);
 
             if (!hasAnyPaymentConfig)
             {
-                col.Item().PaddingTop(5).Text("Contact the authority for payment instructions.").FontSize(9).Italic();
+                col.Item().PaddingTop(3).Text("Contact the authority for payment instructions.").FontSize(8.5f).Italic();
                 return;
             }
 
-            col.Item().PaddingTop(5).Row(row =>
+            col.Item().PaddingTop(3).Row(row =>
             {
                 if (hasBankDetails)
                 {
@@ -455,11 +455,13 @@ public class InvoiceDocument : BaseDocument
     {
         container.Column(col =>
         {
-            col.Item().Text("TERMS AND CONDITIONS:").FontSize(9).SemiBold();
-            col.Item().PaddingLeft(10).Text("1. Payment is due within 14 days from the invoice date.").FontSize(8);
-            col.Item().PaddingLeft(10).Text("2. Failure to pay may result in additional penalties and legal action.").FontSize(8);
-            col.Item().PaddingLeft(10).Text("3. Quote the Invoice Number on all payments and correspondence.").FontSize(8);
-            col.Item().PaddingLeft(10).Text("4. This invoice is subject to Kenya Traffic Act Cap 403 regulations.").FontSize(8);
+            col.Item().Text("TERMS AND CONDITIONS:").FontSize(8.5f).SemiBold();
+            col.Item().PaddingLeft(8).Text(
+                "1. Payment is due within 14 days from the invoice date.  " +
+                "2. Failure to pay may result in additional penalties and legal action.  " +
+                "3. Quote the Invoice Number on all payments and correspondence.  " +
+                "4. This invoice is subject to Kenya Traffic Act Cap 403 regulations.")
+                .FontSize(7.5f);
         });
     }
 
