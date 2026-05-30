@@ -71,6 +71,45 @@ public abstract class BaseDocument
     }
 
     /// <summary>
+    /// Renders the standard three-column branding row: left logo, centered org info, right logo.
+    /// Used by financial documents (Invoice, Receipt) that place their document badge below the org row.
+    /// </summary>
+    protected void AddOrgBrandingRow(
+        ColumnDescriptor col,
+        byte[]? primaryLogo,
+        byte[]? secondaryLogo,
+        string? organizationName,
+        string? organizationAddress = null,
+        string? organizationContact = null)
+    {
+        col.Item().Row(row =>
+        {
+            row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
+            {
+                if (primaryLogo != null)
+                    logoCol.Item().Width(LogoWidth).Height(LogoHeight).Image(primaryLogo, ImageScaling.FitArea);
+            });
+
+            row.RelativeItem().AlignCenter().PaddingHorizontal(5).Column(org =>
+            {
+                org.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya).FontSize(9).SemiBold();
+                if (!string.IsNullOrWhiteSpace(organizationName))
+                    org.Item().AlignCenter().Text(organizationName).FontSize(12).SemiBold().FontColor(KuraBlue);
+                if (!string.IsNullOrWhiteSpace(organizationAddress))
+                    org.Item().AlignCenter().Text(organizationAddress).FontSize(8f);
+                if (!string.IsNullOrWhiteSpace(organizationContact))
+                    org.Item().AlignCenter().Text(organizationContact).FontSize(7.5f);
+            });
+
+            row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
+            {
+                if (secondaryLogo != null)
+                    logoCol.Item().Width(LogoWidth).Height(LogoHeight).Image(secondaryLogo, ImageScaling.FitArea);
+            });
+        });
+    }
+
+    /// <summary>
     /// Composes an official document header with left logo, centered title block, and right logo.
     /// Used by all official documents for consistent branding.
     /// Supports optional organization name display below "REPUBLIC OF KENYA".
@@ -85,7 +124,9 @@ public abstract class BaseDocument
         string? dateText = null,
         string? titleColor = null,
         string? organizationName = null,
-        bool isEnforcement = true)
+        bool isEnforcement = true,
+        string? organizationAddress = null,
+        string? organizationContact = null)
     {
         var primaryLogo = LoadLogo(primaryLogoFile);
         var secondaryLogo = secondaryLogoFile != null ? LoadLogo(secondaryLogoFile) : null;
@@ -114,7 +155,7 @@ public abstract class BaseDocument
                         if (!string.IsNullOrEmpty(organizationName))
                         {
                             center.Item().AlignCenter().Text(organizationName)
-                                .FontSize(9).SemiBold();
+                                .FontSize(9).SemiBold().FontColor(KuraBlue);
                         }
                     }
                     else
@@ -126,6 +167,11 @@ public abstract class BaseDocument
                                 .FontSize(11).SemiBold();
                         }
                     }
+
+                    if (!string.IsNullOrWhiteSpace(organizationAddress))
+                        center.Item().AlignCenter().Text(organizationAddress).FontSize(7.5f);
+                    if (!string.IsNullOrWhiteSpace(organizationContact))
+                        center.Item().AlignCenter().Text(organizationContact).FontSize(7f);
 
                     center.Item().AlignCenter().Text(documentTitle)
                         .FontSize(14).Bold().FontColor(headerColor);

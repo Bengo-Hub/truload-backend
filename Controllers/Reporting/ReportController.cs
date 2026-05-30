@@ -269,7 +269,7 @@ public class ReportController : ControllerBase
                 if (org != null)
                 {
                     orgName = org.Name;
-                    orgLogoFile = org.LogoUrl;
+                    orgLogoFile = !string.IsNullOrEmpty(org.LogoUrl) ? Path.GetFileName(org.LogoUrl) : null;
                     isEnforcement = !string.Equals(org.TenantType,
                         TenantModules.TenantTypeCommercialWeighing, StringComparison.OrdinalIgnoreCase);
                 }

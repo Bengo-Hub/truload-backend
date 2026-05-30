@@ -16,11 +16,22 @@ public class SpecialReleaseCertificateDocument : BaseDocument
 {
     private readonly SpecialRelease _specialRelease;
     private readonly string _orgLogoFile;
+    private readonly string? _organizationName;
+    private readonly string? _organizationAddress;
+    private readonly string? _organizationContact;
 
-    public SpecialReleaseCertificateDocument(SpecialRelease specialRelease, string? orgLogoFile = null)
+    public SpecialReleaseCertificateDocument(
+        SpecialRelease specialRelease,
+        string? orgLogoFile = null,
+        string? organizationName = null,
+        string? organizationAddress = null,
+        string? organizationContact = null)
     {
         _specialRelease = specialRelease;
         _orgLogoFile = ResolveOrgLogo(orgLogoFile);
+        _organizationName = organizationName;
+        _organizationAddress = organizationAddress;
+        _organizationContact = organizationContact;
     }
 
     public override byte[] Generate()
@@ -57,9 +68,13 @@ public class SpecialReleaseCertificateDocument : BaseDocument
 
                 row.RelativeItem().AlignCenter().PaddingHorizontal(3).Column(center =>
                 {
-                    center.Item().AlignCenter().Text($"{BrandingConstants.Organization.RepublicOfKenya} — {BrandingConstants.Organization.KenyaRoadsAuthority}")
-                        .FontSize(8).SemiBold();
-                    center.Item().AlignCenter().Text("VEHICLE LOAD CONTROL UNIT").FontSize(7f);
+                    center.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya).FontSize(8).SemiBold();
+                    if (!string.IsNullOrWhiteSpace(_organizationName))
+                        center.Item().AlignCenter().Text(_organizationName).FontSize(9).SemiBold().FontColor(KuraBlue);
+                    if (!string.IsNullOrWhiteSpace(_organizationAddress))
+                        center.Item().AlignCenter().Text(_organizationAddress).FontSize(7f);
+                    if (!string.IsNullOrWhiteSpace(_organizationContact))
+                        center.Item().AlignCenter().Text(_organizationContact).FontSize(6.5f);
                 });
 
                 row.ConstantItem(SmallLogoWidth); // No secondary logo for special release

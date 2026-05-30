@@ -23,6 +23,8 @@ public class WeightTicketDocument : BaseDocument
     private readonly string _axleToleranceDisplay;
     private readonly string? _primaryColor;
     private readonly string? _secondaryColor;
+    private readonly string? _organizationAddress;
+    private readonly string? _organizationContact;
 
     public WeightTicketDocument(
         WeighingTransaction transaction,
@@ -34,7 +36,9 @@ public class WeightTicketDocument : BaseDocument
         string? secondaryColor = null,
         int gvwToleranceKg = 0,
         string? gvwToleranceDisplay = null,
-        string? axleToleranceDisplay = null)
+        string? axleToleranceDisplay = null,
+        string? organizationAddress = null,
+        string? organizationContact = null)
     {
         _transaction = transaction;
         _organizationName = organizationName;
@@ -47,6 +51,8 @@ public class WeightTicketDocument : BaseDocument
         _axleToleranceDisplay = axleToleranceDisplay ?? "0%";
         _primaryColor = primaryColor;
         _secondaryColor = secondaryColor;
+        _organizationAddress = organizationAddress;
+        _organizationContact = organizationContact;
     }
 
     public override byte[] Generate()
@@ -87,7 +93,10 @@ public class WeightTicketDocument : BaseDocument
             referenceNumber: $"Ticket No: {_transaction.TicketNumber}",
             dateText: $"Date: {_transaction.WeighedAt:dd/MM/yyyy HH:mm}",
             titleColor: _primaryColor,
-            organizationName: _organizationName);
+            organizationName: _organizationName,
+            isEnforcement: !_isCommercial,
+            organizationAddress: _organizationAddress,
+            organizationContact: _organizationContact);
     }
 
     private void ComposeContent(IContainer container)

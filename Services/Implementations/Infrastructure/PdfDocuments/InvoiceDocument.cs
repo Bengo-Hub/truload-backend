@@ -63,33 +63,7 @@ public class InvoiceDocument : BaseDocument
 
         container.Column(col =>
         {
-            // Logo row with organization branding
-            col.Item().Row(row =>
-            {
-                row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
-                {
-                    if (primaryLogo != null)
-                        logoCol.Item().Height(65).Image(primaryLogo, ImageScaling.FitArea);
-                });
-
-                row.RelativeItem().PaddingHorizontal(5).Column(org =>
-                {
-                    org.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
-                        .FontSize(9).SemiBold();
-                    if (!string.IsNullOrWhiteSpace(_organizationName))
-                        org.Item().AlignCenter().Text(_organizationName).FontSize(12).SemiBold().FontColor(KuraBlue);
-                    if (!string.IsNullOrWhiteSpace(_organizationAddress))
-                        org.Item().AlignCenter().Text(_organizationAddress).FontSize(8f);
-                    if (!string.IsNullOrWhiteSpace(_organizationContact))
-                        org.Item().AlignCenter().Text(_organizationContact).FontSize(7.5f);
-                });
-
-                row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
-                {
-                    if (secondaryLogo != null)
-                        logoCol.Item().Height(65).Image(secondaryLogo, ImageScaling.FitArea);
-                });
-            });
+            AddOrgBrandingRow(col, primaryLogo, secondaryLogo, _organizationName, _organizationAddress, _organizationContact);
 
             // Invoice badge
             col.Item().PaddingTop(4).AlignCenter()

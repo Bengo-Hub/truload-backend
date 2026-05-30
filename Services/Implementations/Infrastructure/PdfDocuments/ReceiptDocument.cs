@@ -54,33 +54,7 @@ public class ReceiptDocument : BaseDocument
 
         container.Column(col =>
         {
-            // Logo row with organization branding
-            col.Item().Row(row =>
-            {
-                row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
-                {
-                    if (primaryLogo != null)
-                        logoCol.Item().Height(LogoHeight).Image(primaryLogo, ImageScaling.FitArea);
-                });
-
-                row.RelativeItem().PaddingHorizontal(5).Column(org =>
-                {
-                    org.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
-                        .FontSize(10).SemiBold();
-                    if (!string.IsNullOrWhiteSpace(_organizationName))
-                        org.Item().AlignCenter().Text(_organizationName).FontSize(12).SemiBold().FontColor(KuraBlue);
-                    if (!string.IsNullOrWhiteSpace(_organizationAddress))
-                        org.Item().AlignCenter().Text(_organizationAddress).FontSize(8);
-                    if (!string.IsNullOrWhiteSpace(_organizationContact))
-                        org.Item().AlignCenter().Text(_organizationContact).FontSize(7.5f);
-                });
-
-                row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>
-                {
-                    if (secondaryLogo != null)
-                        logoCol.Item().Height(LogoHeight).Image(secondaryLogo, ImageScaling.FitArea);
-                });
-            });
+            AddOrgBrandingRow(col, primaryLogo, secondaryLogo, _organizationName, _organizationAddress, _organizationContact);
 
             // Receipt badge
             col.Item().PaddingTop(6).AlignCenter()

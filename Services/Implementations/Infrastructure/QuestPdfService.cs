@@ -27,35 +27,58 @@ public class QuestPdfService : IPdfService
 
     public async Task<byte[]> GenerateWeightTicketAsync(WeighingTransaction transaction)
     {
-        // Resolve organization info from station for branding (logo, colors, name, tenant type)
         string? organizationName = null;
         string? tenantType = null;
         string? orgLogoFile = null;
         string? primaryColor = null;
         string? secondaryColor = null;
+        string? organizationAddress = null;
+        string? organizationContact = null;
+
         if (transaction.StationId != Guid.Empty)
         {
-            var orgInfo = await _context.Stations
+            var org = await _context.Stations
                 .Where(s => s.Id == transaction.StationId)
                 .Select(s => new {
                     s.Organization.Name,
                     s.Organization.TenantType,
                     s.Organization.LogoUrl,
                     s.Organization.PrimaryColor,
-                    s.Organization.SecondaryColor
+                    s.Organization.SecondaryColor,
+                    s.Organization.StreetAddress,
+                    s.Organization.PoBox,
+                    s.Organization.City,
+                    s.Organization.Country,
+                    s.Organization.ContactPhone,
+                    s.Organization.ContactEmail,
+                    s.Organization.Website,
                 })
                 .FirstOrDefaultAsync();
-            organizationName = orgInfo?.Name;
-            tenantType = orgInfo?.TenantType;
-            primaryColor = orgInfo?.PrimaryColor;
-            secondaryColor = orgInfo?.SecondaryColor;
-            if (!string.IsNullOrEmpty(orgInfo?.LogoUrl))
+
+            if (org != null)
             {
-                orgLogoFile = Path.GetFileName(orgInfo.LogoUrl);
+                organizationName = org.Name;
+                tenantType = org.TenantType;
+                primaryColor = org.PrimaryColor;
+                secondaryColor = org.SecondaryColor;
+                if (!string.IsNullOrEmpty(org.LogoUrl))
+                    orgLogoFile = Path.GetFileName(org.LogoUrl);
+
+                var addressParts = new List<string?> { org.StreetAddress };
+                if (!string.IsNullOrWhiteSpace(org.PoBox)) addressParts.Add($"P.O Box {org.PoBox}");
+                if (!string.IsNullOrWhiteSpace(org.City) || !string.IsNullOrWhiteSpace(org.Country))
+                    addressParts.Add(string.Join(", ", new[] { org.City, org.Country }.Where(v => !string.IsNullOrWhiteSpace(v))));
+                organizationAddress = string.Join(", ", addressParts.Where(v => !string.IsNullOrWhiteSpace(v)));
+                if (string.IsNullOrWhiteSpace(organizationAddress)) organizationAddress = null;
+
+                var contactParts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(org.ContactPhone)) contactParts.Add($"Mobile: {org.ContactPhone}");
+                if (!string.IsNullOrWhiteSpace(org.ContactEmail)) contactParts.Add($"Email: {org.ContactEmail}");
+                if (!string.IsNullOrWhiteSpace(org.Website)) contactParts.Add($"Web: {org.Website}");
+                organizationContact = contactParts.Count > 0 ? string.Join(" | ", contactParts) : null;
             }
         }
 
-        // Use persisted compliance results from the transaction (Single Source of Truth)
         int operationalToleranceKg = transaction.OperationalAllowanceUsed;
         int gvwToleranceKg = transaction.GvwToleranceKg;
         string gvwToleranceDisplay = transaction.GvwToleranceDisplay ?? "0%";
@@ -66,7 +89,8 @@ public class QuestPdfService : IPdfService
             var document = new WeightTicketDocument(
                 transaction, organizationName, tenantType, orgLogoFile,
                 operationalToleranceKg, primaryColor, secondaryColor,
-                gvwToleranceKg, gvwToleranceDisplay, axleToleranceDisplay);
+                gvwToleranceKg, gvwToleranceDisplay, axleToleranceDisplay,
+                organizationAddress, organizationContact);
             return document.Generate();
         });
     }
@@ -186,8 +210,11 @@ public class QuestPdfService : IPdfService
 
     public async Task<byte[]> GenerateSpecialReleaseCertificateAsync(SpecialRelease specialRelease)
     {
-        // Resolve org logo from the case register's weighing station
         string? orgLogoFile = null;
+        string? organizationName = null;
+        string? organizationAddress = null;
+        string? organizationContact = null;
+
         var weighingId = specialRelease.CaseRegister?.WeighingId;
         if (weighingId.HasValue && weighingId.Value != Guid.Empty)
         {
@@ -198,12 +225,48 @@ public class QuestPdfService : IPdfService
                     .FirstOrDefaultAsync();
 
             if (stationId.HasValue && stationId.Value != Guid.Empty)
-                orgLogoFile = await ResolveOrgLogoFromStationAsync(stationId.Value);
+            {
+                var org = await _context.Stations
+                    .Where(s => s.Id == stationId.Value)
+                    .Select(s => new {
+                        s.Organization.Name,
+                        s.Organization.LogoUrl,
+                        s.Organization.StreetAddress,
+                        s.Organization.PoBox,
+                        s.Organization.City,
+                        s.Organization.Country,
+                        s.Organization.ContactPhone,
+                        s.Organization.ContactEmail,
+                        s.Organization.Website,
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (org != null)
+                {
+                    organizationName = org.Name;
+                    if (!string.IsNullOrEmpty(org.LogoUrl))
+                        orgLogoFile = Path.GetFileName(org.LogoUrl);
+
+                    var addressParts = new List<string?> { org.StreetAddress };
+                    if (!string.IsNullOrWhiteSpace(org.PoBox)) addressParts.Add($"P.O Box {org.PoBox}");
+                    if (!string.IsNullOrWhiteSpace(org.City) || !string.IsNullOrWhiteSpace(org.Country))
+                        addressParts.Add(string.Join(", ", new[] { org.City, org.Country }.Where(v => !string.IsNullOrWhiteSpace(v))));
+                    organizationAddress = string.Join(", ", addressParts.Where(v => !string.IsNullOrWhiteSpace(v)));
+                    if (string.IsNullOrWhiteSpace(organizationAddress)) organizationAddress = null;
+
+                    var contactParts = new List<string>();
+                    if (!string.IsNullOrWhiteSpace(org.ContactPhone)) contactParts.Add($"Mobile: {org.ContactPhone}");
+                    if (!string.IsNullOrWhiteSpace(org.ContactEmail)) contactParts.Add($"Email: {org.ContactEmail}");
+                    if (!string.IsNullOrWhiteSpace(org.Website)) contactParts.Add($"Web: {org.Website}");
+                    organizationContact = contactParts.Count > 0 ? string.Join(" | ", contactParts) : null;
+                }
+            }
         }
 
         return await Task.Run(() =>
         {
-            var document = new SpecialReleaseCertificateDocument(specialRelease, orgLogoFile);
+            var document = new SpecialReleaseCertificateDocument(
+                specialRelease, orgLogoFile, organizationName, organizationAddress, organizationContact);
             return document.Generate();
         });
     }
