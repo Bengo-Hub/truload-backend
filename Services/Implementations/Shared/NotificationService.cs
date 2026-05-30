@@ -112,6 +112,19 @@ public class NotificationService : INotificationService
             if (!string.IsNullOrWhiteSpace(org.ContactPhone))
                 branding["brand_phone"] = org.ContactPhone;
 
+            // Per-tenant app URL — used by notifications-api to build getting_started_link
+            // and any other service deep links embedded in emails.
+            var appUrl = org.AppUrl?.TrimEnd('/');
+            if (string.IsNullOrWhiteSpace(appUrl) && !string.IsNullOrWhiteSpace(_options.PublicBaseUrl))
+            {
+                // Derive from the API's public base URL by stripping /api suffix.
+                appUrl = _options.PublicBaseUrl.TrimEnd('/').TrimEnd('/');
+                var apiIdx = appUrl.LastIndexOf("/api", StringComparison.OrdinalIgnoreCase);
+                if (apiIdx > 0) appUrl = appUrl[..apiIdx];
+            }
+            if (!string.IsNullOrWhiteSpace(appUrl))
+                branding["app_url"] = appUrl;
+
             // Build absolute logo URL so email clients can load it.
             // Fallback order: PlatformLogoUrl → LogoUrl → truload-logo.svg (always set).
             var logoPath = org.PlatformLogoUrl ?? org.LogoUrl;

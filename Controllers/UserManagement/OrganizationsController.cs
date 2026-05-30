@@ -100,6 +100,7 @@ public class OrganizationsController : ControllerBase
             ContactEmail = request.ContactEmail,
             ContactPhone = request.ContactPhone,
             Website = request.Website,
+            AppUrl = request.AppUrl,
             StreetAddress = request.StreetAddress,
             PoBox = request.PoBox,
             City = request.City,
@@ -143,6 +144,7 @@ public class OrganizationsController : ControllerBase
         if (request.ContactEmail != null) org.ContactEmail = request.ContactEmail;
         if (request.ContactPhone != null) org.ContactPhone = request.ContactPhone;
         if (request.Website != null) org.Website = request.Website;
+        if (request.AppUrl != null) org.AppUrl = request.AppUrl;
         if (request.StreetAddress != null) org.StreetAddress = request.StreetAddress;
         if (request.PoBox != null) org.PoBox = request.PoBox;
         if (request.City != null) org.City = request.City;
@@ -307,6 +309,7 @@ public class OrganizationsController : ControllerBase
             ContactEmail = org.ContactEmail,
             ContactPhone = org.ContactPhone,
             Website = org.Website,
+            AppUrl = org.AppUrl,
             StreetAddress = org.StreetAddress,
             PoBox = org.PoBox,
             City = org.City,

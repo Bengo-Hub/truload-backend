@@ -25,6 +25,7 @@ public class TransporterPortalService : ITransporterPortalService
     private readonly ISubscriptionService _subscriptionService;
     private readonly IPdfService _pdfService;
     private readonly INotificationService _notificationService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<TransporterPortalService> _logger;
 
     public TransporterPortalService(
@@ -32,12 +33,14 @@ public class TransporterPortalService : ITransporterPortalService
         ISubscriptionService subscriptionService,
         IPdfService pdfService,
         INotificationService notificationService,
+        IConfiguration configuration,
         ILogger<TransporterPortalService> logger)
     {
         _dbContext = dbContext;
         _subscriptionService = subscriptionService;
         _pdfService = pdfService;
         _notificationService = notificationService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -593,7 +596,7 @@ public class TransporterPortalService : ITransporterPortalService
                 {
                     ["transporter_name"] = transporter.Name,
                     ["role"] = role,
-                    ["invite_url"] = $"https://truload.co.ke/portal/invite/accept?token={token}",
+                    ["invite_url"] = $"{(_configuration["FrontendUrl"]?.TrimEnd('/') ?? "https://truload.codevertexitsolutions.com")}/portal/invite/accept?token={token}",
                     ["expires_at"] = expiresAt.ToString("yyyy-MM-dd")
                 },
                 subject: $"You've been invited to {transporter.Name}'s TruLoad Portal",

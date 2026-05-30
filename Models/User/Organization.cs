@@ -35,6 +35,14 @@ public class Organization
     public string? ContactPhone { get; set; }
     public string? Website { get; set; }
 
+    /// <summary>
+    /// Per-tenant TruLoad app base URL (e.g. "https://kuraweigh.kura.go.ke" for KURA,
+    /// "https://truload.codevertexitsolutions.com" for the default tenant).
+    /// Used to build correct deep links in email notifications (password reset, welcome, invites).
+    /// Distinct from Website (corporate site). Falls back to PublicBaseUrl config when null.
+    /// </summary>
+    public string? AppUrl { get; set; }
+
     /// <summary>Full street/building address line (e.g. "Barabara Plaza-JKIA, Off Airport South Road").</summary>
     public string? StreetAddress { get; set; }
 

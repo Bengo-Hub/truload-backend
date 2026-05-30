@@ -551,9 +551,18 @@ public class AuthController : ControllerBase
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
-        // Build reset URL for frontend
-        var frontendUrl = _configuration["FrontendUrl"] ?? "https://truload.masterspace.co.ke";
-        var resetUrl = $"{frontendUrl}/auth/reset-password?email={Uri.EscapeDataString(user.Email!)}&token={Uri.EscapeDataString(token)}";
+        // Build per-tenant reset URL from org.AppUrl; fall back to FrontendUrl config.
+        var userOrg = user.OrganizationId.HasValue
+            ? await _organizationRepository.GetByIdAsync(user.OrganizationId.Value)
+            : null;
+        var appUrl = userOrg?.AppUrl?.TrimEnd('/')
+            ?? _configuration["FrontendUrl"]?.TrimEnd('/')
+            ?? "https://truload.codevertexitsolutions.com";
+        var orgSlug = userOrg?.Code?.ToLowerInvariant() ?? string.Empty;
+        var resetPath = string.IsNullOrEmpty(orgSlug)
+            ? "/auth/reset-password"
+            : $"/{orgSlug}/auth/reset-password";
+        var resetUrl = $"{appUrl}{resetPath}?email={Uri.EscapeDataString(user.Email!)}&token={Uri.EscapeDataString(token)}";
 
         // Send password reset email via notifications-service
         var emailSent = await _notificationService.SendEmailAsync(

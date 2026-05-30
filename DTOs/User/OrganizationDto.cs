@@ -11,6 +11,8 @@ public class OrganizationDto
     public string? ContactEmail { get; set; }
     public string? ContactPhone { get; set; }
     public string? Website { get; set; }
+    /// <summary>Per-tenant TruLoad app base URL (e.g. https://kuraweigh.kura.go.ke). Used for email deep links.</summary>
+    public string? AppUrl { get; set; }
     public string? StreetAddress { get; set; }
     public string? PoBox { get; set; }
     public string? City { get; set; }
@@ -41,6 +43,7 @@ public class CreateOrganizationRequest
     public string? ContactEmail { get; set; }
     public string? ContactPhone { get; set; }
     public string? Website { get; set; }
+    public string? AppUrl { get; set; }
     public string? StreetAddress { get; set; }
     public string? PoBox { get; set; }
     public string? City { get; set; }
@@ -58,6 +61,7 @@ public class UpdateOrganizationRequest
     public string? ContactEmail { get; set; }
     public string? ContactPhone { get; set; }
     public string? Website { get; set; }
+    public string? AppUrl { get; set; }
     public string? StreetAddress { get; set; }
     public string? PoBox { get; set; }
     public string? City { get; set; }
