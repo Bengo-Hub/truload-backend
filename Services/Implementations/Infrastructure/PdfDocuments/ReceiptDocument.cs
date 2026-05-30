@@ -231,6 +231,7 @@ public class ReceiptDocument : BaseDocument
             "bank_transfer" => "Bank Transfer",
             "card" => "Card Payment",
             "cheque" => "Cheque",
+            "pesaflow" => "Pesaflow / eCitizen",
             _ => _receipt.PaymentMethod
         };
     }
