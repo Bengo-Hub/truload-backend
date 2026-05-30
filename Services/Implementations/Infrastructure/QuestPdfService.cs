@@ -162,16 +162,24 @@ public class QuestPdfService : IPdfService
 
             var certificateNo = $"COMP-{caseRegister ?? caseRegisterId.ToString()}";
 
-            // Resolve org logo from station
+            // Resolve org logo and name from station
             string? orgLogoFile = null;
+            string? certOrgName = null;
             if (reweighing.StationId.HasValue && reweighing.StationId.Value != Guid.Empty)
+            {
                 orgLogoFile = await ResolveOrgLogoFromStationAsync(reweighing.StationId.Value);
+                certOrgName = await _context.Stations
+                    .Where(s => s.Id == reweighing.StationId.Value)
+                    .Select(s => s.Organization.Name)
+                    .FirstOrDefaultAsync();
+            }
 
             var document = new ComplianceCertificateDocument(
                 reweighing,
                 caseRegister ?? caseRegisterId.ToString(),
                 certificateNo,
-                orgLogoFile);
+                orgLogoFile,
+                certOrgName);
             return document.Generate();
         });
     }
@@ -341,25 +349,29 @@ public class QuestPdfService : IPdfService
             .FirstOrDefaultAsync(i => i.Id == invoiceId && i.DeletedAt == null, ct)
             ?? throw new InvalidOperationException($"Invoice {invoiceId} not found");
 
-        // Get organization name from station or default
-        var organizationName = invoice.ProsecutionCase?.Weighing?.Station?.Name;
-
-        // Resolve org logo from station
+        // Resolve org details (name, address, contact, payment config, logo) from station's organization
+        string? organizationName = null;
+        string? organizationAddress = null;
+        string? organizationContact = null;
         string? orgLogoFile = null;
-        var stationId = invoice.ProsecutionCase?.Weighing?.StationId;
-        if (stationId.HasValue && stationId.Value != Guid.Empty)
-        {
-            orgLogoFile = await ResolveOrgLogoFromStationAsync(stationId.Value);
-        }
-
-        // Fetch org payment settings from the station's organization
         InvoiceDocument.OrgPaymentConfig? paymentConfig = null;
+
+        var stationId = invoice.ProsecutionCase?.Weighing?.StationId;
         if (stationId.HasValue && stationId.Value != Guid.Empty)
         {
             var org = await _context.Stations
                 .Where(s => s.Id == stationId.Value)
                 .Select(s => new
                 {
+                    s.Organization.Name,
+                    s.Organization.LogoUrl,
+                    s.Organization.StreetAddress,
+                    s.Organization.PoBox,
+                    s.Organization.City,
+                    s.Organization.Country,
+                    s.Organization.ContactPhone,
+                    s.Organization.ContactEmail,
+                    s.Organization.Website,
                     s.Organization.PaymentBankName,
                     s.Organization.PaymentBankBranch,
                     s.Organization.PaymentBankAccountNumber,
@@ -369,17 +381,39 @@ public class QuestPdfService : IPdfService
                 .FirstOrDefaultAsync(ct);
 
             if (org != null)
+            {
+                organizationName = org.Name;
+                if (!string.IsNullOrEmpty(org.LogoUrl))
+                    orgLogoFile = Path.GetFileName(org.LogoUrl);
+
+                // Build formatted address from structured fields
+                var addressParts = new List<string?> { org.StreetAddress };
+                if (!string.IsNullOrWhiteSpace(org.PoBox))
+                    addressParts.Add($"P.O Box {org.PoBox}");
+                if (!string.IsNullOrWhiteSpace(org.City) || !string.IsNullOrWhiteSpace(org.Country))
+                    addressParts.Add(string.Join(", ", new[] { org.City, org.Country }.Where(v => !string.IsNullOrWhiteSpace(v))));
+                organizationAddress = string.Join(", ", addressParts.Where(v => !string.IsNullOrWhiteSpace(v)));
+                if (string.IsNullOrWhiteSpace(organizationAddress)) organizationAddress = null;
+
+                // Build contact line: Mobile | Email | Web
+                var contactParts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(org.ContactPhone)) contactParts.Add($"Mobile: {org.ContactPhone}");
+                if (!string.IsNullOrWhiteSpace(org.ContactEmail)) contactParts.Add($"Email: {org.ContactEmail}");
+                if (!string.IsNullOrWhiteSpace(org.Website)) contactParts.Add($"Web: {org.Website}");
+                organizationContact = contactParts.Count > 0 ? string.Join(" | ", contactParts) : null;
+
                 paymentConfig = new InvoiceDocument.OrgPaymentConfig(
                     org.PaymentBankName,
                     org.PaymentBankBranch,
                     org.PaymentBankAccountNumber,
                     org.PaymentMpesaPaybillNumber,
                     org.PaymentMpesaTillNumber);
+            }
         }
 
         // Commercial/treasury invoices should not show the eCitizen secondary logo
         var showSecondaryLogo = invoice.InvoiceType != "commercial_weighing_fee";
-        var document = new InvoiceDocument(invoice, organizationName, orgLogoFile: orgLogoFile, showSecondaryLogo: showSecondaryLogo, paymentConfig: paymentConfig);
+        var document = new InvoiceDocument(invoice, organizationName, organizationAddress, organizationContact, orgLogoFile: orgLogoFile, showSecondaryLogo: showSecondaryLogo, paymentConfig: paymentConfig);
         return document.Generate();
     }
 
@@ -403,17 +437,56 @@ public class QuestPdfService : IPdfService
             .FirstOrDefaultAsync(r => r.Id == receiptId && r.DeletedAt == null, ct)
             ?? throw new InvalidOperationException($"Receipt {receiptId} not found");
 
-        // Resolve org logo from station
+        // Resolve org details (name, address, contact, logo) from station's organization
+        string? receiptOrgName = null;
+        string? receiptOrgAddress = null;
+        string? receiptOrgContact = null;
         string? orgLogoFile = null;
+
         var stationId = receipt.Invoice?.ProsecutionCase?.Weighing?.StationId;
         if (stationId.HasValue && stationId.Value != Guid.Empty)
         {
-            orgLogoFile = await ResolveOrgLogoFromStationAsync(stationId.Value);
+            var org = await _context.Stations
+                .Where(s => s.Id == stationId.Value)
+                .Select(s => new
+                {
+                    s.Organization.Name,
+                    s.Organization.LogoUrl,
+                    s.Organization.StreetAddress,
+                    s.Organization.PoBox,
+                    s.Organization.City,
+                    s.Organization.Country,
+                    s.Organization.ContactPhone,
+                    s.Organization.ContactEmail,
+                    s.Organization.Website,
+                })
+                .FirstOrDefaultAsync(ct);
+
+            if (org != null)
+            {
+                receiptOrgName = org.Name;
+                if (!string.IsNullOrEmpty(org.LogoUrl))
+                    orgLogoFile = Path.GetFileName(org.LogoUrl);
+
+                var addressParts = new List<string?> { org.StreetAddress };
+                if (!string.IsNullOrWhiteSpace(org.PoBox))
+                    addressParts.Add($"P.O Box {org.PoBox}");
+                if (!string.IsNullOrWhiteSpace(org.City) || !string.IsNullOrWhiteSpace(org.Country))
+                    addressParts.Add(string.Join(", ", new[] { org.City, org.Country }.Where(v => !string.IsNullOrWhiteSpace(v))));
+                receiptOrgAddress = string.Join(", ", addressParts.Where(v => !string.IsNullOrWhiteSpace(v)));
+                if (string.IsNullOrWhiteSpace(receiptOrgAddress)) receiptOrgAddress = null;
+
+                var contactParts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(org.ContactPhone)) contactParts.Add($"Mobile: {org.ContactPhone}");
+                if (!string.IsNullOrWhiteSpace(org.ContactEmail)) contactParts.Add($"Email: {org.ContactEmail}");
+                if (!string.IsNullOrWhiteSpace(org.Website)) contactParts.Add($"Web: {org.Website}");
+                receiptOrgContact = contactParts.Count > 0 ? string.Join(" | ", contactParts) : null;
+            }
         }
 
         // Commercial/treasury receipts should not show the eCitizen secondary logo
         var showSecondaryLogo = receipt.Invoice?.InvoiceType != "commercial_weighing_fee";
-        var document = new ReceiptDocument(receipt, orgLogoFile: orgLogoFile, showSecondaryLogo: showSecondaryLogo);
+        var document = new ReceiptDocument(receipt, receiptOrgName, receiptOrgAddress, receiptOrgContact, orgLogoFile: orgLogoFile, showSecondaryLogo: showSecondaryLogo);
         return document.Generate();
     }
 

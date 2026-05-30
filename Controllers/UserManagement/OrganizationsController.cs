@@ -99,6 +99,11 @@ public class OrganizationsController : ControllerBase
             OrgType = NormalizeOrgType(request.OrgType) ?? "Private",
             ContactEmail = request.ContactEmail,
             ContactPhone = request.ContactPhone,
+            Website = request.Website,
+            StreetAddress = request.StreetAddress,
+            PoBox = request.PoBox,
+            City = request.City,
+            Country = request.Country,
             Address = request.Address,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
@@ -137,6 +142,11 @@ public class OrganizationsController : ControllerBase
         if (request.OrgType != null) org.OrgType = NormalizeOrgType(request.OrgType) ?? org.OrgType;
         if (request.ContactEmail != null) org.ContactEmail = request.ContactEmail;
         if (request.ContactPhone != null) org.ContactPhone = request.ContactPhone;
+        if (request.Website != null) org.Website = request.Website;
+        if (request.StreetAddress != null) org.StreetAddress = request.StreetAddress;
+        if (request.PoBox != null) org.PoBox = request.PoBox;
+        if (request.City != null) org.City = request.City;
+        if (request.Country != null) org.Country = request.Country;
         if (request.Address != null) org.Address = request.Address;
         if (request.IsActive.HasValue) org.IsActive = request.IsActive.Value;
         if (request.TenantType != null) org.TenantType = NormalizeTenantType(request.TenantType);
@@ -296,6 +306,11 @@ public class OrganizationsController : ControllerBase
             EnabledModules = enabledModules,
             ContactEmail = org.ContactEmail,
             ContactPhone = org.ContactPhone,
+            Website = org.Website,
+            StreetAddress = org.StreetAddress,
+            PoBox = org.PoBox,
+            City = org.City,
+            Country = org.Country,
             Address = org.Address,
             LogoUrl = org.LogoUrl ?? "/images/" + BrandingConstants.Logos.TruLoadLogoSvg,
             PlatformLogoUrl = org.PlatformLogoUrl ?? "/images/" + BrandingConstants.Logos.TruLoadLogoSvg,

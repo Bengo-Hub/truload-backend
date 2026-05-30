@@ -33,6 +33,21 @@ public class Organization
     
     public string? ContactEmail { get; set; }
     public string? ContactPhone { get; set; }
+    public string? Website { get; set; }
+
+    /// <summary>Full street/building address line (e.g. "Barabara Plaza-JKIA, Off Airport South Road").</summary>
+    public string? StreetAddress { get; set; }
+
+    /// <summary>PO Box identifier including postal code (e.g. "41727-00100").</summary>
+    public string? PoBox { get; set; }
+
+    /// <summary>City (e.g. "Nairobi").</summary>
+    public string? City { get; set; }
+
+    /// <summary>Country (e.g. "Kenya").</summary>
+    public string? Country { get; set; }
+
+    /// <summary>Legacy combined address field — kept for backward compatibility.</summary>
     public string? Address { get; set; }
 
     /// <summary>Organisation logo overlaying the login page image (right panel).</summary>

@@ -15,14 +15,16 @@ public class ReceiptDocument : BaseDocument
     private readonly Receipt _receipt;
     private readonly string? _organizationName;
     private readonly string? _organizationAddress;
+    private readonly string? _organizationContact;
     private readonly string _orgLogoFile;
     private readonly bool _showSecondaryLogo;
 
-    public ReceiptDocument(Receipt receipt, string? organizationName = null, string? organizationAddress = null, string? orgLogoFile = null, bool showSecondaryLogo = true)
+    public ReceiptDocument(Receipt receipt, string? organizationName = null, string? organizationAddress = null, string? organizationContact = null, string? orgLogoFile = null, bool showSecondaryLogo = true)
     {
         _receipt = receipt;
-        _organizationName = organizationName ?? "Kenya Urban Roads Authority (KURA)";
-        _organizationAddress = organizationAddress ?? "P.O. Box 00100-1234, Nairobi, Kenya";
+        _organizationName = organizationName;
+        _organizationAddress = organizationAddress;
+        _organizationContact = organizationContact;
         _orgLogoFile = ResolveOrgLogo(orgLogoFile);
         _showSecondaryLogo = showSecondaryLogo;
     }
@@ -65,8 +67,12 @@ public class ReceiptDocument : BaseDocument
                 {
                     org.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
                         .FontSize(10).SemiBold();
-                    org.Item().AlignCenter().Text(_organizationName).FontSize(12).SemiBold().FontColor(KuraBlue);
-                    org.Item().AlignCenter().Text(_organizationAddress).FontSize(8);
+                    if (!string.IsNullOrWhiteSpace(_organizationName))
+                        org.Item().AlignCenter().Text(_organizationName).FontSize(12).SemiBold().FontColor(KuraBlue);
+                    if (!string.IsNullOrWhiteSpace(_organizationAddress))
+                        org.Item().AlignCenter().Text(_organizationAddress).FontSize(8);
+                    if (!string.IsNullOrWhiteSpace(_organizationContact))
+                        org.Item().AlignCenter().Text(_organizationContact).FontSize(7.5f);
                 });
 
                 row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>

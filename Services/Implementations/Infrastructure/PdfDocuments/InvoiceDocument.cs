@@ -15,6 +15,7 @@ public class InvoiceDocument : BaseDocument
     private readonly Invoice _invoice;
     private readonly string? _organizationName;
     private readonly string? _organizationAddress;
+    private readonly string? _organizationContact;
     private readonly string _orgLogoFile;
     private readonly bool _showSecondaryLogo;
     private readonly OrgPaymentConfig? _payment;
@@ -26,11 +27,12 @@ public class InvoiceDocument : BaseDocument
         string? MpesaPaybillNumber,
         string? MpesaTillNumber);
 
-    public InvoiceDocument(Invoice invoice, string? organizationName = null, string? organizationAddress = null, string? orgLogoFile = null, bool showSecondaryLogo = true, OrgPaymentConfig? paymentConfig = null)
+    public InvoiceDocument(Invoice invoice, string? organizationName = null, string? organizationAddress = null, string? organizationContact = null, string? orgLogoFile = null, bool showSecondaryLogo = true, OrgPaymentConfig? paymentConfig = null)
     {
         _invoice = invoice;
-        _organizationName = organizationName ?? "Kenya Urban Roads Authority (KURA)";
-        _organizationAddress = organizationAddress ?? "P.O. Box 00100-1234, Nairobi, Kenya";
+        _organizationName = organizationName;
+        _organizationAddress = organizationAddress;
+        _organizationContact = organizationContact;
         _orgLogoFile = ResolveOrgLogo(orgLogoFile);
         _showSecondaryLogo = showSecondaryLogo;
         _payment = paymentConfig;
@@ -74,9 +76,12 @@ public class InvoiceDocument : BaseDocument
                 {
                     org.Item().AlignCenter().Text(BrandingConstants.Organization.RepublicOfKenya)
                         .FontSize(10).SemiBold();
-                    org.Item().AlignCenter().Text(_organizationName).FontSize(13).SemiBold().FontColor(KuraBlue);
-                    org.Item().AlignCenter().Text(_organizationAddress).FontSize(8.5f);
-                    org.Item().AlignCenter().Text("Tel: +254 20 XXXXXXX | Email: info@kura.go.ke").FontSize(7.5f);
+                    if (!string.IsNullOrWhiteSpace(_organizationName))
+                        org.Item().AlignCenter().Text(_organizationName).FontSize(13).SemiBold().FontColor(KuraBlue);
+                    if (!string.IsNullOrWhiteSpace(_organizationAddress))
+                        org.Item().AlignCenter().Text(_organizationAddress).FontSize(8.5f);
+                    if (!string.IsNullOrWhiteSpace(_organizationContact))
+                        org.Item().AlignCenter().Text(_organizationContact).FontSize(7.5f);
                 });
 
                 row.ConstantItem(LogoWidth).AlignMiddle().Column(logoCol =>

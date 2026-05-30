@@ -201,6 +201,29 @@ public static class UserManagementModuleDbContextConfiguration
                 .HasColumnName("contact_phone")
                 .HasMaxLength(20);
 
+            entity.Property(e => e.Website)
+                .HasColumnName("website")
+                .HasMaxLength(255);
+
+            entity.Property(e => e.StreetAddress)
+                .HasColumnName("street_address")
+                .HasMaxLength(500);
+
+            entity.Property(e => e.PoBox)
+                .HasColumnName("po_box")
+                .HasMaxLength(50);
+
+            entity.Property(e => e.City)
+                .HasColumnName("city")
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Country)
+                .HasColumnName("country")
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Address)
+                .HasColumnName("address");
+
             entity.Property(e => e.LogoUrl)
                 .HasColumnName("logo_url")
                 .HasMaxLength(500);

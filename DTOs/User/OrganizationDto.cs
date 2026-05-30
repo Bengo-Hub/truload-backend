@@ -10,6 +10,11 @@ public class OrganizationDto
     public List<string>? EnabledModules { get; set; }
     public string? ContactEmail { get; set; }
     public string? ContactPhone { get; set; }
+    public string? Website { get; set; }
+    public string? StreetAddress { get; set; }
+    public string? PoBox { get; set; }
+    public string? City { get; set; }
+    public string? Country { get; set; }
     public string? Address { get; set; }
     public string? LogoUrl { get; set; }
     public string? PlatformLogoUrl { get; set; }
@@ -35,6 +40,11 @@ public class CreateOrganizationRequest
     public string? OrgType { get; set; }
     public string? ContactEmail { get; set; }
     public string? ContactPhone { get; set; }
+    public string? Website { get; set; }
+    public string? StreetAddress { get; set; }
+    public string? PoBox { get; set; }
+    public string? City { get; set; }
+    public string? Country { get; set; }
     public string? Address { get; set; }
 }
 
@@ -47,6 +57,11 @@ public class UpdateOrganizationRequest
     public List<string>? EnabledModules { get; set; }
     public string? ContactEmail { get; set; }
     public string? ContactPhone { get; set; }
+    public string? Website { get; set; }
+    public string? StreetAddress { get; set; }
+    public string? PoBox { get; set; }
+    public string? City { get; set; }
+    public string? Country { get; set; }
     public string? Address { get; set; }
     public string? LogoUrl { get; set; }
     public string? PlatformLogoUrl { get; set; }

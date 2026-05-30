@@ -78,8 +78,13 @@ public class UserManagementSeeder
                 OrgType = "Government",
                 TenantType = "AxleLoadEnforcement",
                 ContactEmail = "info@kura.go.ke",
-                ContactPhone = "+254-20-7654321",
-                Address = "KURA Headquarters, Mombasa Road, Nairobi",
+                ContactPhone = "0717105233",
+                Website = "www.kura.go.ke",
+                StreetAddress = "Barabara Plaza-JKIA, Off Airport South Road Along Mazao Road Opposite Aviation House",
+                PoBox = "41727-00100",
+                City = "Nairobi",
+                Country = "Kenya",
+                Address = "Barabara Plaza-JKIA, Off Airport South Road Along Mazao Road Opposite Aviation House, P.O BOX 41727-00100 Nairobi, Kenya",
                 PrimaryColor = "#0a9f3d",
                 SecondaryColor = "#1a1a2e",
                 LogoUrl = "/images/logos/kura-logo.png",
@@ -208,6 +213,32 @@ public class UserManagementSeeder
                 if (!string.IsNullOrEmpty(org.EnabledModulesJson) && org.EnabledModulesJson != existing.EnabledModulesJson)
                 {
                     existing.EnabledModulesJson = org.EnabledModulesJson;
+                    updated = true;
+                }
+                // Sync structured address fields (fill any null fields from seed)
+                if (string.IsNullOrEmpty(existing.StreetAddress) && !string.IsNullOrEmpty(org.StreetAddress))
+                {
+                    existing.StreetAddress = org.StreetAddress;
+                    updated = true;
+                }
+                if (string.IsNullOrEmpty(existing.PoBox) && !string.IsNullOrEmpty(org.PoBox))
+                {
+                    existing.PoBox = org.PoBox;
+                    updated = true;
+                }
+                if (string.IsNullOrEmpty(existing.City) && !string.IsNullOrEmpty(org.City))
+                {
+                    existing.City = org.City;
+                    updated = true;
+                }
+                if (string.IsNullOrEmpty(existing.Country) && !string.IsNullOrEmpty(org.Country))
+                {
+                    existing.Country = org.Country;
+                    updated = true;
+                }
+                if (string.IsNullOrEmpty(existing.Website) && !string.IsNullOrEmpty(org.Website))
+                {
+                    existing.Website = org.Website;
                     updated = true;
                 }
                 if (updated)
