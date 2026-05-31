@@ -121,6 +121,42 @@ public class SpecialReleaseService : ISpecialReleaseService
         specialRelease.UpdatedAt = DateTime.UtcNow;
 
         var updated = await _specialReleaseRepository.UpdateAsync(specialRelease);
+
+        // Close the case on approval unless a reweigh is required.
+        // When reweigh is required, the compliance reweigh flow closes the case instead.
+        if (!specialRelease.ReweighRequired)
+        {
+            var caseRegister = await _context.CaseRegisters
+                .Include(c => c.CaseStatus)
+                .FirstOrDefaultAsync(c => c.Id == specialRelease.CaseRegisterId);
+
+            if (caseRegister != null)
+            {
+                var closableStatuses = new[] { "OPEN", "INVESTIGATION", "ESCALATED" };
+                var currentCode = caseRegister.CaseStatus?.Code
+                    ?? (await _context.CaseStatuses.FindAsync(caseRegister.CaseStatusId))?.Code;
+
+                if (closableStatuses.Contains(currentCode))
+                {
+                    var closedStatus = await _context.CaseStatuses.FirstOrDefaultAsync(cs => cs.Code == "CLOSED");
+                    var srDisposition = await _context.DispositionTypes.FirstOrDefaultAsync(dt => dt.Code == "SPECIAL_RELEASE");
+
+                    if (closedStatus != null && srDisposition != null)
+                    {
+                        caseRegister.CaseStatusId = closedStatus.Id;
+                        caseRegister.CaseStatus = null!;
+                        caseRegister.DispositionTypeId = srDisposition.Id;
+                        caseRegister.DispositionType = null!;
+                        caseRegister.ClosingReason = $"Closed on special release approval: {specialRelease.CertificateNo}";
+                        caseRegister.ClosedAt = DateTime.UtcNow;
+                        caseRegister.ClosedById = approvedById;
+                        caseRegister.UpdatedAt = DateTime.UtcNow;
+                        await _caseRegisterRepository.UpdateAsync(caseRegister);
+                    }
+                }
+            }
+        }
+
         return MapToDto(updated);
     }
 

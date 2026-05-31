@@ -239,6 +239,12 @@ public class CaseRegisterService : ICaseRegisterService
             actId = defaultAct?.Id;
         }
 
+        // Build violation details based on actual violation type
+        // Traffic Act: axle overloads alone yield Warning (no GVW charge); only GVW overload creates Overloaded status
+        string violationDetails = weighing.OverloadKg > 0
+            ? $"GVW Overload: {weighing.OverloadKg:N0} kg above effective GVW limit. Control Status: {weighing.ControlStatus}"
+            : $"Axle group overload detected; GVW within permissible tolerance. Control Status: {weighing.ControlStatus}";
+
         // Create case register entry
         var request = new CreateCaseRegisterRequest
         {
@@ -247,7 +253,7 @@ public class CaseRegisterService : ICaseRegisterService
             VehicleId = weighing.VehicleId,
             DriverId = weighing.DriverId,
             ViolationTypeId = overloadViolationType.Id,
-            ViolationDetails = $"GVW Overload: {weighing.OverloadKg:N0} kg. Control Status: {weighing.ControlStatus}",
+            ViolationDetails = violationDetails,
             ActId = actId
         };
 
@@ -357,9 +363,9 @@ public class CaseRegisterService : ICaseRegisterService
             ?? throw new InvalidOperationException("CLOSED case status not found");
 
         caseRegister.CaseStatusId = closedStatus.Id;
-        caseRegister.CaseStatus = null; // Detach stale navigation to prevent EF conflict
+        caseRegister.CaseStatus = null!; // Detach stale navigation to prevent EF conflict
         caseRegister.DispositionTypeId = request.DispositionTypeId;
-        caseRegister.DispositionType = null; // Detach stale navigation
+        caseRegister.DispositionType = null!; // Detach stale navigation
         caseRegister.ClosingReason = request.ClosingReason;
         caseRegister.ClosedAt = DateTime.UtcNow;
         caseRegister.ClosedById = userId;

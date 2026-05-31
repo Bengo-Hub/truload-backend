@@ -691,18 +691,26 @@ public class WeighingService : IWeighingService
                         var opTolerance = await _toleranceRepository.GetByCodeAsync("OPERATIONAL_ALLOWANCE");
                         int opToleranceKg = opTolerance?.ToleranceKg ?? 200;
 
+                        // Build SR reason based on violation type:
+                        // OverloadKg > 0 = GVW exceeded permissible but within GVW tolerance
+                        // OverloadKg = 0 = GVW within limits; axle group(s) overloaded (Traffic Act: Warning only)
+                        string srReason = transaction.OverloadKg > 0
+                            ? $"GVW overload of {transaction.OverloadKg}kg is within GVW tolerance. Auto-released with warning."
+                            : "Axle group overload detected; GVW is within permissible tolerance. Released under Traffic Act (axle overloads do not attract GVW charges).";
+
                         var year = DateTime.UtcNow.Year;
                         var certCount = await _dbContext.SpecialReleases
                             .CountAsync(sr => sr.CreatedAt.Year == year);
+                        var certNo = $"SR-TOL-{year}-{(certCount + 1):D6}";
                         var specialRelease = new Models.CaseManagement.SpecialRelease
                         {
                             CaseRegisterId = caseDto.Id,
-                            CertificateNo = $"SR-TOL-{year}-{(certCount + 1):D6}",
+                            CertificateNo = certNo,
                             ReleaseTypeId = toleranceReleaseType.Id,
                             OverloadKg = transaction.OverloadKg,
                             RedistributionAllowed = false,
                             ReweighRequired = false,
-                            Reason = $"GVW overload of {transaction.OverloadKg}kg is within operational tolerance ({opToleranceKg}kg). Auto-released with warning.",
+                            Reason = srReason,
                             AuthorizedById = transaction.WeighedByUserId,
                             CreatedById = transaction.WeighedByUserId,
                             IssuedAt = DateTime.UtcNow,
@@ -727,7 +735,9 @@ public class WeighingService : IWeighingService
                             {
                                 trackedCase.CaseStatusId = closedStatus.Id;
                                 trackedCase.DispositionTypeId = specialReleaseDisposition.Id;
-                                trackedCase.ClosingReason = $"Auto-closed: GVW overload within tolerance ({transaction.OverloadKg}kg <= {opToleranceKg}kg). Special release certificate {specialRelease.CertificateNo} issued.";
+                                trackedCase.ClosingReason = transaction.OverloadKg > 0
+                                    ? $"Auto-closed: GVW overload of {transaction.OverloadKg}kg within GVW tolerance. Special release {certNo} issued."
+                                    : $"Auto-closed: Axle overload only; GVW within permissible tolerance. Special release {certNo} issued.";
                                 trackedCase.ClosedAt = DateTime.UtcNow;
                                 trackedCase.ClosedById = transaction.WeighedByUserId;
                                 trackedCase.UpdatedAt = DateTime.UtcNow;
