@@ -11,7 +11,7 @@
       "axleName": "2A - Rigid body vehicle with 2 axles",
       "axleNumber": 2,
       "gvw": 18000,
-      "toleranceKg": 1000,
+      "toleranceKg": 1500,
       "tolerancePercentage": 6,
       "permissibleGvwKg": 18000
     },
@@ -25,10 +25,7 @@
       "axleCode": "3A",
       "axleName": "3A - Rigid body vehicle with 3 axles",
       "axleNumber": 3,
-      "gvw": 26000,
-      "toleranceKg": 2000,
-      "tolerancePercentage": 8,
-      "permissibleGvwKg": 26000
+      "gvw": 26000
     },
     {
       "axleCode": "4*SDSD",
@@ -40,10 +37,7 @@
       "axleCode": "4D",
       "axleName": "4D",
       "axleNumber": 4,
-      "gvw": 36000,
-      "toleranceKg": 2000,
-      "tolerancePercentage": 6,
-      "permissibleGvwKg": 36000
+      "gvw": 36000
     },
     {
       "axleCode": "5*SSDDD",
@@ -61,19 +55,13 @@
       "axleCode": "5C",
       "axleName": "5C",
       "axleNumber": 5,
-      "gvw": 44000,
-      "toleranceKg": 2000,
-      "tolerancePercentage": 5,
-      "permissibleGvwKg": 44000
+      "gvw": 44000
     },
     {
       "axleCode": "5D",
       "axleName": "5D",
       "axleNumber": 5,
-      "gvw": 44000,
-      "toleranceKg": 2000,
-      "tolerancePercentage": 5,
-      "permissibleGvwKg": 44000
+      "gvw": 44000
     },
     {
       "axleCode": "6*SDDWWW",
@@ -103,55 +91,37 @@
       "axleCode": "6C",
       "axleName": "6C",
       "axleNumber": 6,
-      "gvw": 50000,
-      "toleranceKg": 4000,
-      "tolerancePercentage": 8,
-      "permissibleGvwKg": 50000
+      "gvw": 50000
     },
     {
       "axleCode": "6D",
       "axleName": "6D",
       "axleNumber": 6,
-      "gvw": 52000,
-      "toleranceKg": 4000,
-      "tolerancePercentage": 8,
-      "permissibleGvwKg": 52000
+      "gvw": 52000
     },
     {
       "axleCode": "6E",
       "axleName": "6E",
       "axleNumber": 6,
-      "gvw": 46500,
-      "toleranceKg": 2000,
-      "tolerancePercentage": 8,
-      "permissibleGvwKg": 46500
+      "gvw": 46500
     },
     {
       "axleCode": "6G",
       "axleName": "6G",
       "axleNumber": 6,
-      "gvw": 47750,
-      "toleranceKg": 2250,
-      "tolerancePercentage": 8,
-      "permissibleGvwKg": 47750
+      "gvw": 47750
     },
     {
       "axleCode": "7C",
       "axleName": "7C",
       "axleNumber": 7,
-      "gvw": 56000,
-      "toleranceKg": 2000,
-      "tolerancePercentage": 4,
-      "permissibleGvwKg": 58000
+      "gvw": 56000
     },
     {
       "axleCode": "7D",
       "axleName": "7D",
       "axleNumber": 7,
-      "gvw": 56000,
-      "toleranceKg": 2000,
-      "tolerancePercentage": 4,
-      "permissibleGvwKg": 58000
+      "gvw": 56000
     },
     {
       "axleCode": "7E",
@@ -487,10 +457,7 @@
       "axleCode": "4A",
       "axleName": "4A",
       "axleNumber": 4,
-      "gvw": 30000,
-      "toleranceKg": 2000,
-      "tolerancePercentage": 7,
-      "permissibleGvwKg": 30000
+      "gvw": 30000
     },
     {
       "axleCode": "5*S|WD|WW|",
@@ -784,10 +751,7 @@
       "axleCode": "3B",
       "axleName": "3B",
       "axleNumber": 3,
-      "gvw": 28000,
-      "toleranceKg": 2000,
-      "tolerancePercentage": 7,
-      "permissibleGvwKg": 30000
+      "gvw": 28000
     },
     {
       "axleCode": "4*",
@@ -823,19 +787,13 @@
       "axleCode": "4B",
       "axleName": "4B",
       "axleNumber": 4,
-      "gvw": 36000,
-      "toleranceKg": 2000,
-      "tolerancePercentage": 6,
-      "permissibleGvwKg": 38000
+      "gvw": 36000
     },
     {
       "axleCode": "4C",
       "axleName": "4C",
       "axleNumber": 4,
-      "gvw": 36000,
-      "toleranceKg": 2000,
-      "tolerancePercentage": 6,
-      "permissibleGvwKg": 38000
+      "gvw": 36000
     },
     {
       "axleCode": "4F",
@@ -853,19 +811,13 @@
       "axleCode": "5A",
       "axleName": "5A",
       "axleNumber": 5,
-      "gvw": 42000,
-      "toleranceKg": 2000,
-      "tolerancePercentage": 5,
-      "permissibleGvwKg": 44000
+      "gvw": 42000
     },
     {
       "axleCode": "5B",
       "axleName": "5B",
       "axleNumber": 5,
-      "gvw": 46000,
-      "toleranceKg": 2000,
-      "tolerancePercentage": 5,
-      "permissibleGvwKg": 46000
+      "gvw": 46000
     },
     {
       "axleCode": "6*",
@@ -943,10 +895,7 @@
       "axleCode": "6A",
       "axleName": "6A",
       "axleNumber": 6,
-      "gvw": 54000,
-      "toleranceKg": 2000,
-      "tolerancePercentage": 4,
-      "permissibleGvwKg": 48500
+      "gvw": 54000
     },
     {
       "axleCode": "6AWWWDDD",
@@ -958,10 +907,7 @@
       "axleCode": "6B",
       "axleName": "6B",
       "axleNumber": 6,
-      "gvw": 48000,
-      "toleranceKg": 2250,
-      "tolerancePercentage": 5,
-      "permissibleGvwKg": 50000
+      "gvw": 48000
     },
     {
       "axleCode": "6F",
