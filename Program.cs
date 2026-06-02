@@ -412,6 +412,9 @@ builder.Services.Configure<NotificationServiceOptions>(
 
 // Shared Notification Service (HTTP client integration with Go notifications-service)
 builder.Services.AddHttpClient<INotificationService, NotificationService>();
+// Background-safe dispatcher: sends workflow emails off-request using a fresh DI scope
+// (the request scope — DbContext/TenantContext — is disposed before fire-and-forget tasks run).
+builder.Services.AddSingleton<IBackgroundNotificationDispatcher, BackgroundNotificationDispatcher>();
 
 // Permission services
 builder.Services.AddScoped<ICacheService, CacheService>();

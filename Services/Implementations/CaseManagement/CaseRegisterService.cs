@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.CaseManagement;
 using TruLoad.Backend.DTOs.Shared;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.CaseManagement;
 using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Repositories.CaseManagement;
@@ -14,25 +15,63 @@ public class CaseRegisterService : ICaseRegisterService
 {
     private readonly ICaseRegisterRepository _caseRegisterRepository;
     private readonly INotificationService _notificationService;
+    private readonly IBackgroundNotificationDispatcher _backgroundNotifications;
+    private readonly ITenantContext _tenantContext;
     private readonly TruLoadDbContext _context;
     private readonly ILogger<CaseRegisterService> _logger;
 
     public CaseRegisterService(
         ICaseRegisterRepository caseRegisterRepository,
         INotificationService notificationService,
+        IBackgroundNotificationDispatcher backgroundNotifications,
+        ITenantContext tenantContext,
         TruLoadDbContext context,
         ILogger<CaseRegisterService> logger)
     {
         _caseRegisterRepository = caseRegisterRepository;
         _notificationService = notificationService;
+        _backgroundNotifications = backgroundNotifications;
+        _tenantContext = tenantContext;
         _context = context;
         _logger = logger;
     }
 
+    /// <summary>Tenant slug captured from the request for off-request notification dispatch.</summary>
+    private string? TenantSlug => _tenantContext.OrganizationCode?.ToLowerInvariant();
+
     public async Task<CaseRegisterDto?> GetByIdAsync(Guid id)
     {
         var caseRegister = await _caseRegisterRepository.GetByIdAsync(id);
-        return caseRegister == null ? null : MapToDto(caseRegister);
+        if (caseRegister == null) return null;
+        var dto = MapToDto(caseRegister);
+        await EnrichProsecutionStatusAsync(new[] { dto });
+        return dto;
+    }
+
+    /// <summary>
+    /// Batch-populates HasProsecution/ProsecutionStatus for the given DTOs using a single
+    /// query against prosecution_cases (one-to-one with case_register), avoiding N+1.
+    /// </summary>
+    private async Task EnrichProsecutionStatusAsync(IReadOnlyCollection<CaseRegisterDto> dtos)
+    {
+        if (dtos.Count == 0) return;
+        var caseIds = dtos.Select(d => d.Id).ToList();
+        var prosecutions = await _context.ProsecutionCases
+            .AsNoTracking()
+            .Where(p => caseIds.Contains(p.CaseRegisterId) && p.DeletedAt == null)
+            .Select(p => new { p.CaseRegisterId, p.Status })
+            .ToListAsync();
+        var byCase = prosecutions
+            .GroupBy(p => p.CaseRegisterId)
+            .ToDictionary(g => g.Key, g => g.First().Status);
+        foreach (var dto in dtos)
+        {
+            if (byCase.TryGetValue(dto.Id, out var status))
+            {
+                dto.HasProsecution = true;
+                dto.ProsecutionStatus = status;
+            }
+        }
     }
 
     public async Task<CaseRegisterDto?> GetByCaseNoAsync(string caseNo)
@@ -115,8 +154,11 @@ public class CaseRegisterService : ICaseRegisterService
             pageNumber: criteria.PageNumber,
             pageSize: criteria.PageSize);
 
+        var items = cases.Select(MapToDto).ToList();
+        await EnrichProsecutionStatusAsync(items);
+
         return PagedResponse<CaseRegisterDto>.Create(
-            cases.Select(MapToDto).ToList(),
+            items,
             totalCount,
             criteria.PageNumber,
             criteria.PageSize);
@@ -175,32 +217,19 @@ public class CaseRegisterService : ICaseRegisterService
 
         if (!string.IsNullOrEmpty(user?.Email))
         {
-            var capturedCaseNo = caseNo;
-            var capturedUserEmail = user.Email;
-            var capturedUserName = user.FullName ?? "Officer";
-            var capturedStationName = user.Station?.Name ?? "Unknown Station";
-            var capturedViolationDetails = request.ViolationDetails ?? string.Empty;
-            _ = Task.Run(async () =>
-            {
-                try
+            // Dispatch off-request with a fresh DI scope (request scope is disposed before this runs).
+            _backgroundNotifications.DispatchWorkflowEmail(
+                TenantSlug,
+                "caseCreated",
+                "truload/case_created",
+                user.Email,
+                user.FullName ?? "Officer",
+                new Dictionary<string, object>
                 {
-                    await _notificationService.SendWorkflowEmailAsync(
-                        "caseCreated",
-                        "truload/case_created",
-                        capturedUserEmail,
-                        capturedUserName,
-                        new Dictionary<string, object>
-                        {
-                            ["case_no"] = capturedCaseNo,
-                            ["station_name"] = capturedStationName,
-                            ["violation_details"] = capturedViolationDetails
-                        });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to send case created email for case {CaseNo}", capturedCaseNo);
-                }
-            });
+                    ["case_no"] = caseNo,
+                    ["station_name"] = user.Station?.Name ?? "Unknown Station",
+                    ["violation_details"] = request.ViolationDetails ?? string.Empty
+                });
         }
 
         return MapToDto(created);
@@ -445,34 +474,114 @@ public class CaseRegisterService : ICaseRegisterService
             "warning",
             $"/cases/{id}");
 
-        var capturedCaseNo = caseRegister.CaseNo;
-        var capturedCaseManagerUserId = caseManager.UserId;
-        _ = Task.Run(async () =>
+        // Resolve the manager's email in-scope, then dispatch off-request with a fresh DI scope.
+        var manager = await _context.Users.AsNoTracking()
+            .Where(u => u.Id == caseManager.UserId && !string.IsNullOrEmpty(u.Email))
+            .Select(u => new { u.Email, u.FullName })
+            .FirstOrDefaultAsync();
+        if (manager != null)
         {
-            try
-            {
-                var manager = await _context.Users.AsNoTracking()
-                    .Where(u => u.Id == capturedCaseManagerUserId && !string.IsNullOrEmpty(u.Email))
-                    .Select(u => new { u.Email, u.FullName })
-                    .FirstOrDefaultAsync();
-                if (manager == null) return;
-                await _notificationService.SendWorkflowEmailAsync(
-                    "caseEscalated",
-                    "truload/case_escalated",
-                    manager.Email!,
-                    manager.FullName ?? "Case Manager",
-                    new Dictionary<string, object>
-                    {
-                        ["case_no"] = capturedCaseNo
-                    });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to send case escalated email for case {CaseNo}", capturedCaseNo);
-            }
-        });
+            _backgroundNotifications.DispatchWorkflowEmail(
+                TenantSlug,
+                "caseEscalated",
+                "truload/case_escalated",
+                manager.Email!,
+                manager.FullName ?? "Case Manager",
+                new Dictionary<string, object>
+                {
+                    ["case_no"] = caseRegister.CaseNo
+                });
+        }
 
         return MapToDto(updated);
+    }
+
+    public async Task<List<string>> ResendCaseNotificationsAsync(Guid caseId, Guid userId)
+    {
+        var sent = new List<string>();
+        var caseEntity = await _caseRegisterRepository.GetByIdAsync(caseId)
+            ?? throw new InvalidOperationException($"Case {caseId} not found");
+
+        // Recipient: the creating officer, else the requesting user.
+        var recipientUserId = caseEntity.CreatedById ?? userId;
+        var recipient = await _context.Users.AsNoTracking()
+            .Where(u => u.Id == recipientUserId && !string.IsNullOrEmpty(u.Email))
+            .Select(u => new { u.Email, u.FullName })
+            .FirstOrDefaultAsync();
+        if (recipient == null)
+            throw new InvalidOperationException("No recipient email found for this case's officer.");
+
+        var tenantSlug = TenantSlug;
+        var caseNo = caseEntity.CaseNo;
+        var recipientName = recipient.FullName ?? "Officer";
+
+        // Resolve weighing + station (for overload alert and case station name).
+        string stationName = "Unknown Station";
+        var weighing = caseEntity.WeighingId.HasValue
+            ? await _context.WeighingTransactions.AsNoTracking()
+                .Where(w => w.Id == caseEntity.WeighingId.Value)
+                .Select(w => new { w.VehicleRegNumber, w.OverloadKg, w.TicketNumber, w.StationId })
+                .FirstOrDefaultAsync()
+            : null;
+        var resolvedStationId = weighing?.StationId ?? caseEntity.StationId;
+        if (resolvedStationId.HasValue)
+        {
+            stationName = await _context.Stations.AsNoTracking()
+                .Where(s => s.Id == resolvedStationId.Value)
+                .Select(s => s.Name).FirstOrDefaultAsync() ?? "Unknown Station";
+        }
+
+        // 1) Overload alert (only when there is a weighing).
+        if (weighing != null)
+        {
+            if (await _notificationService.SendWorkflowEmailAsync(
+                    "overloadAlert", "truload/overload_alert", recipient.Email!, recipientName,
+                    new Dictionary<string, object>
+                    {
+                        ["vehicle_reg"] = weighing.VehicleRegNumber,
+                        ["overload_kg"] = weighing.OverloadKg,
+                        ["ticket_no"] = weighing.TicketNumber,
+                        ["station_name"] = stationName,
+                        ["case_no"] = caseNo
+                    }, tenantSlug: tenantSlug))
+                sent.Add("overloadAlert");
+        }
+
+        // 2) Case created.
+        if (await _notificationService.SendWorkflowEmailAsync(
+                "caseCreated", "truload/case_created", recipient.Email!, recipientName,
+                new Dictionary<string, object>
+                {
+                    ["case_no"] = caseNo,
+                    ["station_name"] = stationName,
+                    ["violation_details"] = caseEntity.ViolationDetails ?? string.Empty
+                }, tenantSlug: tenantSlug))
+            sent.Add("caseCreated");
+
+        // 3) Invoice issued (only when an invoice exists for this case).
+        var invoice = await _context.Invoices.AsNoTracking()
+            .Where(i => i.DeletedAt == null &&
+                (i.CaseRegisterId == caseId || (i.ProsecutionCase != null && i.ProsecutionCase.CaseRegisterId == caseId)))
+            .OrderByDescending(i => i.CreatedAt)
+            .Select(i => new { i.InvoiceNo, i.AmountDue, i.Currency })
+            .FirstOrDefaultAsync();
+        if (invoice != null)
+        {
+            if (await _notificationService.SendWorkflowEmailAsync(
+                    "invoiceIssued", "truload/invoice_issued", recipient.Email!, recipientName,
+                    new Dictionary<string, object>
+                    {
+                        ["invoice_no"] = invoice.InvoiceNo,
+                        ["amount_due"] = invoice.AmountDue.ToString("N2"),
+                        ["currency"] = invoice.Currency,
+                        ["due_date"] = DateTime.UtcNow.AddDays(30).ToString("yyyy-MM-dd")
+                    }, tenantSlug: tenantSlug))
+                sent.Add("invoiceIssued");
+        }
+
+        _logger.LogInformation("Resent {Count} workflow email(s) for case {CaseNo} to {Email}: {Workflows}",
+            sent.Count, caseNo, recipient.Email, string.Join(", ", sent));
+        return sent;
     }
 
     public async Task<CaseRegisterDto> AssignInvestigatingOfficerAsync(Guid id, Guid officerId, Guid assignedById)
@@ -548,6 +657,8 @@ public class CaseRegisterService : ICaseRegisterService
             ? $"{weighing.Driver.FullNames} {weighing.Driver.Surname}".Trim()
             : null;
         var driverLicenseNo = weighing?.Driver?.DrivingLicenseNo;
+        var driverIdNumber = weighing?.Driver?.IdNumber;
+        var driverPhoneNumber = weighing?.Driver?.PhoneNumber;
         var vehicleRegNumber = weighing?.VehicleRegNumber ?? string.Empty;
         var transporterName = weighing?.Transporter?.Name;
 
@@ -599,6 +710,8 @@ public class CaseRegisterService : ICaseRegisterService
             DriverId = caseRegister.DriverId,
             DriverName = driverName,
             DriverLicenseNo = driverLicenseNo,
+            DriverIdNumber = driverIdNumber,
+            DriverPhoneNumber = driverPhoneNumber,
             ViolationTypeId = caseRegister.ViolationTypeId,
             ViolationType = caseRegister.ViolationType?.Name ?? string.Empty,
             ViolationDetails = caseRegister.ViolationDetails,

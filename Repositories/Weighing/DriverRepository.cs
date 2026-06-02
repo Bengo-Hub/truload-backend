@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
+using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.Weighing;
 
@@ -75,5 +76,103 @@ public class DriverRepository : IDriverRepository
     {
         _context.Drivers.Update(driver);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<Driver?> FindActiveByNameAsync(string fullNames, string surname)
+    {
+        var fn = (fullNames ?? string.Empty).Trim();
+        var sn = (surname ?? string.Empty).Trim();
+        if (fn.Length == 0 || sn.Length == 0) return null;
+
+        return await _context.Drivers
+            .Where(d => d.DeletedAt == null
+                && d.FullNames != null && d.Surname != null
+                && d.FullNames.ToLower() == fn.ToLower()
+                && d.Surname.ToLower() == sn.ToLower())
+            // Prefer an existing record that already has an ID number.
+            .OrderByDescending(d => d.IdNumber != null)
+            .ThenBy(d => d.CreatedAt)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<DriverDeduplicationResult> DeduplicateAsync()
+    {
+        var result = new DriverDeduplicationResult();
+
+        var drivers = await _context.Drivers
+            .Where(d => d.DeletedAt == null)
+            .ToListAsync();
+
+        // Group by normalized (full name + surname); only collapse groups with >1 record.
+        var groups = drivers
+            .GroupBy(d => $"{(d.FullNames ?? string.Empty).Trim().ToLowerInvariant()}|{(d.Surname ?? string.Empty).Trim().ToLowerInvariant()}")
+            .Where(g => g.Count() > 1);
+
+        await using var tx = await _context.Database.BeginTransactionAsync();
+
+        foreach (var group in groups)
+        {
+            var ordered = group
+                // Survivor preference: has ID number, then has license, then oldest record.
+                .OrderByDescending(d => d.IdNumber != null)
+                .ThenByDescending(d => d.DrivingLicenseNo != null)
+                .ThenBy(d => d.CreatedAt)
+                .ToList();
+
+            var survivor = ordered.First();
+            var duplicates = ordered.Skip(1).ToList();
+            var dupIds = duplicates.Select(d => d.Id).ToList();
+
+            // Merge any unique fields the survivor is missing from the duplicates.
+            foreach (var dup in duplicates)
+            {
+                survivor.IdNumber ??= dup.IdNumber;
+                survivor.DrivingLicenseNo ??= dup.DrivingLicenseNo;
+                survivor.NtsaId ??= dup.NtsaId;
+                survivor.PhoneNumber ??= dup.PhoneNumber;
+                survivor.Email ??= dup.Email;
+                survivor.Gender ??= dup.Gender;
+                survivor.Nationality ??= dup.Nationality;
+                survivor.DateOfBirth ??= dup.DateOfBirth;
+                survivor.Address ??= dup.Address;
+                survivor.LicenseClass ??= dup.LicenseClass;
+                survivor.LicenseIssueDate ??= dup.LicenseIssueDate;
+                survivor.LicenseExpiryDate ??= dup.LicenseExpiryDate;
+                survivor.TransporterId ??= dup.TransporterId;
+                survivor.OrganizationId ??= dup.OrganizationId;
+            }
+            survivor.UpdatedAt = DateTime.UtcNow;
+
+            // Repoint every FK reference to the survivor (bulk SQL — no change tracking).
+            result.ReferencesRepointed += await _context.WeighingTransactions
+                .Where(w => w.DriverId.HasValue && dupIds.Contains(w.DriverId.Value))
+                .ExecuteUpdateAsync(s => s.SetProperty(w => w.DriverId, survivor.Id));
+            result.ReferencesRepointed += await _context.CaseRegisters
+                .Where(c => c.DriverId.HasValue && dupIds.Contains(c.DriverId.Value))
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.DriverId, survivor.Id));
+            result.ReferencesRepointed += await _context.CaseParties
+                .Where(p => p.DriverId.HasValue && dupIds.Contains(p.DriverId.Value))
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.DriverId, survivor.Id));
+            result.ReferencesRepointed += await _context.DriverDemeritRecords
+                .Where(r => dupIds.Contains(r.DriverId))
+                .ExecuteUpdateAsync(s => s.SetProperty(r => r.DriverId, survivor.Id));
+
+            // Soft-delete the duplicates.
+            foreach (var dup in duplicates)
+            {
+                dup.DeletedAt = DateTime.UtcNow;
+                dup.IsActive = false;
+                dup.UpdatedAt = DateTime.UtcNow;
+            }
+
+            result.GroupsMerged++;
+            result.DriversRemoved += duplicates.Count;
+            result.Details.Add(
+                $"{survivor.FullNames} {survivor.Surname} (ID {survivor.IdNumber ?? "—"}): merged {duplicates.Count} duplicate(s) into {survivor.Id}");
+        }
+
+        await _context.SaveChangesAsync();
+        await tx.CommitAsync();
+        return result;
     }
 }

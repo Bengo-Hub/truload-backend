@@ -124,6 +124,8 @@ public class WeighingServiceTests
             _mockNotificationService.Object,
             _mockTreasuryService.Object,
             _mockSubscriptionService.Object,
+            Mock.Of<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(),
+            Mock.Of<TruLoad.Backend.Middleware.ITenantContext>(),
             _mockLogger.Object
         );
     }

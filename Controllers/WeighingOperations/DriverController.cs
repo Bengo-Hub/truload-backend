@@ -105,6 +105,15 @@ public class DriverController : ControllerBase
                     return Conflict($"Driver with License {driver.DrivingLicenseNo} already exists.");
             }
 
+            // When no ID/license is provided, reuse an existing same-name driver instead of
+            // inserting a near-duplicate (this is how duplicates were being created).
+            if (driver.IdNumber == null && driver.DrivingLicenseNo == null)
+            {
+                var existingByName = await _driverRepository.FindActiveByNameAsync(driver.FullNames, driver.Surname);
+                if (existingByName != null)
+                    return Ok(existingByName);
+            }
+
             // Ensure new Id is generated
             if (driver.Id == Guid.Empty)
                 driver.Id = Guid.NewGuid();
@@ -116,6 +125,30 @@ public class DriverController : ControllerBase
         {
             _logger.LogError(ex, "Error creating driver {FullNames} {Surname}", driver.FullNames, driver.Surname);
             return StatusCode(500, "An error occurred while creating the driver.");
+        }
+    }
+
+    /// <summary>
+    /// Merges duplicate driver records (same name), preferring the record that has an ID number,
+    /// repointing all weighing/case references to the survivor and soft-deleting duplicates.
+    /// Idempotent — safe to run multiple times.
+    /// </summary>
+    [HttpPost("deduplicate")]
+    [HasPermission("driver.update")]
+    public async Task<IActionResult> Deduplicate()
+    {
+        try
+        {
+            var result = await _driverRepository.DeduplicateAsync();
+            _logger.LogInformation(
+                "Driver de-duplication complete: {Groups} groups merged, {Removed} removed, {Repointed} references repointed",
+                result.GroupsMerged, result.DriversRemoved, result.ReferencesRepointed);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error de-duplicating drivers");
+            return StatusCode(500, "An error occurred while de-duplicating drivers.");
         }
     }
 

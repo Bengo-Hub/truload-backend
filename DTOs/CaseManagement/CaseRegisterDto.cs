@@ -19,6 +19,10 @@ public class CaseRegisterDto
     public Guid? DriverId { get; set; }
     public string? DriverName { get; set; }
     public string? DriverLicenseNo { get; set; }
+    /// <summary>Driver National ID / Passport number (from linked weighing's driver).</summary>
+    public string? DriverIdNumber { get; set; }
+    /// <summary>Driver phone number (from linked weighing's driver) — used to prefill online payment.</summary>
+    public string? DriverPhoneNumber { get; set; }
     public Guid ViolationTypeId { get; set; }
     public string ViolationType { get; set; } = string.Empty;
     public string? ViolationDetails { get; set; }
@@ -42,6 +46,10 @@ public class CaseRegisterDto
     public Guid CaseStatusId { get; set; }
     public string CaseStatus { get; set; } = string.Empty;
     public bool EscalatedToCaseManager { get; set; }
+    /// <summary>True when a prosecution case has been created for this case (escalated to prosecution).</summary>
+    public bool HasProsecution { get; set; }
+    /// <summary>Status of the linked prosecution case (pending/invoiced/paid/court), when present.</summary>
+    public string? ProsecutionStatus { get; set; }
     public Guid? CaseManagerId { get; set; }
     public string? CaseManagerName { get; set; }
     public Guid? ProsecutorId { get; set; }
