@@ -22,6 +22,7 @@ using TruLoad.Backend.Services.Interfaces.System;
 using TruLoad.Backend.Services.Interfaces.Shared;
 using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.Subscription;
+using TruLoad.Backend.Middleware;
 
 namespace TruLoad.Backend.Services.Implementations.Weighing;
 
@@ -48,6 +49,8 @@ public class WeighingService : IWeighingService
     private readonly INotificationService _notificationService;
     private readonly ITreasuryService _treasuryService;
     private readonly ISubscriptionService _subscriptionService;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<WeighingService> _logger;
 
     public WeighingService(
@@ -72,6 +75,8 @@ public class WeighingService : IWeighingService
         INotificationService notificationService,
         ITreasuryService treasuryService,
         ISubscriptionService subscriptionService,
+        IServiceScopeFactory scopeFactory,
+        ITenantContext tenantContext,
         ILogger<WeighingService> logger)
     {
         _weighingRepository = weighingRepository;
@@ -95,6 +100,8 @@ public class WeighingService : IWeighingService
         _notificationService = notificationService;
         _treasuryService = treasuryService;
         _subscriptionService = subscriptionService;
+        _scopeFactory = scopeFactory;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -1475,24 +1482,31 @@ public class WeighingService : IWeighingService
         var ticketNo = transaction.TicketNumber;
         var stationId = transaction.StationId;
         var transactionId = transaction.Id;
+        // Capture the tenant slug while the request scope is alive; the background scope has no request.
+        var tenantSlug = _tenantContext.OrganizationCode?.ToLowerInvariant();
 
         return Task.Run(async () =>
         {
             try
             {
-                var officer = await _dbContext.Users.AsNoTracking()
+                // Use a fresh DI scope — the request's DbContext is disposed by the time this runs.
+                using var scope = _scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
+                var notifier = scope.ServiceProvider.GetRequiredService<INotificationService>();
+
+                var officer = await db.Users.AsNoTracking()
                     .Where(u => u.Id == officerId && !string.IsNullOrEmpty(u.Email))
                     .Select(u => new { u.Email, u.FullName })
                     .FirstOrDefaultAsync();
                 if (officer == null) return;
 
                 var stationName = stationId.HasValue
-                    ? await _dbContext.Stations.AsNoTracking()
+                    ? await db.Stations.AsNoTracking()
                         .Where(s => s.Id == stationId.Value)
                         .Select(s => s.Name).FirstOrDefaultAsync() ?? "Unknown Station"
                     : "Unknown Station";
 
-                await _notificationService.SendWorkflowEmailAsync(
+                var sent = await notifier.SendWorkflowEmailAsync(
                     "overloadAlert",
                     "truload/overload_alert",
                     officer.Email!,
@@ -1504,11 +1518,15 @@ public class WeighingService : IWeighingService
                         ["ticket_no"] = ticketNo,
                         ["station_name"] = stationName,
                         ["case_no"] = caseNo
-                    });
+                    },
+                    tenantSlug: tenantSlug);
+
+                if (!sent)
+                    _logger.LogError("Overload alert email not sent for transaction {Id} (tenant {Tenant})", transactionId, tenantSlug ?? "(default)");
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to send overload alert email for transaction {Id}", transactionId);
+                _logger.LogError(ex, "Failed to send overload alert email for transaction {Id}", transactionId);
             }
         });
     }

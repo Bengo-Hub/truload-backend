@@ -103,6 +103,10 @@ public class ReceiptDocument : BaseDocument
                     details.Spacing(3);
                     ComposePaymentRow(details.Item(), "Payment Method", GetPaymentMethodDisplay());
                     ComposePaymentRow(details.Item(), "Transaction Ref", _receipt.TransactionReference ?? "N/A");
+                    // For eCitizen/Pesaflow payments, also show the Pesaflow invoice reference (e.g. AWAPGRVV)
+                    // for manual reconciliation against the eCitizen portal.
+                    if (_receipt.PaymentMethod == "pesaflow" && !string.IsNullOrWhiteSpace(_receipt.Invoice?.PesaflowInvoiceNumber))
+                        ComposePaymentRow(details.Item(), "eCitizen Ref", _receipt.Invoice!.PesaflowInvoiceNumber!);
                     ComposePaymentRow(details.Item(), "Currency", _receipt.Currency);
                 });
 

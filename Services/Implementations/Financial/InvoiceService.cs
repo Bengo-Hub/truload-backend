@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Financial;
 using TruLoad.Backend.DTOs.Shared;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.Financial;
 using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.Shared;
@@ -15,17 +16,23 @@ public class InvoiceService : IInvoiceService
 {
     private readonly TruLoadDbContext _context;
     private readonly INotificationService _notificationService;
+    private readonly IBackgroundNotificationDispatcher _backgroundNotifications;
+    private readonly ITenantContext _tenantContext;
     private readonly IConfiguration _configuration;
     private readonly ILogger<InvoiceService> _logger;
 
     public InvoiceService(
         TruLoadDbContext context,
         INotificationService notificationService,
+        IBackgroundNotificationDispatcher backgroundNotifications,
+        ITenantContext tenantContext,
         IConfiguration configuration,
         ILogger<InvoiceService> logger)
     {
         _context = context;
         _notificationService = notificationService;
+        _backgroundNotifications = backgroundNotifications;
+        _tenantContext = tenantContext;
         _configuration = configuration;
         _logger = logger;
     }
@@ -193,37 +200,27 @@ public class InvoiceService : IInvoiceService
             "info",
             $"/financial/invoices/{invoice.Id}");
 
-        var capturedInvoiceNo = invoiceNo;
-        var capturedAmountDue = amountDue;
-        var capturedCurrency = chargingCurrency;
-        var capturedUserId = userId;
-        _ = Task.Run(async () =>
+        // Resolve recipient in-scope, then dispatch off-request with a fresh DI scope.
+        var issuingOfficer = await _context.Users.AsNoTracking()
+            .Where(u => u.Id == userId && !string.IsNullOrEmpty(u.Email))
+            .Select(u => new { u.Email, u.FullName })
+            .FirstOrDefaultAsync(ct);
+        if (issuingOfficer != null)
         {
-            try
-            {
-                var officer = await _context.Users.AsNoTracking()
-                    .Where(u => u.Id == capturedUserId && !string.IsNullOrEmpty(u.Email))
-                    .Select(u => new { u.Email, u.FullName })
-                    .FirstOrDefaultAsync();
-                if (officer == null) return;
-                await _notificationService.SendWorkflowEmailAsync(
-                    "invoiceIssued",
-                    "truload/invoice_issued",
-                    officer.Email!,
-                    officer.FullName ?? "Officer",
-                    new Dictionary<string, object>
-                    {
-                        ["invoice_no"] = capturedInvoiceNo,
-                        ["amount_due"] = capturedAmountDue.ToString("N2"),
-                        ["currency"] = capturedCurrency,
-                        ["due_date"] = DateTime.UtcNow.AddDays(30).ToString("yyyy-MM-dd")
-                    });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to send invoice issued email for invoice {InvoiceNo}", capturedInvoiceNo);
-            }
-        });
+            _backgroundNotifications.DispatchWorkflowEmail(
+                _tenantContext.OrganizationCode?.ToLowerInvariant(),
+                "invoiceIssued",
+                "truload/invoice_issued",
+                issuingOfficer.Email!,
+                issuingOfficer.FullName ?? "Officer",
+                new Dictionary<string, object>
+                {
+                    ["invoice_no"] = invoiceNo,
+                    ["amount_due"] = amountDue.ToString("N2"),
+                    ["currency"] = chargingCurrency,
+                    ["due_date"] = DateTime.UtcNow.AddDays(30).ToString("yyyy-MM-dd")
+                });
+        }
 
         return (await GetByIdAsync(invoice.Id, ct))!;
     }

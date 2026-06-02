@@ -211,6 +211,8 @@ public class ECitizenService : IECitizenService
         var amount = invoice.AmountDue.ToString("F2");
         var clientIdNumber = request.ClientIdNumber ?? "";
         var billDesc = "Axle Load Overload Fine";
+        // Tenant slug for the frontend result-page path (enforcement tenants use /{slug}/... routes).
+        var orgSlug = _tenantContext.OrganizationCode?.ToLowerInvariant();
 
         // Log resolved identifiers (non-secret) to aid debugging when Pesaflow rejects service IDs
         _logger.LogDebug("Pesaflow identifiers resolved: apiClientId={ApiClientId}, serviceId={ServiceId}, invoiceNo={InvoiceNo}",
@@ -233,15 +235,12 @@ public class ECitizenService : IECitizenService
             ["clientIDNumber"] = clientIdNumber,
             ["clientEmail"] = request.ClientEmail ?? "",
             ["amountExpected"] = amount,
-            ["callBackURLOnSuccess"] = config.CallbackUrl ?? "",
-            ["callBackURLOnFailure"] = config.CallbackFailureUrl
-                ?? (!string.IsNullOrEmpty(config.AppBaseUrl)
-                    ? $"{config.AppBaseUrl.TrimEnd('/')}/api/v1/payments/callback/failure"
-                    : ""),
-            ["callBackURLOnTimeout"] = config.CallbackTimeoutUrl
-                ?? (!string.IsNullOrEmpty(config.AppBaseUrl)
-                    ? $"{config.AppBaseUrl.TrimEnd('/')}/api/v1/payments/callback/timeout"
-                    : ""),
+            // Point Pesaflow's redirect callbacks directly at the tenant frontend result page,
+            // carrying the invoice ref + status so the SPA can reconcile and render the receipt.
+            // (Bypasses the API host so the browser never lands on a 404 API route.)
+            ["callBackURLOnSuccess"] = BuildResultPageUrl(config, orgSlug, invoice.InvoiceNo, "success"),
+            ["callBackURLOnFailure"] = BuildResultPageUrl(config, orgSlug, invoice.InvoiceNo, "failed"),
+            ["callBackURLOnTimeout"] = BuildResultPageUrl(config, orgSlug, invoice.InvoiceNo, "timeout"),
             ["notificationURL"] = config.WebhookUrl ?? "",
             ["secureHash"] = secureHash,
             ["format"] = "json",
@@ -393,6 +392,33 @@ public class ECitizenService : IECitizenService
         };
     }
 
+    /// Builds the tenant frontend payment-result URL Pesaflow redirects the payer to after
+    /// checkout. Uses the integration's configured AppBaseUrl (the SPA host, e.g.
+    /// https://kuraweigh.kura.go.ke). Falls back to any explicitly configured CallbackUrl.
+    private static string BuildResultPageUrl(
+        TruLoad.Backend.DTOs.Financial.IntegrationConfigDto config, string? orgSlug, string invoiceNo, string status)
+    {
+        var appBase = config.AppBaseUrl?.TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(appBase))
+            return config.CallbackUrl ?? string.Empty;
+        // Enforcement tenants are served under /{orgSlug}/... routes; include the slug so the
+        // result page loads with auth + tenant context and can reconcile the payment.
+        var slugSegment = string.IsNullOrWhiteSpace(orgSlug) ? string.Empty : $"/{orgSlug}";
+        return $"{appBase}{slugSegment}/payments/result?invoice_ref={Uri.EscapeDataString(invoiceNo)}&status={status}";
+    }
+
+    /// Resolves the reference stored on a Pesaflow receipt: prefer the gateway-provided
+    /// M-Pesa/bank payment reference, then the Pesaflow/eCitizen invoice number (e.g. AWAPGRVV),
+    /// then any operator-supplied transaction reference. Ensures the receipt is never blank.
+    private static string? ResolveEffectiveReference(
+        TruLoad.Backend.Models.Financial.Invoice invoice,
+        PesaflowPaymentStatusResponse? status,
+        string? transactionReference)
+        => FirstNonBlank(status?.PaymentReference, invoice.PesaflowInvoiceNumber, transactionReference);
+
+    private static string? FirstNonBlank(params string?[] values)
+        => values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
+
     /// Strips known Pesaflow path suffixes from the stored base_url so callers
     /// always get the bare domain root (e.g. https://payments.ecitizen.go.ke).
     private static string NormalizeBaseUrl(string? rawBaseUrl)
@@ -515,16 +541,22 @@ public class ECitizenService : IECitizenService
             return WebhookProcessingResult.PaymentFailed;
         }
 
+        // Resolve the reference recorded on the receipt: gateway M-Pesa/bank ref, else the
+        // Pesaflow/eCitizen invoice number (e.g. AWAPGRVV), so the receipt is never blank.
+        invoice.PesaflowInvoiceNumber ??= payload.invoice_number;
+        var effectiveReference = FirstNonBlank(
+            payload.payment_reference, payload.invoice_number, invoice.PesaflowInvoiceNumber);
+
         // 5. Idempotency check: existing receipt with same transaction reference
-        if (!string.IsNullOrEmpty(payload.payment_reference))
+        if (!string.IsNullOrEmpty(effectiveReference))
         {
             var existingReceipt = await _context.Receipts
-                .AnyAsync(r => r.TransactionReference == payload.payment_reference && r.DeletedAt == null, ct);
+                .AnyAsync(r => r.TransactionReference == effectiveReference && r.DeletedAt == null, ct);
 
             if (existingReceipt)
             {
-                _logger.LogInformation("IPN: Already processed payment_reference {PaymentRef}",
-                    payload.payment_reference);
+                _logger.LogInformation("IPN: Already processed reference {PaymentRef}",
+                    effectiveReference);
                 return WebhookProcessingResult.AlreadyProcessed;
             }
         }
@@ -535,17 +567,17 @@ public class ECitizenService : IECitizenService
             AmountPaid = payload.amount_paid,
             Currency = payload.currency ?? invoice.Currency,
             PaymentMethod = "pesaflow",
-            TransactionReference = payload.payment_reference,
+            TransactionReference = effectiveReference,
             IdempotencyKey = Guid.NewGuid() // Pesaflow doesn't send our idempotency key back
         };
 
         await _receiptService.RecordPaymentAsync(invoice.Id, paymentRequest, Guid.Empty, ct);
 
         // 7. Update the receipt with PaymentChannel (ReceiptService doesn't know about channels)
-        if (!string.IsNullOrEmpty(payload.payment_channel))
+        if (!string.IsNullOrEmpty(payload.payment_channel) && !string.IsNullOrEmpty(effectiveReference))
         {
             var receipt = await _context.Receipts
-                .Where(r => r.TransactionReference == payload.payment_reference && r.DeletedAt == null)
+                .Where(r => r.TransactionReference == effectiveReference && r.DeletedAt == null)
                 .FirstOrDefaultAsync(ct);
 
             if (receipt != null)
@@ -556,8 +588,7 @@ public class ECitizenService : IECitizenService
         }
 
         // 8. Update invoice with Pesaflow references
-        invoice.PesaflowInvoiceNumber ??= payload.invoice_number;
-        invoice.PesaflowPaymentReference = payload.payment_reference;
+        invoice.PesaflowPaymentReference = effectiveReference;
         invoice.UpdatedAt = DateTime.UtcNow;
 
         // Update invoice status if fully paid
@@ -600,22 +631,23 @@ public class ECitizenService : IECitizenService
 
                     if (!hasReceipt && confirmedStatus.AmountPaid > 0)
                     {
+                        var effectiveReference = ResolveEffectiveReference(invoice, confirmedStatus, null);
                         var paymentRequest = new RecordPaymentRequest
                         {
                             AmountPaid = confirmedStatus.AmountPaid,
                             Currency = invoice.Currency,
                             PaymentMethod = "pesaflow",
-                            TransactionReference = confirmedStatus.PaymentReference,
+                            TransactionReference = effectiveReference,
                             IdempotencyKey = Guid.NewGuid()
                         };
 
                         await _receiptService.RecordPaymentAsync(invoice.Id, paymentRequest, Guid.Empty, ct);
 
                         // Update PaymentChannel on the created receipt
-                        if (!string.IsNullOrEmpty(confirmedStatus.PaymentChannel))
+                        if (!string.IsNullOrEmpty(confirmedStatus.PaymentChannel) && !string.IsNullOrEmpty(effectiveReference))
                         {
                             var receipt = await _context.Receipts
-                                .Where(r => r.TransactionReference == confirmedStatus.PaymentReference && r.DeletedAt == null)
+                                .Where(r => r.TransactionReference == effectiveReference && r.DeletedAt == null)
                                 .FirstOrDefaultAsync(ct);
 
                             if (receipt != null)
@@ -625,7 +657,7 @@ public class ECitizenService : IECitizenService
                             }
                         }
 
-                        invoice.PesaflowPaymentReference = confirmedStatus.PaymentReference;
+                        invoice.PesaflowPaymentReference = effectiveReference;
                         invoice.Status = "paid";
                         invoice.UpdatedAt = DateTime.UtcNow;
                         await _context.SaveChangesAsync(ct);
@@ -704,12 +736,13 @@ public class ECitizenService : IECitizenService
                 // only record the invoice amount (the service fee is eCitizen's charge, not ours).
                 if (effectiveAmount > invoice.AmountDue)
                     effectiveAmount = invoice.AmountDue;
-                // For alternate-ref flows the M-Pesa ref from Pesaflow is the real transaction reference
-                var effectiveReference = confirmedStatus.PaymentReference ?? transactionReference;
+                // Prefer the gateway M-Pesa/bank ref; fall back to the Pesaflow/eCitizen invoice
+                // number (e.g. AWAPGRVV) then the operator-supplied ref so the receipt is never blank.
+                var effectiveReference = ResolveEffectiveReference(invoice, confirmedStatus, transactionReference);
 
                 if (string.IsNullOrEmpty(effectiveReference))
                 {
-                    _logger.LogWarning("Cannot reconcile invoice {InvoiceNo}: missing payment reference", invoice.InvoiceNo);
+                    _logger.LogWarning("Cannot reconcile invoice {InvoiceNo}: no payment, invoice or transaction reference available", invoice.InvoiceNo);
                     return false;
                 }
 

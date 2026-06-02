@@ -196,6 +196,28 @@ public class CaseRegisterController : ControllerBase
     }
 
     /// <summary>
+    /// Re-fires the enforcement workflow emails for a case (overload → case created → invoice issued).
+    /// Used to recover from missed notifications. Returns the list of workflows sent.
+    /// </summary>
+    [HasPermission("case.update")]
+    [HttpPost("{id}/notifications/resend")]
+    public async Task<IActionResult> ResendNotifications(Guid id)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new UnauthorizedAccessException("User ID not found"));
+
+        try
+        {
+            var sent = await _caseRegisterService.ResendCaseNotificationsAsync(id, userId);
+            return Ok(new { sent });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(ex.Message);
+        }
+    }
+
+    /// <summary>
     /// Assign investigating officer
     /// </summary>
     [HasPermission("case.assign")]

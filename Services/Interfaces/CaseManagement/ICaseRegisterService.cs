@@ -62,6 +62,12 @@ public interface ICaseRegisterService
     Task<CaseRegisterDto> AssignInvestigatingOfficerAsync(Guid id, Guid officerId, Guid assignedById);
 
     /// <summary>
+    /// Re-fires the enforcement workflow emails for a case, in order:
+    /// overload alert → case created → invoice issued. Returns a summary of what was sent.
+    /// </summary>
+    Task<List<string>> ResendCaseNotificationsAsync(Guid caseId, Guid userId);
+
+    /// <summary>
     /// Get case statistics
     /// </summary>
     Task<CaseStatisticsDto> GetCaseStatisticsAsync(DateTime? dateFrom = null, DateTime? dateTo = null, Guid? stationId = null);
