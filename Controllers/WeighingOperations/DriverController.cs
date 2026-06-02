@@ -170,6 +170,27 @@ public class DriverController : ControllerBase
     }
 
     /// <summary>
+    /// Permanently (hard) deletes a driver. Admin action — the frontend confirms first.
+    /// Clears nullable references and removes demerit records so the delete succeeds.
+    /// </summary>
+    [HttpDelete("{id}")]
+    [HasPermission("driver.update")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        try
+        {
+            var deleted = await _driverRepository.HardDeleteAsync(id);
+            if (!deleted) return NotFound();
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error hard-deleting driver {DriverId}", id);
+            return StatusCode(500, "An error occurred while deleting the driver.");
+        }
+    }
+
+    /// <summary>
     /// Get top repeat offenders by demerit points
     /// </summary>
     [HttpGet("top-offenders")]

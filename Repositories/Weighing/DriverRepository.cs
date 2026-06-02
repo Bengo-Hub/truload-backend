@@ -21,21 +21,21 @@ public class DriverRepository : IDriverRepository
     {
         return await _context.Drivers
             .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.Id == id);
+            .FirstOrDefaultAsync(d => d.Id == id && d.DeletedAt == null);
     }
 
     public async Task<Driver?> GetByIdNumberAsync(string idNumber)
     {
         return await _context.Drivers
             .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.IdNumber == idNumber);
+            .FirstOrDefaultAsync(d => d.IdNumber == idNumber && d.DeletedAt == null);
     }
 
     public async Task<Driver?> GetByLicenseAsync(string licenseNo)
     {
         return await _context.Drivers
             .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.DrivingLicenseNo == licenseNo);
+            .FirstOrDefaultAsync(d => d.DrivingLicenseNo == licenseNo && d.DeletedAt == null);
     }
 
     /// <summary>
@@ -48,6 +48,7 @@ public class DriverRepository : IDriverRepository
 
         var q = _context.Drivers
             .AsNoTracking()
+            .Where(d => d.DeletedAt == null)
             .Where(d => d.OrganizationId == null || d.OrganizationId == orgId);
 
         if (transporterId.HasValue)
@@ -157,13 +158,9 @@ public class DriverRepository : IDriverRepository
                 .Where(r => dupIds.Contains(r.DriverId))
                 .ExecuteUpdateAsync(s => s.SetProperty(r => r.DriverId, survivor.Id));
 
-            // Soft-delete the duplicates.
-            foreach (var dup in duplicates)
-            {
-                dup.DeletedAt = DateTime.UtcNow;
-                dup.IsActive = false;
-                dup.UpdatedAt = DateTime.UtcNow;
-            }
+            // Hard-delete the duplicates (FK references were repointed to the survivor above,
+            // so no rows reference them). Admin policy is hard delete, not soft delete.
+            _context.Drivers.RemoveRange(duplicates);
 
             result.GroupsMerged++;
             result.DriversRemoved += duplicates.Count;
@@ -174,5 +171,28 @@ public class DriverRepository : IDriverRepository
         await _context.SaveChangesAsync();
         await tx.CommitAsync();
         return result;
+    }
+
+    public async Task<bool> HardDeleteAsync(Guid id)
+    {
+        var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.Id == id);
+        if (driver == null) return false;
+
+        await using var tx = await _context.Database.BeginTransactionAsync();
+
+        // Clear nullable references so the FK constraints don't block the delete.
+        await _context.WeighingTransactions.Where(w => w.DriverId == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(w => w.DriverId, (Guid?)null));
+        await _context.CaseRegisters.Where(c => c.DriverId == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.DriverId, (Guid?)null));
+        await _context.CaseParties.Where(p => p.DriverId == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.DriverId, (Guid?)null));
+        // Demerit records are driver-specific (non-nullable FK) — remove them with the driver.
+        await _context.DriverDemeritRecords.Where(r => r.DriverId == id).ExecuteDeleteAsync();
+
+        _context.Drivers.Remove(driver);
+        await _context.SaveChangesAsync();
+        await tx.CommitAsync();
+        return true;
     }
 }

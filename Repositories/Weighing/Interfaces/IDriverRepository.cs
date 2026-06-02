@@ -17,6 +17,11 @@ public interface IDriverRepository
     Task<Driver?> FindActiveByNameAsync(string fullNames, string surname);
 
     /// <summary>Merges duplicate driver records (same name), preferring the record that has an ID
-    /// number, repointing all FK references to the survivor and soft-deleting the duplicates.</summary>
+    /// number, repointing all FK references to the survivor and hard-deleting the duplicates.</summary>
     Task<DriverDeduplicationResult> DeduplicateAsync();
+
+    /// <summary>Permanently (hard) deletes a driver. Clears nullable FK references on weighings,
+    /// cases and parties and removes the driver's demerit records first so the delete succeeds.
+    /// Returns false if the driver does not exist.</summary>
+    Task<bool> HardDeleteAsync(Guid id);
 }
