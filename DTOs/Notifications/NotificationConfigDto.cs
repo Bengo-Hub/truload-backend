@@ -53,6 +53,7 @@ public class WorkflowPreferencesDto
     public WorkflowPreferenceItem CaseEscalated { get; set; } = new() { EmailEnabled = true };
     public WorkflowPreferenceItem InvoiceIssued { get; set; } = new() { EmailEnabled = true };
     public WorkflowPreferenceItem InvoiceOverdue { get; set; } = new() { EmailEnabled = true };
+    public WorkflowPreferenceItem InvoicePaid { get; set; } = new() { EmailEnabled = true };
     public WorkflowPreferenceItem WeighingCompleted { get; set; } = new() { EmailEnabled = false };
     public WorkflowPreferenceItem ScheduledReport { get; set; } = new() { EmailEnabled = true };
     public WorkflowPreferenceItem UserRegistered { get; set; } = new() { EmailEnabled = false };
@@ -68,7 +69,7 @@ public class WorkflowPreferencesDto
     public WorkflowGroupPreferences WeighingGroup { get; set; } = new();
     /// <summary>Cases: caseCreated, caseEscalated</summary>
     public WorkflowGroupPreferences CasesGroup { get; set; } = new();
-    /// <summary>Invoices: invoiceIssued, invoiceOverdue</summary>
+    /// <summary>Invoices: invoiceIssued, invoiceOverdue, invoicePaid</summary>
     public WorkflowGroupPreferences InvoicesGroup { get; set; } = new();
     /// <summary>Receipts: weighingTicketReady</summary>
     public WorkflowGroupPreferences ReceiptsGroup { get; set; } = new();

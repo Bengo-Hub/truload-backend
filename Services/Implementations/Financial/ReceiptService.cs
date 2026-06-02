@@ -6,6 +6,8 @@ using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Models.Financial;
 using TruLoad.Backend.Models.CaseManagement;
 using TruLoad.Backend.Services.Interfaces.Financial;
+using TruLoad.Backend.Services.Interfaces.Shared;
+using TruLoad.Backend.Services.Implementations.Shared;
 
 namespace TruLoad.Backend.Services.Implementations.Financial;
 
@@ -15,11 +17,16 @@ namespace TruLoad.Backend.Services.Implementations.Financial;
 public class ReceiptService : IReceiptService
 {
     private readonly TruLoadDbContext _context;
+    private readonly IBackgroundNotificationDispatcher _backgroundNotifications;
     private readonly ILogger<ReceiptService> _logger;
 
-    public ReceiptService(TruLoadDbContext context, ILogger<ReceiptService> logger)
+    public ReceiptService(
+        TruLoadDbContext context,
+        IBackgroundNotificationDispatcher backgroundNotifications,
+        ILogger<ReceiptService> logger)
     {
         _context = context;
+        _backgroundNotifications = backgroundNotifications;
         _logger = logger;
     }
 
@@ -225,6 +232,47 @@ public class ReceiptService : IReceiptService
                     "Failed to auto-create load correction memo after payment for invoice {InvoiceId}. Manual intervention required.",
                     invoiceId);
                 // Don't throw — payment was already recorded successfully
+            }
+        }
+
+        // NOTIFY: Invoice paid / receipt generated (only on full payment).
+        if (invoice.Status == "paid")
+        {
+            try
+            {
+                var caseRegister = invoice.CaseRegister ?? invoice.ProsecutionCase?.CaseRegister;
+                var caseNo = caseRegister?.CaseNo;
+                var caseId = caseRegister?.Id;
+                var vehicleReg = invoice.Weighing?.VehicleRegNumber
+                    ?? invoice.ProsecutionCase?.Weighing?.VehicleRegNumber;
+
+                // Resolve tenant slug from the invoice's org (no request context on webhook/reconcile paths).
+                var tenantSlug = await _context.Organizations.AsNoTracking()
+                    .Where(o => o.Id == invoice.OrganizationId)
+                    .Select(o => o.Code).FirstOrDefaultAsync(ct);
+                tenantSlug = tenantSlug?.ToLowerInvariant();
+
+                // Recipient: the case's creating officer if resolvable; otherwise the invoices pool carries it.
+                string? officerEmail = null, officerName = null;
+                if (caseRegister?.CreatedById is Guid creator && creator != Guid.Empty)
+                {
+                    var u = await _context.Users.AsNoTracking()
+                        .Where(x => x.Id == creator && !string.IsNullOrEmpty(x.Email))
+                        .Select(x => new { x.Email, x.FullName }).FirstOrDefaultAsync(ct);
+                    officerEmail = u?.Email; officerName = u?.FullName;
+                }
+
+                var (data, subject) = TruLoadEmailData.InvoicePaid(
+                    receiptNo, request.AmountPaid, request.Currency, invoice.InvoiceNo,
+                    caseNo, vehicleReg, request.TransactionReference, receipt.PaymentDate, caseId);
+
+                _backgroundNotifications.DispatchWorkflowEmail(
+                    tenantSlug, "invoicePaid", "truload/invoice_paid",
+                    officerEmail, officerName, data, subject);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispatch invoice-paid email for invoice {InvoiceId}", invoiceId);
             }
         }
 

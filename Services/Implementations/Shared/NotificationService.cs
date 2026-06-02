@@ -79,19 +79,31 @@ public class NotificationService : INotificationService
     }
 
     /// <summary>
-    /// Loads the current tenant's branding fields from the Organization table.
-    /// Returns null if tenant context is unavailable or the org cannot be found.
+    /// Loads the tenant's branding fields from the Organization table. Resolves the org by the
+    /// request tenant context when present, otherwise by the supplied tenant slug (org code) —
+    /// the latter is required for emails dispatched on a background scope (no request context),
+    /// so brand name (sender display), logo, and app_url are still populated.
+    /// Returns null if neither resolves an active org.
     /// </summary>
-    private async Task<Dictionary<string, object>?> GetTenantBrandingAsync(CancellationToken ct)
+    private async Task<Dictionary<string, object>?> GetTenantBrandingAsync(CancellationToken ct, string? tenantSlug = null)
     {
-        if (_tenantContext == null || _tenantContext.OrganizationId == Guid.Empty)
-            return null;
-
         try
         {
-            var org = await _dbContext.Organizations
-                .AsNoTracking()
-                .FirstOrDefaultAsync(o => o.Id == _tenantContext.OrganizationId && o.IsActive, ct);
+            TruLoad.Backend.Models.Organization? org = null;
+            if (_tenantContext != null && _tenantContext.OrganizationId != Guid.Empty)
+            {
+                org = await _dbContext.Organizations
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(o => o.Id == _tenantContext.OrganizationId && o.IsActive, ct);
+            }
+            // Background scope (no request tenant) — resolve by slug/org code.
+            if (org == null && !string.IsNullOrWhiteSpace(tenantSlug))
+            {
+                var code = tenantSlug.Trim();
+                org = await _dbContext.Organizations
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(o => o.Code.ToLower() == code.ToLower() && o.IsActive, ct);
+            }
 
             if (org == null) return null;
 
@@ -147,8 +159,46 @@ public class NotificationService : INotificationService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to load tenant branding for org {OrgId}", _tenantContext.OrganizationId);
+            _logger.LogWarning(ex, "Failed to load tenant branding (slug {Slug})", tenantSlug ?? "(context)");
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Builds portal CTA deep-links into the template data from app_url + slug + ids the caller
+    /// supplied (case_id, invoice_id, pesaflow_payment_link). Logged-out recipients clicking these
+    /// hit ProtectedRoute, which forwards to login with a return-url back to the link.
+    /// Only sets keys that are absent so callers can override.
+    /// </summary>
+    private static void AddDeepLinks(Dictionary<string, object> data, string? slug)
+    {
+        if (!data.TryGetValue("app_url", out var appObj)) return;
+        var appUrl = appObj?.ToString()?.TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(appUrl) || string.IsNullOrWhiteSpace(slug)) return;
+
+        string? caseLink = null;
+        if (data.TryGetValue("case_id", out var caseIdObj))
+        {
+            var caseId = caseIdObj?.ToString();
+            if (!string.IsNullOrWhiteSpace(caseId))
+                caseLink = $"{appUrl}/{slug}/cases/{caseId}";
+        }
+
+        if (caseLink != null)
+        {
+            if (!data.ContainsKey("case_link")) data["case_link"] = caseLink;
+            var prosecutionLink = $"{caseLink}?tab=prosecution";
+            if (!data.ContainsKey("invoice_link")) data["invoice_link"] = prosecutionLink;
+            if (!data.ContainsKey("receipt_link")) data["receipt_link"] = prosecutionLink;
+        }
+
+        if (!data.ContainsKey("payment_link"))
+        {
+            var pesaflow = data.TryGetValue("pesaflow_payment_link", out var p) ? p?.ToString() : null;
+            if (!string.IsNullOrWhiteSpace(pesaflow))
+                data["payment_link"] = pesaflow!;
+            else if (data.TryGetValue("invoice_link", out var il))
+                data["payment_link"] = il;
         }
     }
 
@@ -164,7 +214,8 @@ public class NotificationService : INotificationService
     {
         try
         {
-            var branding = await GetTenantBrandingAsync(cancellationToken);
+            var effectiveSlug = tenantSlug ?? GetTenantSlug();
+            var branding = await GetTenantBrandingAsync(cancellationToken, effectiveSlug);
             var enhancedData = branding != null
                 ? new Dictionary<string, object>(branding)
                 : new Dictionary<string, object>();
@@ -174,6 +225,12 @@ public class NotificationService : INotificationService
 
             enhancedData["name"] = recipientName;
             enhancedData["recipient_name"] = recipientName;
+            // overload_alert / case_created templates greet with {{ .officer_name }}; set it too.
+            enhancedData["officer_name"] = recipientName;
+
+            // Derive portal CTA deep-links from app_url + slug + ids supplied by callers, so emails
+            // carry a "remedial action" link. Only set when missing and an app_url is available.
+            AddDeepLinks(enhancedData, effectiveSlug);
 
             var metadata = new Dictionary<string, object>();
             if (!string.IsNullOrWhiteSpace(subject))
@@ -219,6 +276,7 @@ public class NotificationService : INotificationService
         ["caseEscalated"]            = "cases",
         ["invoiceIssued"]            = "invoices",
         ["invoiceOverdue"]           = "invoices",
+        ["invoicePaid"]              = "invoices",
         ["weighingTicketReady"]      = "receipts",
     };
 
@@ -272,6 +330,7 @@ public class NotificationService : INotificationService
             "caseescalated"            => prefs.CaseEscalated,
             "invoiceissued"            => prefs.InvoiceIssued,
             "invoiceoverdue"           => prefs.InvoiceOverdue,
+            "invoicepaid"              => prefs.InvoicePaid,
             "weighingcompleted"        => prefs.WeighingCompleted,
             "scheduledreport"          => prefs.ScheduledReport,
             "userregistered"           => prefs.UserRegistered,

@@ -217,19 +217,24 @@ public class CaseRegisterService : ICaseRegisterService
 
         if (!string.IsNullOrEmpty(user?.Email))
         {
+            // Resolve vehicle reg + violation type for the email body.
+            string? vehicleReg = null;
+            if (request.WeighingId.HasValue)
+                vehicleReg = await _context.WeighingTransactions.AsNoTracking()
+                    .Where(w => w.Id == request.WeighingId.Value).Select(w => w.VehicleRegNumber).FirstOrDefaultAsync();
+            if (string.IsNullOrWhiteSpace(vehicleReg))
+                vehicleReg = await _context.Vehicles.AsNoTracking()
+                    .Where(v => v.Id == request.VehicleId).Select(v => v.RegNo).FirstOrDefaultAsync();
+            var violationTypeName = await _context.ViolationTypes.AsNoTracking()
+                .Where(v => v.Id == request.ViolationTypeId).Select(v => v.Name).FirstOrDefaultAsync();
+
+            var (data, subject) = TruLoad.Backend.Services.Implementations.Shared.TruLoadEmailData.CaseCreated(
+                caseNo, vehicleReg, violationTypeName, user.Station?.Name ?? "Unknown Station", created.CreatedAt, created.Id);
+
             // Dispatch off-request with a fresh DI scope (request scope is disposed before this runs).
             _backgroundNotifications.DispatchWorkflowEmail(
-                TenantSlug,
-                "caseCreated",
-                "truload/case_created",
-                user.Email,
-                user.FullName ?? "Officer",
-                new Dictionary<string, object>
-                {
-                    ["case_no"] = caseNo,
-                    ["station_name"] = user.Station?.Name ?? "Unknown Station",
-                    ["violation_details"] = request.ViolationDetails ?? string.Empty
-                });
+                TenantSlug, "caseCreated", "truload/case_created",
+                user.Email, user.FullName ?? "Officer", data, subject);
         }
 
         return MapToDto(created);
@@ -515,12 +520,12 @@ public class CaseRegisterService : ICaseRegisterService
         var caseNo = caseEntity.CaseNo;
         var recipientName = recipient.FullName ?? "Officer";
 
-        // Resolve weighing + station (for overload alert and case station name).
+        // Resolve weighing (overload fields) + station + vehicle/violation for the email bodies.
         string stationName = "Unknown Station";
         var weighing = caseEntity.WeighingId.HasValue
             ? await _context.WeighingTransactions.AsNoTracking()
                 .Where(w => w.Id == caseEntity.WeighingId.Value)
-                .Select(w => new { w.VehicleRegNumber, w.OverloadKg, w.TicketNumber, w.StationId })
+                .Select(w => new { w.VehicleRegNumber, w.OverloadKg, w.TicketNumber, w.StationId, w.GvwMeasuredKg, w.GvwPermissibleKg, w.WeighedAt })
                 .FirstOrDefaultAsync()
             : null;
         var resolvedStationId = weighing?.StationId ?? caseEntity.StationId;
@@ -530,53 +535,64 @@ public class CaseRegisterService : ICaseRegisterService
                 .Where(s => s.Id == resolvedStationId.Value)
                 .Select(s => s.Name).FirstOrDefaultAsync() ?? "Unknown Station";
         }
+        var vehicleReg = weighing?.VehicleRegNumber
+            ?? await _context.Vehicles.AsNoTracking().Where(v => v.Id == caseEntity.VehicleId).Select(v => v.RegNo).FirstOrDefaultAsync();
+        var violationType = await _context.ViolationTypes.AsNoTracking()
+            .Where(v => v.Id == caseEntity.ViolationTypeId).Select(v => v.Name).FirstOrDefaultAsync();
 
         // 1) Overload alert (only when there is a weighing).
         if (weighing != null)
         {
+            var (d, s) = TruLoad.Backend.Services.Implementations.Shared.TruLoadEmailData.OverloadAlert(
+                weighing.VehicleRegNumber, weighing.OverloadKg, weighing.TicketNumber, stationName, caseNo,
+                weighing.GvwMeasuredKg, weighing.GvwPermissibleKg, weighing.WeighedAt, caseId);
             if (await _notificationService.SendWorkflowEmailAsync(
-                    "overloadAlert", "truload/overload_alert", recipient.Email!, recipientName,
-                    new Dictionary<string, object>
-                    {
-                        ["vehicle_reg"] = weighing.VehicleRegNumber,
-                        ["overload_kg"] = weighing.OverloadKg,
-                        ["ticket_no"] = weighing.TicketNumber,
-                        ["station_name"] = stationName,
-                        ["case_no"] = caseNo
-                    }, tenantSlug: tenantSlug))
+                    "overloadAlert", "truload/overload_alert", recipient.Email!, recipientName, d, s, tenantSlug: tenantSlug))
                 sent.Add("overloadAlert");
         }
 
         // 2) Case created.
-        if (await _notificationService.SendWorkflowEmailAsync(
-                "caseCreated", "truload/case_created", recipient.Email!, recipientName,
-                new Dictionary<string, object>
-                {
-                    ["case_no"] = caseNo,
-                    ["station_name"] = stationName,
-                    ["violation_details"] = caseEntity.ViolationDetails ?? string.Empty
-                }, tenantSlug: tenantSlug))
-            sent.Add("caseCreated");
+        {
+            var (d, s) = TruLoad.Backend.Services.Implementations.Shared.TruLoadEmailData.CaseCreated(
+                caseNo, vehicleReg, violationType, stationName, caseEntity.CreatedAt, caseId);
+            if (await _notificationService.SendWorkflowEmailAsync(
+                    "caseCreated", "truload/case_created", recipient.Email!, recipientName, d, s, tenantSlug: tenantSlug))
+                sent.Add("caseCreated");
+        }
 
-        // 3) Invoice issued (only when an invoice exists for this case).
+        // 3) Invoice issued + 4) invoice paid (when an invoice exists / is paid).
         var invoice = await _context.Invoices.AsNoTracking()
             .Where(i => i.DeletedAt == null &&
                 (i.CaseRegisterId == caseId || (i.ProsecutionCase != null && i.ProsecutionCase.CaseRegisterId == caseId)))
             .OrderByDescending(i => i.CreatedAt)
-            .Select(i => new { i.InvoiceNo, i.AmountDue, i.Currency })
+            .Select(i => new { i.Id, i.InvoiceNo, i.AmountDue, i.Currency, i.GeneratedAt, i.DueDate, i.PesaflowPaymentLink, i.PesaflowPaymentReference, i.Status })
             .FirstOrDefaultAsync();
         if (invoice != null)
         {
+            var (d, s) = TruLoad.Backend.Services.Implementations.Shared.TruLoadEmailData.InvoiceIssued(
+                invoice.InvoiceNo, caseNo, vehicleReg, invoice.AmountDue, invoice.Currency,
+                invoice.DueDate, invoice.GeneratedAt, caseId, invoice.PesaflowPaymentLink);
             if (await _notificationService.SendWorkflowEmailAsync(
-                    "invoiceIssued", "truload/invoice_issued", recipient.Email!, recipientName,
-                    new Dictionary<string, object>
-                    {
-                        ["invoice_no"] = invoice.InvoiceNo,
-                        ["amount_due"] = invoice.AmountDue.ToString("N2"),
-                        ["currency"] = invoice.Currency,
-                        ["due_date"] = DateTime.UtcNow.AddDays(30).ToString("yyyy-MM-dd")
-                    }, tenantSlug: tenantSlug))
+                    "invoiceIssued", "truload/invoice_issued", recipient.Email!, recipientName, d, s, tenantSlug: tenantSlug))
                 sent.Add("invoiceIssued");
+
+            if (invoice.Status == "paid")
+            {
+                var receipt = await _context.Receipts.AsNoTracking()
+                    .Where(r => r.InvoiceId == invoice.Id && r.DeletedAt == null)
+                    .OrderByDescending(r => r.PaymentDate)
+                    .Select(r => new { r.ReceiptNo, r.AmountPaid, r.Currency, r.TransactionReference, r.PaymentDate })
+                    .FirstOrDefaultAsync();
+                if (receipt != null)
+                {
+                    var (pd, ps) = TruLoad.Backend.Services.Implementations.Shared.TruLoadEmailData.InvoicePaid(
+                        receipt.ReceiptNo, receipt.AmountPaid, receipt.Currency, invoice.InvoiceNo, caseNo, vehicleReg,
+                        receipt.TransactionReference ?? invoice.PesaflowPaymentReference, receipt.PaymentDate, caseId);
+                    if (await _notificationService.SendWorkflowEmailAsync(
+                            "invoicePaid", "truload/invoice_paid", recipient.Email!, recipientName, pd, ps, tenantSlug: tenantSlug))
+                        sent.Add("invoicePaid");
+                }
+            }
         }
 
         _logger.LogInformation("Resent {Count} workflow email(s) for case {CaseNo} to {Email}: {Workflows}",

@@ -207,19 +207,19 @@ public class InvoiceService : IInvoiceService
             .FirstOrDefaultAsync(ct);
         if (issuingOfficer != null)
         {
+            var caseNo = prosecutionCase.CaseRegisterId == Guid.Empty ? null
+                : await _context.CaseRegisters.AsNoTracking()
+                    .Where(c => c.Id == prosecutionCase.CaseRegisterId).Select(c => c.CaseNo).FirstOrDefaultAsync(ct);
+            var vehicleReg = prosecutionCase.Weighing?.VehicleRegNumber;
+
+            var (data, subject) = TruLoad.Backend.Services.Implementations.Shared.TruLoadEmailData.InvoiceIssued(
+                invoiceNo, caseNo, vehicleReg, amountDue, chargingCurrency,
+                invoice.DueDate, invoice.GeneratedAt, prosecutionCase.CaseRegisterId, invoice.PesaflowPaymentLink);
+
             _backgroundNotifications.DispatchWorkflowEmail(
                 _tenantContext.OrganizationCode?.ToLowerInvariant(),
-                "invoiceIssued",
-                "truload/invoice_issued",
-                issuingOfficer.Email!,
-                issuingOfficer.FullName ?? "Officer",
-                new Dictionary<string, object>
-                {
-                    ["invoice_no"] = invoiceNo,
-                    ["amount_due"] = amountDue.ToString("N2"),
-                    ["currency"] = chargingCurrency,
-                    ["due_date"] = DateTime.UtcNow.AddDays(30).ToString("yyyy-MM-dd")
-                });
+                "invoiceIssued", "truload/invoice_issued",
+                issuingOfficer.Email!, issuingOfficer.FullName ?? "Officer", data, subject);
         }
 
         return (await GetByIdAsync(invoice.Id, ct))!;

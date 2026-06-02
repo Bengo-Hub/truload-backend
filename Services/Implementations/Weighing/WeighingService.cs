@@ -615,7 +615,7 @@ public class WeighingService : IWeighingService
                         "error",
                         $"/weighing/transactions/{transaction.Id}");
 
-                    _ = SendOverloadAlertEmailAsync(transaction, caseDto.CaseNo);
+                    _ = SendOverloadAlertEmailAsync(transaction, caseDto.CaseNo, caseDto.Id);
                 }
             }
             catch (Exception ex)
@@ -808,7 +808,7 @@ public class WeighingService : IWeighingService
                         "error",
                         $"/weighing/transactions/{transaction.Id}");
 
-                    _ = SendOverloadAlertEmailAsync(transaction, caseDto.CaseNo);
+                    _ = SendOverloadAlertEmailAsync(transaction, caseDto.CaseNo, caseDto.Id);
                 }
             }
             catch (Exception ex)
@@ -1474,7 +1474,7 @@ public class WeighingService : IWeighingService
         return await _pdfService.GenerateWeightTicketAsync(transaction);
     }
 
-    private Task SendOverloadAlertEmailAsync(WeighingTransaction transaction, string caseNo)
+    private Task SendOverloadAlertEmailAsync(WeighingTransaction transaction, string caseNo, Guid? caseId = null)
     {
         var officerId = transaction.WeighedByUserId;
         var vehicleReg = transaction.VehicleRegNumber;
@@ -1482,6 +1482,9 @@ public class WeighingService : IWeighingService
         var ticketNo = transaction.TicketNumber;
         var stationId = transaction.StationId;
         var transactionId = transaction.Id;
+        var gvwMeasured = transaction.GvwMeasuredKg;
+        var gvwPermissible = transaction.GvwPermissibleKg;
+        var weighedAt = transaction.WeighedAt;
         // Capture the tenant slug while the request scope is alive; the background scope has no request.
         var tenantSlug = _tenantContext.OrganizationCode?.ToLowerInvariant();
 
@@ -1506,19 +1509,15 @@ public class WeighingService : IWeighingService
                         .Select(s => s.Name).FirstOrDefaultAsync() ?? "Unknown Station"
                     : "Unknown Station";
 
+                var (data, subject) = TruLoad.Backend.Services.Implementations.Shared.TruLoadEmailData.OverloadAlert(
+                    vehicleReg, overloadKg, ticketNo, stationName, caseNo, gvwMeasured, gvwPermissible, weighedAt, caseId);
                 var sent = await notifier.SendWorkflowEmailAsync(
                     "overloadAlert",
                     "truload/overload_alert",
                     officer.Email!,
                     officer.FullName ?? "Officer",
-                    new Dictionary<string, object>
-                    {
-                        ["vehicle_reg"] = vehicleReg,
-                        ["overload_kg"] = overloadKg,
-                        ["ticket_no"] = ticketNo,
-                        ["station_name"] = stationName,
-                        ["case_no"] = caseNo
-                    },
+                    data,
+                    subject,
                     tenantSlug: tenantSlug);
 
                 if (!sent)
