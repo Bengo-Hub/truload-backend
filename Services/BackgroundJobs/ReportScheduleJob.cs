@@ -81,8 +81,10 @@ public class ReportScheduleJob
 
                 var result = await reportService.GenerateAsync(report.Module, report.ReportType, filters, report.Format);
 
-                // Email to all recipients using attachments via template data
-                var recipients = report.Recipients;
+                // Email to all recipients using attachments via template data.
+                // Normalize: report recipients are entered line-by-line and may also contain
+                // commas; split into individual validated addresses so none are dropped.
+                var recipients = TruLoad.Backend.Services.Implementations.Shared.EmailRecipients.Normalize(report.Recipients);
                 if (recipients.Count > 0)
                 {
                     var downloadLinkPlaceholder = string.Empty; // No download link for attached reports

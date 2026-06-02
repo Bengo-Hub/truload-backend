@@ -82,7 +82,7 @@ public class ScheduledReportController : ControllerBase
             Format = request.Format,
             CronSchedule = request.CronSchedule,
             ScheduleDescription = request.ScheduleDescription,
-            Recipients = request.Recipients,
+            Recipients = TruLoad.Backend.Services.Implementations.Shared.EmailRecipients.Normalize(request.Recipients),
             ParametersJson = request.ParametersJson,
             NextRunAt = nextRun,
             IsActive = true,
@@ -110,7 +110,7 @@ public class ScheduledReportController : ControllerBase
         entity.Format = request.Format;
         entity.CronSchedule = request.CronSchedule;
         entity.ScheduleDescription = request.ScheduleDescription;
-        entity.Recipients = request.Recipients;
+        entity.Recipients = TruLoad.Backend.Services.Implementations.Shared.EmailRecipients.Normalize(request.Recipients);
         entity.ParametersJson = request.ParametersJson;
         entity.IsActive = request.IsActive;
         entity.NextRunAt = nextRun;

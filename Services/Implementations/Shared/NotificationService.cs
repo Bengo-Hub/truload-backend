@@ -179,11 +179,11 @@ public class NotificationService : INotificationService
             if (!string.IsNullOrWhiteSpace(subject))
                 metadata["subject"] = subject;
 
-            var ccList = cc?
-                .Where(e => !string.IsNullOrWhiteSpace(e))
-                .Select(e => e.Trim())
+            // Split/validate any comma/semicolon/newline-joined addresses into individual
+            // recipients so none are dropped and the SMTP server doesn't 501 on a joined element.
+            var toList = EmailRecipients.Normalize(new[] { recipientEmail });
+            var ccList = EmailRecipients.Normalize(cc)
                 .Where(e => !e.Equals(recipientEmail, StringComparison.OrdinalIgnoreCase))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             var request = new NotificationMessageRequest
@@ -192,8 +192,8 @@ public class NotificationService : INotificationService
                 Tenant = tenantSlug ?? GetTenantSlug(),
                 Template = templateName,
                 Data = enhancedData,
-                To = new List<string> { recipientEmail },
-                Cc = ccList?.Count > 0 ? ccList : null,
+                To = toList.Count > 0 ? toList : new List<string> { recipientEmail },
+                Cc = ccList.Count > 0 ? ccList : null,
                 Metadata = metadata.Count > 0 ? metadata : null
             };
 
@@ -239,15 +239,16 @@ public class NotificationService : INotificationService
         // Collect CC: group defaults + per-workflow CC, excluding primary
         var cc = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        // Normalize splits any legacy comma/newline-joined pool/CC entries into individual addresses.
         if (WorkflowGroupMap.TryGetValue(workflowKey, out var group))
         {
             var groupPrefs = GetWorkflowGroupByName(prefs, group);
-            foreach (var e in groupPrefs.DefaultRecipients.Where(e => !string.IsNullOrWhiteSpace(e)))
-                cc.Add(e.Trim());
+            foreach (var e in EmailRecipients.Normalize(groupPrefs.DefaultRecipients))
+                cc.Add(e);
         }
 
-        foreach (var e in item.CcRecipients.Where(e => !string.IsNullOrWhiteSpace(e)))
-            cc.Add(e.Trim());
+        foreach (var e in EmailRecipients.Normalize(item.CcRecipients))
+            cc.Add(e);
 
         if (!string.IsNullOrWhiteSpace(primaryRecipientEmail))
             cc.Remove(primaryRecipientEmail);
