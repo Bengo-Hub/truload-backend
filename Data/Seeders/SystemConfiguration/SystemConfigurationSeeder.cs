@@ -605,6 +605,21 @@ public class SystemConfigurationSeeder
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.WeighingCaseCaptureMode,
+                SettingValue = "beyond_tolerance",
+                SettingType = "String",
+                Category = SettingKeys.CategoryWeighing,
+                DisplayName = "Case Capture Mode",
+                Description = "Which overload violations create a case register entry. 'beyond_tolerance' (default): only overloads beyond the tolerance limit that require remedial action — within-tolerance overloads pass without a case or email. 'all': also capture within-tolerance overloads and auto-issue a special release.",
+                DefaultValue = "beyond_tolerance",
+                IsEditable = true,
+                SortOrder = 4,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
 
             // Financial Settings
             new ApplicationSettings

@@ -675,8 +675,17 @@ public class WeighingService : IWeighingService
             return transaction;
         }
 
+        // Capture mode controls whether within-tolerance overloads are recorded at all.
+        // Default "beyond_tolerance": only overloads beyond the tolerance limit (handled in the
+        // "Overloaded" block below) create a case + prohibition + email. "all": also capture
+        // within-tolerance overloads here and auto-issue a special release.
+        var caseCaptureMode = await _settingsService.GetSettingValueAsync(
+            SettingKeys.WeighingCaseCaptureMode, "beyond_tolerance");
+
         // 11. AUTO-TRIGGER: Create Case Register + Special Release for within-tolerance overload
-        if (transaction.ControlStatus == "Warning" && !transaction.IsCompliant)
+        //     (only when the admin has opted to capture all violations).
+        if (transaction.ControlStatus == "Warning" && !transaction.IsCompliant
+            && string.Equals(caseCaptureMode, "all", StringComparison.OrdinalIgnoreCase))
         {
             try
             {

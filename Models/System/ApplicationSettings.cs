@@ -129,6 +129,10 @@ public static class SettingKeys
     public const string WeighingMaxReweighCycles = "weighing.max_reweigh_cycles";
     public const string WeighingOperationalToleranceKg = "weighing.operational_tolerance_kg";
     public const string WeighingScaleTestRequired = "weighing.scale_test_required";
+    /// <summary>Which violations are captured into the case register: "beyond_tolerance" (default —
+    /// only overloads beyond the tolerance limit that require remedial action) or "all" (also capture
+    /// within-tolerance overloads and auto-issue a special release).</summary>
+    public const string WeighingCaseCaptureMode = "weighing.case_capture_mode";
     public const string CommercialPendingWeighingThresholdHours = "commercial.pending_weighing_threshold_hours";
 
     // Financial
