@@ -714,6 +714,15 @@ public class CaseRegisterService : ICaseRegisterService
             closedByName = closedByUser?.FullName;
         }
 
+        // Surface the prohibition order number so the case can link/preview the (auto-issued) prohibition document.
+        string? prohibitionNo = null;
+        if (caseRegister.ProhibitionOrderId.HasValue)
+        {
+            var prohibition = _context.ProhibitionOrders.AsNoTracking()
+                .FirstOrDefault(p => p.Id == caseRegister.ProhibitionOrderId);
+            prohibitionNo = prohibition?.ProhibitionNo;
+        }
+
         return new CaseRegisterDto
         {
             Id = caseRegister.Id,
@@ -721,6 +730,7 @@ public class CaseRegisterService : ICaseRegisterService
             WeighingId = caseRegister.WeighingId,
             YardEntryId = caseRegister.YardEntryId,
             ProhibitionOrderId = caseRegister.ProhibitionOrderId,
+            ProhibitionNo = prohibitionNo,
             VehicleId = caseRegister.VehicleId,
             VehicleRegNumber = vehicleRegNumber,
             DriverId = caseRegister.DriverId,
