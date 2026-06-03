@@ -6,6 +6,8 @@ using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.Financial;
 using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.Shared;
+using TruLoad.Backend.Services.Interfaces.Infrastructure;
+using TruLoad.Backend.Models.System;
 
 namespace TruLoad.Backend.Services.Implementations.Financial;
 
@@ -18,6 +20,7 @@ public class InvoiceService : IInvoiceService
     private readonly INotificationService _notificationService;
     private readonly IBackgroundNotificationDispatcher _backgroundNotifications;
     private readonly ITenantContext _tenantContext;
+    private readonly IDocumentNumberService _documentNumberService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<InvoiceService> _logger;
 
@@ -26,6 +29,7 @@ public class InvoiceService : IInvoiceService
         INotificationService notificationService,
         IBackgroundNotificationDispatcher backgroundNotifications,
         ITenantContext tenantContext,
+        IDocumentNumberService documentNumberService,
         IConfiguration configuration,
         ILogger<InvoiceService> logger)
     {
@@ -33,8 +37,26 @@ public class InvoiceService : IInvoiceService
         _notificationService = notificationService;
         _backgroundNotifications = backgroundNotifications;
         _tenantContext = tenantContext;
+        _documentNumberService = documentNumberService;
         _configuration = configuration;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Resolves the organization id for document numbering: prefer the owning station's
+    /// organization, falling back to the current tenant context.
+    /// </summary>
+    private async Task<Guid> ResolveOrganizationIdAsync(Guid? stationId, CancellationToken ct)
+    {
+        if (stationId.HasValue && stationId.Value != Guid.Empty)
+        {
+            var orgId = await _context.Stations
+                .Where(s => s.Id == stationId.Value)
+                .Select(s => s.OrganizationId)
+                .FirstOrDefaultAsync(ct);
+            if (orgId != Guid.Empty) return orgId;
+        }
+        return _tenantContext.OrganizationId;
     }
 
     public async Task<InvoiceDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -409,9 +431,10 @@ public class InvoiceService : IInvoiceService
         if (invoice.Status == "void" || invoice.Status == "cancelled")
             throw new InvalidOperationException($"Cannot record payment for a {invoice.Status} invoice");
 
-        var year = DateTime.UtcNow.Year;
-        var receiptCount = await _context.Receipts.CountAsync(r => r.CreatedAt.Year == year, ct);
-        var receiptNo = $"RCP-{year}-{(receiptCount + 1):D6}";
+        // Receipt numbers follow the configured receipt convention/sequence (org-wide).
+        var receiptOrgId = await ResolveOrganizationIdAsync(_tenantContext.StationId, ct);
+        var receiptNo = await _documentNumberService.GenerateNumberAsync(
+            receiptOrgId, null, DocumentTypes.Receipt);
 
         var receipt = new Receipt
         {

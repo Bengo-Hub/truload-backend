@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using TruLoad.Backend.Data;
 using TruLoad.Backend.Data.Repositories.Weighing;
 using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.Weighing;
+using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 
 namespace TruLoad.Backend.Controllers.WeighingOperations;
@@ -17,17 +20,23 @@ public class PermitsController : ControllerBase
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<PermitsController> _logger;
     private readonly IPdfService _pdfService;
+    private readonly IDocumentNumberService _documentNumberService;
+    private readonly TruLoadDbContext _context;
 
     public PermitsController(
         IPermitRepository permitRepository,
         ITenantContext tenantContext,
         ILogger<PermitsController> logger,
-        IPdfService pdfService)
+        IPdfService pdfService,
+        IDocumentNumberService documentNumberService,
+        TruLoadDbContext context)
     {
         _permitRepository = permitRepository;
         _tenantContext = tenantContext;
         _logger = logger;
         _pdfService = pdfService;
+        _documentNumberService = documentNumberService;
+        _context = context;
     }
 
     /// <summary>
@@ -132,10 +141,24 @@ public class PermitsController : ControllerBase
             return BadRequest(new { message = "Valid to date must be after valid from date" });
         }
 
+        // Auto-generate the permit number from the configured "permit" (PRM) convention when the
+        // caller doesn't supply an externally-issued number. Org-wide; the convention appends the
+        // vehicle registration, so resolve it for the number.
+        var permitNo = request.PermitNo?.Trim();
+        if (string.IsNullOrWhiteSpace(permitNo))
+        {
+            var vehicleReg = await _context.Vehicles
+                .Where(v => v.Id == request.VehicleId)
+                .Select(v => v.RegNo)
+                .FirstOrDefaultAsync();
+            permitNo = await _documentNumberService.GenerateNumberAsync(
+                _tenantContext.OrganizationId, null, DocumentTypes.Permit, vehicleReg);
+        }
+
         var permit = new Permit
         {
             Id = Guid.NewGuid(),
-            PermitNo = request.PermitNo,
+            PermitNo = permitNo,
             VehicleId = request.VehicleId,
             PermitTypeId = request.PermitTypeId,
             AxleExtensionKg = request.AxleExtensionKg,

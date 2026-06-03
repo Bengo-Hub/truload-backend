@@ -22,9 +22,12 @@ public class PermitDto
 
 public class CreatePermitRequest
 {
-    [Required(ErrorMessage = "Permit number is required")]
+    /// <summary>
+    /// Externally-issued permit number. Optional — when omitted, the system auto-generates one
+    /// using the configured "permit" (PRM) numbering convention.
+    /// </summary>
     [StringLength(100, ErrorMessage = "Permit number cannot exceed 100 characters")]
-    public string PermitNo { get; set; } = string.Empty;
+    public string? PermitNo { get; set; }
 
     [Required(ErrorMessage = "Vehicle ID is required")]
     public Guid VehicleId { get; set; }

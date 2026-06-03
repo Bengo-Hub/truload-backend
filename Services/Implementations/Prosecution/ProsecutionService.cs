@@ -8,6 +8,8 @@ using TruLoad.Backend.Services.Interfaces.Weighing;
 using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.System;
+using TruLoad.Backend.Services.Interfaces.Infrastructure;
+using TruLoad.Backend.Middleware;
 
 namespace TruLoad.Backend.Services.Implementations.Prosecution;
 
@@ -21,17 +23,23 @@ public class ProsecutionService : IProsecutionService
     private readonly IAxleGroupAggregationService _axleGroupService;
     private readonly ISettingsService _settingsService;
     private readonly ICurrencyService _currencyService;
+    private readonly IDocumentNumberService _documentNumberService;
+    private readonly ITenantContext _tenantContext;
 
     public ProsecutionService(
         TruLoadDbContext context,
         IAxleGroupAggregationService axleGroupService,
         ISettingsService settingsService,
-        ICurrencyService currencyService)
+        ICurrencyService currencyService,
+        IDocumentNumberService documentNumberService,
+        ITenantContext tenantContext)
     {
         _context = context;
         _axleGroupService = axleGroupService;
         _settingsService = settingsService;
         _currencyService = currencyService;
+        _documentNumberService = documentNumberService;
+        _tenantContext = tenantContext;
     }
 
     public async Task<ProsecutionCaseDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -251,7 +259,6 @@ public class ProsecutionService : IProsecutionService
         }
 
         // Generate certificate number
-        var certificateNo = await GenerateCertificateNumberAsync(ct);
         var defaultForexRateResponse = await _currencyService.GetCurrentRateAsync("USD", "KES", ct);
         var defaultForexRate = defaultForexRateResponse.Rate;
 
@@ -264,6 +271,11 @@ public class ProsecutionService : IProsecutionService
                 .Where(wt => wt.Id == caseRegister.WeighingId.Value)
                 .Select(wt => wt.StationId)
                 .FirstOrDefaultAsync(ct);
+
+        // Charge sheet number follows the configured charge_sheet convention/sequence.
+        var chargeOrgId = await ResolveOrganizationIdAsync(weighingStationId, ct);
+        var certificateNo = await _documentNumberService.GenerateNumberAsync(
+            chargeOrgId, weighingStationId, DocumentTypes.ChargeSheet);
 
         var prosecutionCase = new ProsecutionCase
         {
@@ -391,11 +403,27 @@ public class ProsecutionService : IProsecutionService
 
     public async Task<string> GenerateCertificateNumberAsync(CancellationToken ct = default)
     {
-        var year = DateTime.UtcNow.Year;
-        var count = await _context.ProsecutionCases
-            .CountAsync(p => p.CreatedAt.Year == year, ct);
+        // Charge-sheet numbers follow the configured charge_sheet convention/sequence.
+        var orgId = await ResolveOrganizationIdAsync(null, ct);
+        return await _documentNumberService.GenerateNumberAsync(
+            orgId, _tenantContext.StationId, DocumentTypes.ChargeSheet);
+    }
 
-        return $"PROS-{year}-{(count + 1):D6}";
+    /// <summary>
+    /// Resolves the organization id for document numbering: prefer the owning station's
+    /// organization, falling back to the current tenant context.
+    /// </summary>
+    private async Task<Guid> ResolveOrganizationIdAsync(Guid? stationId, CancellationToken ct)
+    {
+        if (stationId.HasValue && stationId.Value != Guid.Empty)
+        {
+            var orgId = await _context.Stations
+                .Where(s => s.Id == stationId.Value)
+                .Select(s => s.OrganizationId)
+                .FirstOrDefaultAsync(ct);
+            if (orgId != Guid.Empty) return orgId;
+        }
+        return _tenantContext.OrganizationId;
     }
 
     private async Task<(decimal FeeUsd, decimal FeeKes)> CalculateGvwFeeAsync(

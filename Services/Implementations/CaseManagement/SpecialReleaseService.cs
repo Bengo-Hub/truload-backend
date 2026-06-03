@@ -6,6 +6,8 @@ using TruLoad.Backend.Models.CaseManagement;
 using TruLoad.Backend.Repositories.CaseManagement;
 using TruLoad.Backend.Services.Interfaces.CaseManagement;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
+using TruLoad.Backend.Models.System;
+using TruLoad.Backend.Middleware;
 
 namespace TruLoad.Backend.Services.Implementations.CaseManagement;
 
@@ -15,17 +17,40 @@ public class SpecialReleaseService : ISpecialReleaseService
     private readonly ICaseRegisterRepository _caseRegisterRepository;
     private readonly IPdfService _pdfService;
     private readonly TruLoadDbContext _context;
+    private readonly IDocumentNumberService _documentNumberService;
+    private readonly ITenantContext _tenantContext;
 
     public SpecialReleaseService(
         ISpecialReleaseRepository specialReleaseRepository,
         ICaseRegisterRepository caseRegisterRepository,
         IPdfService pdfService,
-        TruLoadDbContext context)
+        TruLoadDbContext context,
+        IDocumentNumberService documentNumberService,
+        ITenantContext tenantContext)
     {
         _specialReleaseRepository = specialReleaseRepository;
         _caseRegisterRepository = caseRegisterRepository;
         _pdfService = pdfService;
         _context = context;
+        _documentNumberService = documentNumberService;
+        _tenantContext = tenantContext;
+    }
+
+    /// <summary>
+    /// Resolves the organization id for document numbering: prefer the owning station's
+    /// organization, falling back to the current tenant context.
+    /// </summary>
+    private async Task<Guid> ResolveOrganizationIdAsync(Guid? stationId)
+    {
+        if (stationId.HasValue && stationId.Value != Guid.Empty)
+        {
+            var orgId = await _context.Stations
+                .Where(s => s.Id == stationId.Value)
+                .Select(s => s.OrganizationId)
+                .FirstOrDefaultAsync();
+            if (orgId != Guid.Empty) return orgId;
+        }
+        return _tenantContext.OrganizationId;
     }
 
     public async Task<SpecialReleaseDto?> GetByIdAsync(Guid id)
@@ -69,8 +94,10 @@ public class SpecialReleaseService : ISpecialReleaseService
         if (closedStatus != null && caseRegister.CaseStatusId == closedStatus.Id)
             throw new InvalidOperationException("Cannot request special release for a closed case");
 
-        // Generate certificate number
-        var certificateNo = await _specialReleaseRepository.GenerateNextCertificateNumberAsync();
+        // Generate certificate number from the configured special_release convention/sequence.
+        var srOrgId = await ResolveOrganizationIdAsync(caseRegister.StationId);
+        var certificateNo = await _documentNumberService.GenerateNumberAsync(
+            srOrgId, caseRegister.StationId, DocumentTypes.SpecialRelease);
 
         var specialRelease = new SpecialRelease
         {

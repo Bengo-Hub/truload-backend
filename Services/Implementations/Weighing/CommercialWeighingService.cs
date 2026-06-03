@@ -778,8 +778,10 @@ public class CommercialWeighingService : ICommercialWeighingService
                 return;
             }
 
+            // Invoice numbers are org-wide (no station code in the convention → a per-station
+            // sequence could collide across stations on the same day).
             var invoiceNo = await _documentNumberService.GenerateNumberAsync(
-                org.Id, transaction.StationId, DocumentTypes.Invoice);
+                org.Id, null, DocumentTypes.Invoice);
 
             var invoice = new Invoice
             {

@@ -106,6 +106,24 @@ public class WeighingService : IWeighingService
     }
 
     /// <summary>
+    /// Resolves the organization id for document numbering: prefer the owning station's
+    /// organization, falling back to the current tenant context. Keeps all auto-generated
+    /// documents on the configured conventions/sequences.
+    /// </summary>
+    private async Task<Guid> ResolveOrganizationIdAsync(Guid? stationId)
+    {
+        if (stationId.HasValue && stationId.Value != Guid.Empty)
+        {
+            var orgId = await _dbContext.Stations
+                .Where(s => s.Id == stationId.Value)
+                .Select(s => s.OrganizationId)
+                .FirstOrDefaultAsync();
+            if (orgId != Guid.Empty) return orgId;
+        }
+        return _tenantContext.OrganizationId;
+    }
+
+    /// <summary>
     /// Initiates a weighing transaction with scale test validation.
     /// Generates ticket number via DocumentNumberService using configured conventions.
     /// Per FRD: Scale test must be completed once daily per station/bound before weighing operations.
@@ -594,7 +612,10 @@ public class WeighingService : IWeighingService
                     var existingProhibition = await _prohibitionRepository.GetByWeighingIdAsync(transaction.Id);
                     if (existingProhibition == null)
                     {
-                        var prohibitionNo = await _prohibitionRepository.GenerateProhibitionNumberAsync();
+                        var prohibitionOrgId = await ResolveOrganizationIdAsync(transaction.StationId);
+                        var prohibitionNo = await _documentNumberService.GenerateNumberAsync(
+                            prohibitionOrgId, transaction.StationId,
+                            Models.System.DocumentTypes.ProhibitionOrder);
                         var prohibitionOrder = new ProhibitionOrder
                         {
                             WeighingId = transaction.Id,
@@ -714,10 +735,10 @@ public class WeighingService : IWeighingService
                             ? $"GVW overload of {transaction.OverloadKg}kg is within GVW tolerance. Auto-released with warning."
                             : "Axle group overload detected; GVW is within permissible tolerance. Released under Traffic Act (axle overloads do not attract GVW charges).";
 
-                        var year = DateTime.UtcNow.Year;
-                        var certCount = await _dbContext.SpecialReleases
-                            .CountAsync(sr => sr.CreatedAt.Year == year);
-                        var certNo = $"SR-TOL-{year}-{(certCount + 1):D6}";
+                        var srOrgId = await ResolveOrganizationIdAsync(transaction.StationId);
+                        var certNo = await _documentNumberService.GenerateNumberAsync(
+                            srOrgId, transaction.StationId,
+                            Models.System.DocumentTypes.SpecialRelease);
                         var specialRelease = new Models.CaseManagement.SpecialRelease
                         {
                             CaseRegisterId = caseDto.Id,
@@ -967,12 +988,13 @@ public class WeighingService : IWeighingService
                     }
 
                     // Generate compliance certificate (linked to memo if exists)
-                    var year = DateTime.UtcNow.Year;
-                    var certCount = await _dbContext.ComplianceCertificates
-                        .CountAsync(c => c.CreatedAt.Year == year);
+                    var complianceOrgId = await ResolveOrganizationIdAsync(transaction.StationId);
+                    var complianceCertNo = await _documentNumberService.GenerateNumberAsync(
+                        complianceOrgId, transaction.StationId,
+                        Models.System.DocumentTypes.ComplianceCertificate);
                     var certificate = new ComplianceCertificate
                     {
-                        CertificateNo = $"COMP-{year}-{(certCount + 1):D6}",
+                        CertificateNo = complianceCertNo,
                         CaseRegisterId = caseDto.Id,
                         WeighingId = transactionId,
                         LoadCorrectionMemoId = memo?.Id,
@@ -1012,8 +1034,10 @@ public class WeighingService : IWeighingService
             if (existingInvoice != null)
                 return; // Already created (idempotent)
 
+            // Invoice numbers are org-wide (no station code in the convention → a per-station
+            // sequence could collide across stations on the same day).
             var invoiceNo = await _documentNumberService.GenerateNumberAsync(
-                org.Id, transaction.StationId, Models.System.DocumentTypes.Invoice);
+                org.Id, null, Models.System.DocumentTypes.Invoice);
             var invoice = new Invoice
             {
                 InvoiceNo = invoiceNo,

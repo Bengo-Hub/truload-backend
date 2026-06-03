@@ -8,6 +8,9 @@ using TruLoad.Backend.Models.CaseManagement;
 using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.Shared;
 using TruLoad.Backend.Services.Implementations.Shared;
+using TruLoad.Backend.Services.Interfaces.Infrastructure;
+using TruLoad.Backend.Models.System;
+using TruLoad.Backend.Middleware;
 
 namespace TruLoad.Backend.Services.Implementations.Financial;
 
@@ -18,16 +21,39 @@ public class ReceiptService : IReceiptService
 {
     private readonly TruLoadDbContext _context;
     private readonly IBackgroundNotificationDispatcher _backgroundNotifications;
+    private readonly IDocumentNumberService _documentNumberService;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<ReceiptService> _logger;
 
     public ReceiptService(
         TruLoadDbContext context,
         IBackgroundNotificationDispatcher backgroundNotifications,
+        IDocumentNumberService documentNumberService,
+        ITenantContext tenantContext,
         ILogger<ReceiptService> logger)
     {
         _context = context;
         _backgroundNotifications = backgroundNotifications;
+        _documentNumberService = documentNumberService;
+        _tenantContext = tenantContext;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Resolves the organization id for document numbering: prefer the owning station's
+    /// organization, falling back to the current tenant context.
+    /// </summary>
+    private async Task<Guid> ResolveOrganizationIdAsync(Guid? stationId, CancellationToken ct)
+    {
+        if (stationId.HasValue && stationId.Value != Guid.Empty)
+        {
+            var orgId = await _context.Stations
+                .Where(s => s.Id == stationId.Value)
+                .Select(s => s.OrganizationId)
+                .FirstOrDefaultAsync(ct);
+            if (orgId != Guid.Empty) return orgId;
+        }
+        return _tenantContext.OrganizationId;
     }
 
     public async Task<ReceiptDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -139,7 +165,14 @@ public class ReceiptService : IReceiptService
                 $"Payment amount ({currency} {request.AmountPaid:N2}) exceeds remaining balance ({currency} {remaining:N2})");
         }
 
-        var receiptNo = await GenerateReceiptNumberAsync(ct);
+        // Receipt numbers are org-wide (the convention has no station code, so a per-station
+        // sequence could collide across stations on the same day) — resolve the org, scope null.
+        var receiptStationId = invoice.Weighing?.StationId
+            ?? invoice.ProsecutionCase?.Weighing?.StationId
+            ?? invoice.CaseRegister?.StationId;
+        var receiptOrgId = await ResolveOrganizationIdAsync(receiptStationId, ct);
+        var receiptNo = await _documentNumberService.GenerateNumberAsync(
+            receiptOrgId, null, DocumentTypes.Receipt);
 
         var receipt = new Receipt
         {
@@ -205,12 +238,13 @@ public class ReceiptService : IReceiptService
                             .AsNoTracking()
                             .FirstOrDefaultAsync(w => w.Id == weighingId.Value, ct);
 
-                        var year = DateTime.UtcNow.Year;
-                        var memoCount = await _context.LoadCorrectionMemos
-                            .CountAsync(m => m.CreatedAt.Year == year, ct);
+                        var memoStationId = weighing?.StationId ?? invoice.CaseRegister?.StationId;
+                        var memoOrgId = await ResolveOrganizationIdAsync(memoStationId, ct);
+                        var memoNo = await _documentNumberService.GenerateNumberAsync(
+                            memoOrgId, memoStationId, DocumentTypes.LoadCorrectionMemo);
                         var memo = new LoadCorrectionMemo
                         {
-                            MemoNo = $"LCM-{year}-{(memoCount + 1):D6}",
+                            MemoNo = memoNo,
                             CaseRegisterId = prosecution.CaseRegisterId,
                             WeighingId = weighingId.Value,
                             OverloadKg = weighing?.OverloadKg ?? 0,
@@ -425,11 +459,10 @@ public class ReceiptService : IReceiptService
 
     public async Task<string> GenerateReceiptNumberAsync(CancellationToken ct = default)
     {
-        var year = DateTime.UtcNow.Year;
-        var count = await _context.Receipts
-            .CountAsync(r => r.CreatedAt.Year == year, ct);
-
-        return $"RCP-{year}-{(count + 1):D6}";
+        // Receipt numbers follow the configured receipt convention/sequence (org-wide).
+        var orgId = await ResolveOrganizationIdAsync(_tenantContext.StationId, ct);
+        return await _documentNumberService.GenerateNumberAsync(
+            orgId, null, DocumentTypes.Receipt);
     }
 
     private ReceiptDto MapToDto(Receipt receipt)
