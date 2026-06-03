@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using System.Text.Json;
+using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Services.Interfaces;
 using TruLoad.Backend.Services.Interfaces.Weighing;
@@ -623,7 +624,9 @@ public class WeighingController : ControllerBase
     /// <param name="id">Transaction ID</param>
     /// <returns>PDF document</returns>
     [HttpGet("{id}/ticket/pdf")]
-    [Authorize(Policy = "Permission:weighing.read")]
+    // Surfaced/linked from the case register too, so case officers (case.read) can view the
+    // weight ticket without also needing weighing.read.
+    [HasAnyPermission("weighing.read", "case.read")]
     [Produces("application/pdf")]
     [ProducesResponseType(typeof(FileResult), 200)]
     [ProducesResponseType(404)]
