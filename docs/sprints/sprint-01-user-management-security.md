@@ -346,7 +346,7 @@ Redis instance for caching
 - Audit logs are immutable and append-only for compliance
 - Default admin user created via seeding with secure password hashing
 
-1. Working authentication integration with centralized auth-service (https://auth.codevertexitsolutions.com)
+1. Working authentication integration with centralized auth-service (https://sso.codevertexitsolutions.com)
 2. **Permission Model:** Type-safe Permission and RolePermission entities with 77 permissions across 8 categories
 3. **Permission Service:** IPermissionService with Redis-backed caching and permission checking
 4. **Permission Seeding:** All 77 permissions and 6 role-permission mappings seeded to database
