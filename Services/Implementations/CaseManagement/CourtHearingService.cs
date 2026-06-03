@@ -2,7 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.CaseManagement;
 using TruLoad.Backend.Models.CaseManagement;
+using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Services.Interfaces.CaseManagement;
+using TruLoad.Backend.Services.Interfaces.Infrastructure;
+using TruLoad.Backend.Middleware;
 
 namespace TruLoad.Backend.Services.Implementations.CaseManagement;
 
@@ -13,10 +16,34 @@ namespace TruLoad.Backend.Services.Implementations.CaseManagement;
 public class CourtHearingService : ICourtHearingService
 {
     private readonly TruLoadDbContext _context;
+    private readonly IDocumentNumberService _documentNumberService;
+    private readonly ITenantContext _tenantContext;
 
-    public CourtHearingService(TruLoadDbContext context)
+    public CourtHearingService(
+        TruLoadDbContext context,
+        IDocumentNumberService documentNumberService,
+        ITenantContext tenantContext)
     {
         _context = context;
+        _documentNumberService = documentNumberService;
+        _tenantContext = tenantContext;
+    }
+
+    /// <summary>
+    /// Resolves the organization id for document numbering: prefer the owning station's
+    /// organization, falling back to the current tenant context.
+    /// </summary>
+    private async Task<Guid> ResolveOrganizationIdAsync(Guid? stationId, CancellationToken ct)
+    {
+        if (stationId.HasValue && stationId.Value != Guid.Empty)
+        {
+            var orgId = await _context.Stations
+                .Where(s => s.Id == stationId.Value)
+                .Select(s => s.OrganizationId)
+                .FirstOrDefaultAsync(ct);
+            if (orgId != Guid.Empty) return orgId;
+        }
+        return _tenantContext.OrganizationId;
     }
 
     public async Task<CourtHearingDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -134,10 +161,16 @@ public class CourtHearingService : ICourtHearingService
             .FirstOrDefaultAsync(s => s.Code == "SCHEDULED", ct)
             ?? throw new InvalidOperationException("SCHEDULED hearing status not found");
 
+        // Minute number follows the configured court_minutes (CM) convention/sequence.
+        var minuteOrgId = await ResolveOrganizationIdAsync(caseRegister.StationId, ct);
+        var minuteNo = await _documentNumberService.GenerateNumberAsync(
+            minuteOrgId, caseRegister.StationId, DocumentTypes.CourtMinutes);
+
         var hearing = new CourtHearing
         {
             Id = Guid.NewGuid(),
             CaseRegisterId = caseRegisterId,
+            MinuteNo = minuteNo,
             CourtId = request.CourtId,
             HearingDate = request.HearingDate,
             HearingTime = request.HearingTime,
@@ -363,6 +396,7 @@ public class CourtHearingService : ICourtHearingService
             Id = hearing.Id,
             CaseRegisterId = hearing.CaseRegisterId,
             CaseNo = hearing.CaseRegister?.CaseNo ?? string.Empty,
+            MinuteNo = hearing.MinuteNo,
             CourtId = hearing.CourtId,
             CourtName = court?.Name,
             CourtLocation = court?.Location,

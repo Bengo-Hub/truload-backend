@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 
@@ -31,8 +32,13 @@ public class ProhibitionOrderController : ControllerBase
     }
 
     /// <summary>Downloads the prohibition order PDF.</summary>
+    /// <remarks>
+    /// Viewable by users who can read weighing transactions OR case-register entries — the
+    /// prohibition is a weighing-domain document but is surfaced/linked from the case register,
+    /// so case officers (case.read) can open it without also needing weighing.read.
+    /// </remarks>
     [HttpGet("{id}/pdf")]
-    [Authorize(Policy = "Permission:weighing.read")]
+    [HasAnyPermission("weighing.read", "case.read")]
     [Produces("application/pdf")]
     [ProducesResponseType(typeof(FileResult), 200)]
     [ProducesResponseType(404)]

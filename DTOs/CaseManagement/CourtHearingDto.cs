@@ -10,6 +10,7 @@ public class CourtHearingDto
     public Guid Id { get; set; }
     public Guid CaseRegisterId { get; set; }
     public string CaseNo { get; set; } = string.Empty;
+    public string? MinuteNo { get; set; }
     public Guid? CourtId { get; set; }
     public string? CourtName { get; set; }
     public string? CourtLocation { get; set; }

@@ -47,7 +47,7 @@ public class CourtMinutesDocument : BaseDocument
             BrandingConstants.Logos.CourtOfArmsKenya,
             "COURT HEARING MINUTES",
             subtitle: "IN THE TRAFFIC COURT",
-            referenceNumber: $"Case No: {_caseRegister?.CaseNo ?? "N/A"} | Ref: {_hearing.Id.ToString()[..8].ToUpper()}",
+            referenceNumber: $"Case No: {_caseRegister?.CaseNo ?? "N/A"} | Minute No: {(!string.IsNullOrWhiteSpace(_hearing.MinuteNo) ? _hearing.MinuteNo : _hearing.Id.ToString()[..8].ToUpper())}",
             dateText: $"{_hearing.HearingDate:dd/MM/yyyy} {_hearing.HearingTime?.ToString(@"hh\:mm") ?? ""}");
     }
 

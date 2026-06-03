@@ -17,6 +17,13 @@ public class CourtHearing : TenantAwareEntity
     public Guid CaseRegisterId { get; set; }
 
     /// <summary>
+    /// Official court minutes number, generated from the configured "court_minutes" (CM)
+    /// numbering convention when the hearing is scheduled. Shown on the Court Minutes document.
+    /// </summary>
+    [MaxLength(100)]
+    public string? MinuteNo { get; set; }
+
+    /// <summary>
     /// Court ID
     /// </summary>
     public Guid? CourtId { get; set; }
