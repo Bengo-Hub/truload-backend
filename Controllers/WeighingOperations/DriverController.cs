@@ -165,8 +165,45 @@ public class DriverController : ControllerBase
         driver.FullNames = driver.FullNames?.Trim() ?? string.Empty;
         driver.Surname = driver.Surname?.Trim() ?? string.Empty;
 
-        await _driverRepository.UpdateAsync(driver);
-        return NoContent();
+        if (string.IsNullOrWhiteSpace(driver.FullNames))
+            return BadRequest("Full names (first name) is required.");
+        if (string.IsNullOrWhiteSpace(driver.Surname))
+            return BadRequest("Surname (last name) is required.");
+
+        try
+        {
+            // Pre-check the UNIQUE indexes on id_number / driving_license_no so that
+            // colliding with ANOTHER driver returns a clear 409 instead of an unhandled
+            // 500 (Postgres 23505). This mirrors Create. Excludes this driver's own
+            // record so re-saving unchanged values is always allowed.
+            if (driver.IdNumber != null)
+            {
+                var existing = await _driverRepository.GetByIdNumberAsync(driver.IdNumber);
+                if (existing != null && existing.Id != driver.Id)
+                    return Conflict($"Driver with ID {driver.IdNumber} already exists.");
+            }
+
+            if (driver.DrivingLicenseNo != null)
+            {
+                var existing = await _driverRepository.GetByLicenseAsync(driver.DrivingLicenseNo);
+                if (existing != null && existing.Id != driver.Id)
+                    return Conflict($"Driver with License {driver.DrivingLicenseNo} already exists.");
+            }
+
+            await _driverRepository.UpdateAsync(driver);
+            return NoContent();
+        }
+        catch (DbUpdateException ex)
+        {
+            // Unique-index violation not caught by the pre-check above (e.g. race).
+            _logger.LogError(ex, "Error updating driver {DriverId}", driver.Id);
+            return Conflict("Could not update driver: a driver with the same National ID or driving license already exists.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating driver {DriverId}", driver.Id);
+            return StatusCode(500, "An error occurred while updating the driver.");
+        }
     }
 
     /// <summary>
