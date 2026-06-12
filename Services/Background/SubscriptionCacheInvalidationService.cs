@@ -22,7 +22,10 @@ public class SubscriptionCacheInvalidationService : BackgroundService
     private readonly IConnectionMultiplexer _redis;
     private readonly ILogger<SubscriptionCacheInvalidationService> _logger;
 
-    private const string Subject = "tenant.subscription.updated";
+    private const string Subject    = "tenant.subscription.updated";
+    // Queue group: with >1 replica, NATS delivers each event to ONE pod only
+    // (truload runs ~4), so the cache invalidation isn't redundantly processed 4x.
+    private const string QueueGroup = "truload-subcache-invalidation";
 
     public SubscriptionCacheInvalidationService(
         IConfiguration configuration,
@@ -60,7 +63,7 @@ public class SubscriptionCacheInvalidationService : BackgroundService
             return;
         }
 
-        await foreach (var msg in nats.SubscribeAsync<string>(Subject, cancellationToken: stoppingToken))
+        await foreach (var msg in nats.SubscribeAsync<string>(Subject, queueGroup: QueueGroup, cancellationToken: stoppingToken))
         {
             try
             {
