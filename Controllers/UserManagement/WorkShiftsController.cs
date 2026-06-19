@@ -116,7 +116,21 @@ public class WorkShiftsController : ControllerBase
         if (request.GraceMinutes.HasValue) shift.GraceMinutes = request.GraceMinutes.Value;
         if (request.IsActive.HasValue) shift.IsActive = request.IsActive.Value;
 
-        var updated = await _workShiftRepository.UpdateAsync(shift, cancellationToken);
+        // Replace the weekly schedule rows when the client sends them (edit-schedule support).
+        // Null = leave schedules untouched; empty list = clear all.
+        var newSchedules = request.Schedules?.Select(s => new WorkShiftSchedule
+        {
+            Id = Guid.NewGuid(),
+            Day = s.Day,
+            StartTime = s.StartTime,
+            EndTime = s.EndTime,
+            BreakHours = s.BreakHours,
+            IsWorkingDay = s.IsWorkingDay,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        }).ToList();
+
+        var updated = await _workShiftRepository.UpdateWithSchedulesAsync(shift, newSchedules, cancellationToken);
         _logger.LogInformation("Work shift updated: {ShiftId}", updated.Id);
 
         return Ok(MapToDto(updated));

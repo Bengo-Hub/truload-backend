@@ -172,14 +172,24 @@ public class InvoiceService : IInvoiceService
                 $"Driver '{driver.FullNames} {driver.Surname}' is missing a National ID number. " +
                 "National ID is required for eCitizen invoice generation. Please update driver details first.");
 
-        // Check for existing pending invoice
+        // Idempotency: if a live pending invoice already exists for this case, return it
+        // instead of failing. Generating an invoice is naturally idempotent — a double-click,
+        // a retried request, or two concurrent officers must never produce a second pending
+        // invoice (the "double posting" symptom). The DB also enforces this via a unique
+        // partial index (status='pending' AND deleted_at IS NULL); see the DbUpdateException
+        // handler below for the lost-race path.
         var existingInvoice = await _context.Invoices
             .FirstOrDefaultAsync(i => i.ProsecutionCaseId == prosecutionCaseId
                 && i.Status == "pending"
                 && i.DeletedAt == null, ct);
 
         if (existingInvoice != null)
-            throw new InvalidOperationException($"Pending invoice {existingInvoice.InvoiceNo} already exists for this prosecution case");
+        {
+            _logger.LogInformation(
+                "GenerateInvoice is idempotent — returning existing pending invoice {InvoiceNo} for prosecution case {CaseId}",
+                existingInvoice.InvoiceNo, prosecutionCaseId);
+            return (await GetByIdAsync(existingInvoice.Id, ct))!;
+        }
 
         var invoiceNo = await GenerateInvoiceNumberAsync(ct);
 
@@ -212,7 +222,30 @@ public class InvoiceService : IInvoiceService
         prosecutionCase.Status = "invoiced";
         prosecutionCase.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync(ct);
+        try
+        {
+            // The check-then-insert above is not atomic on its own; wrap it in a transaction
+            // so a concurrent request can't slip a second pending invoice past the read check.
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            await _context.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // Possibly lost the race against a concurrent generation that committed first and
+            // tripped the unique partial index. Detach our doomed row and, if a pending invoice
+            // now exists for this case, return it (idempotent). Otherwise rethrow the real error.
+            _context.Entry(invoice).State = EntityState.Detached;
+            var winner = await _context.Invoices.AsNoTracking()
+                .FirstOrDefaultAsync(i => i.ProsecutionCaseId == prosecutionCaseId
+                    && i.Status == "pending" && i.DeletedAt == null, ct);
+            if (winner == null) throw;
+
+            _logger.LogInformation(
+                "GenerateInvoice lost a race — returning concurrently-created pending invoice {InvoiceNo} for prosecution case {CaseId}",
+                winner.InvoiceNo, prosecutionCaseId);
+            return (await GetByIdAsync(winner.Id, ct))!;
+        }
 
         // NOTIFY: Invoice Generated
         _ = _notificationService.SendInternalNotificationAsync(

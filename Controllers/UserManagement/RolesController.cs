@@ -225,24 +225,32 @@ public class RolesController : ControllerBase
             return NotFound(new { message = "Role not found" });
         }
 
-        if (request.PermissionIds == null || !request.PermissionIds.Any())
-        {
-            return BadRequest(new { message = "At least one permission ID must be provided" });
-        }
+        // Replace (set) semantics: the request carries the COMPLETE desired permission set for
+        // the role. We diff against current state so this single call both ADDS newly-checked and
+        // REMOVES unchecked permissions. An empty list is valid — it clears all permissions.
+        var desiredIds = (request.PermissionIds ?? new List<Guid>()).Distinct().ToList();
 
         if (!User.IsInRole("Superuser"))
         {
             var allPerms = await _permissionService.GetAllPermissionsAsync();
             var systemSensitiveIds = allPerms.Where(p => p.IsSystemSensitive).Select(p => p.Id).ToHashSet();
-            var attempted = request.PermissionIds.Where(pid => systemSensitiveIds.Contains(pid)).ToList();
-            if (attempted.Any())
+
+            // Non-superusers may not ADD a system-sensitive permission the role doesn't already have.
+            var currentIds = (await _permissionService.GetPermissionsForRoleAsync(id)).Select(p => p.Id).ToHashSet();
+            var attemptedToAdd = desiredIds.Where(pid => systemSensitiveIds.Contains(pid) && !currentIds.Contains(pid)).ToList();
+            if (attemptedToAdd.Any())
                 return BadRequest(new { message = "You cannot assign system-sensitive permissions." });
+
+            // Preserve any system-sensitive permissions the role already has so a non-superuser's
+            // save (whose UI may hide those rows) can't silently strip them under replace semantics.
+            foreach (var keepId in currentIds.Where(systemSensitiveIds.Contains))
+                if (!desiredIds.Contains(keepId)) desiredIds.Add(keepId);
         }
 
         try
         {
-            await _permissionService.AssignPermissionsToRoleAsync(id, request.PermissionIds);
-            _logger.LogInformation("Permissions assigned to role {RoleId}: {PermissionIds}", id, string.Join(", ", request.PermissionIds));
+            await _permissionService.SetRolePermissionsAsync(id, desiredIds);
+            _logger.LogInformation("Permissions set for role {RoleId}: {PermissionIds}", id, string.Join(", ", desiredIds));
 
             // Return updated permissions
             var permissions = await _permissionService.GetPermissionsForRoleAsync(id);

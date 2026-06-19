@@ -72,6 +72,12 @@ public class Receipt : TenantAwareEntity
     /// </summary>
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// Reason captured when the receipt is voided (soft-deleted). Surfaced in the
+    /// receipts UI alongside the void timestamp (DeletedAt) for audit.
+    /// </summary>
+    public string? VoidReason { get; set; }
+
     // Navigation properties
     public Invoice? Invoice { get; set; }
     public ApplicationUser? ReceivedBy { get; set; }

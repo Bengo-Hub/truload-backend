@@ -48,4 +48,9 @@ public class UpdateWorkShiftRequest
     public decimal? TotalHoursPerWeek { get; set; }
     public int? GraceMinutes { get; set; }
     public bool? IsActive { get; set; }
+    /// <summary>
+    /// When provided, REPLACES the shift's weekly schedule rows. Omit (null) to leave
+    /// schedules untouched. An empty list clears all schedule rows.
+    /// </summary>
+    public List<CreateWorkShiftScheduleRequest>? Schedules { get; set; }
 }

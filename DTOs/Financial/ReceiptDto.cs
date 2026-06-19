@@ -22,6 +22,11 @@ public class ReceiptDto
     public string? PaymentChannel { get; set; }
     public string? AlternateReference { get; set; }
     public string? Notes { get; set; }
+    /// <summary>"completed" for a live receipt, "voided" once soft-deleted.</summary>
+    public string Status { get; set; } = "completed";
+    /// <summary>When the receipt was voided (mirrors DeletedAt); null if active.</summary>
+    public DateTime? VoidedAt { get; set; }
+    public string? VoidReason { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

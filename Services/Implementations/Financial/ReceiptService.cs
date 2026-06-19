@@ -80,10 +80,12 @@ public class ReceiptService : IReceiptService
 
     public async Task<PagedResponse<ReceiptDto>> SearchAsync(ReceiptSearchCriteria criteria, CancellationToken ct = default)
     {
+        // Include voided (soft-deleted) receipts here so the receipts page can render the
+        // "voided" badge + void reason/timestamp (the void UI). Per-invoice paid totals and
+        // statistics still scope to active receipts (DeletedAt == null) elsewhere.
         var query = _context.Receipts
             .Include(r => r.Invoice)
             .Include(r => r.ReceivedBy)
-            .Where(r => r.DeletedAt == null)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(criteria.ReceiptNo))
@@ -388,6 +390,7 @@ public class ReceiptService : IReceiptService
             throw new InvalidOperationException("Receipt is already voided");
 
         receipt.DeletedAt = DateTime.UtcNow;
+        receipt.VoidReason = reason;
         receipt.UpdatedAt = DateTime.UtcNow;
 
         // Update invoice status if it was marked as paid
@@ -484,6 +487,9 @@ public class ReceiptService : IReceiptService
             ReceivedByName = receipt.ReceivedBy?.FullName,
             PaymentDate = receipt.PaymentDate,
             PaymentChannel = receipt.PaymentChannel,
+            Status = receipt.DeletedAt == null ? "completed" : "voided",
+            VoidedAt = receipt.DeletedAt,
+            VoidReason = receipt.VoidReason,
             CreatedAt = receipt.CreatedAt,
             UpdatedAt = receipt.UpdatedAt
         };

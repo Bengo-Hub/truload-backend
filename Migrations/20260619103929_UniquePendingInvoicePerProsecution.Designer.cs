@@ -3,6 +3,7 @@ using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using TruLoad.Backend.Data;
 namespace TruLoad.Backend.Migrations
 {
     [DbContext(typeof(TruLoadDbContext))]
-    partial class TruLoadDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260619103929_UniquePendingInvoicePerProsecution")]
+    partial class UniquePendingInvoicePerProsecution
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3273,9 +3276,6 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("NOW()");
-
-                    b.Property<string>("VoidReason")
-                        .HasColumnType("text");
 
                     b.HasKey("Id");
 

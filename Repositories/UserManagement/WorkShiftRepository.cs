@@ -76,6 +76,24 @@ public class WorkShiftRepository : IWorkShiftRepository
         return workShift;
     }
 
+    public async Task<WorkShift> UpdateWithSchedulesAsync(WorkShift workShift, List<WorkShiftSchedule>? newSchedules, CancellationToken cancellationToken = default)
+    {
+        // workShift is the TRACKED entity loaded via GetByIdWithSchedulesAsync (same request scope),
+        // so scalar edits are already change-tracked. Don't call Update() here — it would mark the
+        // newly-added schedule children as Modified and fail. Just mutate the tracked graph and save.
+        if (newSchedules != null)
+        {
+            _context.WorkShiftSchedules.RemoveRange(workShift.WorkShiftSchedules);
+            workShift.WorkShiftSchedules = newSchedules;
+        }
+
+        workShift.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        // Reload to return the persisted schedule set with DB-generated values.
+        return (await GetByIdWithSchedulesAsync(workShift.Id, cancellationToken))!;
+    }
+
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var workShift = await _context.WorkShifts

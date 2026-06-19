@@ -11,6 +11,7 @@ public interface IWorkShiftRepository
     Task<WorkShift?> GetByNameAsync(string name, CancellationToken cancellationToken = default);
     Task<WorkShift> CreateAsync(WorkShift workShift, CancellationToken cancellationToken = default);
     Task<WorkShift> UpdateAsync(WorkShift workShift, CancellationToken cancellationToken = default);
+    Task<WorkShift> UpdateWithSchedulesAsync(WorkShift workShift, List<WorkShiftSchedule>? newSchedules, CancellationToken cancellationToken = default);
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
     Task<bool> NameExistsAsync(string name, Guid? excludeId = null, CancellationToken cancellationToken = default);
 }

@@ -141,6 +141,15 @@ public static class FinancialModuleDbContextConfiguration
             entity.HasIndex(e => e.ProsecutionCaseId)
                 .HasDatabaseName("idx_invoices_prosecution_case_id");
 
+            // Hard guard against double-posting: at most ONE live pending invoice per
+            // prosecution case. Paired with the idempotent GenerateInvoiceAsync, this
+            // makes a concurrent/double-submitted generate a no-op instead of a 2nd invoice.
+            // Named overload so it co-exists with the plain prosecution_case_id index above
+            // (EF merges two unnamed indexes on the same column into one).
+            entity.HasIndex(e => e.ProsecutionCaseId, "uq_invoices_pending_per_prosecution")
+                .IsUnique()
+                .HasFilter("status = 'pending' AND deleted_at IS NULL");
+
             entity.HasIndex(e => e.WeighingId)
                 .HasDatabaseName("idx_invoices_weighing_id");
 
