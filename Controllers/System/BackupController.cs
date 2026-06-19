@@ -15,13 +15,19 @@ namespace TruLoad.Backend.Controllers.System;
 public class BackupController : ControllerBase
 {
     private readonly IBackupService _backupService;
+    private readonly IBackupDestinationStore _destinationStore;
+    private readonly IRcloneMirror _rcloneMirror;
     private readonly ILogger<BackupController> _logger;
 
     public BackupController(
         IBackupService backupService,
+        IBackupDestinationStore destinationStore,
+        IRcloneMirror rcloneMirror,
         ILogger<BackupController> logger)
     {
         _backupService = backupService;
+        _destinationStore = destinationStore;
+        _rcloneMirror = rcloneMirror;
         _logger = logger;
     }
 
@@ -197,5 +203,54 @@ public class BackupController : ControllerBase
         }
 
         return Ok(new { message = "Backup settings updated successfully" });
+    }
+
+    /// <summary>
+    /// Get the remote backup destination (S3/OneDrive/Google Drive/WebDAV/SFTP/SMB).
+    /// Secret parameters are masked. The local StoragePath copy is always kept; this
+    /// only controls the optional remote mirror.
+    /// </summary>
+    [HttpGet("destination")]
+    [HasPermission("system.backup_restore")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<BackupDestinationDto>> GetDestination(CancellationToken ct)
+    {
+        return Ok(await _destinationStore.GetForDisplayAsync(ct));
+    }
+
+    /// <summary>
+    /// Create/update the remote backup destination. Omitted secret fields are
+    /// preserved from the stored config; secrets are encrypted at rest.
+    /// </summary>
+    [HttpPut("destination")]
+    [HasPermission("system.backup_restore")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BackupDestinationDto>> UpdateDestination(
+        [FromBody] UpdateBackupDestinationRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+        var result = await _destinationStore.SaveAsync(request, GetUserId(), ct);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Test connectivity to a remote backup destination (without saving). Secrets
+    /// omitted from the request are taken from the stored config.
+    /// </summary>
+    [HttpPost("destination/test")]
+    [HasPermission("system.backup_restore")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<BackupDestinationTestResult>> TestDestination(
+        [FromBody] UpdateBackupDestinationRequest request,
+        CancellationToken ct)
+    {
+        var resolved = await _destinationStore.ResolveFromRequestAsync(request, ct);
+        var result = await _rcloneMirror.TestConnectionAsync(resolved, ct);
+        return Ok(result);
     }
 }

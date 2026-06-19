@@ -15,17 +15,20 @@ public class BackupService : IBackupService
     private readonly TruLoadDbContext _context;
     private readonly ISettingsService _settingsService;
     private readonly IConfiguration _configuration;
+    private readonly IRcloneMirror _rcloneMirror;
     private readonly ILogger<BackupService> _logger;
 
     public BackupService(
         TruLoadDbContext context,
         ISettingsService settingsService,
         IConfiguration configuration,
+        IRcloneMirror rcloneMirror,
         ILogger<BackupService> logger)
     {
         _context = context;
         _settingsService = settingsService;
         _configuration = configuration;
+        _rcloneMirror = rcloneMirror;
         _logger = logger;
     }
 
@@ -117,6 +120,11 @@ public class BackupService : IBackupService
 
             _logger.LogInformation("Backup created by user {UserId}: {FileName} ({Size} bytes)",
                 userId, fileName, fileInfo.Length);
+
+            // Best-effort mirror to the configured remote destination. The local
+            // StoragePath copy above is the durable primary + fallback, so a mirror
+            // failure never fails the backup.
+            await _rcloneMirror.MirrorAsync(filePath, fileName, ct);
 
             return new CreateBackupResponse(
                 Success: true,

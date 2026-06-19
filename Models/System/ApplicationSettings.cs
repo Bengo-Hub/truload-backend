@@ -108,6 +108,7 @@ public static class SettingKeys
     public const string BackupRetentionDays = "backup.retention_days";
     public const string BackupStoragePath = "backup.storage_path";
     public const string BackupPgDumpPath = "backup.pg_dump_path";
+    public const string BackupDestination = "backup.destination";
 
     // Compliance
     public const string DefaultActCode = "compliance.default_act_code";
