@@ -112,3 +112,78 @@ public record UpdateBackupSettingsRequest
     [Range(1, 365)]
     public int RetentionDays { get; init; } = 30;
 }
+
+/// <summary>
+/// Per-type parameters for a remote backup destination. Secret-bearing fields
+/// (access keys, passwords, tokens, private keys) are stored ENCRYPTED at rest
+/// and MASKED in API responses. Non-secret fields are stored/returned in clear.
+/// </summary>
+public record BackupDestinationParamsDto
+{
+    // S3 / S3-compatible (MinIO, R2, Wasabi, ...)
+    public string? Bucket { get; init; }
+    public string? Region { get; init; }
+    public string? Endpoint { get; init; }
+    public string? Provider { get; init; }
+    public string? AccessKeyId { get; init; }   // secret
+    public string? SecretAccessKey { get; init; } // secret
+
+    // OneDrive / Google Drive (OAuth)
+    public string? Token { get; init; }   // secret (rclone token JSON)
+    public string? DriveId { get; init; }
+
+    // WebDAV
+    public string? Url { get; init; }
+
+    // SFTP / SMB
+    public string? Host { get; init; }
+    public string? Port { get; init; }
+    public string? Domain { get; init; }
+    public string? Share { get; init; }
+
+    // Shared credentials (webdav/sftp/smb)
+    public string? User { get; init; }
+    public string? Pass { get; init; } // secret
+    public string? PrivateKey { get; init; } // secret (sftp PEM)
+}
+
+/// <summary>
+/// Current remote backup destination configuration as returned by the API.
+/// Secret parameters are masked (e.g. "********") and never returned in clear.
+/// </summary>
+public record BackupDestinationDto(
+    string Type,
+    bool Enabled,
+    string RemotePath,
+    BackupDestinationParamsDto Params
+);
+
+/// <summary>
+/// Request to create/update the remote backup destination.
+/// Omitted secret fields are preserved from the existing stored configuration
+/// (so the masked values returned by GET can be sent back unchanged without
+/// wiping a secret). Send an explicit empty string to clear a secret.
+/// </summary>
+public record UpdateBackupDestinationRequest
+{
+    /// <summary>One of: s3, onedrive, gdrive, webdav, sftp, smb, or empty/"none" to disable.</summary>
+    [Required]
+    [MaxLength(20)]
+    public string Type { get; init; } = "none";
+
+    public bool Enabled { get; init; }
+
+    /// <summary>Folder/prefix on the remote that backup files are mirrored into.</summary>
+    [MaxLength(500)]
+    public string RemotePath { get; init; } = "truload-backups";
+
+    public BackupDestinationParamsDto? Params { get; init; }
+}
+
+/// <summary>
+/// Result of testing a remote backup destination connection.
+/// </summary>
+public record BackupDestinationTestResult(
+    bool Ok,
+    string Message
+);

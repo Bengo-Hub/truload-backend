@@ -500,6 +500,9 @@ builder.Services.AddScoped<IVehicleTagService, VehicleTagService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<IActConfigurationService, ActConfigurationService>();
 builder.Services.AddScoped<IBackupService, BackupService>();
+// Pluggable remote backup destination (rclone mirror; local StoragePath = primary + fallback)
+builder.Services.AddScoped<IBackupDestinationStore, TruLoad.Backend.Services.Implementations.System.Backup.BackupDestinationStore>();
+builder.Services.AddScoped<IRcloneMirror, TruLoad.Backend.Services.Implementations.System.Backup.RcloneMirror>();
 
 // Materialized view refresh + partition lifecycle management
 builder.Services.AddScoped<IMaterializedViewService, MaterializedViewService>();
