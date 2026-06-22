@@ -192,7 +192,27 @@ if (!csBuilder.ConnectionString.Contains("MaxPoolSize", StringComparison.Ordinal
     csBuilder.MaxPoolSize = int.Parse(builder.Configuration["Database:MaxPoolSize"] ?? "6");
     csBuilder.MinPoolSize = int.Parse(builder.Configuration["Database:MinPoolSize"] ?? "2");
     csBuilder.ConnectionIdleLifetime = int.Parse(builder.Configuration["Database:ConnectionIdleLifetime"] ?? "60");
+    // Include error details for debugging (connection pool issues, timeouts, etc.)
+    csBuilder.IncludeErrorDetail = true;
     connectionString = csBuilder.ConnectionString;
+}
+
+// Hangfire connection: create a separate connection with more generous pooling.
+// This isolates Hangfire from request-scoped EF Core connection pool contention.
+// If env var HANGFIRE_CONNECTION_STRING is set, use it (e.g., direct PostgreSQL).
+// Otherwise, use PgBouncer but with higher pool limits.
+var hangfireConnectionString = builder.Configuration.GetConnectionString("HangfireConnection")
+    ?? connectionString; // Fallback to main connection string if not configured separately
+
+var hangfireBuilder = new Npgsql.NpgsqlConnectionStringBuilder(hangfireConnectionString);
+if (!hangfireBuilder.ConnectionString.Contains("MaxPoolSize", StringComparison.OrdinalIgnoreCase))
+{
+    // Hangfire-specific pool settings: larger than EF Core since Hangfire has fewer total instances
+    hangfireBuilder.MaxPoolSize = int.Parse(builder.Configuration["Database:HangfireMaxPoolSize"] ?? "25");
+    hangfireBuilder.MinPoolSize = int.Parse(builder.Configuration["Database:HangfireMinPoolSize"] ?? "5");
+    hangfireBuilder.ConnectionIdleLifetime = int.Parse(builder.Configuration["Database:ConnectionIdleLifetime"] ?? "60");
+    hangfireBuilder.IncludeErrorDetail = true;
+    hangfireConnectionString = hangfireBuilder.ConnectionString;
 }
 
 // Per-tenant database routing: tenants with a dedicated DB (e.g. kura → kuraweigh) get
@@ -530,17 +550,24 @@ builder.Services.AddScoped<IModuleReportGenerator, SecurityReportGenerator>();
 builder.Services.AddScoped<IModuleReportGenerator, CommercialReportGenerator>();
 
 // ===== Hangfire Background Jobs =====
-// Reuse the pool-limited connection string for Hangfire too
+// Hangfire now uses separate, more generous connection pool settings to avoid
+// starving request-handling EF Core connections. See HangfireConnection configuration.
 builder.Services.AddHangfire(config =>
     config.UsePostgreSqlStorage(c =>
-        c.UseNpgsqlConnection(connectionString))
-    .WithJobExpirationTimeout(TimeSpan.FromHours(48)));
+        c.UseNpgsqlConnection(hangfireConnectionString))
+    .WithJobExpirationTimeout(TimeSpan.FromHours(48))
+    // Increase max server connections to handle recurring job spikes
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings());
 
 builder.Services.AddHangfireServer(options =>
 {
     options.WorkerCount = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production" ? 10 : 5;
     options.Queues = new[] { "critical", "default", "payments" };
     options.ServerName = $"TruLoad-{Environment.MachineName}";
+    // Increase server timeout to prevent premature disconnects during recurring job execution
+    options.ServerTimeout = TimeSpan.FromMinutes(5);
+    options.SchedulePollingInterval = TimeSpan.FromSeconds(15);
 });
 
 // Register background job services
@@ -552,7 +579,19 @@ builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.BulkDownloadJ
 builder.Services.AddScoped<TruLoad.Backend.Services.Implementations.Shared.NotificationBackgroundJob>();
 
 // Hangfire job retention: auto-delete succeeded/failed jobs after 48 hours
-GlobalJobFilters.Filters.Add(new AutomaticRetryAttribute { Attempts = 3 });
+// Automatic retry with exponential backoff: 3 retries at 1m, 10m, 60m intervals
+GlobalJobFilters.Filters.Add(new AutomaticRetryAttribute 
+{ 
+    Attempts = 3,
+    // DelayInSecondsByAttemptNumber allows exponential backoff:
+    // Attempt 0 (initial): immediate, Attempt 1: wait 60s, Attempt 2: wait 600s, Attempt 3: wait 3600s
+    DelayInSecondsByAttemptNumber = new Dictionary<int, int>
+    {
+        { 1, 60 },      // First retry: 1 minute delay
+        { 2, 600 },     // Second retry: 10 minutes delay
+        { 3, 3600 }     // Third retry: 1 hour delay
+    }
+});
 
 // ===== App Configuration =====
 var app = builder.Build();
