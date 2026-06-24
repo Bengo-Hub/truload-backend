@@ -130,9 +130,10 @@ public static class ExtendedCaseEntitiesConfiguration
                 .HasColumnName("compliance_achieved")
                 .HasDefaultValue(false);
 
+            // Nullable: system-generated memos (post online/webhook/reconciled payment) have no
+            // acting user. A NOT NULL here caused FK violations (issued_by_id = Guid.Empty).
             entity.Property(e => e.IssuedById)
-                .HasColumnName("issued_by_id")
-                .IsRequired();
+                .HasColumnName("issued_by_id");
 
             entity.Property(e => e.IssuedAt)
                 .HasColumnName("issued_at")

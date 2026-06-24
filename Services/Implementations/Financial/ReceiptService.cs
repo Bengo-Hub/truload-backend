@@ -226,6 +226,7 @@ public class ReceiptService : IReceiptService
         // Per FRD: Memo is issued after payment, enabling the reweigh process
         if (invoice.Status == "paid" && invoice.ProsecutionCase != null)
         {
+            LoadCorrectionMemo? memo = null;
             try
             {
                 var prosecution = invoice.ProsecutionCase;
@@ -244,14 +245,16 @@ public class ReceiptService : IReceiptService
                         var memoOrgId = await ResolveOrganizationIdAsync(memoStationId, ct);
                         var memoNo = await _documentNumberService.GenerateNumberAsync(
                             memoOrgId, memoStationId, DocumentTypes.LoadCorrectionMemo);
-                        var memo = new LoadCorrectionMemo
+                        memo = new LoadCorrectionMemo
                         {
                             MemoNo = memoNo,
                             CaseRegisterId = prosecution.CaseRegisterId,
                             WeighingId = weighingId.Value,
                             OverloadKg = weighing?.OverloadKg ?? 0,
                             RedistributionType = "redistribute",
-                            IssuedById = userId,
+                            // No acting user on system paths (online/webhook/reconcile) — leave null
+                            // rather than Guid.Empty, which violates the FK to asp_net_users.
+                            IssuedById = userId == Guid.Empty ? (Guid?)null : userId,
                             IssuedAt = DateTime.UtcNow
                         };
                         _context.LoadCorrectionMemos.Add(memo);
@@ -267,7 +270,11 @@ public class ReceiptService : IReceiptService
                 _logger.LogError(ex,
                     "Failed to auto-create load correction memo after payment for invoice {InvoiceId}. Manual intervention required.",
                     invoiceId);
-                // Don't throw — payment was already recorded successfully
+                // Don't throw — payment was already recorded successfully. Detach the failed memo so
+                // it doesn't poison a subsequent SaveChanges on the shared DbContext (which previously
+                // re-threw the FK violation up the reconcile/webhook call chain → HTTP 500).
+                if (memo != null)
+                    _context.Entry(memo).State = EntityState.Detached;
             }
         }
 

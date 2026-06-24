@@ -61,9 +61,10 @@ public class LoadCorrectionMemo : TenantAwareEntity
     public int? ReliefTruckEmptyWeightKg { get; set; }
 
     /// <summary>
-    /// Officer who issued the memo
+    /// Officer who issued the memo. Null when the memo is auto-created by the system
+    /// (e.g. after an online/webhook/reconciled payment where there is no acting user).
     /// </summary>
-    public Guid IssuedById { get; set; }
+    public Guid? IssuedById { get; set; }
 
     /// <summary>
     /// Timestamp when memo was issued

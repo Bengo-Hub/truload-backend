@@ -18,7 +18,7 @@ public class LoadCorrectionMemoDto
     public bool ComplianceAchieved { get; set; }
     public string? ReliefTruckRegNumber { get; set; }
     public int? ReliefTruckEmptyWeightKg { get; set; }
-    public Guid IssuedById { get; set; }
+    public Guid? IssuedById { get; set; }
     public string? IssuedByName { get; set; }
     public DateTime IssuedAt { get; set; }
     public DateTime CreatedAt { get; set; }
