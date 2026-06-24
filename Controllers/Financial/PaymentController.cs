@@ -35,6 +35,9 @@ public class PaymentController : ControllerBase
         CancellationToken ct)
     {
         request.LocalInvoiceId = invoiceId;
+        // Capture the SPA host that initiated checkout so the post-payment redirect returns the
+        // payer to the same frontend (preserving their session) instead of the API host.
+        request.OriginBaseUrl = ResolveRequestOrigin();
         var result = await _eCitizenService.CreatePesaflowInvoiceAsync(request, ct);
 
         if (!result.Success)
@@ -105,6 +108,24 @@ public class PaymentController : ControllerBase
         {
             return BadRequest(new { success = false, message = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Resolves the scheme+host of the SPA that issued this request, preferring the Origin header
+    /// and falling back to the Referer. Returns null when neither is present (e.g. server-to-server),
+    /// in which case the service uses the configured AppBaseUrl.
+    /// </summary>
+    private string? ResolveRequestOrigin()
+    {
+        var origin = Request.Headers.Origin.ToString();
+        if (!string.IsNullOrWhiteSpace(origin))
+            return origin.TrimEnd('/');
+
+        var referer = Request.Headers.Referer.ToString();
+        if (!string.IsNullOrWhiteSpace(referer) && Uri.TryCreate(referer, UriKind.Absolute, out var uri))
+            return $"{uri.Scheme}://{uri.Authority}";
+
+        return null;
     }
 }
 

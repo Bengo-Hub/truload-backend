@@ -14,6 +14,14 @@ public class CreatePesaflowInvoiceRequest
     public string? ClientMsisdn { get; set; }
     public string? ClientIdNumber { get; set; }
     public bool SendStk { get; set; }
+
+    /// <summary>
+    /// Scheme+host of the SPA that initiated checkout (from the request Origin/Referer header).
+    /// Set server-side by the controller — Pesaflow's post-payment redirect is built against this
+    /// so the payer returns to the same frontend host (preserving their session) instead of the
+    /// API host. Validated against an allowlist before use; falls back to the configured AppBaseUrl.
+    /// </summary>
+    public string? OriginBaseUrl { get; set; }
 }
 
 /// <summary>

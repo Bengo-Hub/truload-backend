@@ -298,11 +298,13 @@ public class DocumentNumberService : IDocumentNumberService
                 IncludeStationCode = false,
                 IncludeBound = false,
                 IncludeDate = true,
-                DateFormat = "ddMMyy",
+                // Year + 6-digit sequence (e.g. INV-2026-000006), reset yearly. Matches the
+                // historical invoice format and keeps numbers monotonic within a year.
+                DateFormat = "yyyy",
                 IncludeVehicleReg = false,
-                SequencePadding = 4,
+                SequencePadding = 6,
                 Separator = "-",
-                ResetFrequency = "never"
+                ResetFrequency = "yearly"
             },
             DocumentTypes.Receipt => new DocumentConvention
             {

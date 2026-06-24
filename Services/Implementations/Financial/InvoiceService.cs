@@ -500,11 +500,12 @@ public class InvoiceService : IInvoiceService
 
     public async Task<string> GenerateInvoiceNumberAsync(CancellationToken ct = default)
     {
-        var year = DateTime.UtcNow.Year;
-        var count = await _context.Invoices
-            .CountAsync(i => i.CreatedAt.Year == year, ct);
-
-        return $"INV-{year}-{(count + 1):D6}";
+        // Delegate to the centralized, atomic, monotonic document-numbering service
+        // (backed by document_sequences). A COUNT-based scheme re-issues a number after an
+        // invoice is deleted, which collides with eCitizen/Pesaflow (bill refs are retained
+        // permanently) → "BillRefNumber already taken". The sequence only ever increments.
+        var orgId = await ResolveOrganizationIdAsync(_tenantContext.StationId, ct);
+        return await _documentNumberService.GenerateNumberAsync(orgId, null, DocumentTypes.Invoice);
     }
 
     private async Task<string> ResolveCheckoutModeAsync(CancellationToken ct)

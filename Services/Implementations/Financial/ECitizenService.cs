@@ -213,6 +213,10 @@ public class ECitizenService : IECitizenService
         var billDesc = "Axle Load Overload Fine";
         // Tenant slug for the frontend result-page path (enforcement tenants use /{slug}/... routes).
         var orgSlug = _tenantContext.OrganizationCode?.ToLowerInvariant();
+        // Frontend base the payer returns to after checkout: prefer the host that initiated the
+        // request (validated allowlist) so the result page loads with the operator's session;
+        // fall back to the configured AppBaseUrl.
+        var resultBaseUrl = ResolveResultBaseUrl(request.OriginBaseUrl, config);
 
         // Log resolved identifiers (non-secret) to aid debugging when Pesaflow rejects service IDs
         _logger.LogDebug("Pesaflow identifiers resolved: apiClientId={ApiClientId}, serviceId={ServiceId}, invoiceNo={InvoiceNo}",
@@ -238,9 +242,9 @@ public class ECitizenService : IECitizenService
             // Point Pesaflow's redirect callbacks directly at the tenant frontend result page,
             // carrying the invoice ref + status so the SPA can reconcile and render the receipt.
             // (Bypasses the API host so the browser never lands on a 404 API route.)
-            ["callBackURLOnSuccess"] = BuildResultPageUrl(config, orgSlug, invoice.InvoiceNo, "success"),
-            ["callBackURLOnFailure"] = BuildResultPageUrl(config, orgSlug, invoice.InvoiceNo, "failed"),
-            ["callBackURLOnTimeout"] = BuildResultPageUrl(config, orgSlug, invoice.InvoiceNo, "timeout"),
+            ["callBackURLOnSuccess"] = BuildResultPageUrl(resultBaseUrl, orgSlug, invoice.InvoiceNo, "success"),
+            ["callBackURLOnFailure"] = BuildResultPageUrl(resultBaseUrl, orgSlug, invoice.InvoiceNo, "failed"),
+            ["callBackURLOnTimeout"] = BuildResultPageUrl(resultBaseUrl, orgSlug, invoice.InvoiceNo, "timeout"),
             ["notificationURL"] = config.WebhookUrl ?? "",
             ["secureHash"] = secureHash,
             ["format"] = "json",
@@ -392,19 +396,54 @@ public class ECitizenService : IECitizenService
         };
     }
 
-    /// Builds the tenant frontend payment-result URL Pesaflow redirects the payer to after
-    /// checkout. Uses the integration's configured AppBaseUrl (the SPA host, e.g.
-    /// https://kuraweigh.kura.go.ke). Falls back to any explicitly configured CallbackUrl.
-    private static string BuildResultPageUrl(
-        TruLoad.Backend.DTOs.Financial.IntegrationConfigDto config, string? orgSlug, string invoiceNo, string status)
+    /// Frontend hosts allowed as a post-payment redirect target. Prevents an attacker-supplied
+    /// Origin/Referer from redirecting the payer off-platform (open redirect). localhost is for dev.
+    private static readonly string[] AllowedResultHosts =
     {
-        var appBase = config.AppBaseUrl?.TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(appBase))
-            return config.CallbackUrl ?? string.Empty;
+        "kuraweigh.kura.go.ke",
+        "kuraweightest.masterspace.co.ke",
+        "truload.codevertexitsolutions.com",
+        "localhost",
+        "127.0.0.1"
+    };
+
+    /// <summary>
+    /// Chooses the frontend base URL the payer is redirected back to. Prefers the originating SPA
+    /// host (so the result page loads with the operator's existing session) when it is https/http-local
+    /// AND its host is allowlisted; otherwise falls back to the integration's configured AppBaseUrl.
+    /// </summary>
+    private string ResolveResultBaseUrl(string? originBaseUrl, TruLoad.Backend.DTOs.Financial.IntegrationConfigDto config)
+    {
+        if (!string.IsNullOrWhiteSpace(originBaseUrl)
+            && Uri.TryCreate(originBaseUrl, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttps || uri.Host is "localhost" or "127.0.0.1")
+            && AllowedResultHosts.Contains(uri.Host, StringComparer.OrdinalIgnoreCase))
+        {
+            return originBaseUrl.TrimEnd('/');
+        }
+
+        if (!string.IsNullOrWhiteSpace(originBaseUrl))
+            _logger.LogWarning(
+                "Pesaflow redirect: ignoring non-allowlisted origin '{Origin}', using configured AppBaseUrl",
+                originBaseUrl);
+
+        // Fall back to the configured frontend app base, then any explicit callback URL.
+        return (config.AppBaseUrl?.TrimEnd('/'))
+            ?? config.CallbackUrl?.TrimEnd('/')
+            ?? string.Empty;
+    }
+
+    /// Builds the tenant frontend payment-result URL Pesaflow redirects the payer to after
+    /// checkout, against the resolved frontend base (e.g. https://kuraweigh.kura.go.ke).
+    private static string BuildResultPageUrl(
+        string resultBaseUrl, string? orgSlug, string invoiceNo, string status)
+    {
+        if (string.IsNullOrWhiteSpace(resultBaseUrl))
+            return string.Empty;
         // Enforcement tenants are served under /{orgSlug}/... routes; include the slug so the
         // result page loads with auth + tenant context and can reconcile the payment.
         var slugSegment = string.IsNullOrWhiteSpace(orgSlug) ? string.Empty : $"/{orgSlug}";
-        return $"{appBase}{slugSegment}/payments/result?invoice_ref={Uri.EscapeDataString(invoiceNo)}&status={status}";
+        return $"{resultBaseUrl}{slugSegment}/payments/result?invoice_ref={Uri.EscapeDataString(invoiceNo)}&status={status}";
     }
 
     /// Resolves the reference stored on a Pesaflow receipt: prefer the gateway-provided

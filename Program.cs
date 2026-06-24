@@ -580,17 +580,11 @@ builder.Services.AddScoped<TruLoad.Backend.Services.Implementations.Shared.Notif
 
 // Hangfire job retention: auto-delete succeeded/failed jobs after 48 hours
 // Automatic retry with exponential backoff: 3 retries at 1m, 10m, 60m intervals
-GlobalJobFilters.Filters.Add(new AutomaticRetryAttribute 
-{ 
+GlobalJobFilters.Filters.Add(new AutomaticRetryAttribute
+{
     Attempts = 3,
-    // DelayInSecondsByAttemptNumber allows exponential backoff:
-    // Attempt 0 (initial): immediate, Attempt 1: wait 60s, Attempt 2: wait 600s, Attempt 3: wait 3600s
-    DelayInSecondsByAttemptNumber = new Dictionary<int, int>
-    {
-        { 1, 60 },      // First retry: 1 minute delay
-        { 2, 600 },     // Second retry: 10 minutes delay
-        { 3, 3600 }     // Third retry: 1 hour delay
-    }
+    // Exponential backoff per retry attempt: 1m, 10m, then 1h.
+    DelaysInSeconds = new[] { 60, 600, 3600 }
 });
 
 // ===== App Configuration =====

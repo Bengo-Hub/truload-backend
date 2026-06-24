@@ -14,6 +14,7 @@ public static class DocumentSeedDefinitions
     /// </summary>
     public const string Daily = "daily";
     public const string Monthly = "monthly";
+    public const string Yearly = "yearly";
     public const string Never = "never";
 
     /// <summary>
@@ -26,8 +27,8 @@ public static class DocumentSeedDefinitions
             IncludeStationCode: true, IncludeBound: true, IncludeDate: true, DateFormat: "yyyyMMdd", IncludeVehicleReg: true),
         new DocumentSeedEntry(DocumentTypes.ReweighTicket, "Reweigh Ticket", "RWG", Daily,
             IncludeStationCode: true, IncludeBound: true, IncludeDate: true, DateFormat: "yyyyMMdd", IncludeVehicleReg: true),
-        new DocumentSeedEntry(DocumentTypes.Invoice, "Invoice", "INV", Never,
-            IncludeStationCode: false, IncludeBound: false, IncludeDate: true, DateFormat: "ddMMyy", IncludeVehicleReg: false),
+        new DocumentSeedEntry(DocumentTypes.Invoice, "Invoice", "INV", Yearly,
+            IncludeStationCode: false, IncludeBound: false, IncludeDate: true, DateFormat: "yyyy", IncludeVehicleReg: false, SequencePadding: 6),
         new DocumentSeedEntry(DocumentTypes.Receipt, "Receipt", "RCP", Never,
             IncludeStationCode: false, IncludeBound: false, IncludeDate: true, DateFormat: "ddMMyy", IncludeVehicleReg: false),
         new DocumentSeedEntry(DocumentTypes.ChargeSheet, "Charge Sheet", "CS", Monthly,
