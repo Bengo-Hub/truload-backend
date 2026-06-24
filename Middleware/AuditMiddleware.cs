@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Data;
 
@@ -124,6 +125,19 @@ public class AuditMiddleware
             if (userId == Guid.Empty)
             {
                 _logger.LogDebug("Skipping database audit log for unauthenticated request to {Endpoint}", endpoint);
+                return;
+            }
+
+            // Verify the user exists in the current tenant DB before persisting.
+            // SUPERUSERS authenticated against the platform DB (truload default) may not exist
+            // in the tenant DB (e.g. kuraweigh), which would violate the FK on audit_logs.user_id.
+            // In that case, skip DB persistence — the Serilog entry above is sufficient.
+            var userExistsInTenantDb = await dbContext.Users.AnyAsync(u => u.Id == userId);
+            if (!userExistsInTenantDb)
+            {
+                _logger.LogDebug(
+                    "Skipping database audit log: user {UserId} not found in current tenant DB (cross-tenant SUPERUSER). Serilog entry retained.",
+                    userId);
                 return;
             }
 
