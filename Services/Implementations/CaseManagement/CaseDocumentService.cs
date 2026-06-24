@@ -174,6 +174,49 @@ public class CaseDocumentService : ICaseDocumentService
             });
         }
 
+        // 6b. Load Correction Memos (conditional before reweigh, full LCM after)
+        var memos = await _context.LoadCorrectionMemos
+            .AsNoTracking()
+            .Where(m => m.CaseRegisterId == caseRegisterId && m.DeletedAt == null)
+            .ToListAsync(ct);
+
+        foreach (var memo in memos)
+        {
+            var reweighed = memo.ReweighWeighingId.HasValue;
+            documents.Add(new CaseDocumentDto
+            {
+                Id = memo.Id,
+                // Distinguish a conditional memo (issued, awaiting reweigh) from a full LCM.
+                DocumentType = reweighed ? "LoadCorrectionMemo" : "ConditionalLoadCorrectionMemo",
+                DisplayName = (reweighed ? "Load Correction Memo - " : "Conditional Load Correction Memo - ") + memo.MemoNo,
+                ReferenceNo = memo.MemoNo,
+                // PDF is only renderable once the reweigh exists (see controller).
+                DownloadUrl = reweighed ? $"/api/v1/case/memos/{memo.Id}/pdf" : string.Empty,
+                Status = memo.ComplianceAchieved ? "Compliant" : reweighed ? "Reweighed" : "Awaiting Reweigh",
+                CreatedAt = memo.CreatedAt
+            });
+        }
+
+        // 6c. Compliance Certificates (issued after a compliant reweigh)
+        var certificates = await _context.ComplianceCertificates
+            .AsNoTracking()
+            .Where(c => c.CaseRegisterId == caseRegisterId && c.DeletedAt == null)
+            .ToListAsync(ct);
+
+        foreach (var cert in certificates)
+        {
+            documents.Add(new CaseDocumentDto
+            {
+                Id = cert.Id,
+                DocumentType = "ComplianceCertificate",
+                DisplayName = $"Compliance Certificate - {cert.CertificateNo}",
+                ReferenceNo = cert.CertificateNo,
+                DownloadUrl = $"/api/v1/case/certificates/{cert.Id}/pdf",
+                Status = "Issued",
+                CreatedAt = cert.CreatedAt
+            });
+        }
+
         // 7. Cover Page (court-escalated cases)
         if (!string.IsNullOrEmpty(caseRegister.CourtCaseNo) || !string.IsNullOrEmpty(caseRegister.PoliceCaseFileNo))
         {
