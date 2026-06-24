@@ -197,22 +197,38 @@ if (!csBuilder.ConnectionString.Contains("MaxPoolSize", StringComparison.Ordinal
     connectionString = csBuilder.ConnectionString;
 }
 
-// Hangfire connection: create a separate connection with more generous pooling.
-// This isolates Hangfire from request-scoped EF Core connection pool contention.
-// If env var HANGFIRE_CONNECTION_STRING is set, use it (e.g., direct PostgreSQL).
-// Otherwise, use PgBouncer but with higher pool limits.
-var hangfireConnectionString = builder.Configuration.GetConnectionString("HangfireConnection")
-    ?? connectionString; // Fallback to main connection string if not configured separately
-
-var hangfireBuilder = new Npgsql.NpgsqlConnectionStringBuilder(hangfireConnectionString);
-if (!hangfireBuilder.ConnectionString.Contains("MaxPoolSize", StringComparison.OrdinalIgnoreCase))
+// Hangfire connection.
+// IMPORTANT: Hangfire.PostgreSql relies on session-scoped features (advisory locks,
+// server-side prepared statements) that PgBouncer transaction-mode pooling does NOT
+// support. Running Hangfire through PgBouncer causes "duplicate key ... jobparameter_pkey"
+// errors and recurring jobs being auto-disabled, and its pool competes with request
+// connections. So — exactly like EF Core migrations — Hangfire must use a DIRECT
+// PostgreSQL connection (bypassing PgBouncer). Precedence:
+//   1. Explicit ConnectionStrings:HangfireConnection (if an operator set one)
+//   2. The main connection string rewritten to the direct host (Database:DirectHost)
+//   3. The main connection string as-is (dev, where PgBouncer isn't used)
+var explicitHangfire = builder.Configuration.GetConnectionString("HangfireConnection");
+string hangfireConnectionString;
+if (!string.IsNullOrWhiteSpace(explicitHangfire))
 {
-    // Hangfire-specific pool settings: larger than EF Core since Hangfire has fewer total instances
-    hangfireBuilder.MaxPoolSize = int.Parse(builder.Configuration["Database:HangfireMaxPoolSize"] ?? "25");
-    hangfireBuilder.MinPoolSize = int.Parse(builder.Configuration["Database:HangfireMinPoolSize"] ?? "5");
-    hangfireBuilder.ConnectionIdleLifetime = int.Parse(builder.Configuration["Database:ConnectionIdleLifetime"] ?? "60");
-    hangfireBuilder.IncludeErrorDetail = true;
-    hangfireConnectionString = hangfireBuilder.ConnectionString;
+    hangfireConnectionString = explicitHangfire;
+}
+else
+{
+    var hb = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+    var hfDirectHost = builder.Configuration["Database:DirectHost"];
+    if (!string.IsNullOrWhiteSpace(hfDirectHost))
+    {
+        hb.Host = hfDirectHost;
+        hb.Port = int.TryParse(builder.Configuration["Database:DirectPort"], out var hfPort) ? hfPort : 5432;
+    }
+    // Keep the Hangfire pool small — these are now DIRECT connections counting against
+    // PostgreSQL max_connections, multiplied across replicas.
+    hb.MaxPoolSize = int.Parse(builder.Configuration["Database:HangfireMaxPoolSize"] ?? "8");
+    hb.MinPoolSize = int.Parse(builder.Configuration["Database:HangfireMinPoolSize"] ?? "1");
+    hb.ConnectionIdleLifetime = int.Parse(builder.Configuration["Database:ConnectionIdleLifetime"] ?? "60");
+    hb.IncludeErrorDetail = true;
+    hangfireConnectionString = hb.ConnectionString;
 }
 
 // Per-tenant database routing: tenants with a dedicated DB (e.g. kura → kuraweigh) get
