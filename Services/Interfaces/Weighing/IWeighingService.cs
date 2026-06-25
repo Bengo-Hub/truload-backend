@@ -43,7 +43,8 @@ public interface IWeighingService
         decimal? locationLng = null,
         Guid? originId = null,
         Guid? destinationId = null,
-        Guid? cargoId = null);
+        Guid? cargoId = null,
+        string? clientLocalId = null);
 
     Task<WeighingTransaction> InitiateReweighAsync(Guid originalTransactionId, string? ticketNumber, Guid userId,
         string? reliefTruckRegNumber = null, int? reliefTruckEmptyWeightKg = null);

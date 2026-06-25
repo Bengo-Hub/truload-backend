@@ -149,8 +149,23 @@ public class WeighingService : IWeighingService
         decimal? locationLng = null,
         Guid? originId = null,
         Guid? destinationId = null,
-        Guid? cargoId = null)
+        Guid? cargoId = null,
+        string? clientLocalId = null)
     {
+        // Idempotency: an offline client sends a stable ClientLocalId per physical weighing.
+        // On replay (sync retry) return the already-created transaction instead of duplicating it.
+        if (!string.IsNullOrWhiteSpace(clientLocalId))
+        {
+            var existing = await _weighingRepository.GetByClientLocalIdAsync(clientLocalId);
+            if (existing != null)
+            {
+                _logger.LogInformation(
+                    "Idempotent weighing create — returning existing transaction {Id} for ClientLocalId {Cid}",
+                    existing.Id, clientLocalId);
+                return existing;
+            }
+        }
+
         // Validate scale test requirement
         var isScaleTestRequired = await _settingsService.GetSettingValueAsync(SettingKeys.WeighingScaleTestRequired, false);
         var hasValidScaleTest = await _scaleTestRepository.HasPassedDailyCalibrationalAsync(stationId, bound);
@@ -256,6 +271,7 @@ public class WeighingService : IWeighingService
             ControlStatus = "Pending",
             CaptureStatus = "pending",
             CaptureSource = "frontend",
+            ClientLocalId = !string.IsNullOrWhiteSpace(clientLocalId) && Guid.TryParse(clientLocalId, out var cid) ? cid : null,
             WeighedAt = DateTime.UtcNow
         };
 

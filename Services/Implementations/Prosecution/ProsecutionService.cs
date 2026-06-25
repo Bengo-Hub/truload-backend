@@ -241,11 +241,12 @@ public class ProsecutionService : IProsecutionService
             .FirstOrDefaultAsync(c => c.Id == caseRegisterId && c.DeletedAt == null, ct)
             ?? throw new InvalidOperationException($"Case {caseRegisterId} not found");
 
-        // Check if prosecution already exists
+        // Idempotent get-or-create: a prosecution is unique per case. If one already exists,
+        // return it instead of throwing — so offline sync replays (and double-clicks) are safe.
         var existingProsecution = await _context.ProsecutionCases
             .FirstOrDefaultAsync(p => p.CaseRegisterId == caseRegisterId && p.DeletedAt == null, ct);
         if (existingProsecution != null)
-            throw new InvalidOperationException($"Prosecution case already exists for case {caseRegister.CaseNo}");
+            return await GetByIdAsync(existingProsecution.Id, ct) ?? MapToDto(existingProsecution);
 
         // Calculate charges if not provided
         var chargeCalculation = request.ChargeCalculation;

@@ -337,7 +337,8 @@ public class WeighingController : ControllerBase
                 request.LocationLng,
                 request.OriginId,
                 request.DestinationId,
-                request.CargoId);
+                request.CargoId,
+                request.ClientLocalId);
 
             // Reload with includes so MapToDto gets Vehicle, Driver, Transporter, Origin, Destination, Cargo, Road, Subcounty, etc.
             var loaded = await _weighingService.GetTransactionAsync(transaction.Id);

@@ -247,10 +247,16 @@ public class CaseRegisterService : ICaseRegisterService
             .FirstOrDefaultAsync(w => w.Id == weighingId)
             ?? throw new InvalidOperationException($"Weighing transaction {weighingId} not found");
 
-        // Check if case already exists for this weighing
+        // Idempotent get-or-create: a case is unique per weighing. If one already exists,
+        // return it instead of throwing — so offline sync replays (and double-clicks) are safe.
         var existingCase = await _caseRegisterRepository.GetByWeighingIdAsync(weighingId);
         if (existingCase != null)
-            throw new InvalidOperationException($"Case already exists for weighing {weighingId}: {existingCase.CaseNo}");
+        {
+            _logger.LogInformation(
+                "Case already exists for weighing {WeighingId}: {CaseNo} — returning existing (idempotent)",
+                weighingId, existingCase.CaseNo);
+            return await GetByIdAsync(existingCase.Id) ?? MapToDto(existingCase);
+        }
 
         // Get violation type - "Overload" as default
         var overloadViolationType = await _context.ViolationTypes

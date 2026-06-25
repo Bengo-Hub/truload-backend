@@ -226,6 +226,13 @@ public class CreateWeighingRequest
     public string? LocationCounty { get; set; }
     public decimal? LocationLat { get; set; }
     public decimal? LocationLng { get; set; }
+
+    /// <summary>
+    /// Client-generated stable id (UUID) for offline idempotency. When the same value is
+    /// replayed (sync retry), the backend returns the already-created transaction instead of
+    /// creating a duplicate. Mirrors the autoweigh path's ClientLocalId.
+    /// </summary>
+    public string? ClientLocalId { get; set; }
 }
 
 /// <summary>
