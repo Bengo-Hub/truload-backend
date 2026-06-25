@@ -45,6 +45,10 @@ public record AxleFeeScheduleDto
     public int? OverloadMaxKg { get; init; }
     public decimal FeePerKgUsd { get; init; }
     public decimal FlatFeeUsd { get; init; }
+    // Exposed for the offline charges engine: Traffic Act uses the flat KES band fee, and the
+    // conviction tier (1 = first offence, 2 = repeat) selects the band.
+    public decimal FlatFeeKes { get; init; }
+    public int ConvictionNumber { get; init; } = 1;
     public int DemeritPoints { get; init; }
     public string PenaltyDescription { get; init; } = string.Empty;
     public DateTime EffectiveFrom { get; init; }

@@ -169,6 +169,8 @@ public class ActConfigurationService : IActConfigurationService
                 OverloadMaxKg = f.OverloadMaxKg,
                 FeePerKgUsd = f.FeePerKgUsd,
                 FlatFeeUsd = f.FlatFeeUsd,
+                FlatFeeKes = f.FlatFeeKes,
+                ConvictionNumber = f.ConvictionNumber,
                 DemeritPoints = f.DemeritPoints,
                 PenaltyDescription = f.PenaltyDescription,
                 EffectiveFrom = f.EffectiveFrom,
