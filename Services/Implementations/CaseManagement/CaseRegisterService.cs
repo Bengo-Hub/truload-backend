@@ -247,8 +247,11 @@ public class CaseRegisterService : ICaseRegisterService
 
     public async Task<CaseRegisterDto> CreateCaseFromWeighingAsync(Guid weighingId, Guid userId)
     {
-        // Get weighing transaction
+        // Get weighing transaction. IgnoreQueryFilters: the weighing is fetched by its explicit id,
+        // so a platform SUPERUSER (tenant-context org != the weighing's station org) must still find
+        // it — otherwise the org filter hides it and case creation 400s "weighing not found".
         var weighing = await _context.WeighingTransactions
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(w => w.Id == weighingId)
             ?? throw new InvalidOperationException($"Weighing transaction {weighingId} not found");
 

@@ -217,7 +217,11 @@ public class CaseRegisterRepository : ICaseRegisterRepository
         var year = DateTime.UtcNow.Year;
         var prefix = $"{stationPrefix}-{year}-";
 
+        // IgnoreQueryFilters: case numbers are globally unique per station-prefix/year, so the
+        // "next number" must consider ALL orgs' cases — otherwise a platform SUPERUSER (empty
+        // tenant context) restarts numbering at 00001 and collides with existing cases.
         var lastCaseNo = await _context.CaseRegisters
+            .IgnoreQueryFilters()
             .Where(c => c.CaseNo.StartsWith(prefix))
             .OrderByDescending(c => c.CaseNo)
             .Select(c => c.CaseNo)
