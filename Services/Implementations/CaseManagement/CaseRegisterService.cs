@@ -293,6 +293,19 @@ public class CaseRegisterService : ICaseRegisterService
         // Create case register entry. Scope it to the WEIGHING's org/station (not the caller's
         // tenant context) so a platform SUPERUSER creating a case from a tenant's weighing
         // doesn't land it in the wrong org partition / hit the organizations FK.
+        // Defensive fallback: if the weighing has no org (legacy rows created before the
+        // OrganizationId stamp fix), resolve it from the weighing's station so we never insert a
+        // case with Guid.Empty and trip FK_case_registers_organizations_organization_id.
+        var caseOrgId = weighing.OrganizationId;
+        if (caseOrgId == Guid.Empty && weighing.StationId.HasValue)
+        {
+            caseOrgId = await _context.Stations
+                .IgnoreQueryFilters()
+                .Where(s => s.Id == weighing.StationId.Value)
+                .Select(s => s.OrganizationId)
+                .FirstOrDefaultAsync();
+        }
+
         var request = new CreateCaseRegisterRequest
         {
             WeighingId = weighingId,
@@ -302,7 +315,7 @@ public class CaseRegisterService : ICaseRegisterService
             ViolationTypeId = overloadViolationType.Id,
             ViolationDetails = violationDetails,
             ActId = actId,
-            OrganizationId = weighing.OrganizationId,
+            OrganizationId = caseOrgId,
             StationId = weighing.StationId
         };
 

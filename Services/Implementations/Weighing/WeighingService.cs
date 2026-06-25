@@ -253,6 +253,12 @@ public class WeighingService : IWeighingService
         var transaction = new WeighingTransaction
         {
             TicketNumber = ticketNumber,
+            // Stamp the station's OWN organization (resolved above). Without this the entity is left
+            // with OrganizationId == Guid.Empty and ApplyTenantMetadata fills it from the caller's
+            // tenant context — which is empty for a platform SUPERUSER, so the weighing (and every
+            // downstream case/prosecution that inherits its org) ends up with an invalid org and
+            // trips the organizations FK on case_registers.
+            OrganizationId = orgId,
             StationId = stationId,
             WeighedByUserId = userId,
             VehicleId = vehicleId,
