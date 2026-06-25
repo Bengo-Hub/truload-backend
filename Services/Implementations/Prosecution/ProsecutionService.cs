@@ -481,6 +481,29 @@ public class ProsecutionService : IProsecutionService
         return act?.Code ?? "TRAFFIC_ACT";
     }
 
+    public async Task<List<RecentConvictionDto>> GetRecentConvictionsAsync(int months = 12, CancellationToken ct = default)
+    {
+        var cutoff = DateTime.UtcNow.AddMonths(-Math.Abs(months == 0 ? 12 : months));
+
+        // Mirrors CheckRepeatOffenderAsync's window so the offline tier estimate matches the
+        // server's prior-conviction count. Tenant-scoped via the global query filter.
+        return await _context.ProsecutionCases
+            .Where(p => p.DeletedAt == null && p.CreatedAt >= cutoff)
+            .Join(_context.CaseRegisters,
+                p => p.CaseRegisterId,
+                c => c.Id,
+                (p, c) => new { p, c })
+            .Where(x => x.c.Weighing != null)
+            .Select(x => new RecentConvictionDto
+            {
+                VehicleId = x.c.VehicleId,
+                VehicleRegNumber = x.c.Weighing!.VehicleRegNumber,
+                LegalFramework = x.p.Act != null ? x.p.Act.Code : "TRAFFIC_ACT",
+                ConvictedAt = x.p.CreatedAt
+            })
+            .ToListAsync(ct);
+    }
+
     /// <summary>
     /// Resolves the charging currency for a given legal framework.
     /// Traffic Act charges in KES, EAC Act charges in USD.

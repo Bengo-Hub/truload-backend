@@ -107,6 +107,19 @@ public class ProsecutionController : ControllerBase
     }
 
     /// <summary>
+    /// Recent convictions (last N months, default 12) for the offline conviction-tier cache.
+    /// The frontend caches this and counts prior convictions per vehicle to pick the correct
+    /// fee band while offline; the server reconciles authoritatively on sync.
+    /// </summary>
+    [HttpGet("recent-convictions")]
+    [HasPermission("prosecution.read")]
+    public async Task<IActionResult> GetRecentConvictions([FromQuery] int months, CancellationToken ct)
+    {
+        var convictions = await _prosecutionService.GetRecentConvictionsAsync(months <= 0 ? 12 : months, ct);
+        return Ok(convictions);
+    }
+
+    /// <summary>
     /// Get prosecution case by ID
     /// </summary>
     [HttpGet("{id}")]

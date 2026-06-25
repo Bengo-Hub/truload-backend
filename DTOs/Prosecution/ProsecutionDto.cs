@@ -183,6 +183,19 @@ public class UpdateProsecutionDefaultsRequest
 }
 
 /// <summary>
+/// Lightweight conviction record for the offline conviction-tier cache. The frontend caches
+/// the last N months and counts prior convictions per vehicle to pick the correct fee band
+/// while offline (server reconciles authoritatively on sync).
+/// </summary>
+public class RecentConvictionDto
+{
+    public Guid VehicleId { get; set; }
+    public string VehicleRegNumber { get; set; } = string.Empty;
+    public string LegalFramework { get; set; } = string.Empty;
+    public DateTime ConvictedAt { get; set; }
+}
+
+/// <summary>
 /// Single conviction record in a vehicle's conviction history
 /// </summary>
 public class ConvictionRecordDto

@@ -60,6 +60,12 @@ public interface IProsecutionService
     Task<List<ConvictionRecordDto>> GetConvictionHistoryAsync(Guid vehicleId, CancellationToken ct = default);
 
     /// <summary>
+    /// Recent convictions (last N months) across all vehicles, for the offline conviction-tier
+    /// cache. Lightweight projection the frontend caches to estimate repeat-offender fee bands.
+    /// </summary>
+    Task<List<RecentConvictionDto>> GetRecentConvictionsAsync(int months = 12, CancellationToken ct = default);
+
+    /// <summary>
     /// Get habitual offenders (vehicles with multiple prosecutions) with pagination
     /// </summary>
     Task<PagedResponse<HabitualOffenderDto>> GetHabitualOffendersAsync(
