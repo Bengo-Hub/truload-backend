@@ -235,8 +235,13 @@ public class WeighingService : IWeighingService
             }
         }
 
-        // Generate ticket number via DocumentNumberService
+        // Generate ticket number via DocumentNumberService.
+        // IgnoreQueryFilters: resolve the station's OWN organization regardless of the caller's
+        // tenant context. Without this, a platform SUPERUSER (whose tenant-context org differs
+        // from the station's) gets the station filtered out → orgId = Guid.Empty → the
+        // document_sequences insert fails the organizations FK (observed at KURA-HQ).
         var orgId = await _dbContext.Stations
+            .IgnoreQueryFilters()
             .Where(s => s.Id == stationId)
             .Select(s => s.OrganizationId)
             .FirstOrDefaultAsync();
