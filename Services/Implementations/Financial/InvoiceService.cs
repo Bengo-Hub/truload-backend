@@ -178,7 +178,10 @@ public class InvoiceService : IInvoiceService
         // invoice (the "double posting" symptom). The DB also enforces this via a unique
         // partial index (status='pending' AND deleted_at IS NULL); see the DbUpdateException
         // handler below for the lost-race path.
+        // IgnoreQueryFilters so a platform SUPERUSER (tenant-context org != the record's org) still
+        // finds the existing pending invoice rather than creating a duplicate.
         var existingInvoice = await _context.Invoices
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(i => i.ProsecutionCaseId == prosecutionCaseId
                 && i.Status == "pending"
                 && i.DeletedAt == null, ct);

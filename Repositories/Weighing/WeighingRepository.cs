@@ -255,8 +255,13 @@ public class WeighingRepository : IWeighingRepository
         if (!Guid.TryParse(clientLocalId, out var parsedId))
             return null;
 
+        // IgnoreQueryFilters: ClientLocalId is a globally-unique UUID, so the idempotency lookup
+        // must find the existing weighing regardless of the caller's tenant context. Without this a
+        // platform SUPERUSER (context org != the weighing's station org) wouldn't see the row and
+        // would create a DUPLICATE instead of returning the existing one (breaking exactly-once sync).
         return await _context.WeighingTransactions
             .AsNoTracking()
+            .IgnoreQueryFilters()
             .Include(t => t.WeighingAxles)
             .Include(t => t.Vehicle)
             .Include(t => t.Driver)

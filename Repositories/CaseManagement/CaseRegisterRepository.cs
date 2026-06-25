@@ -49,8 +49,13 @@ public class CaseRegisterRepository : ICaseRegisterRepository
 
     public async Task<CaseRegister?> GetByWeighingIdAsync(Guid weighingId)
     {
+        // IgnoreQueryFilters: a case is unique per weighing, so this get-or-create idempotency
+        // lookup must find the existing case regardless of the caller's tenant context — otherwise
+        // a platform SUPERUSER (context org != the case's org) re-creates it and hits the unique
+        // weighing_id index. Mirrors GetByClientLocalIdAsync on the weighing side.
         return await _context.CaseRegisters
             .AsNoTracking()
+            .IgnoreQueryFilters()
             .Include(c => c.ViolationType)
             .Include(c => c.CaseStatus)
             .FirstOrDefaultAsync(c => c.WeighingId == weighingId);

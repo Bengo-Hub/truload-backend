@@ -243,7 +243,10 @@ public class ProsecutionService : IProsecutionService
 
         // Idempotent get-or-create: a prosecution is unique per case. If one already exists,
         // return it instead of throwing — so offline sync replays (and double-clicks) are safe.
+        // IgnoreQueryFilters so a platform SUPERUSER (tenant-context org != the record's org) still
+        // finds the existing prosecution rather than creating a duplicate.
         var existingProsecution = await _context.ProsecutionCases
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(p => p.CaseRegisterId == caseRegisterId && p.DeletedAt == null, ct);
         if (existingProsecution != null)
             return await GetByIdAsync(existingProsecution.Id, ct) ?? MapToDto(existingProsecution);
