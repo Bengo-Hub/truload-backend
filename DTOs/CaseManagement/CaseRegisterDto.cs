@@ -87,6 +87,13 @@ public class CreateCaseRegisterRequest
     public Guid? RoadId { get; set; }
     public Guid? CountyId { get; set; }
     public Guid? SubcountyId { get; set; }
+    /// <summary>
+    /// Optional explicit tenant scope. When set (e.g. derived from the source weighing), the case
+    /// is created under THIS org/station instead of the caller's tenant context — needed so a
+    /// platform SUPERUSER creating a case from another tenant's weighing scopes it correctly.
+    /// </summary>
+    public Guid? OrganizationId { get; set; }
+    public Guid? StationId { get; set; }
 }
 
 /// <summary>

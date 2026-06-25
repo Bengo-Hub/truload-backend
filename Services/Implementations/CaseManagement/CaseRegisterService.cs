@@ -201,6 +201,11 @@ public class CaseRegisterService : ICaseRegisterService
             CaseStatusId = openStatus.Id,
             DispositionTypeId = pendingDisposition.Id,
             CreatedById = userId,
+            // Explicit tenant scope when provided (e.g. from the source weighing) so a SUPERUSER
+            // whose tenant-context org differs still creates the case under the right org/station;
+            // left empty, ApplyTenantMetadata fills from the tenant context as before.
+            OrganizationId = request.OrganizationId ?? Guid.Empty,
+            StationId = request.StationId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -285,7 +290,9 @@ public class CaseRegisterService : ICaseRegisterService
             ? $"GVW Overload: {weighing.OverloadKg:N0} kg above effective GVW limit. Control Status: {weighing.ControlStatus}"
             : $"Axle group overload detected; GVW within permissible tolerance. Control Status: {weighing.ControlStatus}";
 
-        // Create case register entry
+        // Create case register entry. Scope it to the WEIGHING's org/station (not the caller's
+        // tenant context) so a platform SUPERUSER creating a case from a tenant's weighing
+        // doesn't land it in the wrong org partition / hit the organizations FK.
         var request = new CreateCaseRegisterRequest
         {
             WeighingId = weighingId,
@@ -294,7 +301,9 @@ public class CaseRegisterService : ICaseRegisterService
             DriverId = weighing.DriverId,
             ViolationTypeId = overloadViolationType.Id,
             ViolationDetails = violationDetails,
-            ActId = actId
+            ActId = actId,
+            OrganizationId = weighing.OrganizationId,
+            StationId = weighing.StationId
         };
 
         return await CreateCaseAsync(request, userId);
