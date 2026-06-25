@@ -122,7 +122,7 @@ public class ProsecutionController : ControllerBase
     /// <summary>
     /// Get prosecution case by ID
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:guid}")]
     [HasPermission("prosecution.read")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
