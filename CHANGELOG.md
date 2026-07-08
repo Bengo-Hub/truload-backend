@@ -5,6 +5,36 @@ All notable changes to TruLoad Backend will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/Bengo-Hub/truload-backend/compare/v1.2.0...v1.3.0) (2026-07-08)
+
+
+### Features
+
+* **acts:** expose FlatFeeKes + ConvictionNumber on AxleFeeScheduleDto ([2b44503](https://github.com/Bengo-Hub/truload-backend/commit/2b44503c928e1d3ef5f89ca85161aa40f1a12cc8))
+* **backup:** pluggable rclone backup destinations (local primary + fallback) ([8544a04](https://github.com/Bengo-Hub/truload-backend/commit/8544a04288ffe0f8c2d3f5a62ecea8d4490c80f7))
+* **backup:** pluggable rclone backup destinations (local primary + fallback) ([c733292](https://github.com/Bengo-Hub/truload-backend/commit/c733292bc90fd743f464353525d4ae47c82b0f60))
+* **documents:** include LCM + compliance certificate in case documents ([46aae81](https://github.com/Bengo-Hub/truload-backend/commit/46aae81d128c8598f24f802be21600faa907acef))
+* **offline:** idempotent create across weighing→case→prosecution (Phase 1) ([9ba5f0a](https://github.com/Bengo-Hub/truload-backend/commit/9ba5f0aa2f41522b9b9a1776280c903e83c67ea9))
+* **offline:** recent-convictions endpoint for offline conviction-tier cache ([dc843da](https://github.com/Bengo-Hub/truload-backend/commit/dc843dacd161dbbf20008f03c87cdcaf06003ec9))
+
+
+### Bug Fixes
+
+* **audit:** skip DB audit-log persistence for cross-tenant SUPERUSERs ([0f0b491](https://github.com/Bengo-Hub/truload-backend/commit/0f0b491e8608aaa7507d4fd6f5fa3e61b5cc3d51))
+* **cases:** case-from-weighing path must ignore tenant filter for superuser ([5cf6e16](https://github.com/Bengo-Hub/truload-backend/commit/5cf6e16f63d0b6d7b5a1c39afdd9587a485c2184))
+* **cases:** scope case-from-weighing to the weighing's org (superuser create) ([99b2bc8](https://github.com/Bengo-Hub/truload-backend/commit/99b2bc827eed147d0cbba9fc47dd69917c1acdd2))
+* **drivers:** handle duplicate ID/license on update with a clear 409 ([5c27fd7](https://github.com/Bengo-Hub/truload-backend/commit/5c27fd7d3f7e6b5d2f42212793fe1912a8c3032a))
+* **drivers:** handle duplicate ID/license on update with a clear 409 ([d27ac87](https://github.com/Bengo-Hub/truload-backend/commit/d27ac873114b7832e66ec6345486c4463fb39b38))
+* **hangfire:** use a direct PostgreSQL connection, not PgBouncer ([90e9914](https://github.com/Bengo-Hub/truload-backend/commit/90e99147157f166954732b0ff56e9daa39f62011))
+* **nats:** queue-group tenant.subscription.updated subscriber (multi-replica safe) ([#19](https://github.com/Bengo-Hub/truload-backend/issues/19)) ([9c3b0a2](https://github.com/Bengo-Hub/truload-backend/commit/9c3b0a2c40ed3fba64fe8720cffc1aab854f5038))
+* **offline-sync:** idempotency lookups must ignore tenant filter (superuser) ([d1046fd](https://github.com/Bengo-Hub/truload-backend/commit/d1046fd65bffdfebe7d1c72a4d66404e2e742904))
+* **payments:** monotonic invoice numbering + origin-based eCitizen redirect ([e3dad65](https://github.com/Bengo-Hub/truload-backend/commit/e3dad65b5a0c842b915d76810ff2db1e648198dd))
+* **payments:** reconcile/webhook 500 — nullable load-correction-memo issuer ([750546a](https://github.com/Bengo-Hub/truload-backend/commit/750546a4e483a3bd89c1e6e874cd905d1111f78a))
+* **prosecutions:** constrain GetById to {id:guid} so literal routes resolve ([bc2e8c3](https://github.com/Bengo-Hub/truload-backend/commit/bc2e8c3c8e94d96497ced346bff84b7231246e14))
+* **truload:** idempotent invoice generation, role-permission set semantics, shift CRUD + receipt void exposure ([b904c14](https://github.com/Bengo-Hub/truload-backend/commit/b904c14c96ba9caf838c46eefb8caa5e8602dc57))
+* **weighing/cases:** stamp weighing OrganizationId so the case chain has a valid org ([b04a11b](https://github.com/Bengo-Hub/truload-backend/commit/b04a11b50cf780dc9d4f757071c00d87f4f156d0))
+* **weighing:** resolve station org ignoring tenant filter (superuser create) ([c372a5f](https://github.com/Bengo-Hub/truload-backend/commit/c372a5fa39533b2ee040a051737964f1a5300ecd))
+
 ## [1.2.0](https://github.com/Bengo-Hub/truload-backend/compare/v1.1.2...v1.2.0) (2026-06-03)
 
 
