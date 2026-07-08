@@ -1044,7 +1044,7 @@ The TruLoad system integrates with a centralized Data Analytics (DA) platform us
 
 **Centralized DA Platform Architecture:**
 - Apache Superset deployed as centralized service within `devops-k8s`.
-- Service accessible to all BengoBox services via internal network.
+- Service accessible to all Codevertex services via internal network.
 - Scaling configured with HPA (Horizontal Pod Autoscaling) and VPA (Vertical Pod Autoscaling).
 - Service URL configured via environment variables (`SUPERSET_BASE_URL`).
 
@@ -1100,13 +1100,13 @@ The TruLoad system integrates with a centralized Data Analytics (DA) platform us
 
 **Deployment Strategy:**
 - Apache Superset deployed as centralized service within devops-k8s
-- Service accessible to all BengoBox services
+- Service accessible to all Codevertex services
 - Scaling configured with:
   - **HPA (Horizontal Pod Autoscaling):** Scale pods based on CPU/memory metrics
   - **VPA (Vertical Pod Autoscaling):** Adjust pod resource requests/limits based on usage patterns
 
 **Service Integration:**
-- All services in BengoBox folder can integrate with centralized DA platform
+- All services in Codevertex folder can integrate with centralized DA platform
 - Superset SDK used to bootstrap DA dashboards on service-specific frontends
 - Shared dashboard templates for common analytics patterns
 
@@ -1692,7 +1692,7 @@ Each sprint document in the [sprints](./sprints/) folder contains:
 
 **Implemented:** December 10, 2025
 
-All BengoBox services now use **Argon2id password hashing** with **identical parameters** to ensure password hashes can be verified across services. This is critical for bidirectional user sync between TruLoad backend and the centralized auth-service.
+All Codevertex services now use **Argon2id password hashing** with **identical parameters** to ensure password hashes can be verified across services. This is critical for bidirectional user sync between TruLoad backend and the centralized auth-service.
 
 ### Hash Format Specification
 

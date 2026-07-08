@@ -1021,16 +1021,16 @@ protected override void Up(MigrationBuilder migrationBuilder)
 ### 9.2 Technical References
 
 4. **KenloadV2APIUpgrade Source Code**
-   Location: `D:\Projects\BengoBox\KeNHA\KenloadV2APIUpgrade`
+   Location: `D:\Projects\Codevertex\KeNHA\KenloadV2APIUpgrade`
    Reviewed: Controllers/EACActController.cs, Models/AxleWeights.cs
 
 5. **KenloadV2UIUpgrade Source Code**
-   Location: `D:\Projects\BengoBox\KeNHA\KenloadV2UIUpgrade`
+   Location: `D:\Projects\Codevertex\KeNHA\KenloadV2UIUpgrade`
    Reviewed: components/widgets/weigh/autoweigh.vue, addmanualticket.vue
 
 6. **KeNHA Weight Ticket Sample**
    File: `NRBKA202601011217.pdf`
-   Location: `D:\Projects\BengoBox\TruLoad\resources\`
+   Location: `D:\Projects\Codevertex\TruLoad\resources\`
 
 ### 9.3 Industry Standards
 

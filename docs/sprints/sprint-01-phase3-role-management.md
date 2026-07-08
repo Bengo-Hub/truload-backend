@@ -159,4 +159,4 @@ Implement complete role management functionality including role CRUD operations,
 - No duplicate permissions or roles assigned
 - Performance meets requirements (< 500ms response time)
 - 100% test coverage for new functionality</content>
-<parameter name="filePath">d:\Projects\BengoBox\TruLoad\truload-backend\docs\sprints\sprint-05-role-management-endpoints.md
+<parameter name="filePath">d:\Projects\Codevertex\TruLoad\truload-backend\docs\sprints\sprint-05-role-management-endpoints.md

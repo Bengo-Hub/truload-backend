@@ -3,7 +3,7 @@ Run a comprehensive E2E test of the TruLoad backend on http://localhost:4000. Ex
 IMPORTANT: For JSON bodies containing exclamation marks, write to a file using Python first, then use `@filename` with curl. Don't use quotes around `!` in bash.
 
 Step 1: Login
-- Write JSON to file: {"email":"gadmin@masterspace.co.ke","password":"ChangeMe123!"}  (use Python: `python -c "import json; json.dump({'email':'gadmin@masterspace.co.ke','password':'ChangeMe123' + chr(33)}, open('d:/Projects/BengoBox/login.json','w'))"`)
+- Write JSON to file: {"email":"gadmin@masterspace.co.ke","password":"ChangeMe123!"}  (use Python: `python -c "import json; json.dump({'email':'gadmin@masterspace.co.ke','password':'ChangeMe123' + chr(33)}, open('d:/Projects/Codevertex/login.json','w'))"`)
 - POST to /api/v1/auth/login with the JSON file
 - Save the accessToken and user.stationId
 

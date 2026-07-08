@@ -151,7 +151,7 @@ TruLoad backend integrates with the centralized `notifications-service` for mana
 
 ### Overview
 
-TruLoad backend integrates with the centralized Apache Superset instance for BI dashboards, analytics, and natural language query processing. Superset is deployed as a centralized service accessible to all BengoBox services.
+TruLoad backend integrates with the centralized Apache Superset instance for BI dashboards, analytics, and natural language query processing. Superset is deployed as a centralized service accessible to all Codevertex services.
 
 ### Architecture
 
