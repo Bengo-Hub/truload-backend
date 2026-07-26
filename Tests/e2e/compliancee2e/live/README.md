@@ -15,7 +15,7 @@ python run_live_suite.py \
 
 # Production (requires explicit flag, release-manager sign-off)
 python run_live_suite.py \
-  --base-url https://truloadapi.codevertexitsolutions.com \
+  --base-url https://truloadapi.codevertexafrica.com \
   --allow-production \
   --output live_run_prod_$(date -u +%Y%m%dT%H%M%SZ).md
 ```

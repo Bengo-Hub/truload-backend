@@ -153,8 +153,8 @@ Production deployed (v1.3.1). Multi-tenant architecture live with kura (kuraweig
 - Prevents unauthorized cross-tenant access via SSO
 
 **CORS Configuration**
-- Added `accounts.codevertexitsolutions.com` and `sso.codevertexitsolutions.com` to allowed origins
-- Added `truload.codevertexitsolutions.com` to appsettings.json dev defaults
+- Added `accounts.codevertexafrica.com` and `sso.codevertexafrica.com` to allowed origins
+- Added `truload.codevertexafrica.com` to appsettings.json dev defaults
 
 **Commercial Mode - Financial Modules & Invoices/Receipts**
 - Added `financial_invoices` and `financial_receipts` to `DefaultCommercialWeighingModules` and TRULOAD-DEMO seed

@@ -12,7 +12,7 @@ Usage:
         --output live_run_$(date -u +%Y%m%dT%H%M%SZ).md
 
 Do NOT set --base-url to a production host without the release manager's
-explicit sign-off. The script refuses to run against codevertexitsolutions.com
+explicit sign-off. The script refuses to run against codevertexafrica.com
 unless --allow-production is passed.
 """
 from __future__ import annotations
@@ -159,11 +159,11 @@ def main() -> int:
     parser.add_argument(
         "--allow-production",
         action="store_true",
-        help="Required to run against *.codevertexitsolutions.com",
+        help="Required to run against *.codevertexafrica.com",
     )
     args = parser.parse_args()
 
-    if "codevertexitsolutions.com" in args.base_url and not args.allow_production:
+    if "codevertexafrica.com" in args.base_url and not args.allow_production:
         print(
             "Refusing to run against production host without --allow-production.",
             file=sys.stderr,

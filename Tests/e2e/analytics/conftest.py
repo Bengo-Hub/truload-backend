@@ -3,7 +3,7 @@ Shared fixtures for TruLoad analytics E2E tests.
 Tests against:
   - TruLoad backend (default: http://localhost:4000)
   - Ollama (default: http://localhost:11434)
-  - Superset (default: https://superset.codevertexitsolutions.com)
+  - Superset (default: https://superset.codevertexafrica.com)
 """
 import os
 import pytest
@@ -24,7 +24,7 @@ from test_credentials import LOGIN_EMAIL_DEFAULT, LOGIN_PASSWORD_DEFAULT
 
 TRULOAD_BASE_URL = os.getenv("TRULOAD_BASE_URL", "http://localhost:4000/api/v1")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-SUPERSET_BASE_URL = os.getenv("SUPERSET_BASE_URL", "https://superset.codevertexitsolutions.com")
+SUPERSET_BASE_URL = os.getenv("SUPERSET_BASE_URL", "https://superset.codevertexafrica.com")
 SUPERSET_USERNAME = os.getenv("SUPERSET_USERNAME", "admin")
 SUPERSET_PASSWORD = os.getenv("SUPERSET_PASSWORD", "admin123")
 
