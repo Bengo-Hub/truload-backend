@@ -29,7 +29,7 @@ public class NotificationServiceOptions
     public int TimeoutSeconds { get; set; } = 30;
 
     /// <summary>
-    /// Public base URL of this API (e.g., "https://truloadapi.codevertexitsolutions.com").
+    /// Public base URL of this API (e.g., "https://truloadapi.codevertexafrica.com").
     /// Used to convert relative logo paths stored in Organization.LogoUrl into absolute URLs
     /// that email clients can load.
     /// </summary>

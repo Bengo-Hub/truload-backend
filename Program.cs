@@ -111,7 +111,7 @@ builder.Services.AddSwaggerGen(options =>
     
     options.AddServer(new Microsoft.OpenApi.Models.OpenApiServer
     {
-        Url = "https://truloadapi.codevertexitsolutions.com",
+        Url = "https://truloadapi.codevertexafrica.com",
         Description = "Production Server"
     });
 

@@ -37,7 +37,7 @@ public class Organization
 
     /// <summary>
     /// Per-tenant TruLoad app base URL (e.g. "https://kuraweigh.kura.go.ke" for KURA,
-    /// "https://truload.codevertexitsolutions.com" for the default tenant).
+    /// "https://truload.codevertexafrica.com" for the default tenant).
     /// Used to build correct deep links in email notifications (password reset, welcome, invites).
     /// Distinct from Website (corporate site). Falls back to PublicBaseUrl config when null.
     /// </summary>

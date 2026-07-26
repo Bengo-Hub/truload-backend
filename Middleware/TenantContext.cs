@@ -294,7 +294,7 @@ public class TenantContextMiddleware
         // Layer 3: Try Domain/Origin-based resolution.
         // Uses both the server Host header and the browser Origin header so that
         // requests from a tenant-branded frontend (e.g. kuraweigh.kura.go.ke →
-        // truloadapi.codevertexitsolutions.com) are routed to the correct tenant DB
+        // truloadapi.codevertexafrica.com) are routed to the correct tenant DB
         // even on unauthenticated requests (login, forgot-password, etc.).
         // Skip for superusers so they don't get locked into a tenant by URL.
         if (!orgId.HasValue && !isSuperuser)

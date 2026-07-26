@@ -402,7 +402,7 @@ public class ECitizenService : IECitizenService
     {
         "kuraweigh.kura.go.ke",
         "kuraweightest.masterspace.co.ke",
-        "truload.codevertexitsolutions.com",
+        "truload.codevertexafrica.com",
         "localhost",
         "127.0.0.1"
     };

@@ -185,7 +185,7 @@ public class AuthController : ControllerBase
         var isSuperUser = roles.Contains("SUPERUSER", StringComparer.OrdinalIgnoreCase);
 
         // For superusers: resolve the requested org so their login response carries that org's context
-        // (e.g. admin@codevertexitsolutions.com logging into /truload-demo/ gets TRULOAD-DEMO data)
+        // (e.g. admin@codevertexafrica.com logging into /truload-demo/ gets TRULOAD-DEMO data)
         Organization? superuserContextOrg = null;
         if (isSuperUser && !string.IsNullOrWhiteSpace(request.OrganizationCode))
         {
@@ -557,7 +557,7 @@ public class AuthController : ControllerBase
             : null;
         var appUrl = userOrg?.AppUrl?.TrimEnd('/')
             ?? _configuration["FrontendUrl"]?.TrimEnd('/')
-            ?? "https://truload.codevertexitsolutions.com";
+            ?? "https://truload.codevertexafrica.com";
         var orgSlug = userOrg?.Code?.ToLowerInvariant() ?? string.Empty;
         var resetPath = string.IsNullOrEmpty(orgSlug)
             ? "/auth/reset-password"

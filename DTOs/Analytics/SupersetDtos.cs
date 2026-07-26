@@ -114,7 +114,7 @@ public class SupersetOptions
 {
     public const string SectionName = "Superset";
 
-    public string BaseUrl { get; set; } = "https://superset.codevertexitsolutions.com";
+    public string BaseUrl { get; set; } = "https://superset.codevertexafrica.com";
     public string Username { get; set; } = "admin";
     public string Password { get; set; } = "admin123";
     public int GuestTokenExpiryMinutes { get; set; } = 300;

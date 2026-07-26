@@ -596,7 +596,7 @@ public class TransporterPortalService : ITransporterPortalService
                 {
                     ["transporter_name"] = transporter.Name,
                     ["role"] = role,
-                    ["invite_url"] = $"{(_configuration["FrontendUrl"]?.TrimEnd('/') ?? "https://truload.codevertexitsolutions.com")}/portal/invite/accept?token={token}",
+                    ["invite_url"] = $"{(_configuration["FrontendUrl"]?.TrimEnd('/') ?? "https://truload.codevertexafrica.com")}/portal/invite/accept?token={token}",
                     ["expires_at"] = expiresAt.ToString("yyyy-MM-dd")
                 },
                 subject: $"You've been invited to {transporter.Name}'s TruLoad Portal",

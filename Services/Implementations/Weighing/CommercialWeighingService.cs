@@ -442,7 +442,7 @@ public class CommercialWeighingService : ICommercialWeighingService
             dto.InvoiceAmountKes = invoice.AmountDue;
             dto.TreasuryIntentId = invoice.TreasuryIntentId;
             var payPortalBase = _configuration["Treasury:PayPortalBaseUrl"]
-                ?? "https://books.codevertexitsolutions.com/pay";
+                ?? "https://books.codevertexafrica.com/pay";
             dto.TreasuryPaymentUrl = !string.IsNullOrWhiteSpace(invoice.TreasuryIntentId)
                 ? $"{payPortalBase}?intent_id={invoice.TreasuryIntentId}"
                 : null;

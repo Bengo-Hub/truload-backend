@@ -32,14 +32,14 @@ public class UserManagementSeeder
     {
         var organizations = new[]
         {
-            // Platform owner organization — linked to platform admin (admin@codevertexitsolutions.com)
+            // Platform owner organization — linked to platform admin (admin@codevertexafrica.com)
             new Organization
             {
                 Id = Guid.NewGuid(),
                 Code = "CODEVERTEX",
                 Name = "CodeVertex IT Solutions",
                 OrgType = "Private",
-                ContactEmail = "admin@codevertexitsolutions.com",
+                ContactEmail = "admin@codevertexafrica.com",
                 ContactPhone = "+254-700-000000",
                 Address = "Nairobi, Kenya",
                 PrimaryColor = "#5B1C4D",
@@ -123,7 +123,7 @@ public class UserManagementSeeder
                 Name = "TruLoad Demo Enforcement Agency",
                 OrgType = "Government",
                 TenantType = "AxleLoadEnforcement",
-                ContactEmail = "demo@enforcement.truload.codevertexitsolutions.com",
+                ContactEmail = "demo@enforcement.truload.codevertexafrica.com",
                 ContactPhone = "+254700000030",
                 Address = "Nairobi, Kenya",
                 PrimaryColor = "#1a5276",
@@ -148,7 +148,7 @@ public class UserManagementSeeder
                 PaymentGateway = "treasury",
                 CommercialWeighingFeeKes = 500m,
                 EnabledModulesJson = "[\"dashboard\",\"weighing\",\"reporting\",\"users\",\"shifts\",\"technical\",\"financial_invoices\",\"financial_receipts\",\"setup_weighing_metadata\",\"setup_settings\",\"setup_system_config\",\"setup_security\",\"setup_notifications\",\"tare_register\",\"setup_tolerance\",\"billing\"]",
-                ContactEmail = "admin@truload.codevertexitsolutions.com",
+                ContactEmail = "admin@truload.codevertexafrica.com",
                 ContactPhone = "+254700000010",
                 Address = "Nairobi, Kenya",
                 PrimaryColor = "#0cbd4a",

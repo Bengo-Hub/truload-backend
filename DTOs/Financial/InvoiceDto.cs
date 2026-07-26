@@ -38,7 +38,7 @@ public class InvoiceDto
     public string? TreasuryIntentId { get; set; }
     /// <summary>Treasury intent status: pending, processing, succeeded, failed</summary>
     public string? TreasuryIntentStatus { get; set; }
-    /// <summary>Payment URL for treasury checkout (redirects to books.codevertexitsolutions.com/pay)</summary>
+    /// <summary>Payment URL for treasury checkout (redirects to books.codevertexafrica.com/pay)</summary>
     public string? TreasuryPaymentUrl { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

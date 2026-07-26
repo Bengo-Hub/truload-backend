@@ -560,7 +560,7 @@ public class InvoiceService : IInvoiceService
             TreasuryIntentId = invoice.TreasuryIntentId,
             TreasuryIntentStatus = invoice.TreasuryIntentStatus,
             TreasuryPaymentUrl = !string.IsNullOrWhiteSpace(invoice.TreasuryIntentId)
-                ? $"{_configuration["Treasury:PayPortalBaseUrl"] ?? "https://books.codevertexitsolutions.com/pay"}?intent_id={invoice.TreasuryIntentId}"
+                ? $"{_configuration["Treasury:PayPortalBaseUrl"] ?? "https://books.codevertexafrica.com/pay"}?intent_id={invoice.TreasuryIntentId}"
                 : null,
             CreatedAt = invoice.CreatedAt,
             UpdatedAt = invoice.UpdatedAt

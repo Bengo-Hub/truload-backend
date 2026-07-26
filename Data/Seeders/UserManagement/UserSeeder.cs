@@ -43,7 +43,7 @@ public class UserSeeder
     }
 
     /// <summary>
-    /// Seeds the platform owner account (admin@codevertexitsolutions.com) linked to CODEVERTEX org.
+    /// Seeds the platform owner account (admin@codevertexafrica.com) linked to CODEVERTEX org.
     /// This is the primary platform admin — similar to how ordering-backend and other Go services
     /// sync the platform owner from auth-api.
     /// </summary>
@@ -70,7 +70,7 @@ public class UserSeeder
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(s => s.OrganizationId == codevertexOrg.Id && s.IsHq);
 
-        var platformAdminEmail = "admin@codevertexitsolutions.com";
+        var platformAdminEmail = "admin@codevertexafrica.com";
         var existingAdmin = await _userManager.FindByEmailAsync(platformAdminEmail);
 
         if (existingAdmin == null)
@@ -326,7 +326,7 @@ public class UserSeeder
             return;
         }
 
-        var demoAdminEmail = "admin@truload.codevertexitsolutions.com";
+        var demoAdminEmail = "admin@truload.codevertexafrica.com";
         var existingAdmin = await _userManager.FindByEmailAsync(demoAdminEmail);
 
         if (existingAdmin == null)
@@ -423,7 +423,7 @@ public class UserSeeder
         {
             new
             {
-                Email = "supervisor@truload.codevertexitsolutions.com",
+                Email = "supervisor@truload.codevertexafrica.com",
                 FullName = "Demo Weighbridge Supervisor",
                 Phone = "+254700000011",
                 RoleName = "Commercial Supervisor",
@@ -431,7 +431,7 @@ public class UserSeeder
             },
             new
             {
-                Email = "operator@truload.codevertexitsolutions.com",
+                Email = "operator@truload.codevertexafrica.com",
                 FullName = "Demo Weighbridge Operator",
                 Phone = "+254700000013",
                 RoleName = "Commercial Weighing Operator",
@@ -439,7 +439,7 @@ public class UserSeeder
             },
             new
             {
-                Email = "finance@truload.codevertexitsolutions.com",
+                Email = "finance@truload.codevertexafrica.com",
                 FullName = "Demo Finance Officer",
                 Phone = "+254700000014",
                 RoleName = "Commercial Finance",
@@ -447,7 +447,7 @@ public class UserSeeder
             },
             new
             {
-                Email = "auditor@truload.codevertexitsolutions.com",
+                Email = "auditor@truload.codevertexafrica.com",
                 FullName = "Demo Commercial Auditor",
                 Phone = "+254700000015",
                 RoleName = "Commercial Auditor",
@@ -542,7 +542,7 @@ public class UserSeeder
         {
             new
             {
-                Email = "manager@enforcement.truload.codevertexitsolutions.com",
+                Email = "manager@enforcement.truload.codevertexafrica.com",
                 FullName = "Demo Station Manager",
                 Phone = "+254700000020",
                 RoleName = "Station Manager",
@@ -550,7 +550,7 @@ public class UserSeeder
             },
             new
             {
-                Email = "officer@enforcement.truload.codevertexitsolutions.com",
+                Email = "officer@enforcement.truload.codevertexafrica.com",
                 FullName = "Demo Enforcement Officer",
                 Phone = "+254700000021",
                 RoleName = "Enforcement Officer",
