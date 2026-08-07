@@ -19,6 +19,7 @@ public class BackupServiceTests : IAsyncLifetime
     private TruLoadDbContext _context = null!;
     private Mock<ISettingsService> _settingsServiceMock = null!;
     private Mock<IConfiguration> _configurationMock = null!;
+    private Mock<IRcloneMirror> _rcloneMirrorMock = null!;
     private Mock<ILogger<BackupService>> _loggerMock = null!;
     private BackupService _backupService = null!;
 
@@ -29,12 +30,14 @@ public class BackupServiceTests : IAsyncLifetime
 
         _settingsServiceMock = new Mock<ISettingsService>();
         _configurationMock = new Mock<IConfiguration>();
+        _rcloneMirrorMock = new Mock<IRcloneMirror>();
         _loggerMock = new Mock<ILogger<BackupService>>();
 
         _backupService = new BackupService(
             _context,
             _settingsServiceMock.Object,
             _configurationMock.Object,
+            _rcloneMirrorMock.Object,
             _loggerMock.Object
         );
     }

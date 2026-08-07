@@ -25,8 +25,8 @@ public class SubscriptionService : ISubscriptionService
 
     public async Task<SubscriptionStatus> GetTenantSubscriptionAsync(string ssoTenantSlug, CancellationToken ct = default)
     {
-        var baseUrl = _configuration["Subscriptions:ApiUrl"]
-            ?? throw new InvalidOperationException("Subscriptions:ApiUrl is not configured");
+        var baseUrl = _configuration["SUBSCRIPTION_BASE_URL"]
+            ?? throw new InvalidOperationException("SUBSCRIPTION_BASE_URL is not configured");
         var serviceJwt = _configuration["Subscriptions:ServiceJwt"]
             ?? throw new InvalidOperationException("Subscriptions:ServiceJwt is not configured");
 
@@ -64,7 +64,7 @@ public class SubscriptionService : ISubscriptionService
 
     public async Task<SubscriptionFeatures> GetFeaturesAsync(string ssoTenantSlug, CancellationToken ct = default)
     {
-        var baseUrl = _configuration["Subscriptions:ApiUrl"];
+        var baseUrl = _configuration["SUBSCRIPTION_BASE_URL"];
         var serviceJwt = _configuration["Subscriptions:ServiceJwt"];
 
         if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(serviceJwt))
@@ -123,7 +123,7 @@ public class SubscriptionService : ISubscriptionService
 
     public async Task<string> GetPlansJsonAsync(CancellationToken ct = default)
     {
-        var baseUrl = _configuration["Subscriptions:ApiUrl"];
+        var baseUrl = _configuration["SUBSCRIPTION_BASE_URL"];
         if (string.IsNullOrWhiteSpace(baseUrl))
             return "[]";
 
@@ -143,7 +143,7 @@ public class SubscriptionService : ISubscriptionService
 
     public async Task<string> GetBillingJsonAsync(string userJwt, CancellationToken ct = default)
     {
-        var baseUrl = _configuration["Subscriptions:ApiUrl"];
+        var baseUrl = _configuration["SUBSCRIPTION_BASE_URL"];
         if (string.IsNullOrWhiteSpace(baseUrl))
             return "{}";
 
@@ -163,7 +163,7 @@ public class SubscriptionService : ISubscriptionService
 
     public async Task<string> GetSubscriptionJsonAsync(string userJwt, CancellationToken ct = default)
     {
-        var baseUrl = _configuration["Subscriptions:ApiUrl"];
+        var baseUrl = _configuration["SUBSCRIPTION_BASE_URL"];
         if (string.IsNullOrWhiteSpace(baseUrl))
             return "{}";
 
@@ -183,7 +183,7 @@ public class SubscriptionService : ISubscriptionService
 
     public async Task<string> ChangePlanJsonAsync(string userJwt, string planCode, CancellationToken ct = default)
     {
-        var baseUrl = _configuration["Subscriptions:ApiUrl"];
+        var baseUrl = _configuration["SUBSCRIPTION_BASE_URL"];
         if (string.IsNullOrWhiteSpace(baseUrl))
             throw new InvalidOperationException("Subscriptions API is not configured");
 
@@ -207,7 +207,7 @@ public class SubscriptionService : ISubscriptionService
     {
         try
         {
-            var baseUrl = _configuration["Subscriptions:ApiUrl"];
+            var baseUrl = _configuration["SUBSCRIPTION_BASE_URL"];
             var serviceJwt = _configuration["Subscriptions:ServiceJwt"];
             if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(serviceJwt))
             {
