@@ -25,6 +25,8 @@ public class YardReportGenerator : BaseReportGenerator
     [
         new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
         new() { Key = "Station", Label = "Station" },
+        new() { Key = "County", Label = "County" },
+        new() { Key = "Sub County", Label = "Sub County" },
         new() { Key = "Bound", Label = "Bound" },
         new() { Key = "Reason", Label = "Reason" },
         new() { Key = "Status", Label = "Status" },
@@ -38,12 +40,21 @@ public class YardReportGenerator : BaseReportGenerator
         new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
         new() { Key = "Ticket No", Label = "Ticket Number" },
         new() { Key = "Station", Label = "Station" },
+        new() { Key = "County", Label = "County" },
+        new() { Key = "Sub County", Label = "Sub County" },
         new() { Key = "Bound", Label = "Bound" },
         new() { Key = "Reason", Label = "Reason" },
         new() { Key = "Status", Label = "Status" },
         new() { Key = "Entry", Label = "Entry Time" },
         new() { Key = "Exit", Label = "Exit Time" },
         new() { Key = "Duration (hrs)", Label = "Duration (Hours)" }
+    ];
+
+    private static readonly List<ReportFilterDefinition> YardFilters =
+    [
+        new() { Key = "stationId", Label = "Station", Kind = "station" },
+        new() { Key = "countyId", Label = "County", Kind = "county" },
+        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" }
     ];
 
     public YardReportGenerator(TruLoadDbContext context)
@@ -57,10 +68,10 @@ public class YardReportGenerator : BaseReportGenerator
     [
         Def("yard-occupancy", "Yard Occupancy",
             "Current and historical yard occupancy showing vehicles in the holding yard by station.",
-            columns: YardOccupancyColumns),
+            columns: YardOccupancyColumns, filters: YardFilters),
         Def("vehicle-entries-exits", "Vehicle Entries & Exits",
             "Detailed log of all vehicle entries and exits from the holding yard with durations.",
-            columns: VehicleEntriesExitsColumns)
+            columns: VehicleEntriesExitsColumns, filters: YardFilters)
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -88,6 +99,14 @@ public class YardReportGenerator : BaseReportGenerator
         {
             query = query.Where(y => y.StationId == stationId);
         }
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+        {
+            query = query.Where(y => y.Station != null && y.Station.CountyId == countyId);
+        }
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+        {
+            query = query.Where(y => y.Station != null && y.Station.SubcountyId == subcountyId);
+        }
 
         if (!string.IsNullOrEmpty(filters.Status))
         {
@@ -96,13 +115,16 @@ public class YardReportGenerator : BaseReportGenerator
 
         var entries = await query
             .Include(y => y.Weighing)
-            .Include(y => y.Station)
+            .Include(y => y.Station).ThenInclude(s => s!.County)
+            .Include(y => y.Station).ThenInclude(s => s!.Subcounty)
             .OrderByDescending(y => y.EnteredAt)
             .Select(y => new
             {
                 VehicleRegNo = y.Weighing != null ? y.Weighing.VehicleRegNumber : "-",
                 Bound = y.Weighing != null ? y.Weighing.Bound ?? "-" : "-",
                 StationName = y.Station != null ? y.Station.Name : "-",
+                CountyName = y.Station != null && y.Station.County != null ? y.Station.County.Name : "-",
+                SubcountyName = y.Station != null && y.Station.Subcounty != null ? y.Station.Subcounty.Name : "-",
                 y.StationId,
                 y.Reason,
                 y.Status,
@@ -128,7 +150,7 @@ public class YardReportGenerator : BaseReportGenerator
         var totalOccupied = entries.Count(e => e.IsOccupied);
         var totalReleased = entries.Count(e => !e.IsOccupied);
 
-        string[] headers = ["Vehicle Reg", "Station", "Bound", "Reason", "Status", "Entry Time", "Exit Time", "Duration"];
+        string[] headers = ["Vehicle Reg", "Station", "County", "Sub County", "Bound", "Reason", "Status", "Entry Time", "Exit Time", "Duration"];
         var rows = entries.Select(e =>
         {
             var duration = e.ReleasedAt.HasValue
@@ -141,6 +163,8 @@ public class YardReportGenerator : BaseReportGenerator
             {
                 e.VehicleRegNo,
                 e.StationName,
+                e.CountyName,
+                e.SubcountyName,
                 e.Bound,
                 e.Reason,
                 e.Status,
@@ -152,7 +176,7 @@ public class YardReportGenerator : BaseReportGenerator
 
         var outputHeaders = headers;
         List<string[]> outputRows = rows.ToList();
-        int? effectiveStatusColumnIndex = 4;
+        int? effectiveStatusColumnIndex = 6;
 
         if (!filters.UseDefaults)
         {
@@ -216,10 +240,19 @@ public class YardReportGenerator : BaseReportGenerator
         {
             query = query.Where(y => y.StationId == stationId);
         }
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+        {
+            query = query.Where(y => y.Station != null && y.Station.CountyId == countyId);
+        }
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+        {
+            query = query.Where(y => y.Station != null && y.Station.SubcountyId == subcountyId);
+        }
 
         var entries = await query
             .Include(y => y.Weighing)
-            .Include(y => y.Station)
+            .Include(y => y.Station).ThenInclude(s => s!.County)
+            .Include(y => y.Station).ThenInclude(s => s!.Subcounty)
             .OrderByDescending(y => y.EnteredAt)
             .Select(y => new
             {
@@ -227,6 +260,8 @@ public class YardReportGenerator : BaseReportGenerator
                 Bound = y.Weighing != null ? y.Weighing.Bound ?? "-" : "-",
                 TicketNo = y.Weighing != null ? y.Weighing.TicketNumber : "-",
                 StationName = y.Station != null ? y.Station.Name : "-",
+                CountyName = y.Station != null && y.Station.County != null ? y.Station.County.Name : "-",
+                SubcountyName = y.Station != null && y.Station.Subcounty != null ? y.Station.Subcounty.Name : "-",
                 y.Reason,
                 y.Status,
                 y.EnteredAt,
@@ -236,7 +271,7 @@ public class YardReportGenerator : BaseReportGenerator
 
         string[] headers =
         [
-            "Vehicle Reg", "Ticket No", "Station", "Bound", "Reason",
+            "Vehicle Reg", "Ticket No", "Station", "County", "Sub County", "Bound", "Reason",
             "Status", "Entry", "Exit", "Duration (hrs)"
         ];
         var rows = entries.Select(e =>
@@ -249,6 +284,8 @@ public class YardReportGenerator : BaseReportGenerator
                 e.VehicleRegNo,
                 e.TicketNo,
                 e.StationName,
+                e.CountyName,
+                e.SubcountyName,
                 e.Bound,
                 e.Reason,
                 e.Status,
@@ -260,7 +297,7 @@ public class YardReportGenerator : BaseReportGenerator
 
         var outputHeaders = headers;
         List<string[]> outputRows = rows.ToList();
-        int? effectiveStatusColumnIndex = 5;
+        int? effectiveStatusColumnIndex = 7;
 
         if (!filters.UseDefaults)
         {

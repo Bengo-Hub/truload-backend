@@ -36,6 +36,12 @@ public class FinancialReportGenerator : BaseReportGenerator
         new() { Key = "Date", Label = "Payment Date" }
     ];
 
+    private static readonly List<ReportFilterDefinition> InvoiceAgingFilters =
+    [
+        new() { Key = "countyId", Label = "County", Kind = "county" },
+        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" }
+    ];
+
     private static readonly List<ReportColumnDefinition> InvoiceAgingColumns =
     [
         new() { Key = "Invoice No", Label = "Invoice Number" },
@@ -79,7 +85,7 @@ public class FinancialReportGenerator : BaseReportGenerator
             columns: RevenueCollectionColumns),
         Def("invoice-aging", "Invoice Aging",
             "Outstanding invoices grouped by aging buckets (current, 30-day, 60-day, 90-day+).",
-            columns: InvoiceAgingColumns),
+            columns: InvoiceAgingColumns, filters: InvoiceAgingFilters),
         Def("payment-reconciliation", "Payment Reconciliation",
             "Reconciliation of invoices against receipts to identify paid, partial, and outstanding balances.",
             columns: PaymentReconciliationColumns)
@@ -198,9 +204,20 @@ public class FinancialReportGenerator : BaseReportGenerator
         var now = DateTime.UtcNow;
 
         // Only pending/unpaid invoices
-        var invoices = await _context.Invoices
+        var invoiceQuery = _context.Invoices
             .Where(i => i.DeletedAt == null)
-            .Where(i => i.Status != "paid" && i.Status != "cancelled" && i.Status != "void")
+            .Where(i => i.Status != "paid" && i.Status != "cancelled" && i.Status != "void");
+
+        // County/Sub County via the linked CaseRegister's own direct CountyId/SubcountyId FKs (no
+        // station join needed - CaseRegister already carries these). Station filtering is a
+        // separate, pre-existing gap (would need a further join through WeighingTransaction) -
+        // not attempted here.
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            invoiceQuery = invoiceQuery.Where(i => i.CaseRegister != null && i.CaseRegister.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            invoiceQuery = invoiceQuery.Where(i => i.CaseRegister != null && i.CaseRegister.SubcountyId == subcountyId);
+
+        var invoices = await invoiceQuery
             .Include(i => i.Receipts.Where(r => r.DeletedAt == null))
             .OrderBy(i => i.GeneratedAt)
             .Select(i => new
@@ -216,13 +233,6 @@ public class FinancialReportGenerator : BaseReportGenerator
                 AgeDays = (int)(now - i.GeneratedAt).TotalDays
             })
             .ToListAsync(ct);
-
-        // Apply station filter if provided (via prosecution case or case register)
-        if (!string.IsNullOrEmpty(filters.StationId))
-        {
-            // Station filtering for invoices requires joining through related entities
-            // For simplicity, include all invoices when station filter is set at this level
-        }
 
         // Classify into aging buckets (configurable thresholds)
         var currentDays = await _settingsService.GetSettingValueAsync(SettingKeys.FinancialInvoiceAgingCurrentDays, 30);
