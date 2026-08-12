@@ -100,7 +100,11 @@ public class FinancialReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "revenue_collection", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Revenue Collection Report", headers, rows, from, to), "revenue_collection", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Revenue Collection Report", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "revenue_collection", from, to);
 
         var summaryItems = new List<(string label, string value)>
         {
@@ -200,7 +204,14 @@ public class FinancialReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "invoice_aging", null, null);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Invoice Aging Report", headers, rows, null, null), "invoice_aging", null, null);
+        {
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Invoice Aging Report", Headers = headers, Rows = rows,
+                ConditionalStatusColumnIndex = 5,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "invoice_aging", null, null);
+        }
 
         var totalOutstanding = invoices.Sum(i => i.AmountDue - i.TotalPaid);
         var doc = new InvoiceAgingDocument
@@ -208,6 +219,7 @@ public class FinancialReportGenerator : BaseReportGenerator
             ReportTitle = "Invoice Aging Report",
             Headers = headers,
             Rows = rows.ToList(),
+            StatusColumnIndex = 5,
             SummaryItems =
             [
                 ($"Current (0-{currentDays}d)", $"{current.Count} | {FormatNumber(current.Sum(i => i.AmountDue - i.TotalPaid))}"),
@@ -278,7 +290,14 @@ public class FinancialReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "payment_reconciliation", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Payment Reconciliation Report", headers, rows, from, to), "payment_reconciliation", from, to);
+        {
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Payment Reconciliation Report", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = 5,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "payment_reconciliation", from, to);
+        }
 
         var totalDue = invoices.Sum(i => i.AmountDue);
         var totalPaid = invoices.Sum(i => i.TotalPaid);
@@ -294,6 +313,7 @@ public class FinancialReportGenerator : BaseReportGenerator
             DateTo = to,
             Headers = headers,
             Rows = rows.ToList(),
+            StatusColumnIndex = 5,
             SummaryItems =
             [
                 ("Total Invoiced", FormatNumber(totalDue)),
@@ -341,6 +361,7 @@ public class FinancialReportGenerator : BaseReportGenerator
         public required string[] Headers { get; init; }
         public required List<string[]> Rows { get; init; }
         public required (string label, string value)[] SummaryItems { get; init; }
+        public int? StatusColumnIndex { get; init; }
 
         protected override void ComposeContent(IContainer container)
         {
@@ -348,7 +369,7 @@ public class FinancialReportGenerator : BaseReportGenerator
             {
                 col.Spacing(8);
                 col.Item().Element(c => ComposeSummaryCards(c, SummaryItems));
-                col.Item().Element(c => ComposeDataTable(c, Headers, Rows));
+                col.Item().Element(c => ComposeDataTable(c, Headers, Rows, conditionalStatusColumnIndex: StatusColumnIndex));
             });
         }
     }
@@ -361,6 +382,7 @@ public class FinancialReportGenerator : BaseReportGenerator
         public required string[] Headers { get; init; }
         public required List<string[]> Rows { get; init; }
         public required (string label, string value)[] SummaryItems { get; init; }
+        public int? StatusColumnIndex { get; init; }
 
         protected override void ComposeContent(IContainer container)
         {
@@ -368,7 +390,7 @@ public class FinancialReportGenerator : BaseReportGenerator
             {
                 col.Spacing(8);
                 col.Item().Element(c => ComposeSummaryCards(c, SummaryItems));
-                col.Item().Element(c => ComposeDataTable(c, Headers, Rows));
+                col.Item().Element(c => ComposeDataTable(c, Headers, Rows, conditionalStatusColumnIndex: StatusColumnIndex));
             });
         }
     }

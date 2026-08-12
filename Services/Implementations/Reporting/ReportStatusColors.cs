@@ -40,10 +40,10 @@ public static class ReportStatusColors
         return s switch
         {
             "" => "default",
-            _ when s.Contains("overloaded and charged") || s is "overloaded" or "violation" or "failed" or "overload" or "fail" or "rejected" or "anomaly" or "voided" or "cancelled" => "overloaded",
+            _ when s.Contains("overloaded and charged") || s is "overloaded" or "violation" or "failed" or "overload" or "fail" or "rejected" or "anomaly" or "voided" or "cancelled" or "no" or "denied" => "overloaded",
             _ when s.Contains("within permissible tolerance") || s == "tolerance" => "tolerance",
-            _ when s is "compliant" or "passed" or "pass" or "success" or "ok" or "approved" or "released" or "paid" or "complete" or "completed" => "compliant",
-            _ when s is "warning" or "pending" => "warning",
+            _ when s is "compliant" or "passed" or "pass" or "success" or "ok" or "approved" or "released" or "paid" or "complete" or "completed" or "closed" or "reconciled" or "yes" => "compliant",
+            _ when s is "warning" or "pending" or "escalated" => "warning",
             "legal" => "legal",
             _ => "default"
         };

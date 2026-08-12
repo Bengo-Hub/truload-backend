@@ -113,7 +113,14 @@ public class SecurityReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "audit_log", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Audit Log Report", headers, rows, from, to), "audit_log", from, to);
+        {
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Audit Log Report", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = 5, // "Success" (Yes/No)
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "audit_log", from, to);
+        }
 
         var summaryItems = new List<(string label, string value)>
         {
@@ -134,6 +141,7 @@ public class SecurityReportGenerator : BaseReportGenerator
             DateTo = to,
             Headers = headers,
             Rows = rows.ToList(),
+            StatusColumnIndex = 5,
             SummaryItems = summaryItems.ToArray()
         };
         return PdfResult(doc, filters, "audit_log", from, to);
@@ -191,7 +199,11 @@ public class SecurityReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "shift_report", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Shift Report", headers, rows, from, to), "shift_report", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Shift Report", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "shift_report", from, to);
 
         var totalAssignments = userShifts.Count;
         var activeAssignments = userShifts.Count(us => us.IsActive);
@@ -234,6 +246,7 @@ public class SecurityReportGenerator : BaseReportGenerator
         public required string[] Headers { get; init; }
         public required List<string[]> Rows { get; init; }
         public required (string label, string value)[] SummaryItems { get; init; }
+        public int? StatusColumnIndex { get; init; }
 
         protected override void ComposeContent(IContainer container)
         {
@@ -243,7 +256,8 @@ public class SecurityReportGenerator : BaseReportGenerator
                 col.Item().Element(c => ComposeSummaryCards(c, SummaryItems));
                 col.Item().Element(c => ComposeDataTable(c, Headers, Rows,
                     summaryLabel: "Total Log Entries",
-                    summaryValue: Rows.Count.ToString()));
+                    summaryValue: Rows.Count.ToString(),
+                    conditionalStatusColumnIndex: StatusColumnIndex));
             });
         }
     }

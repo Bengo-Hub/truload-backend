@@ -110,7 +110,14 @@ public class CaseReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "case_register", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Case Register", headers, rows, from, to), "case_register", from, to);
+        {
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Case Register", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = 4,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "case_register", from, to);
+        }
 
         var doc = new CaseRegisterDocument
         {
@@ -119,7 +126,8 @@ public class CaseReportGenerator : BaseReportGenerator
             DateTo = to,
             Headers = headers,
             Rows = rows.ToList(),
-            TotalCases = cases.Count
+            TotalCases = cases.Count,
+            StatusColumnIndex = 4
         };
         return PdfResult(doc, filters, "case_register", from, to);
     }
@@ -189,7 +197,11 @@ public class CaseReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "repeat_offenders", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Repeat Offenders Report", headers, rows, from, to), "repeat_offenders", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Repeat Offenders Report", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "repeat_offenders", from, to);
 
         var doc = new RepeatOffendersDocument
         {
@@ -251,7 +263,14 @@ public class CaseReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "case_status_summary", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Case Status Summary", headers, rows, from, to), "case_status_summary", from, to);
+        {
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Case Status Summary", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = 0, PercentageDataBarColumnIndexes = [3],
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "case_status_summary", from, to);
+        }
 
         var doc = new CaseStatusSummaryDocument
         {
@@ -260,6 +279,7 @@ public class CaseReportGenerator : BaseReportGenerator
             DateTo = to,
             Headers = headers,
             Rows = rows.ToList(),
+            StatusColumnIndex = 0,
             SummaryItems =
             [
                 ("Total Cases", totalCases.ToString()),
@@ -283,12 +303,14 @@ public class CaseReportGenerator : BaseReportGenerator
         public required string[] Headers { get; init; }
         public required List<string[]> Rows { get; init; }
         public int TotalCases { get; init; }
+        public int? StatusColumnIndex { get; init; }
 
         protected override void ComposeContent(IContainer container)
         {
             container.Element(c => ComposeDataTable(c, Headers, Rows,
                 summaryLabel: "Total Cases",
-                summaryValue: TotalCases.ToString()));
+                summaryValue: TotalCases.ToString(),
+                conditionalStatusColumnIndex: StatusColumnIndex));
         }
     }
 
@@ -320,6 +342,7 @@ public class CaseReportGenerator : BaseReportGenerator
         public required string[] Headers { get; init; }
         public required List<string[]> Rows { get; init; }
         public required (string label, string value)[] SummaryItems { get; init; }
+        public int? StatusColumnIndex { get; init; }
 
         protected override void ComposeContent(IContainer container)
         {
@@ -327,7 +350,7 @@ public class CaseReportGenerator : BaseReportGenerator
             {
                 col.Spacing(8);
                 col.Item().Element(c => ComposeSummaryCards(c, SummaryItems));
-                col.Item().Element(c => ComposeDataTable(c, Headers, Rows));
+                col.Item().Element(c => ComposeDataTable(c, Headers, Rows, conditionalStatusColumnIndex: StatusColumnIndex));
             });
         }
     }

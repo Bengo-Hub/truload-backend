@@ -112,7 +112,14 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "prosecution_statistics", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Prosecution Statistics Report", headers, rows, from, to), "prosecution_statistics", from, to);
+        {
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Prosecution Statistics Report", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = 0, PercentageDataBarColumnIndexes = [3],
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "prosecution_statistics", from, to);
+        }
 
         var doc = new ProsecutionStatisticsDocument
         {
@@ -121,6 +128,7 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             DateTo = to,
             Headers = headers,
             Rows = rows.ToList(),
+            StatusColumnIndex = 0,
             SummaryItems =
             [
                 ("Total Cases", totalCases.ToString()),
@@ -182,7 +190,11 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "court_calendar", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Court Calendar", headers, rows, from, to), "court_calendar", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Court Calendar", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "court_calendar", from, to);
 
         var doc = new SimpleTableDocument
         {
@@ -252,7 +264,14 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "daily_charged", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Daily Charged Vehicles", headers, rows, from, to), "daily_charged", from, to);
+        {
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Daily Charged Vehicles", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = 8,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "daily_charged", from, to);
+        }
 
         var doc = new SimpleTableDocument
         {
@@ -262,7 +281,8 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             Headers = headers,
             Rows = rows.ToList(),
             SummaryLabel = "Total Charged",
-            SummaryValue = $"{cases.Count} vehicles | {FormatKes(cases.Sum(c => c.TotalFeeKes))}"
+            SummaryValue = $"{cases.Count} vehicles | {FormatKes(cases.Sum(c => c.TotalFeeKes))}",
+            StatusColumnIndex = 8
         };
         return PdfResult(doc, filters, "daily_charged", from, to);
     }
@@ -313,7 +333,14 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "prosecution_payment_list", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Prosecution Payment List", headers, rows, from, to), "prosecution_payment_list", from, to);
+        {
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Prosecution Payment List", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = 6, // "Invoice Status"
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "prosecution_payment_list", from, to);
+        }
 
         var totalFees = data.Sum(d => d.TotalFeeKes);
         var paidCount = data.Count(d => d.InvoiceStatus == "paid");
@@ -325,7 +352,8 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             Headers = headers,
             Rows = rows.ToList(),
             SummaryLabel = "Total Fees",
-            SummaryValue = $"{FormatKes(totalFees)} | {paidCount}/{data.Count} paid"
+            SummaryValue = $"{FormatKes(totalFees)} | {paidCount}/{data.Count} paid",
+            StatusColumnIndex = 6
         };
         return PdfResult(doc, filters, "prosecution_payment_list", from, to);
     }
@@ -378,7 +406,14 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "court_fines", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Court Fines Summary", headers, rows, from, to), "court_fines", from, to);
+        {
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Court Fines Summary", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = 4,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "court_fines", from, to);
+        }
 
         var totalDue = invoices.Sum(i => i.AmountDue);
         var totalPaid = invoices.Sum(i => i.TotalPaid);
@@ -390,7 +425,8 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             Headers = headers,
             Rows = rows.ToList(),
             SummaryLabel = "Totals",
-            SummaryValue = $"Due: {FormatNumber(totalDue)} | Paid: {FormatNumber(totalPaid)}"
+            SummaryValue = $"Due: {FormatNumber(totalDue)} | Paid: {FormatNumber(totalPaid)}",
+            StatusColumnIndex = 4
         };
         return PdfResult(doc, filters, "court_fines", from, to);
     }
@@ -451,7 +487,11 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "habitual_offenders", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Habitual Offenders Report", headers, rows, from, to), "habitual_offenders", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Habitual Offenders Report", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "habitual_offenders", from, to);
 
         var doc = new SimpleTableDocument
         {
@@ -478,6 +518,7 @@ public class ProsecutionReportGenerator : BaseReportGenerator
         public required string[] Headers { get; init; }
         public required List<string[]> Rows { get; init; }
         public required (string label, string value)[] SummaryItems { get; init; }
+        public int? StatusColumnIndex { get; init; }
 
         protected override void ComposeContent(IContainer container)
         {
@@ -487,7 +528,8 @@ public class ProsecutionReportGenerator : BaseReportGenerator
                 col.Item().Element(c => ComposeSummaryCards(c, SummaryItems));
                 col.Item().Element(c => ComposeDataTable(c, Headers, Rows,
                     summaryLabel: "Total Statuses",
-                    summaryValue: Rows.Count.ToString()));
+                    summaryValue: Rows.Count.ToString(),
+                    conditionalStatusColumnIndex: StatusColumnIndex));
             });
         }
     }
@@ -501,12 +543,20 @@ public class ProsecutionReportGenerator : BaseReportGenerator
         public required List<string[]> Rows { get; init; }
         public string? SummaryLabel { get; init; }
         public string? SummaryValue { get; init; }
+        public int? StatusColumnIndex { get; init; }
+        public (string colorHex, string label)[] Legend { get; init; } = [];
 
         protected override void ComposeContent(IContainer container)
         {
-            container.Element(c => ComposeDataTable(c, Headers, Rows,
-                summaryLabel: SummaryLabel,
-                summaryValue: SummaryValue));
+            container.Column(col =>
+            {
+                col.Spacing(5);
+                col.Item().Element(c => ComposeDataTable(c, Headers, Rows,
+                    summaryLabel: SummaryLabel,
+                    summaryValue: SummaryValue,
+                    conditionalStatusColumnIndex: StatusColumnIndex));
+                col.Item().Element(c => ComposeLegend(c, Legend));
+            });
         }
     }
 }

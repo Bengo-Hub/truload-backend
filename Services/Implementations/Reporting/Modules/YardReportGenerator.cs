@@ -120,7 +120,14 @@ public class YardReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "yard_occupancy", null, null);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Yard Occupancy Report", headers, rows, null, null), "yard_occupancy", null, null);
+        {
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Yard Occupancy Report", Headers = headers, Rows = rows,
+                ConditionalStatusColumnIndex = 4,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "yard_occupancy", null, null);
+        }
 
         var summaryItems = new List<(string label, string value)>
         {
@@ -139,6 +146,7 @@ public class YardReportGenerator : BaseReportGenerator
             ReportTitle = "Yard Occupancy Report",
             Headers = headers,
             Rows = rows.ToList(),
+            StatusColumnIndex = 4,
             SummaryItems = summaryItems.ToArray()
         };
         return PdfResult(doc, filters, "yard_occupancy", null, null);
@@ -207,7 +215,14 @@ public class YardReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, rows), "vehicle_entries_exits", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Vehicle Entries & Exits", headers, rows, from, to), "vehicle_entries_exits", from, to);
+        {
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Vehicle Entries & Exits", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = 5,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "vehicle_entries_exits", from, to);
+        }
 
         var totalEntries = entries.Count;
         var totalExits = entries.Count(e => e.ReleasedAt.HasValue);
@@ -220,6 +235,7 @@ public class YardReportGenerator : BaseReportGenerator
             DateTo = to,
             Headers = headers,
             Rows = rows.ToList(),
+            StatusColumnIndex = 5,
             SummaryItems =
             [
                 ("Total Entries", totalEntries.ToString()),
@@ -243,6 +259,7 @@ public class YardReportGenerator : BaseReportGenerator
         public required string[] Headers { get; init; }
         public required List<string[]> Rows { get; init; }
         public required (string label, string value)[] SummaryItems { get; init; }
+        public int? StatusColumnIndex { get; init; }
 
         protected override void ComposeContent(IContainer container)
         {
@@ -250,7 +267,7 @@ public class YardReportGenerator : BaseReportGenerator
             {
                 col.Spacing(8);
                 col.Item().Element(c => ComposeSummaryCards(c, SummaryItems));
-                col.Item().Element(c => ComposeDataTable(c, Headers, Rows));
+                col.Item().Element(c => ComposeDataTable(c, Headers, Rows, conditionalStatusColumnIndex: StatusColumnIndex));
             });
         }
     }
@@ -263,6 +280,7 @@ public class YardReportGenerator : BaseReportGenerator
         public required string[] Headers { get; init; }
         public required List<string[]> Rows { get; init; }
         public required (string label, string value)[] SummaryItems { get; init; }
+        public int? StatusColumnIndex { get; init; }
 
         protected override void ComposeContent(IContainer container)
         {
@@ -272,7 +290,8 @@ public class YardReportGenerator : BaseReportGenerator
                 col.Item().Element(c => ComposeSummaryCards(c, SummaryItems));
                 col.Item().Element(c => ComposeDataTable(c, Headers, Rows,
                     summaryLabel: "Total Records",
-                    summaryValue: Rows.Count.ToString()));
+                    summaryValue: Rows.Count.ToString(),
+                    conditionalStatusColumnIndex: StatusColumnIndex));
             });
         }
     }
