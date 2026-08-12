@@ -49,6 +49,167 @@ public class WeighingReportGenerator : BaseReportGenerator
         new() { Key = "none", Label = "Tables only, no visual emphasis" }
     ];
 
+    // =====================================================================
+    // Structured custom-report-builder column catalogs for the remaining report types.
+    // Each Key MUST match the literal header text built in that report's generation method
+    // (see BaseReportGenerator.ApplyColumnSelection - matches by header string). Columns whose
+    // header text is currency-dependent (e.g. $"Fee ({currency})") are deliberately NOT included
+    // here - the catalog is built once, synchronously, with no tenant DB access, so the runtime
+    // currency isn't known yet; those columns stay always-included rather than offering a toggle
+    // that could silently fail to match a KES tenant's actual "Fee (KES)" header text.
+    // =====================================================================
+
+    private static readonly List<ReportColumnDefinition> DailySummaryColumns =
+    [
+        new() { Key = "Date", Label = "Date" },
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "Total Vehicles", Label = "Total Vehicles" },
+        new() { Key = "Compliant", Label = "Compliant" },
+        new() { Key = "Overloaded", Label = "Overloaded" },
+        new() { Key = "Compliance %", Label = "Compliance %" },
+        new() { Key = "Total Overload (kg)", Label = "Total Overload (kg)" },
+        new() { Key = "Avg GVW (kg)", Label = "Average GVW (kg)" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> WeighbridgeRegisterColumns =
+    [
+        new() { Key = "Ticket #", Label = "Ticket Number" },
+        new() { Key = "Date/Time", Label = "Date/Time" },
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "Bound", Label = "Bound" },
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Axle Config", Label = "Axle Configuration" },
+        new() { Key = "Driver", Label = "Driver" },
+        new() { Key = "Transporter", Label = "Transporter" },
+        new() { Key = "GVW (kg)", Label = "GVW (kg)" },
+        new() { Key = "Permissible (kg)", Label = "Permissible (kg)" },
+        new() { Key = "Overload (kg)", Label = "Overload (kg)" },
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Type", Label = "Weighing Type" },
+        new() { Key = "Reweigh #", Label = "Reweigh Cycle #" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> ComplianceTrendColumns =
+    [
+        new() { Key = "Date", Label = "Date" },
+        new() { Key = "Total Weighed", Label = "Total Weighed" },
+        new() { Key = "Compliant", Label = "Compliant" },
+        new() { Key = "Overloaded", Label = "Overloaded" },
+        new() { Key = "Sent to Yard", Label = "Sent to Yard" },
+        new() { Key = "Compliance %", Label = "Compliance %" },
+        new() { Key = "Avg Overload (kg)", Label = "Average Overload (kg)" },
+        new() { Key = "Max Overload (kg)", Label = "Max Overload (kg)" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> AxleOverloadColumns =
+    [
+        new() { Key = "Ticket #", Label = "Ticket Number" },
+        new() { Key = "Date", Label = "Date" },
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Axle #", Label = "Axle Number" },
+        new() { Key = "Axle Type", Label = "Axle Type" },
+        new() { Key = "Grouping", Label = "Axle Grouping" },
+        new() { Key = "Config", Label = "Axle Configuration" },
+        new() { Key = "Measured (kg)", Label = "Measured (kg)" },
+        new() { Key = "Permissible (kg)", Label = "Permissible (kg)" },
+        new() { Key = "Overload (kg)", Label = "Overload (kg)" },
+        new() { Key = "Overload %", Label = "Overload %" },
+        new() { Key = "Pavement Damage Factor", Label = "Pavement Damage Factor" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> StationPerformanceColumns =
+    [
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "Code", Label = "Station Code" },
+        new() { Key = "Total Vehicles", Label = "Total Vehicles" },
+        new() { Key = "Compliant", Label = "Compliant" },
+        new() { Key = "Overloaded", Label = "Overloaded" },
+        new() { Key = "Compliance %", Label = "Compliance %" },
+        new() { Key = "Sent to Yard", Label = "Sent to Yard" },
+        new() { Key = "Total Overload (kg)", Label = "Total Overload (kg)" },
+        new() { Key = "Avg GVW (kg)", Label = "Average GVW (kg)" },
+        new() { Key = "Max Overload (kg)", Label = "Max Overload (kg)" },
+        new() { Key = "Reweighs", Label = "Reweighs" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> TransporterStatementColumns =
+    [
+        new() { Key = "Transporter", Label = "Transporter" },
+        new() { Key = "Code", Label = "Transporter Code" },
+        new() { Key = "Total Weighings", Label = "Total Weighings" },
+        new() { Key = "Unique Vehicles", Label = "Unique Vehicles" },
+        new() { Key = "Compliant", Label = "Compliant" },
+        new() { Key = "Overloaded", Label = "Overloaded" },
+        new() { Key = "Compliance %", Label = "Compliance %" },
+        new() { Key = "Total Overload (kg)", Label = "Total Overload (kg)" },
+        new() { Key = "Avg Overload (kg)", Label = "Average Overload (kg)" },
+        new() { Key = "Sent to Yard", Label = "Sent to Yard" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> OverloadedVehiclesColumns =
+    [
+        new() { Key = "Ticket #", Label = "Ticket Number" },
+        new() { Key = "Date/Time", Label = "Date/Time" },
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Axle Config", Label = "Axle Configuration" },
+        new() { Key = "Driver", Label = "Driver" },
+        new() { Key = "Transporter", Label = "Transporter" },
+        new() { Key = "GVW (kg)", Label = "GVW (kg)" },
+        new() { Key = "Permissible (kg)", Label = "Permissible (kg)" },
+        new() { Key = "Overload (kg)", Label = "Overload (kg)" },
+        new() { Key = "Overload %", Label = "Overload %" },
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Yard", Label = "Sent to Yard" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> ReweighStatementColumns =
+    [
+        new() { Key = "Ticket #", Label = "Ticket Number" },
+        new() { Key = "Date/Time", Label = "Date/Time" },
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Cycle #", Label = "Reweigh Cycle #" },
+        new() { Key = "Max Cycles", Label = "Max Cycles" },
+        new() { Key = "Original Ticket", Label = "Original Ticket" },
+        new() { Key = "Original GVW (kg)", Label = "Original GVW (kg)" },
+        new() { Key = "Reweigh GVW (kg)", Label = "Reweigh GVW (kg)" },
+        new() { Key = "Reduction (kg)", Label = "Weight Reduction (kg)" },
+        new() { Key = "Overload (kg)", Label = "Overload (kg)" },
+        new() { Key = "Status", Label = "Status" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> SpecialReleaseColumns =
+    [
+        new() { Key = "Certificate #", Label = "Certificate Number" },
+        new() { Key = "Issue Date", Label = "Issue Date" },
+        new() { Key = "Case #", Label = "Case Number" },
+        new() { Key = "Release Type", Label = "Release Type" },
+        new() { Key = "Overload (kg)", Label = "Overload (kg)" },
+        new() { Key = "Redistribution", Label = "Redistribution Allowed" },
+        new() { Key = "Reweigh Required", Label = "Reweigh Required" },
+        new() { Key = "Compliance Achieved", Label = "Compliance Achieved" },
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Approval Date", Label = "Approval Date" },
+        new() { Key = "Reason", Label = "Reason" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> ScaleTestColumns =
+    [
+        new() { Key = "Date/Time", Label = "Date/Time" },
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "Bound", Label = "Bound" },
+        new() { Key = "Test Type", Label = "Test Type" },
+        new() { Key = "Weighing Mode", Label = "Weighing Mode" },
+        new() { Key = "Vehicle Plate", Label = "Vehicle Plate" },
+        new() { Key = "Test Weight (kg)", Label = "Test Weight (kg)" },
+        new() { Key = "Actual Weight (kg)", Label = "Actual Weight (kg)" },
+        new() { Key = "Deviation (kg)", Label = "Deviation (kg)" },
+        new() { Key = "Result", Label = "Result" },
+        new() { Key = "Officer", Label = "Officer" }
+    ];
+
     public WeighingReportGenerator(TruLoadDbContext context)
     {
         _context = context;
@@ -110,29 +271,39 @@ public class WeighingReportGenerator : BaseReportGenerator
     public override List<ReportDefinitionDto> GetDefinitions() =>
     [
         Def("daily-summary", "Daily Weighing Summary",
-            "Aggregated daily statistics including total vehicles weighed, compliance rate, and overload totals per station."),
+            "Aggregated daily statistics including total vehicles weighed, compliance rate, and overload totals per station.",
+            columns: DailySummaryColumns),
         Def("weighbridge-register", "Weighbridge Register",
-            "Detailed register of all weighing transactions with vehicle, driver, weight, and compliance data."),
+            "Detailed register of all weighing transactions with vehicle, driver, weight, and compliance data.",
+            columns: WeighbridgeRegisterColumns),
         Def("axle-load-analysis", "Axle Load Data Analysis",
             "Per-vehicle axle load analysis scoped by a single station, with vehicle-type/axle-count " +
             "and overload-by-GVW summary breakdowns, colour-coded status and legend - matches the KURA NRB template.",
             columns: AxleLoadAnalysisColumns, chartOptions: AxleLoadAnalysisChartOptions),
         Def("compliance-trend", "Compliance Trend Analysis",
-            "Daily compliance rates over the selected period, showing overload vs compliant vehicle counts."),
+            "Daily compliance rates over the selected period, showing overload vs compliant vehicle counts.",
+            columns: ComplianceTrendColumns),
         Def("axle-overload", "Axle Overload Analysis",
-            "Breakdown of overloaded axles by type and configuration, with pavement damage factor analysis."),
+            "Breakdown of overloaded axles by type and configuration, with pavement damage factor analysis.",
+            columns: AxleOverloadColumns),
         Def("station-performance", "Station Performance Report",
-            "Comparative performance metrics across weighbridge stations for the selected period."),
+            "Comparative performance metrics across weighbridge stations for the selected period.",
+            columns: StationPerformanceColumns),
         Def("transporter-statement", "Transporter Statement",
-            "Weighing history and compliance summary grouped by transporter company."),
+            "Weighing history and compliance summary grouped by transporter company.",
+            columns: TransporterStatementColumns),
         Def("overloaded-vehicles", "Overloaded Vehicles Register",
-            "Filtered register showing only overloaded vehicles with overload amounts and violation details."),
+            "Filtered register showing only overloaded vehicles with overload amounts and violation details.",
+            columns: OverloadedVehiclesColumns),
         Def("reweigh-statement", "Reweigh Statement",
-            "Tracks reweigh cycles for vehicles that underwent load redistribution or correction."),
+            "Tracks reweigh cycles for vehicles that underwent load redistribution or correction.",
+            columns: ReweighStatementColumns),
         Def("special-release", "Special Release Register",
-            "Register of all special releases issued, with release type, authorization, and compliance status."),
+            "Register of all special releases issued, with release type, authorization, and compliance status.",
+            columns: SpecialReleaseColumns),
         Def("scale-test", "Scale Test Log",
-            "Log of daily scale calibration tests per station and bound, with pass/fail results and deviations.")
+            "Log of daily scale calibration tests per station and bound, with pass/fail results and deviations.",
+            columns: ScaleTestColumns)
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -217,19 +388,32 @@ public class WeighingReportGenerator : BaseReportGenerator
             $"{(currency == "KES" && r.TotalFeesKes > 0 ? r.TotalFeesKes : r.TotalFeesUsd):N2}"
         });
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = csvRows.ToList();
+        int[]? pctIdx = [5]; // "Compliance %"
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Compliance %");
+            pctIdx = idx >= 0 ? [idx] : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "weighing_daily_summary", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "weighing_daily_summary", from, to);
 
         if (format == "xlsx")
         {
             var request = new ExcelReportRequest
             {
                 ReportTitle = "Daily Weighing Summary",
-                Headers = headers,
-                Rows = csvRows,
+                Headers = outputHeaders,
+                Rows = outputRows,
                 DateFrom = from,
                 DateTo = to,
-                PercentageDataBarColumnIndexes = [5], // "Compliance %"
+                PercentageDataBarColumnIndexes = pctIdx,
                 OrgName = filters.OrganizationName,
                 OrgLogoFile = filters.OrgLogoFile
             };
@@ -249,8 +433,8 @@ public class WeighingReportGenerator : BaseReportGenerator
             DateFrom = from,
             DateTo = to,
             StationName = stationName,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Total Vehicles", FormatNumber(grandTotalVehicles)),
@@ -345,25 +529,42 @@ public class WeighingReportGenerator : BaseReportGenerator
         });
 
         const int statusColumnIndex = 11;
+        // Legend swatches must mirror the actual row colour, which is driven by the raw
+        // ControlStatus text ("Warning"/"Overloaded") via ReportStatusColors.Resolve - not the
+        // "Within Permissible Tolerance" bucket (blue), which only applies to the sample-template
+        // vocabulary used by the Axle Load Data Analysis report.
         var legend = new[]
         {
-            (BrandingConstants.Colors.ToleranceBlue, "Warning (axle overload)"),
+            (ReportStatusColors.Resolve("Warning").ExcelFillHex, "Warning (axle overload)"),
             (BrandingConstants.Colors.SampleTemplateRed, "Overloaded (GVW)")
         };
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = csvRows.ToList();
+        int? effectiveStatusColumnIndex = statusColumnIndex;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = idx >= 0 ? idx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "weighbridge_register", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "weighbridge_register", from, to);
 
         if (format == "xlsx")
         {
             var request = new ExcelReportRequest
             {
                 ReportTitle = "Weighbridge Register",
-                Headers = headers,
-                Rows = csvRows,
+                Headers = outputHeaders,
+                Rows = outputRows,
                 DateFrom = from,
                 DateTo = to,
-                ConditionalStatusColumnIndex = statusColumnIndex,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex,
                 Legend = legend,
                 OrgName = filters.OrganizationName,
                 OrgLogoFile = filters.OrgLogoFile
@@ -380,10 +581,10 @@ public class WeighingReportGenerator : BaseReportGenerator
             DateFrom = from,
             DateTo = to,
             StationName = stationName,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             TotalRecords = transactions.Count,
-            StatusColumnIndex = statusColumnIndex,
+            StatusColumnIndex = effectiveStatusColumnIndex,
             Legend = legend
         };
 
@@ -671,19 +872,32 @@ public class WeighingReportGenerator : BaseReportGenerator
             FormatNumber(d.MaxOverloadKg)
         });
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = csvRows.ToList();
+        int[]? pctIdx = [5]; // "Compliance %"
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Compliance %");
+            pctIdx = idx >= 0 ? [idx] : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "compliance_trend", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "compliance_trend", from, to);
 
         if (format == "xlsx")
         {
             var request = new ExcelReportRequest
             {
                 ReportTitle = "Compliance Trend Analysis",
-                Headers = headers,
-                Rows = csvRows,
+                Headers = outputHeaders,
+                Rows = outputRows,
                 DateFrom = from,
                 DateTo = to,
-                PercentageDataBarColumnIndexes = [5], // "Compliance %"
+                PercentageDataBarColumnIndexes = pctIdx,
                 OrgName = filters.OrganizationName,
                 OrgLogoFile = filters.OrgLogoFile
             };
@@ -697,8 +911,8 @@ public class WeighingReportGenerator : BaseReportGenerator
         {
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Period Total", FormatNumber(grandTotal)),
@@ -786,19 +1000,32 @@ public class WeighingReportGenerator : BaseReportGenerator
             a.PavementDamageFactor.ToString("F4")
         });
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = csvRows.ToList();
+        int[]? pctIdx = [11]; // "Overload %"
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Overload %");
+            pctIdx = idx >= 0 ? [idx] : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "axle_overload_analysis", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "axle_overload_analysis", from, to);
 
         if (format == "xlsx")
         {
             var request = new ExcelReportRequest
             {
                 ReportTitle = "Axle Overload Analysis",
-                Headers = headers,
-                Rows = csvRows,
+                Headers = outputHeaders,
+                Rows = outputRows,
                 DateFrom = from,
                 DateTo = to,
-                PercentageDataBarColumnIndexes = [11], // "Overload %"
+                PercentageDataBarColumnIndexes = pctIdx,
                 OrgName = filters.OrganizationName,
                 OrgLogoFile = filters.OrgLogoFile
             };
@@ -815,8 +1042,8 @@ public class WeighingReportGenerator : BaseReportGenerator
         {
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems = axleTypeSummary.Length > 0
                 ? axleTypeSummary
                 :
@@ -896,19 +1123,32 @@ public class WeighingReportGenerator : BaseReportGenerator
             $"{s.TotalFeesUsd:N2}"
         });
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = csvRows.ToList();
+        int[]? pctIdx = [5]; // "Compliance %"
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Compliance %");
+            pctIdx = idx >= 0 ? [idx] : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "station_performance", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "station_performance", from, to);
 
         if (format == "xlsx")
         {
             var request = new ExcelReportRequest
             {
                 ReportTitle = "Station Performance Report",
-                Headers = headers,
-                Rows = csvRows,
+                Headers = outputHeaders,
+                Rows = outputRows,
                 DateFrom = from,
                 DateTo = to,
-                PercentageDataBarColumnIndexes = [5], // "Compliance %"
+                PercentageDataBarColumnIndexes = pctIdx,
                 OrgName = filters.OrganizationName,
                 OrgLogoFile = filters.OrgLogoFile
             };
@@ -922,8 +1162,8 @@ public class WeighingReportGenerator : BaseReportGenerator
         {
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Stations", stationData.Count.ToString()),
@@ -1003,19 +1243,32 @@ public class WeighingReportGenerator : BaseReportGenerator
             $"{t.TotalFeesUsd:N2}"
         });
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = csvRows.ToList();
+        int[]? pctIdx = [6]; // "Compliance %"
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Compliance %");
+            pctIdx = idx >= 0 ? [idx] : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "transporter_statement", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "transporter_statement", from, to);
 
         if (format == "xlsx")
         {
             var request = new ExcelReportRequest
             {
                 ReportTitle = "Transporter Statement",
-                Headers = headers,
-                Rows = csvRows,
+                Headers = outputHeaders,
+                Rows = outputRows,
                 DateFrom = from,
                 DateTo = to,
-                PercentageDataBarColumnIndexes = [6], // "Compliance %"
+                PercentageDataBarColumnIndexes = pctIdx,
                 OrgName = filters.OrganizationName,
                 OrgLogoFile = filters.OrgLogoFile
             };
@@ -1026,8 +1279,8 @@ public class WeighingReportGenerator : BaseReportGenerator
         {
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Transporters", transporterData.Count.ToString()),
@@ -1125,21 +1378,37 @@ public class WeighingReportGenerator : BaseReportGenerator
             (BrandingConstants.Colors.SampleTemplateRed, "Overloaded (GVW)")
         };
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = csvRows.ToList();
+        int? effectiveStatusColumnIndex = statusColumnIndex;
+        int[]? pctIdx = [10]; // "Overload %"
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = idx >= 0 ? idx : null;
+            var pIdx = Array.IndexOf(outputHeaders, "Overload %");
+            pctIdx = pIdx >= 0 ? [pIdx] : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "overloaded_vehicles", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "overloaded_vehicles", from, to);
 
         if (format == "xlsx")
         {
             var request = new ExcelReportRequest
             {
                 ReportTitle = "Overloaded Vehicles Register",
-                Headers = headers,
-                Rows = csvRows,
+                Headers = outputHeaders,
+                Rows = outputRows,
                 DateFrom = from,
                 DateTo = to,
-                ConditionalStatusColumnIndex = statusColumnIndex,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex,
                 Legend = legend,
-                PercentageDataBarColumnIndexes = [10], // "Overload %"
+                PercentageDataBarColumnIndexes = pctIdx,
                 OrgName = filters.OrganizationName,
                 OrgLogoFile = filters.OrgLogoFile
             };
@@ -1150,9 +1419,9 @@ public class WeighingReportGenerator : BaseReportGenerator
         {
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
-            StatusColumnIndex = statusColumnIndex,
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
+            StatusColumnIndex = effectiveStatusColumnIndex,
             Legend = legend,
             SummaryItems =
             [
@@ -1247,23 +1516,36 @@ public class WeighingReportGenerator : BaseReportGenerator
         const int statusColumnIndex = 11;
         var legend = new[]
         {
-            (BrandingConstants.Colors.ToleranceBlue, "Warning (axle overload)"),
+            (ReportStatusColors.Resolve("Warning").ExcelFillHex, "Warning (axle overload)"),
             (BrandingConstants.Colors.SampleTemplateRed, "Overloaded (GVW)")
         };
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = csvRows.ToList();
+        int? effectiveStatusColumnIndex = statusColumnIndex;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = idx >= 0 ? idx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "reweigh_statement", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "reweigh_statement", from, to);
 
         if (format == "xlsx")
         {
             var request = new ExcelReportRequest
             {
                 ReportTitle = "Reweigh Statement",
-                Headers = headers,
-                Rows = csvRows,
+                Headers = outputHeaders,
+                Rows = outputRows,
                 DateFrom = from,
                 DateTo = to,
-                ConditionalStatusColumnIndex = statusColumnIndex,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex,
                 Legend = legend,
                 OrgName = filters.OrganizationName,
                 OrgLogoFile = filters.OrgLogoFile
@@ -1277,9 +1559,9 @@ public class WeighingReportGenerator : BaseReportGenerator
         {
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
-            StatusColumnIndex = statusColumnIndex,
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
+            StatusColumnIndex = effectiveStatusColumnIndex,
             Legend = legend,
             SummaryItems =
             [
@@ -1376,19 +1658,32 @@ public class WeighingReportGenerator : BaseReportGenerator
             ("#FEF3C7", "Pending")
         };
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = csvRows.ToList();
+        int? effectiveStatusColumnIndex = statusColumnIndex;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = idx >= 0 ? idx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "special_release_register", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "special_release_register", from, to);
 
         if (format == "xlsx")
         {
             var request = new ExcelReportRequest
             {
                 ReportTitle = "Special Release Register",
-                Headers = headers,
-                Rows = csvRows,
+                Headers = outputHeaders,
+                Rows = outputRows,
                 DateFrom = from,
                 DateTo = to,
-                ConditionalStatusColumnIndex = statusColumnIndex,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex,
                 Legend = legend,
                 OrgName = filters.OrganizationName,
                 OrgLogoFile = filters.OrgLogoFile
@@ -1404,9 +1699,9 @@ public class WeighingReportGenerator : BaseReportGenerator
         {
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
-            StatusColumnIndex = statusColumnIndex,
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
+            StatusColumnIndex = effectiveStatusColumnIndex,
             Legend = legend,
             SummaryItems =
             [
@@ -1487,19 +1782,32 @@ public class WeighingReportGenerator : BaseReportGenerator
             (BrandingConstants.Colors.SampleTemplateRed, "Fail")
         };
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = csvRows.ToList();
+        int? effectiveStatusColumnIndex = statusColumnIndex;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Result");
+            effectiveStatusColumnIndex = idx >= 0 ? idx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "scale_test_log", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "scale_test_log", from, to);
 
         if (format == "xlsx")
         {
             var request = new ExcelReportRequest
             {
                 ReportTitle = "Scale Test Log",
-                Headers = headers,
-                Rows = csvRows,
+                Headers = outputHeaders,
+                Rows = outputRows,
                 DateFrom = from,
                 DateTo = to,
-                ConditionalStatusColumnIndex = statusColumnIndex,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex,
                 Legend = legend,
                 OrgName = filters.OrganizationName,
                 OrgLogoFile = filters.OrgLogoFile
@@ -1514,9 +1822,9 @@ public class WeighingReportGenerator : BaseReportGenerator
         {
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
-            StatusColumnIndex = statusColumnIndex,
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
+            StatusColumnIndex = effectiveStatusColumnIndex,
             Legend = legend,
             SummaryItems =
             [

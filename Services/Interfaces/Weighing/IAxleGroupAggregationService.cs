@@ -46,4 +46,20 @@ public interface IAxleGroupAggregationService
     /// <param name="transactionId">Weighing transaction ID</param>
     /// <returns>Complete compliance result with fees and demerit points</returns>
     Task<WeighingComplianceResultDto> CalculateComplianceAsync(Guid transactionId);
+
+    /// <summary>
+    /// Resolves the DB-driven axle-group tolerance RULE (not a final kg amount) for a given
+    /// axle-count classification and legal framework, following the same 3-level fallback chain
+    /// used internally for per-transaction group compliance (act-specific AXLE tolerance -&gt;
+    /// standard-law-by-axle-count -&gt; 0%/strict). Exposed separately from
+    /// <see cref="AggregateAxleGroupsAsync"/> so bulk/stats callers (e.g. axle-violation
+    /// distribution endpoints covering a date range) can resolve and cache the rule once per
+    /// (legalFramework, isSingleAxle) combination - there are at most a handful of these
+    /// system-wide - instead of re-querying ToleranceSetting per axle group in the range.
+    /// Returns a fixed kg tolerance when configured, otherwise a percentage-of-permissible-weight
+    /// tolerance (apply as <c>Math.Round(groupPermissibleKg * TolerancePercentage / 100m)</c>);
+    /// both are 0/null-percentage when strict (no tolerance).
+    /// </summary>
+    Task<(int? FixedToleranceKg, decimal TolerancePercentage)> ResolveGroupToleranceRuleAsync(
+        bool isSingleAxle, string legalFramework);
 }

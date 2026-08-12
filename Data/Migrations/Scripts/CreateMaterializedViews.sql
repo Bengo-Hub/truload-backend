@@ -23,7 +23,12 @@ SELECT
     wt.organization_id,  -- From weighing_transactions
     wt.station_id,
     s.name AS station_name,
-    DATE(wt.weighed_at) AS weighing_date,
+    -- EAT is UTC+3 with no DST, so a fixed offset shift is correct/sufficient here (matches
+    -- Common/WeighingQueryHelpers.ResolveEatDayRange on the .NET side) - grouping by the raw UTC
+    -- calendar date put weighings from the first/last 3 EAT hours of a day into the wrong day's
+    -- row (confirmed 2026-08-12 audit; GetDailyVolume's endpoint-level fix narrowed but did not
+    -- close this gap since it reads from this MV's own weighing_date column).
+    DATE(wt.weighed_at + INTERVAL '3 hours') AS weighing_date,
     COUNT(*) AS total_weighings,
     COUNT(*) FILTER (WHERE wt."IsCompliant" = TRUE) AS compliant_count,
     COUNT(*) FILTER (WHERE wt."IsCompliant" = FALSE) AS non_compliant_count,
@@ -43,7 +48,7 @@ SELECT
     COUNT(DISTINCT wt.transporter_id) AS unique_transporters
 FROM weighing_transactions wt
 INNER JOIN stations s ON s."Id" = wt.station_id
-GROUP BY wt.organization_id, wt.station_id, s.name, DATE(wt.weighed_at);
+GROUP BY wt.organization_id, wt.station_id, s.name, DATE(wt.weighed_at + INTERVAL '3 hours');
 
 -- Create indexes for fast lookups
 CREATE UNIQUE INDEX idx_mv_daily_weighing_stats_unique
@@ -248,7 +253,7 @@ SELECT
 FROM stations s
 LEFT JOIN roads r ON r.id = s.road_id
 LEFT JOIN "Counties" c ON c."Id" = s.county_id
-LEFT JOIN subcounties sc ON sc.id = s."SubcountyId"
+LEFT JOIN subcounties sc ON sc.id = s.subcounty_id
 LEFT JOIN weighing_transactions wt ON wt.station_id = s."Id"
 LEFT JOIN yard_entries ye ON ye.station_id = s."Id"
 LEFT JOIN case_registers cr ON cr.weighing_id = wt.id AND cr.organization_id = wt.organization_id

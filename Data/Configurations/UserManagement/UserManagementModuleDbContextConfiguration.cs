@@ -604,6 +604,14 @@ public static class UserManagementModuleDbContextConfiguration
             entity.Property(e => e.CountyId)
                 .HasColumnName("county_id");
 
+            // Was missing this HasColumnName when SubcountyId was added (migration
+            // 20260317063700_AddWeighingLocations) — unlike RoadId/CountyId on this same entity,
+            // it was left on EF's default (literal PascalCase) convention, so the live column is
+            // the mixed-case-quoted "SubcountyId", not subcounty_id like every sibling FK
+            // (Court, WeighingTransaction, road_subcounties). Renamed via migration to match.
+            entity.Property(e => e.SubcountyId)
+                .HasColumnName("subcounty_id");
+
             entity.Property(e => e.Latitude)
                 .HasColumnName("latitude")
                 .HasColumnType("decimal(10,8)");

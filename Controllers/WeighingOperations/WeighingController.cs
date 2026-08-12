@@ -139,34 +139,7 @@ public class WeighingController : ControllerBase
     {
         try
         {
-            var query = from wa in _context.WeighingAxles.AsNoTracking()
-                        join wt in _context.WeighingTransactions.AsNoTracking() on wa.WeighingId equals wt.Id
-                        where (wa.MeasuredWeightKg - wa.PermissibleWeightKg) > 0
-                        select new { wa, wt };
-
-            if (dateFrom.HasValue || dateTo.HasValue)
-            {
-                var (rangeFromUtc, rangeToUtcExclusive) = WeighingQueryHelpers.ResolveEatDayRange(dateFrom, dateTo);
-                query = query.Where(x => x.wt.WeighedAt >= rangeFromUtc && x.wt.WeighedAt < rangeToUtcExclusive);
-            }
-            if (stationId.HasValue)
-                query = query.Where(x => x.wt.StationId == stationId.Value);
-
-            var grouped = await query
-                .GroupBy(x => string.IsNullOrEmpty(x.wa.AxleType) ? "Other" : x.wa.AxleType)
-                .Select(g => new OverloadDistributionDto
-                {
-                    Name = g.Key,
-                    Count = g.Count(),
-                    Percentage = 0
-                })
-                .OrderByDescending(x => x.Count)
-                .ToListAsync(ct);
-
-            var total = grouped.Sum(x => x.Count);
-            foreach (var item in grouped)
-                item.Percentage = total > 0 ? Math.Round((decimal)item.Count * 100 / total, 2) : 0;
-
+            var grouped = await BuildAxleViolationDistributionAsync(dateFrom, dateTo, stationId, ct);
             return Ok(grouped);
         }
         catch (Exception ex)
@@ -174,6 +147,88 @@ public class WeighingController : ControllerBase
             _logger.LogError(ex, "Error getting axle type violations");
             return StatusCode(500, "An error occurred while getting axle type violations.");
         }
+    }
+
+    /// <summary>
+    /// Builds the axle-violation-by-type distribution using the SAME group-level, DB-driven
+    /// tolerance logic as <see cref="IAxleGroupAggregationService"/> (Kenya law tolerates axle
+    /// GROUPS, e.g. Tandem/Tridem, not individual axles) — NOT a raw per-axle
+    /// measured-minus-permissible diff, which flags axles the authoritative compliance engine
+    /// considers fully compliant (any group within its tolerance-adjusted limit). Grouping/tolerance
+    /// resolution mirrors <see cref="TruLoad.Backend.Services.Implementations.Weighing.AxleGroupAggregationService.AggregateAxleGroupsAsync"/>
+    /// exactly, but done set-based over the date range instead of per-transaction, and with the
+    /// ToleranceSetting lookups cached per (legalFramework, isSingleAxle) combination (at most a
+    /// handful system-wide) rather than re-queried per axle group — this endpoint can cover a wide
+    /// date range, so a per-transaction async loop would be an N+1 query risk.
+    /// </summary>
+    private async Task<List<OverloadDistributionDto>> BuildAxleViolationDistributionAsync(
+        DateTime? dateFrom, DateTime? dateTo, Guid? stationId, CancellationToken ct)
+    {
+        var flatQuery = from wa in _context.WeighingAxles.AsNoTracking()
+                        join wt in _context.WeighingTransactions.AsNoTracking() on wa.WeighingId equals wt.Id
+                        select new
+                        {
+                            wa.WeighingId,
+                            wa.AxleGrouping,
+                            wa.AxleType,
+                            wa.MeasuredWeightKg,
+                            wa.PermissibleWeightKg,
+                            wt.WeighedAt,
+                            wt.StationId,
+                            LegalFramework = wt.Act != null && wt.Act.ActType == "EAC" ? "EAC" : "TRAFFIC_ACT"
+                        };
+
+        if (dateFrom.HasValue || dateTo.HasValue)
+        {
+            var (rangeFromUtc, rangeToUtcExclusive) = WeighingQueryHelpers.ResolveEatDayRange(dateFrom, dateTo);
+            flatQuery = flatQuery.Where(x => x.WeighedAt >= rangeFromUtc && x.WeighedAt < rangeToUtcExclusive);
+        }
+        if (stationId.HasValue)
+            flatQuery = flatQuery.Where(x => x.StationId == stationId.Value);
+
+        var flatRows = await flatQuery.ToListAsync(ct);
+
+        // Group by (transaction, axle-grouping) — the actual unit Kenya law tolerates, not per-axle.
+        var groups = flatRows
+            .GroupBy(r => new { r.WeighingId, r.AxleGrouping, r.LegalFramework })
+            .Select(g => new
+            {
+                g.Key.LegalFramework,
+                AxleType = string.IsNullOrEmpty(g.First().AxleType) ? "Other" : g.First().AxleType,
+                IsSingleAxle = g.Count() <= 1,
+                MeasuredKg = g.Sum(x => x.MeasuredWeightKg),
+                PermissibleKg = g.Sum(x => x.PermissibleWeightKg)
+            })
+            .ToList();
+
+        var toleranceCache = new Dictionary<(string LegalFramework, bool IsSingleAxle), (int? FixedKg, decimal Pct)>();
+        var violatingByType = new Dictionary<string, int>();
+
+        foreach (var g in groups)
+        {
+            var cacheKey = (g.LegalFramework, g.IsSingleAxle);
+            if (!toleranceCache.TryGetValue(cacheKey, out var rule))
+            {
+                rule = await _axleGroupAggregationService.ResolveGroupToleranceRuleAsync(g.IsSingleAxle, g.LegalFramework);
+                toleranceCache[cacheKey] = rule;
+            }
+
+            var toleranceKg = rule.FixedKg ?? (rule.Pct > 0 ? (int)Math.Round(g.PermissibleKg * (rule.Pct / 100m)) : 0);
+            var overloadKg = Math.Max(0, g.MeasuredKg - (g.PermissibleKg + toleranceKg));
+            if (overloadKg > 0)
+                violatingByType[g.AxleType] = violatingByType.GetValueOrDefault(g.AxleType) + 1;
+        }
+
+        var grouped = violatingByType
+            .Select(kv => new OverloadDistributionDto { Name = kv.Key, Count = kv.Value, Percentage = 0 })
+            .OrderByDescending(x => x.Count)
+            .ToList();
+
+        var total = grouped.Sum(x => x.Count);
+        foreach (var item in grouped)
+            item.Percentage = total > 0 ? Math.Round((decimal)item.Count * 100 / total, 2) : 0;
+
+        return grouped;
     }
 
     /// <summary>
@@ -192,34 +247,7 @@ public class WeighingController : ControllerBase
     {
         try
         {
-            var query = from wa in _context.WeighingAxles.AsNoTracking()
-                        join wt in _context.WeighingTransactions.AsNoTracking() on wa.WeighingId equals wt.Id
-                        where (wa.MeasuredWeightKg - wa.PermissibleWeightKg) > 0
-                        select new { wa, wt };
-
-            if (dateFrom.HasValue || dateTo.HasValue)
-            {
-                var (rangeFromUtc, rangeToUtcExclusive) = WeighingQueryHelpers.ResolveEatDayRange(dateFrom, dateTo);
-                query = query.Where(x => x.wt.WeighedAt >= rangeFromUtc && x.wt.WeighedAt < rangeToUtcExclusive);
-            }
-            if (stationId.HasValue)
-                query = query.Where(x => x.wt.StationId == stationId.Value);
-
-            var grouped = await query
-                .GroupBy(x => string.IsNullOrEmpty(x.wa.AxleType) ? "Other" : x.wa.AxleType)
-                .Select(g => new OverloadDistributionDto
-                {
-                    Name = g.Key,
-                    Count = g.Count(),
-                    Percentage = 0
-                })
-                .OrderByDescending(x => x.Count)
-                .ToListAsync(ct);
-
-            var total = grouped.Sum(x => x.Count);
-            foreach (var item in grouped)
-                item.Percentage = total > 0 ? Math.Round((decimal)item.Count * 100 / total, 2) : 0;
-
+            var grouped = await BuildAxleViolationDistributionAsync(dateFrom, dateTo, stationId, ct);
             return Ok(grouped);
         }
         catch (Exception ex)

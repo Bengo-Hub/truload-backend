@@ -14,6 +14,45 @@ public class CaseReportGenerator : BaseReportGenerator
 {
     private readonly TruLoadDbContext _context;
 
+    // =====================================================================
+    // Structured custom-report-builder column catalogs. Each Key MUST match the literal header
+    // text built in that report's generation method (see BaseReportGenerator.ApplyColumnSelection
+    // - matches by header string). None of these reports have currency-dependent headers.
+    // =====================================================================
+
+    private static readonly List<ReportColumnDefinition> CaseRegisterColumns =
+    [
+        new() { Key = "Case No", Label = "Case Number" },
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Driver", Label = "Driver" },
+        new() { Key = "Transporter", Label = "Transporter" },
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Violation Type", Label = "Violation Type" },
+        new() { Key = "Created", Label = "Created Date" },
+        new() { Key = "Updated", Label = "Updated Date" },
+        new() { Key = "Closed", Label = "Closed Date" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> RepeatOffendersColumns =
+    [
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Total Cases", Label = "Total Cases" },
+        new() { Key = "First Case No", Label = "First Case Number" },
+        new() { Key = "Latest Case No", Label = "Latest Case Number" },
+        new() { Key = "First Date", Label = "First Case Date" },
+        new() { Key = "Latest Date", Label = "Latest Case Date" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> CaseStatusSummaryColumns =
+    [
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Code", Label = "Status Code" },
+        new() { Key = "Cases", Label = "Number of Cases" },
+        new() { Key = "% of Total", Label = "% of Total" },
+        new() { Key = "Escalated", Label = "Escalated Count" },
+        new() { Key = "Closed", Label = "Closed Count" }
+    ];
+
     public CaseReportGenerator(TruLoadDbContext context)
     {
         _context = context;
@@ -24,11 +63,14 @@ public class CaseReportGenerator : BaseReportGenerator
     public override List<ReportDefinitionDto> GetDefinitions() =>
     [
         Def("case-register", "Case Register",
-            "Full register of violation cases with vehicle, driver, transporter, and status details."),
+            "Full register of violation cases with vehicle, driver, transporter, and status details.",
+            columns: CaseRegisterColumns),
         Def("repeat-offenders", "Repeat Offenders",
-            "Vehicles or transporters with multiple cases, indicating habitual violation patterns."),
+            "Vehicles or transporters with multiple cases, indicating habitual violation patterns.",
+            columns: RepeatOffendersColumns),
         Def("case-status-summary", "Case Status Summary",
-            "Aggregated breakdown of cases by status with counts and trends over the reporting period.")
+            "Aggregated breakdown of cases by status with counts and trends over the reporting period.",
+            columns: CaseStatusSummaryColumns)
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -106,15 +148,31 @@ public class CaseReportGenerator : BaseReportGenerator
             FormatDate(c.ClosedAt)
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = rows;
+        int? effectiveStatusColumnIndex = 4;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var statusIdx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = statusIdx >= 0 ? statusIdx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "case_register", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "case_register", from, to);
 
         if (format == "xlsx")
         {
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Case Register", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
-                ConditionalStatusColumnIndex = 4,
+                ReportTitle = "Case Register", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "case_register", from, to);
         }
@@ -124,10 +182,10 @@ public class CaseReportGenerator : BaseReportGenerator
             ReportTitle = "Case Register",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToList(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToList(),
             TotalCases = cases.Count,
-            StatusColumnIndex = 4
+            StatusColumnIndex = effectiveStatusColumnIndex
         };
         return PdfResult(doc, filters, "case_register", from, to);
     }
@@ -193,13 +251,26 @@ public class CaseReportGenerator : BaseReportGenerator
             FormatDate(v.LatestDate)
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = rows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "repeat_offenders", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "repeat_offenders", from, to);
 
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Repeat Offenders Report", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                ReportTitle = "Repeat Offenders Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "repeat_offenders", from, to);
 
@@ -208,8 +279,8 @@ public class CaseReportGenerator : BaseReportGenerator
             ReportTitle = "Repeat Offenders Report",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToList(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToList(),
             SummaryItems =
             [
                 ("Repeat Vehicles", vehicleCases.Count.ToString()),
@@ -259,15 +330,34 @@ public class CaseReportGenerator : BaseReportGenerator
             s.ClosedCount.ToString()
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = rows;
+        int? effectiveStatusColumnIndex = 0;
+        int[]? percentageDataBarColumnIndexes = [3];
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var statusIdx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = statusIdx >= 0 ? statusIdx : null;
+            var pctIdx = Array.IndexOf(outputHeaders, "% of Total");
+            percentageDataBarColumnIndexes = pctIdx >= 0 ? new[] { pctIdx } : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "case_status_summary", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "case_status_summary", from, to);
 
         if (format == "xlsx")
         {
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Case Status Summary", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
-                ConditionalStatusColumnIndex = 0, PercentageDataBarColumnIndexes = [3],
+                ReportTitle = "Case Status Summary", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex, PercentageDataBarColumnIndexes = percentageDataBarColumnIndexes,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "case_status_summary", from, to);
         }
@@ -277,9 +367,9 @@ public class CaseReportGenerator : BaseReportGenerator
             ReportTitle = "Case Status Summary",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToList(),
-            StatusColumnIndex = 0,
+            Headers = outputHeaders,
+            Rows = outputRows.ToList(),
+            StatusColumnIndex = effectiveStatusColumnIndex,
             SummaryItems =
             [
                 ("Total Cases", totalCases.ToString()),

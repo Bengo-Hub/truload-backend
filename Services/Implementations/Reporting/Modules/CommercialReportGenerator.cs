@@ -16,6 +16,179 @@ public class CommercialReportGenerator : BaseReportGenerator
 {
     private readonly TruLoadDbContext _context;
 
+    // =====================================================================
+    // Structured custom-report-builder column catalogs. Each Key MUST match the literal header
+    // text built in that report's generation method (see BaseReportGenerator.ApplyColumnSelection -
+    // matches by header string). None of this file's headers are currency-interpolated, so every
+    // static-text column gets a catalog entry.
+    // =====================================================================
+
+    private static readonly List<ReportColumnDefinition> CommercialDailySummaryColumns =
+    [
+        new() { Key = "Date", Label = "Date" },
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "Total Weighings", Label = "Total Weighings" },
+        new() { Key = "Unique Vehicles", Label = "Unique Vehicles" },
+        new() { Key = "Cargo Types", Label = "Cargo Types" },
+        new() { Key = "Total Net Weight (kg)", Label = "Total Net Weight (kg)" },
+        new() { Key = "Total Gross Weight (kg)", Label = "Total Gross Weight (kg)" },
+        new() { Key = "Total Tare Weight (kg)", Label = "Total Tare Weight (kg)" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> TransporterStatementColumns =
+    [
+        new() { Key = "Transporter", Label = "Transporter" },
+        new() { Key = "Weighing Count", Label = "Weighing Count" },
+        new() { Key = "Unique Vehicles", Label = "Unique Vehicles" },
+        new() { Key = "Cargo Types", Label = "Cargo Types" },
+        new() { Key = "Total Net Weight (kg)", Label = "Total Net Weight (kg)" },
+        new() { Key = "Avg Net Weight (kg)", Label = "Average Net Weight (kg)" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> CargoVolumeColumns =
+    [
+        new() { Key = "Cargo Type", Label = "Cargo Type" },
+        new() { Key = "Trip Count", Label = "Trip Count" },
+        new() { Key = "Total Net Weight (kg)", Label = "Total Net Weight (kg)" },
+        new() { Key = "Avg Net Weight (kg)", Label = "Average Net Weight (kg)" },
+        new() { Key = "Min Net Weight (kg)", Label = "Minimum Net Weight (kg)" },
+        new() { Key = "Max Net Weight (kg)", Label = "Maximum Net Weight (kg)" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> WeightDiscrepancyColumns =
+    [
+        new() { Key = "Ticket #", Label = "Ticket Number" },
+        new() { Key = "Date/Time", Label = "Date/Time" },
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Transporter", Label = "Transporter" },
+        new() { Key = "Cargo", Label = "Cargo" },
+        new() { Key = "Expected (kg)", Label = "Expected Weight (kg)" },
+        new() { Key = "Actual (kg)", Label = "Actual Weight (kg)" },
+        new() { Key = "Discrepancy (kg)", Label = "Discrepancy (kg)" },
+        new() { Key = "Variance %", Label = "Variance %" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> CommercialRevenueColumns =
+    [
+        new() { Key = "Date", Label = "Date" },
+        new() { Key = "Currency", Label = "Currency" },
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Invoice Count", Label = "Invoice Count" },
+        new() { Key = "Total Amount", Label = "Total Amount" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> ThroughputColumns =
+    [
+        new() { Key = "Date", Label = "Date" },
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "Vehicles Weighed", Label = "Vehicles Weighed" },
+        new() { Key = "Two-Pass Transactions", Label = "Two-Pass Transactions" },
+        new() { Key = "Avg Processing Time (min)", Label = "Average Processing Time (min)" },
+        new() { Key = "Vehicles/Hour", Label = "Vehicles per Hour" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> TareWeightAuditColumns =
+    [
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Date/Time", Label = "Date/Time" },
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "Tare Weight (kg)", Label = "Tare Weight (kg)" },
+        new() { Key = "Previous Tare (kg)", Label = "Previous Tare (kg)" },
+        new() { Key = "Drift %", Label = "Drift %" },
+        new() { Key = "Source", Label = "Source" },
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Notes", Label = "Notes" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> FleetUtilizationColumns =
+    [
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Transporter", Label = "Transporter" },
+        new() { Key = "Trip Count", Label = "Trip Count" },
+        new() { Key = "Total Net Weight (kg)", Label = "Total Net Weight (kg)" },
+        new() { Key = "Avg Payload (kg)", Label = "Average Payload (kg)" },
+        new() { Key = "Min Payload (kg)", Label = "Minimum Payload (kg)" },
+        new() { Key = "Max Payload (kg)", Label = "Maximum Payload (kg)" },
+        new() { Key = "Avg Gross (kg)", Label = "Average Gross Weight (kg)" },
+        new() { Key = "Avg Tare (kg)", Label = "Average Tare Weight (kg)" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> DriverProductivityColumns =
+    [
+        new() { Key = "Driver", Label = "Driver" },
+        new() { Key = "Trip Count", Label = "Trip Count" },
+        new() { Key = "Total Net Weight (kg)", Label = "Total Net Weight (kg)" },
+        new() { Key = "Avg Net Weight (kg)", Label = "Average Net Weight (kg)" },
+        new() { Key = "Two-Pass Trips", Label = "Two-Pass Trips" },
+        new() { Key = "Avg Turnaround (min)", Label = "Average Turnaround (min)" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> QualityCommodityColumns =
+    [
+        new() { Key = "Cargo Type", Label = "Cargo Type" },
+        new() { Key = "Transactions", Label = "Transactions" },
+        new() { Key = "With Deductions", Label = "With Deductions" },
+        new() { Key = "Total Deduction (kg)", Label = "Total Deduction (kg)" },
+        new() { Key = "Avg Deduction (kg)", Label = "Average Deduction (kg)" },
+        new() { Key = "Total Net Weight (kg)", Label = "Total Net Weight (kg)" },
+        new() { Key = "Total Adjusted (kg)", Label = "Total Adjusted Weight (kg)" },
+        new() { Key = "With Industry Metadata", Label = "With Industry Metadata" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> ShiftPerformanceColumns =
+    [
+        new() { Key = "Date", Label = "Date" },
+        new() { Key = "Shift", Label = "Shift" },
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "Total Transactions", Label = "Total Transactions" },
+        new() { Key = "Total Net Weight (kg)", Label = "Total Net Weight (kg)" },
+        new() { Key = "Avg Cycle Time (min)", Label = "Average Cycle Time (min)" },
+        new() { Key = "Overloads", Label = "Overloads" },
+        new() { Key = "Tolerance Exceptions", Label = "Tolerance Exceptions" },
+        new() { Key = "Voided", Label = "Voided" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> TransactionAuditLogColumns =
+    [
+        new() { Key = "Ticket #", Label = "Ticket Number" },
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Transporter", Label = "Transporter" },
+        new() { Key = "First Weight (kg)", Label = "First Weight (kg)" },
+        new() { Key = "Second Weight (kg)", Label = "Second Weight (kg)" },
+        new() { Key = "Net Weight (kg)", Label = "Net Weight (kg)" },
+        new() { Key = "Quality Deduction (kg)", Label = "Quality Deduction (kg)" },
+        new() { Key = "Adjusted Net (kg)", Label = "Adjusted Net Weight (kg)" },
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Voided At", Label = "Voided At" },
+        new() { Key = "Void Reason", Label = "Void Reason" },
+        new() { Key = "Created By", Label = "Created By" },
+        new() { Key = "Created At", Label = "Created At" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> PendingTransactionsColumns =
+    [
+        new() { Key = "Ticket #", Label = "Ticket Number" },
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Transporter", Label = "Transporter" },
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "First Weight At", Label = "First Weight At" },
+        new() { Key = "Hours Pending", Label = "Hours Pending" },
+        new() { Key = "First Weight (kg)", Label = "First Weight (kg)" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> MonthlyReconciliationColumns =
+    [
+        new() { Key = "Month", Label = "Month" },
+        new() { Key = "Total Transactions", Label = "Total Transactions" },
+        new() { Key = "Total Net Weight (kg)", Label = "Total Net Weight (kg)" },
+        new() { Key = "Total Fee (KES)", Label = "Total Fee (KES)" },
+        new() { Key = "Tolerance Exceptions", Label = "Tolerance Exceptions" },
+        new() { Key = "Voided", Label = "Voided" },
+        new() { Key = "Completed", Label = "Completed" },
+        new() { Key = "Avg Net Weight (kg)", Label = "Average Net Weight (kg)" }
+    ];
+
     public CommercialReportGenerator(TruLoadDbContext context)
     {
         _context = context;
@@ -26,33 +199,47 @@ public class CommercialReportGenerator : BaseReportGenerator
     public override List<ReportDefinitionDto> GetDefinitions() =>
     [
         Def("commercial-daily-summary", "Commercial Daily Summary",
-            "Total weighings, total net weight, grouped by cargo type and station. Date range filter."),
+            "Total weighings, total net weight, grouped by cargo type and station. Date range filter.",
+            columns: CommercialDailySummaryColumns),
         Def("transporter-statement", "Transporter Statement",
-            "Per-transporter: weighing count, total net weight, average net weight, and cargo breakdown. Date range + transporter filter."),
+            "Per-transporter: weighing count, total net weight, average net weight, and cargo breakdown. Date range + transporter filter.",
+            columns: TransporterStatementColumns),
         Def("cargo-volume", "Cargo Volume Report",
-            "Volume trends by cargo type over time, grouped by day, week, or month. Date range filter."),
+            "Volume trends by cargo type over time, grouped by day, week, or month. Date range filter.",
+            columns: CargoVolumeColumns),
         Def("weight-discrepancy", "Weight Discrepancy Report",
-            "Transactions where weight discrepancy exceeds a threshold. Shows expected vs actual and variance %. Date range + threshold filter."),
+            "Transactions where weight discrepancy exceeds a threshold. Shows expected vs actual and variance %. Date range + threshold filter.",
+            columns: WeightDiscrepancyColumns),
         Def("commercial-revenue", "Commercial Revenue Report",
-            "Revenue from commercial weighing fees (from invoices). Date range filter."),
+            "Revenue from commercial weighing fees (from invoices). Date range filter.",
+            columns: CommercialRevenueColumns),
         Def("throughput", "Throughput Report",
-            "Vehicles per hour, average processing time (SecondWeightAt - FirstWeightAt), by station. Date range filter."),
+            "Vehicles per hour, average processing time (SecondWeightAt - FirstWeightAt), by station. Date range filter.",
+            columns: ThroughputColumns),
         Def("tare-weight-audit", "Tare Weight Audit Report",
-            "Tare weight changes per vehicle from tare history. Flags anomalies (>5% drift). Date range + vehicle filter."),
+            "Tare weight changes per vehicle from tare history. Flags anomalies (>5% drift). Date range + vehicle filter.",
+            columns: TareWeightAuditColumns),
         Def("fleet-utilization", "Fleet Utilization Report",
-            "Per vehicle: trip count, total net weight, average payload, payload utilization. Date range + transporter filter."),
+            "Per vehicle: trip count, total net weight, average payload, payload utilization. Date range + transporter filter.",
+            columns: FleetUtilizationColumns),
         Def("driver-productivity", "Driver Productivity Report",
-            "Per driver: trip count, total net weight, average turnaround time. Date range filter."),
+            "Per driver: trip count, total net weight, average turnaround time. Date range filter.",
+            columns: DriverProductivityColumns),
         Def("quality-commodity", "Quality & Commodity Report",
-            "Quality deduction stats by cargo type for transactions with deductions or industry metadata. Date range filter."),
+            "Quality deduction stats by cargo type for transactions with deductions or industry metadata. Date range filter.",
+            columns: QualityCommodityColumns),
         Def("shift-performance", "Shift Performance Report",
-            "Group by shift: total transactions, total net weight (kg), average cycle time (minutes), overloads and tolerance exceptions. Date range + station filter."),
+            "Group by shift: total transactions, total net weight (kg), average cycle time (minutes), overloads and tolerance exceptions. Date range + station filter.",
+            columns: ShiftPerformanceColumns),
         Def("transaction-audit-log", "Transaction Audit Log",
-            "All commercial transactions including voided ones: ticket, vehicle, weights, quality deductions, status, void info, created by. Date range filter."),
+            "All commercial transactions including voided ones: ticket, vehicle, weights, quality deductions, status, void info, created by. Date range filter.",
+            columns: TransactionAuditLogColumns),
         Def("pending-transactions", "Pending Transactions Report",
-            "Transactions with first weight captured but no second weight and not voided. Shows hours pending. Date range + station filter."),
+            "Transactions with first weight captured but no second weight and not voided. Shows hours pending. Date range + station filter.",
+            columns: PendingTransactionsColumns),
         Def("monthly-reconciliation", "Monthly Reconciliation Report",
-            "Monthly summary: total transactions, net weight, fees, tolerance exceptions, voided count, completed count, average net weight. Date range filter.")
+            "Monthly summary: total transactions, net weight, fees, tolerance exceptions, voided count, completed count, average net weight. Date range filter.",
+            columns: MonthlyReconciliationColumns)
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -141,12 +328,25 @@ public class CommercialReportGenerator : BaseReportGenerator
             FormatNumber(r.TotalTareWeightKg)
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "commercial_daily_summary", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "commercial_daily_summary", from, to);
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Commercial Daily Summary", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                ReportTitle = "Commercial Daily Summary", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "commercial_daily_summary", from, to);
 
@@ -157,8 +357,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             DateFrom = from,
             DateTo = to,
             StationName = !string.IsNullOrEmpty(filters.StationId) ? rows.FirstOrDefault()?.StationName : null,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Total Weighings", FormatNumber(rows.Sum(r => r.TotalWeighings))),
@@ -219,12 +419,25 @@ public class CommercialReportGenerator : BaseReportGenerator
             FormatNumber(t.AvgNetWeightKg)
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "commercial_transporter_statement", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "commercial_transporter_statement", from, to);
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Transporter Statement", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                ReportTitle = "Transporter Statement", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "commercial_transporter_statement", from, to);
 
@@ -234,8 +447,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             ReportSubtitle = "Commercial weighing summary by transporter",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Transporters", transporterData.Count.ToString()),
@@ -294,12 +507,25 @@ public class CommercialReportGenerator : BaseReportGenerator
             FormatNumber(c.MaxNetWeightKg)
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "cargo_volume", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "cargo_volume", from, to);
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Cargo Volume Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                ReportTitle = "Cargo Volume Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "cargo_volume", from, to);
 
@@ -309,8 +535,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             ReportSubtitle = "Volume trends by cargo type over the reporting period",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Cargo Types", cargoData.Count.ToString()),
@@ -387,15 +613,31 @@ public class CommercialReportGenerator : BaseReportGenerator
             $"{d.VariancePct:F1}%"
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "weight_discrepancy", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "weight_discrepancy", from, to);
         if (format == "xlsx")
+        {
+            var variancePctIdx = Array.IndexOf(outputHeaders, "Variance %");
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Weight Discrepancy Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
-                PercentageDataBarColumnIndexes = [9], // "Variance %"
+                ReportTitle = "Weight Discrepancy Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                PercentageDataBarColumnIndexes = variancePctIdx >= 0 ? new[] { variancePctIdx } : null,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "weight_discrepancy", from, to);
+        }
 
         var doc = new CommercialReportDocumentBase
         {
@@ -403,8 +645,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             ReportSubtitle = $"Transactions with discrepancy exceeding {FormatNumber(threshold)} kg",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Discrepancies Found", discrepancies.Count.ToString()),
@@ -468,14 +710,30 @@ public class CommercialReportGenerator : BaseReportGenerator
             ("#FEF3C7", "Pending")
         };
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+        int? effectiveStatusColumnIndex = statusColumnIndex;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var statusIdx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = statusIdx >= 0 ? statusIdx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "commercial_revenue", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "commercial_revenue", from, to);
         if (format == "xlsx")
         {
             var xlsxRequest = new ExcelReportRequest
             {
-                ReportTitle = "Commercial Revenue Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
-                ConditionalStatusColumnIndex = statusColumnIndex, Legend = legend,
+                ReportTitle = "Commercial Revenue Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex, Legend = legend,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             };
             return ExcelResult(GenerateExcel(xlsxRequest), "commercial_revenue", from, to);
@@ -490,9 +748,9 @@ public class CommercialReportGenerator : BaseReportGenerator
             ReportSubtitle = "Revenue from commercial weighing fees",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
-            StatusColumnIndex = statusColumnIndex,
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
+            StatusColumnIndex = effectiveStatusColumnIndex,
             Legend = legend,
             SummaryItems =
             [
@@ -565,12 +823,25 @@ public class CommercialReportGenerator : BaseReportGenerator
             };
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "throughput", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "throughput", from, to);
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Throughput Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                ReportTitle = "Throughput Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "throughput", from, to);
 
@@ -587,8 +858,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             ReportSubtitle = "Vehicle throughput and processing time by station",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Total Vehicles", FormatNumber(totalVehicles)),
@@ -684,15 +955,32 @@ public class CommercialReportGenerator : BaseReportGenerator
         const int statusColumnIndex = 7;
         var legend = new[] { (BrandingConstants.Colors.SampleTemplateRed, "Anomaly (>5% drift)") };
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = processedRows;
+        int? effectiveStatusColumnIndex = statusColumnIndex;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, processedRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var statusIdx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = statusIdx >= 0 ? statusIdx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, processedRows), "tare_weight_audit", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "tare_weight_audit", from, to);
         if (format == "xlsx")
         {
+            var driftPctIdx = Array.IndexOf(outputHeaders, "Drift %");
             var xlsxRequest = new ExcelReportRequest
             {
-                ReportTitle = "Tare Weight Audit Report", Headers = headers, Rows = processedRows, DateFrom = from, DateTo = to,
-                ConditionalStatusColumnIndex = statusColumnIndex, Legend = legend,
-                PercentageDataBarColumnIndexes = [5], // "Drift %"
+                ReportTitle = "Tare Weight Audit Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex, Legend = legend,
+                PercentageDataBarColumnIndexes = driftPctIdx >= 0 ? new[] { driftPctIdx } : null,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             };
             return ExcelResult(GenerateExcel(xlsxRequest), "tare_weight_audit", from, to);
@@ -704,9 +992,9 @@ public class CommercialReportGenerator : BaseReportGenerator
             ReportSubtitle = "Tare weight changes per vehicle with anomaly detection (>5% drift)",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = processedRows.ToArray(),
-            StatusColumnIndex = statusColumnIndex,
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
+            StatusColumnIndex = effectiveStatusColumnIndex,
             Legend = legend,
             SummaryItems =
             [
@@ -782,12 +1070,25 @@ public class CommercialReportGenerator : BaseReportGenerator
             FormatNumber(v.AvgTareKg)
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "fleet_utilization", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "fleet_utilization", from, to);
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Fleet Utilization Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                ReportTitle = "Fleet Utilization Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "fleet_utilization", from, to);
 
@@ -797,8 +1098,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             ReportSubtitle = "Per-vehicle trip count, payload, and utilization metrics",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Vehicles", vehicleData.Count.ToString()),
@@ -873,12 +1174,25 @@ public class CommercialReportGenerator : BaseReportGenerator
             };
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "driver_productivity", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "driver_productivity", from, to);
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Driver Productivity Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                ReportTitle = "Driver Productivity Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "driver_productivity", from, to);
 
@@ -888,8 +1202,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             ReportSubtitle = "Per-driver trip count, net weight, and turnaround time",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Drivers", driverData.Count.ToString()),
@@ -958,12 +1272,25 @@ public class CommercialReportGenerator : BaseReportGenerator
             q.WithMetadata.ToString()
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "quality_commodity", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "quality_commodity", from, to);
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Quality & Commodity Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                ReportTitle = "Quality & Commodity Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "quality_commodity", from, to);
 
@@ -973,8 +1300,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             ReportSubtitle = "Quality deduction stats by cargo type",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Cargo Types", qualityData.Count.ToString()),
@@ -1093,12 +1420,25 @@ public class CommercialReportGenerator : BaseReportGenerator
             r.Voided.ToString()
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "shift_performance", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "shift_performance", from, to);
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Shift Performance Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                ReportTitle = "Shift Performance Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "shift_performance", from, to);
 
@@ -1108,8 +1448,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             ReportSubtitle = "Commercial weighing activity grouped by shift and date",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Total Transactions", FormatNumber(grouped.Sum(r => r.TotalTransactions))),
@@ -1188,8 +1528,21 @@ public class CommercialReportGenerator : BaseReportGenerator
             r.CreatedAt.ToString("dd/MM/yyyy HH:mm")
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "transaction_audit_log", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "transaction_audit_log", from, to);
         if (format == "xlsx")
         {
             // Not status-colour-coded: the "Status" column here is CaptureStatus ("captured"/
@@ -1198,7 +1551,7 @@ public class CommercialReportGenerator : BaseReportGenerator
             // thing, so this stays a plain (but now branded) export.
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Transaction Audit Log", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                ReportTitle = "Transaction Audit Log", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "transaction_audit_log", from, to);
         }
@@ -1212,8 +1565,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             ReportSubtitle = "Full commercial transaction audit trail including voided records",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Total Records", FormatNumber(rows.Count)),
@@ -1279,12 +1632,25 @@ public class CommercialReportGenerator : BaseReportGenerator
             r.FirstWeightKg.HasValue ? FormatNumber(r.FirstWeightKg.Value) : "-"
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "pending_transactions", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "pending_transactions", from, to);
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Pending Transactions Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                ReportTitle = "Pending Transactions Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "pending_transactions", from, to);
 
@@ -1298,8 +1664,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             ReportSubtitle = "Transactions with first weight captured awaiting second weight",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Pending Count", FormatNumber(rows.Count)),
@@ -1367,12 +1733,25 @@ public class CommercialReportGenerator : BaseReportGenerator
             FormatNumber(r.AvgNetWeightKg)
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, csvRows), "monthly_reconciliation", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "monthly_reconciliation", from, to);
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Monthly Reconciliation Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                ReportTitle = "Monthly Reconciliation Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "monthly_reconciliation", from, to);
 
@@ -1382,8 +1761,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             ReportSubtitle = "Monthly summary of commercial weighing activity",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = csvRows.ToArray(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
             SummaryItems =
             [
                 ("Months", monthlyData.Count.ToString()),

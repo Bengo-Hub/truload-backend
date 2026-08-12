@@ -15,6 +15,85 @@ public class ProsecutionReportGenerator : BaseReportGenerator
 {
     private readonly TruLoadDbContext _context;
 
+    // =====================================================================
+    // Structured custom-report-builder column catalogs. Each Key MUST match the literal header
+    // text built in that report's generation method (see BaseReportGenerator.ApplyColumnSelection
+    // - matches by header string). The "(KES)" columns below are hardcoded literals, not
+    // $"...({currency})" runtime interpolations, so they're safe to catalog like any other column.
+    // =====================================================================
+
+    private static readonly List<ReportColumnDefinition> ProsecutionStatisticsColumns =
+    [
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Cases", Label = "Number of Cases" },
+        new() { Key = "Total Fee (KES)", Label = "Total Fee (KES)" },
+        new() { Key = "% of Total", Label = "% of Total" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> CourtCalendarColumns =
+    [
+        new() { Key = "Case No", Label = "Case Number" },
+        new() { Key = "Hearing Date", Label = "Hearing Date" },
+        new() { Key = "Time", Label = "Hearing Time" },
+        new() { Key = "Type", Label = "Hearing Type" },
+        new() { Key = "Status", Label = "Hearing Status" },
+        new() { Key = "Outcome", Label = "Hearing Outcome" },
+        new() { Key = "Presiding Officer", Label = "Presiding Officer" },
+        new() { Key = "Next Hearing", Label = "Next Hearing Date" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> DailyChargedColumns =
+    [
+        new() { Key = "Date", Label = "Date" },
+        new() { Key = "Case No", Label = "Case Number" },
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Ticket No", Label = "Weighing Ticket Number" },
+        new() { Key = "GVW Overload (kg)", Label = "GVW Overload (kg)" },
+        new() { Key = "Max Axle Overload (kg)", Label = "Max Axle Overload (kg)" },
+        new() { Key = "Charge Basis", Label = "Charge Basis" },
+        new() { Key = "Fee (KES)", Label = "Fee (KES)" },
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Officer", Label = "Prosecution Officer" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> PaymentListColumns =
+    [
+        new() { Key = "Date", Label = "Date" },
+        new() { Key = "Case No", Label = "Case Number" },
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Fee (KES)", Label = "Fee (KES)" },
+        new() { Key = "Case Status", Label = "Case Status" },
+        new() { Key = "Invoice No", Label = "Invoice Number" },
+        new() { Key = "Invoice Status", Label = "Invoice Status" },
+        new() { Key = "Pesaflow Link", Label = "Pesaflow Payment Link" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> CourtFinesColumns =
+    [
+        new() { Key = "Case No", Label = "Case Number" },
+        new() { Key = "Invoice No", Label = "Invoice Number" },
+        new() { Key = "Amount Due", Label = "Amount Due" },
+        new() { Key = "Currency", Label = "Currency" },
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Total Paid", Label = "Total Paid" },
+        new() { Key = "Generated", Label = "Generated Date" },
+        new() { Key = "Due Date", Label = "Due Date" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> HabitualOffendersColumns =
+    [
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Case No", Label = "Case Number" },
+        new() { Key = "Offenses (12mo)", Label = "Offenses (12 Months)" },
+        new() { Key = "Multiplier", Label = "Penalty Multiplier" },
+        new() { Key = "Fee (KES)", Label = "Fee (KES)" },
+        new() { Key = "GVW Overload (kg)", Label = "GVW Overload (kg)" },
+        new() { Key = "Max Axle Overload (kg)", Label = "Max Axle Overload (kg)" },
+        new() { Key = "Charge Basis", Label = "Charge Basis" },
+        new() { Key = "Demerit Pts", Label = "Demerit Points" },
+        new() { Key = "Date", Label = "Date" }
+    ];
+
     public ProsecutionReportGenerator(TruLoadDbContext context)
     {
         _context = context;
@@ -25,17 +104,23 @@ public class ProsecutionReportGenerator : BaseReportGenerator
     public override List<ReportDefinitionDto> GetDefinitions() =>
     [
         Def("prosecution-statistics", "Prosecution Statistics",
-            "Summary statistics of prosecution cases including charge basis breakdown and fees collected."),
+            "Summary statistics of prosecution cases including charge basis breakdown and fees collected.",
+            columns: ProsecutionStatisticsColumns),
         Def("court-calendar", "Court Calendar",
-            "Upcoming and past court hearings with case references, dates, and presiding officers."),
+            "Upcoming and past court hearings with case references, dates, and presiding officers.",
+            columns: CourtCalendarColumns),
         Def("daily-charged", "Daily Charged Vehicles",
-            "List of vehicles charged per day with overload details, fees, and officer information."),
+            "List of vehicles charged per day with overload details, fees, and officer information.",
+            columns: DailyChargedColumns),
         Def("payment-list", "Prosecution Payment List",
-            "Prosecution cases with associated invoice and payment status for revenue tracking."),
+            "Prosecution cases with associated invoice and payment status for revenue tracking.",
+            columns: PaymentListColumns),
         Def("court-fines", "Court Fines Summary",
-            "Summary of court-imposed fines aggregated by status and period."),
+            "Summary of court-imposed fines aggregated by status and period.",
+            columns: CourtFinesColumns),
         Def("habitual-offenders", "Habitual Offenders",
-            "Vehicles with multiple prosecution cases within 12 months flagged as repeat offenders.")
+            "Vehicles with multiple prosecution cases within 12 months flagged as repeat offenders.",
+            columns: HabitualOffendersColumns)
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -108,15 +193,34 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             totalCases > 0 ? $"{(decimal)g.Count / totalCases * 100:F1}%" : "0%"
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = rows;
+        int? effectiveStatusColumnIndex = 0;
+        int[]? percentageDataBarColumnIndexes = [3];
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var statusIdx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = statusIdx >= 0 ? statusIdx : null;
+            var pctIdx = Array.IndexOf(outputHeaders, "% of Total");
+            percentageDataBarColumnIndexes = pctIdx >= 0 ? new[] { pctIdx } : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "prosecution_statistics", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "prosecution_statistics", from, to);
 
         if (format == "xlsx")
         {
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Prosecution Statistics Report", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
-                ConditionalStatusColumnIndex = 0, PercentageDataBarColumnIndexes = [3],
+                ReportTitle = "Prosecution Statistics Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex, PercentageDataBarColumnIndexes = percentageDataBarColumnIndexes,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "prosecution_statistics", from, to);
         }
@@ -126,9 +230,9 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             ReportTitle = "Prosecution Statistics Report",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToList(),
-            StatusColumnIndex = 0,
+            Headers = outputHeaders,
+            Rows = outputRows.ToList(),
+            StatusColumnIndex = effectiveStatusColumnIndex,
             SummaryItems =
             [
                 ("Total Cases", totalCases.ToString()),
@@ -186,13 +290,26 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             FormatDate(h.NextHearingDate)
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = rows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "court_calendar", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "court_calendar", from, to);
 
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Court Calendar", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                ReportTitle = "Court Calendar", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "court_calendar", from, to);
 
@@ -201,8 +318,8 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             ReportTitle = "Court Calendar",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToList(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToList(),
             SummaryLabel = "Total Hearings",
             SummaryValue = hearings.Count.ToString()
         };
@@ -260,15 +377,31 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             c.ProsecutionOfficerName
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = rows;
+        int? effectiveStatusColumnIndex = 8;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var statusIdx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = statusIdx >= 0 ? statusIdx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "daily_charged", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "daily_charged", from, to);
 
         if (format == "xlsx")
         {
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Daily Charged Vehicles", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
-                ConditionalStatusColumnIndex = 8,
+                ReportTitle = "Daily Charged Vehicles", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "daily_charged", from, to);
         }
@@ -278,11 +411,11 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             ReportTitle = "Daily Charged Vehicles",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToList(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToList(),
             SummaryLabel = "Total Charged",
             SummaryValue = $"{cases.Count} vehicles | {FormatKes(cases.Sum(c => c.TotalFeeKes))}",
-            StatusColumnIndex = 8
+            StatusColumnIndex = effectiveStatusColumnIndex
         };
         return PdfResult(doc, filters, "daily_charged", from, to);
     }
@@ -329,15 +462,31 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             d.PesaflowLink
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = rows;
+        int? effectiveStatusColumnIndex = 6; // "Invoice Status"
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var statusIdx = Array.IndexOf(outputHeaders, "Invoice Status");
+            effectiveStatusColumnIndex = statusIdx >= 0 ? statusIdx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "prosecution_payment_list", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "prosecution_payment_list", from, to);
 
         if (format == "xlsx")
         {
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Prosecution Payment List", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
-                ConditionalStatusColumnIndex = 6, // "Invoice Status"
+                ReportTitle = "Prosecution Payment List", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex, // "Invoice Status"
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "prosecution_payment_list", from, to);
         }
@@ -349,11 +498,11 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             ReportTitle = "Prosecution Payment List",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToList(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToList(),
             SummaryLabel = "Total Fees",
             SummaryValue = $"{FormatKes(totalFees)} | {paidCount}/{data.Count} paid",
-            StatusColumnIndex = 6
+            StatusColumnIndex = effectiveStatusColumnIndex
         };
         return PdfResult(doc, filters, "prosecution_payment_list", from, to);
     }
@@ -402,15 +551,31 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             FormatDate(i.DueDate)
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = rows;
+        int? effectiveStatusColumnIndex = 4;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var statusIdx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = statusIdx >= 0 ? statusIdx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "court_fines", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "court_fines", from, to);
 
         if (format == "xlsx")
         {
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Court Fines Summary", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
-                ConditionalStatusColumnIndex = 4,
+                ReportTitle = "Court Fines Summary", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "court_fines", from, to);
         }
@@ -422,11 +587,11 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             ReportTitle = "Court Fines Summary",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToList(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToList(),
             SummaryLabel = "Totals",
             SummaryValue = $"Due: {FormatNumber(totalDue)} | Paid: {FormatNumber(totalPaid)}",
-            StatusColumnIndex = 4
+            StatusColumnIndex = effectiveStatusColumnIndex
         };
         return PdfResult(doc, filters, "court_fines", from, to);
     }
@@ -483,13 +648,26 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             FormatDate(o.CreatedAt)
         });
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection apply.
+        var outputHeaders = headers;
+        var outputRows = rows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "habitual_offenders", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "habitual_offenders", from, to);
 
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Habitual Offenders Report", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                ReportTitle = "Habitual Offenders Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "habitual_offenders", from, to);
 
@@ -498,8 +676,8 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             ReportTitle = "Habitual Offenders Report",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToList(),
+            Headers = outputHeaders,
+            Rows = outputRows.ToList(),
             SummaryLabel = "Total Habitual Offenders",
             SummaryValue = offenders.Count.ToString()
         };
