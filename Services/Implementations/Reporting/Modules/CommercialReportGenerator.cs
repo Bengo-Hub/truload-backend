@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
+using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Reporting;
 using TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments.Reports;
@@ -143,7 +144,11 @@ public class CommercialReportGenerator : BaseReportGenerator
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "commercial_daily_summary", from, to);
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Commercial Daily Summary", headers, csvRows, from, to), "commercial_daily_summary", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Commercial Daily Summary", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "commercial_daily_summary", from, to);
 
         var doc = new CommercialReportDocumentBase
         {
@@ -217,7 +222,11 @@ public class CommercialReportGenerator : BaseReportGenerator
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "commercial_transporter_statement", from, to);
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Transporter Statement", headers, csvRows, from, to), "commercial_transporter_statement", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Transporter Statement", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "commercial_transporter_statement", from, to);
 
         var doc = new CommercialReportDocumentBase
         {
@@ -288,7 +297,11 @@ public class CommercialReportGenerator : BaseReportGenerator
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "cargo_volume", from, to);
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Cargo Volume Report", headers, csvRows, from, to), "cargo_volume", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Cargo Volume Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "cargo_volume", from, to);
 
         var doc = new CommercialReportDocumentBase
         {
@@ -377,7 +390,12 @@ public class CommercialReportGenerator : BaseReportGenerator
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "weight_discrepancy", from, to);
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Weight Discrepancy Report", headers, csvRows, from, to), "weight_discrepancy", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Weight Discrepancy Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                PercentageDataBarColumnIndexes = [9], // "Variance %"
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "weight_discrepancy", from, to);
 
         var doc = new CommercialReportDocumentBase
         {
@@ -443,10 +461,25 @@ public class CommercialReportGenerator : BaseReportGenerator
             $"{r.TotalAmount:N2}"
         });
 
+        const int statusColumnIndex = 2;
+        var legend = new[]
+        {
+            ("#C6EFCE", "Paid"),
+            ("#FEF3C7", "Pending")
+        };
+
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "commercial_revenue", from, to);
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Commercial Revenue Report", headers, csvRows, from, to), "commercial_revenue", from, to);
+        {
+            var xlsxRequest = new ExcelReportRequest
+            {
+                ReportTitle = "Commercial Revenue Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = statusColumnIndex, Legend = legend,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            };
+            return ExcelResult(GenerateExcel(xlsxRequest), "commercial_revenue", from, to);
+        }
 
         var totalRevenue = invoiceData.Where(r => r.Status == "paid").Sum(r => r.TotalAmount);
         var totalPending = invoiceData.Where(r => r.Status == "pending").Sum(r => r.TotalAmount);
@@ -459,6 +492,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             DateTo = to,
             Headers = headers,
             Rows = csvRows.ToArray(),
+            StatusColumnIndex = statusColumnIndex,
+            Legend = legend,
             SummaryItems =
             [
                 ("Total Invoices", FormatNumber(invoiceData.Sum(r => r.Count))),
@@ -533,7 +568,11 @@ public class CommercialReportGenerator : BaseReportGenerator
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "throughput", from, to);
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Throughput Report", headers, csvRows, from, to), "throughput", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Throughput Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "throughput", from, to);
 
         var totalVehicles = stationData.Sum(s => s.VehicleCount);
         var totalTwoPass = stationData.Sum(s => s.TwoPassCount);
@@ -642,10 +681,22 @@ public class CommercialReportGenerator : BaseReportGenerator
             "Drift %", "Source", "Status", "Notes"
         };
 
+        const int statusColumnIndex = 7;
+        var legend = new[] { (BrandingConstants.Colors.SampleTemplateRed, "Anomaly (>5% drift)") };
+
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, processedRows), "tare_weight_audit", from, to);
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Tare Weight Audit Report", headers, processedRows, from, to), "tare_weight_audit", from, to);
+        {
+            var xlsxRequest = new ExcelReportRequest
+            {
+                ReportTitle = "Tare Weight Audit Report", Headers = headers, Rows = processedRows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = statusColumnIndex, Legend = legend,
+                PercentageDataBarColumnIndexes = [5], // "Drift %"
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            };
+            return ExcelResult(GenerateExcel(xlsxRequest), "tare_weight_audit", from, to);
+        }
 
         var doc = new CommercialReportDocumentBase
         {
@@ -655,6 +706,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             DateTo = to,
             Headers = headers,
             Rows = processedRows.ToArray(),
+            StatusColumnIndex = statusColumnIndex,
+            Legend = legend,
             SummaryItems =
             [
                 ("Tare Records", processedRows.Count.ToString()),
@@ -732,7 +785,11 @@ public class CommercialReportGenerator : BaseReportGenerator
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "fleet_utilization", from, to);
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Fleet Utilization Report", headers, csvRows, from, to), "fleet_utilization", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Fleet Utilization Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "fleet_utilization", from, to);
 
         var doc = new CommercialReportDocumentBase
         {
@@ -819,7 +876,11 @@ public class CommercialReportGenerator : BaseReportGenerator
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "driver_productivity", from, to);
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Driver Productivity Report", headers, csvRows, from, to), "driver_productivity", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Driver Productivity Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "driver_productivity", from, to);
 
         var doc = new CommercialReportDocumentBase
         {
@@ -900,7 +961,11 @@ public class CommercialReportGenerator : BaseReportGenerator
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "quality_commodity", from, to);
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Quality & Commodity Report", headers, csvRows, from, to), "quality_commodity", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Quality & Commodity Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "quality_commodity", from, to);
 
         var doc = new CommercialReportDocumentBase
         {
@@ -1031,7 +1096,11 @@ public class CommercialReportGenerator : BaseReportGenerator
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "shift_performance", from, to);
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Shift Performance Report", headers, csvRows, from, to), "shift_performance", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Shift Performance Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "shift_performance", from, to);
 
         var doc = new CommercialReportDocumentBase
         {
@@ -1122,7 +1191,17 @@ public class CommercialReportGenerator : BaseReportGenerator
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "transaction_audit_log", from, to);
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Transaction Audit Log", headers, csvRows, from, to), "transaction_audit_log", from, to);
+        {
+            // Not status-colour-coded: the "Status" column here is CaptureStatus ("captured"/
+            // "pending"), while the actual exception worth flagging (voided) lives in a separate
+            // "Voided At" timestamp column - colouring by CaptureStatus would highlight the wrong
+            // thing, so this stays a plain (but now branded) export.
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Transaction Audit Log", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "transaction_audit_log", from, to);
+        }
 
         var voidedCount = rows.Count(r => r.VoidedAt.HasValue);
         var completedCount = rows.Count(r => r.CaptureStatus == "captured");
@@ -1203,7 +1282,11 @@ public class CommercialReportGenerator : BaseReportGenerator
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "pending_transactions", from, to);
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Pending Transactions Report", headers, csvRows, from, to), "pending_transactions", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Pending Transactions Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "pending_transactions", from, to);
 
         var avgHoursPending = rows.Count > 0 && rows.Any(r => r.FirstWeightAt.HasValue)
             ? rows.Where(r => r.FirstWeightAt.HasValue).Average(r => (now - r.FirstWeightAt!.Value).TotalHours)
@@ -1287,7 +1370,11 @@ public class CommercialReportGenerator : BaseReportGenerator
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "monthly_reconciliation", from, to);
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Monthly Reconciliation Report", headers, csvRows, from, to), "monthly_reconciliation", from, to);
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Monthly Reconciliation Report", Headers = headers, Rows = csvRows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "monthly_reconciliation", from, to);
 
         var doc = new CommercialReportDocumentBase
         {
@@ -1323,6 +1410,10 @@ public class CommercialReportGenerator : BaseReportGenerator
         public string[][] Rows { get; set; } = [];
         public (string label, string value)[] SummaryItems { get; set; } = [];
 
+        /// <summary>Optional - set by report types that have a genuine per-row status column.</summary>
+        public int? StatusColumnIndex { get; set; }
+        public (string colorHex, string label)[] Legend { get; set; } = [];
+
         protected override void ComposeContent(IContainer container)
         {
             container.Column(col =>
@@ -1332,7 +1423,8 @@ public class CommercialReportGenerator : BaseReportGenerator
                 if (SummaryItems.Length > 0)
                     col.Item().Element(c => ComposeSummaryCards(c, SummaryItems));
 
-                col.Item().Element(c => ComposeDataTable(c, Headers, Rows));
+                col.Item().Element(c => ComposeDataTable(c, Headers, Rows, conditionalStatusColumnIndex: StatusColumnIndex));
+                col.Item().Element(c => ComposeLegend(c, Legend));
             });
         }
     }
