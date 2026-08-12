@@ -65,6 +65,7 @@ using TruLoad.Backend.Services.Implementations.Portal;
 using TruLoad.Backend.Services.BackgroundJobs;
 using TruLoad.Backend.Services.Implementations.Reporting.Modules;
 using TruLoad.Backend.DTOs.Analytics;
+using TruLoad.Backend.DTOs.Integration;
 using TruLoad.Backend.Configuration;
 
 // Set QuestPDF License
@@ -527,6 +528,20 @@ builder.Services.AddHttpClient<IKeNHAService, KeNHAService>(c =>
     c.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddHttpClient<INTSAService, NTSAService>(c =>
     c.Timeout = TimeSpan.FromSeconds(30));
+
+// Reverse-geocoding: road name via the already-deployed Valhalla routing engine (ns `logistics`,
+// real Kenya OSM data) - reused instead of standing up a separate geocoding service. County/
+// sub-county resolution is a separate, currently-inert seam (see NotConfiguredCountyBoundaryResolver)
+// pending a real Kenya admin-boundary dataset.
+builder.Services.Configure<ValhallaOptions>(builder.Configuration.GetSection(ValhallaOptions.SectionName));
+builder.Services.AddSingleton<ICountyBoundaryResolver, NotConfiguredCountyBoundaryResolver>();
+builder.Services.AddHttpClient<IGeocodingService, GeocodingService>((sp, c) =>
+{
+    var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ValhallaOptions>>().Value;
+    c.BaseAddress = new Uri(opts.BaseUrl);
+    c.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
+});
+builder.Services.AddScoped<TruLoad.Backend.Services.BackgroundJobs.GeocodeBackfillJob>();
 
 // Yard services
 builder.Services.AddScoped<IYardService, YardService>();

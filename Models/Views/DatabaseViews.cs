@@ -337,6 +337,7 @@ public class MvStationPerformanceScorecard : ITenantAware
     public string StationType { get; set; } = null!;
     public string? RoadName { get; set; }
     public string? CountyName { get; set; }
+    public string? SubcountyName { get; set; }
     public long TotalWeighings { get; set; }
 
     [Column("weighings_last_30_days")]

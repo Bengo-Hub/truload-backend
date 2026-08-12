@@ -223,6 +223,7 @@ SELECT
     s.station_type,
     r.name AS road_name,
     c."Name" AS county_name,
+    sc.name AS subcounty_name,
     COUNT(DISTINCT wt.id) AS total_weighings,
     COUNT(DISTINCT wt.id) FILTER (WHERE wt.weighed_at >= CURRENT_DATE - INTERVAL '30 days') AS weighings_last_30_days,
     COUNT(DISTINCT wt.id) FILTER (WHERE wt.weighed_at >= CURRENT_DATE - INTERVAL '7 days') AS weighings_last_7_days,
@@ -240,11 +241,12 @@ SELECT
 FROM stations s
 LEFT JOIN roads r ON r.id = s.road_id
 LEFT JOIN "Counties" c ON c."Id" = s.county_id
+LEFT JOIN subcounties sc ON sc.id = s."SubcountyId"
 LEFT JOIN weighing_transactions wt ON wt.station_id = s."Id"
 LEFT JOIN yard_entries ye ON ye.station_id = s."Id"
 LEFT JOIN case_registers cr ON cr.weighing_id = wt.id AND cr.organization_id = wt.organization_id
 LEFT JOIN scale_tests st ON st.station_id = s."Id"
-GROUP BY s.organization_id, s."Id", s.code, s.name, s.station_type, r.name, c."Name";
+GROUP BY s.organization_id, s."Id", s.code, s.name, s.station_type, r.name, c."Name", sc.name;
 
 -- Create indexes
 CREATE UNIQUE INDEX idx_mv_station_performance_scorecard_unique
