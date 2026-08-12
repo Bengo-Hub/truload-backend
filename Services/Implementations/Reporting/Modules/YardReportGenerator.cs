@@ -14,6 +14,38 @@ public class YardReportGenerator : BaseReportGenerator
 {
     private readonly TruLoadDbContext _context;
 
+    // =====================================================================
+    // Structured custom-report-builder column catalogs. Each Key MUST match the literal header
+    // text built in that report's generation method (see BaseReportGenerator.ApplyColumnSelection
+    // - matches by header string). Neither report builds a header via string interpolation with a
+    // runtime value, so all columns are included in the catalog.
+    // =====================================================================
+
+    private static readonly List<ReportColumnDefinition> YardOccupancyColumns =
+    [
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "Bound", Label = "Bound" },
+        new() { Key = "Reason", Label = "Reason" },
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Entry Time", Label = "Entry Time" },
+        new() { Key = "Exit Time", Label = "Exit Time" },
+        new() { Key = "Duration", Label = "Duration" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> VehicleEntriesExitsColumns =
+    [
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Ticket No", Label = "Ticket Number" },
+        new() { Key = "Station", Label = "Station" },
+        new() { Key = "Bound", Label = "Bound" },
+        new() { Key = "Reason", Label = "Reason" },
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Entry", Label = "Entry Time" },
+        new() { Key = "Exit", Label = "Exit Time" },
+        new() { Key = "Duration (hrs)", Label = "Duration (Hours)" }
+    ];
+
     public YardReportGenerator(TruLoadDbContext context)
     {
         _context = context;
@@ -24,9 +56,11 @@ public class YardReportGenerator : BaseReportGenerator
     public override List<ReportDefinitionDto> GetDefinitions() =>
     [
         Def("yard-occupancy", "Yard Occupancy",
-            "Current and historical yard occupancy showing vehicles in the holding yard by station."),
+            "Current and historical yard occupancy showing vehicles in the holding yard by station.",
+            columns: YardOccupancyColumns),
         Def("vehicle-entries-exits", "Vehicle Entries & Exits",
-            "Detailed log of all vehicle entries and exits from the holding yard with durations.")
+            "Detailed log of all vehicle entries and exits from the holding yard with durations.",
+            columns: VehicleEntriesExitsColumns)
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -116,15 +150,28 @@ public class YardReportGenerator : BaseReportGenerator
             };
         });
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = rows.ToList();
+        int? effectiveStatusColumnIndex = 4;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = idx >= 0 ? idx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "yard_occupancy", null, null);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "yard_occupancy", null, null);
 
         if (format == "xlsx")
         {
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Yard Occupancy Report", Headers = headers, Rows = rows,
-                ConditionalStatusColumnIndex = 4,
+                ReportTitle = "Yard Occupancy Report", Headers = outputHeaders, Rows = outputRows,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "yard_occupancy", null, null);
         }
@@ -144,9 +191,9 @@ public class YardReportGenerator : BaseReportGenerator
         var doc = new YardOccupancyDocument
         {
             ReportTitle = "Yard Occupancy Report",
-            Headers = headers,
-            Rows = rows.ToList(),
-            StatusColumnIndex = 4,
+            Headers = outputHeaders,
+            Rows = outputRows,
+            StatusColumnIndex = effectiveStatusColumnIndex,
             SummaryItems = summaryItems.ToArray()
         };
         return PdfResult(doc, filters, "yard_occupancy", null, null);
@@ -211,15 +258,28 @@ public class YardReportGenerator : BaseReportGenerator
             };
         });
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = rows.ToList();
+        int? effectiveStatusColumnIndex = 5;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = idx >= 0 ? idx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "vehicle_entries_exits", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "vehicle_entries_exits", from, to);
 
         if (format == "xlsx")
         {
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Vehicle Entries & Exits", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
-                ConditionalStatusColumnIndex = 5,
+                ReportTitle = "Vehicle Entries & Exits", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "vehicle_entries_exits", from, to);
         }
@@ -233,9 +293,9 @@ public class YardReportGenerator : BaseReportGenerator
             ReportTitle = "Vehicle Entries & Exits",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToList(),
-            StatusColumnIndex = 5,
+            Headers = outputHeaders,
+            Rows = outputRows,
+            StatusColumnIndex = effectiveStatusColumnIndex,
             SummaryItems =
             [
                 ("Total Entries", totalEntries.ToString()),

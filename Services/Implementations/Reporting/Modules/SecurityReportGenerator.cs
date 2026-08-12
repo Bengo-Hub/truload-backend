@@ -14,6 +14,37 @@ public class SecurityReportGenerator : BaseReportGenerator
 {
     private readonly TruLoadDbContext _context;
 
+    // =====================================================================
+    // Structured custom-report-builder column catalogs. Each Key MUST match the literal header
+    // text built in that report's generation method (see BaseReportGenerator.ApplyColumnSelection
+    // - matches by header string). Neither report builds a header via string interpolation with a
+    // runtime value, so all columns are included in the catalog.
+    // =====================================================================
+
+    private static readonly List<ReportColumnDefinition> AuditLogColumns =
+    [
+        new() { Key = "Timestamp", Label = "Timestamp" },
+        new() { Key = "User", Label = "User" },
+        new() { Key = "Action", Label = "Action" },
+        new() { Key = "Resource Type", Label = "Resource Type" },
+        new() { Key = "Resource", Label = "Resource" },
+        new() { Key = "Success", Label = "Success" },
+        new() { Key = "Method", Label = "HTTP Method" },
+        new() { Key = "Endpoint", Label = "Endpoint" },
+        new() { Key = "IP Address", Label = "IP Address" },
+        new() { Key = "Denial Reason", Label = "Denial Reason" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> ShiftReportColumns =
+    [
+        new() { Key = "User", Label = "User" },
+        new() { Key = "Shift", Label = "Shift" },
+        new() { Key = "Code", Label = "Shift Code" },
+        new() { Key = "Starts On", Label = "Starts On" },
+        new() { Key = "Ends On", Label = "Ends On" },
+        new() { Key = "Active", Label = "Active" }
+    ];
+
     public SecurityReportGenerator(TruLoadDbContext context)
     {
         _context = context;
@@ -24,9 +55,11 @@ public class SecurityReportGenerator : BaseReportGenerator
     public override List<ReportDefinitionDto> GetDefinitions() =>
     [
         Def("audit-log", "Audit Log",
-            "Detailed audit trail of all system actions including user, action type, resource, and outcome."),
+            "Detailed audit trail of all system actions including user, action type, resource, and outcome.",
+            columns: AuditLogColumns),
         Def("shift-report", "Shift Report",
-            "Summary of user shift assignments and coverage across stations for the reporting period.")
+            "Summary of user shift assignments and coverage across stations for the reporting period.",
+            columns: ShiftReportColumns)
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -109,15 +142,28 @@ public class SecurityReportGenerator : BaseReportGenerator
             l.DenialReason ?? "-"
         });
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = rows.ToList();
+        int? effectiveStatusColumnIndex = 5; // "Success" (Yes/No)
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Success");
+            effectiveStatusColumnIndex = idx >= 0 ? idx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "audit_log", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "audit_log", from, to);
 
         if (format == "xlsx")
         {
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Audit Log Report", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
-                ConditionalStatusColumnIndex = 5, // "Success" (Yes/No)
+                ReportTitle = "Audit Log Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "audit_log", from, to);
         }
@@ -139,9 +185,9 @@ public class SecurityReportGenerator : BaseReportGenerator
             ReportTitle = "Audit Log Report",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToList(),
-            StatusColumnIndex = 5,
+            Headers = outputHeaders,
+            Rows = outputRows,
+            StatusColumnIndex = effectiveStatusColumnIndex,
             SummaryItems = summaryItems.ToArray()
         };
         return PdfResult(doc, filters, "audit_log", from, to);
@@ -195,13 +241,23 @@ public class SecurityReportGenerator : BaseReportGenerator
             us.IsActive ? "Yes" : "No"
         });
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = rows.ToList();
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "shift_report", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "shift_report", from, to);
 
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Shift Report", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                ReportTitle = "Shift Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "shift_report", from, to);
 
@@ -227,8 +283,8 @@ public class SecurityReportGenerator : BaseReportGenerator
             ReportTitle = "Shift Report",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToList(),
+            Headers = outputHeaders,
+            Rows = outputRows,
             SummaryItems = summaryItems.ToArray()
         };
         return PdfResult(doc, filters, "shift_report", from, to);

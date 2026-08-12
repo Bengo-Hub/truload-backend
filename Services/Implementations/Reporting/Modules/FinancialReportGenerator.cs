@@ -17,6 +17,53 @@ public class FinancialReportGenerator : BaseReportGenerator
     private readonly TruLoadDbContext _context;
     private readonly ISettingsService _settingsService;
 
+    // =====================================================================
+    // Structured custom-report-builder column catalogs. Each Key MUST match the literal header
+    // text built in that report's generation method (see BaseReportGenerator.ApplyColumnSelection
+    // - matches by header string). None of these reports build a header via string interpolation
+    // with a runtime value, so all columns are included in the catalog.
+    // =====================================================================
+
+    private static readonly List<ReportColumnDefinition> RevenueCollectionColumns =
+    [
+        new() { Key = "Receipt No", Label = "Receipt Number" },
+        new() { Key = "Invoice No", Label = "Invoice Number" },
+        new() { Key = "Amount", Label = "Amount" },
+        new() { Key = "Currency", Label = "Currency" },
+        new() { Key = "Payment Method", Label = "Payment Method" },
+        new() { Key = "Channel", Label = "Payment Channel" },
+        new() { Key = "Reference", Label = "Transaction Reference" },
+        new() { Key = "Date", Label = "Payment Date" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> InvoiceAgingColumns =
+    [
+        new() { Key = "Invoice No", Label = "Invoice Number" },
+        new() { Key = "Amount Due", Label = "Amount Due" },
+        new() { Key = "Paid", Label = "Amount Paid" },
+        new() { Key = "Outstanding", Label = "Outstanding Balance" },
+        new() { Key = "Currency", Label = "Currency" },
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Age (days)", Label = "Age (Days)" },
+        new() { Key = "Bucket", Label = "Aging Bucket" },
+        new() { Key = "Generated", Label = "Generated Date" },
+        new() { Key = "Due Date", Label = "Due Date" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> PaymentReconciliationColumns =
+    [
+        new() { Key = "Invoice No", Label = "Invoice Number" },
+        new() { Key = "Amount Due", Label = "Amount Due" },
+        new() { Key = "Total Paid", Label = "Total Paid" },
+        new() { Key = "Balance", Label = "Balance" },
+        new() { Key = "Currency", Label = "Currency" },
+        new() { Key = "Status", Label = "Reconciliation Status" },
+        new() { Key = "Receipts", Label = "Receipt Count" },
+        new() { Key = "Payment Methods", Label = "Payment Methods" },
+        new() { Key = "Last Payment", Label = "Last Payment Date" },
+        new() { Key = "Generated", Label = "Generated Date" }
+    ];
+
     public FinancialReportGenerator(TruLoadDbContext context, ISettingsService settingsService)
     {
         _context = context;
@@ -28,11 +75,14 @@ public class FinancialReportGenerator : BaseReportGenerator
     public override List<ReportDefinitionDto> GetDefinitions() =>
     [
         Def("revenue-collection", "Revenue Collection",
-            "Summary of all revenue collected from receipts, grouped by payment method and period."),
+            "Summary of all revenue collected from receipts, grouped by payment method and period.",
+            columns: RevenueCollectionColumns),
         Def("invoice-aging", "Invoice Aging",
-            "Outstanding invoices grouped by aging buckets (current, 30-day, 60-day, 90-day+)."),
+            "Outstanding invoices grouped by aging buckets (current, 30-day, 60-day, 90-day+).",
+            columns: InvoiceAgingColumns),
         Def("payment-reconciliation", "Payment Reconciliation",
-            "Reconciliation of invoices against receipts to identify paid, partial, and outstanding balances.")
+            "Reconciliation of invoices against receipts to identify paid, partial, and outstanding balances.",
+            columns: PaymentReconciliationColumns)
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -96,13 +146,23 @@ public class FinancialReportGenerator : BaseReportGenerator
             FormatDate(r.PaymentDate)
         });
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = rows.ToList();
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "revenue_collection", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "revenue_collection", from, to);
 
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Revenue Collection Report", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
+                ReportTitle = "Revenue Collection Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "revenue_collection", from, to);
 
@@ -121,8 +181,8 @@ public class FinancialReportGenerator : BaseReportGenerator
             ReportTitle = "Revenue Collection Report",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToList(),
+            Headers = outputHeaders,
+            Rows = outputRows,
             SummaryItems = summaryItems.ToArray()
         };
         return PdfResult(doc, filters, "revenue_collection", from, to);
@@ -200,15 +260,28 @@ public class FinancialReportGenerator : BaseReportGenerator
             };
         });
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = rows.ToList();
+        int? effectiveStatusColumnIndex = 5;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = idx >= 0 ? idx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "invoice_aging", null, null);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "invoice_aging", null, null);
 
         if (format == "xlsx")
         {
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Invoice Aging Report", Headers = headers, Rows = rows,
-                ConditionalStatusColumnIndex = 5,
+                ReportTitle = "Invoice Aging Report", Headers = outputHeaders, Rows = outputRows,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "invoice_aging", null, null);
         }
@@ -217,9 +290,9 @@ public class FinancialReportGenerator : BaseReportGenerator
         var doc = new InvoiceAgingDocument
         {
             ReportTitle = "Invoice Aging Report",
-            Headers = headers,
-            Rows = rows.ToList(),
-            StatusColumnIndex = 5,
+            Headers = outputHeaders,
+            Rows = outputRows,
+            StatusColumnIndex = effectiveStatusColumnIndex,
             SummaryItems =
             [
                 ($"Current (0-{currentDays}d)", $"{current.Count} | {FormatNumber(current.Sum(i => i.AmountDue - i.TotalPaid))}"),
@@ -286,15 +359,28 @@ public class FinancialReportGenerator : BaseReportGenerator
             };
         });
 
+        var outputHeaders = headers;
+        List<string[]> outputRows = rows.ToList();
+        int? effectiveStatusColumnIndex = 5;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var idx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = idx >= 0 ? idx : null;
+        }
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "payment_reconciliation", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "payment_reconciliation", from, to);
 
         if (format == "xlsx")
         {
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
-                ReportTitle = "Payment Reconciliation Report", Headers = headers, Rows = rows, DateFrom = from, DateTo = to,
-                ConditionalStatusColumnIndex = 5,
+                ReportTitle = "Payment Reconciliation Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex,
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "payment_reconciliation", from, to);
         }
@@ -311,9 +397,9 @@ public class FinancialReportGenerator : BaseReportGenerator
             ReportTitle = "Payment Reconciliation Report",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToList(),
-            StatusColumnIndex = 5,
+            Headers = outputHeaders,
+            Rows = outputRows,
+            StatusColumnIndex = effectiveStatusColumnIndex,
             SummaryItems =
             [
                 ("Total Invoiced", FormatNumber(totalDue)),
