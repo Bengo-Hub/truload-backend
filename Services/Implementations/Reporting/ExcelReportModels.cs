@@ -35,4 +35,11 @@ public sealed class ExcelReportRequest
 
     public string? OrgName { get; init; }
     public string? OrgLogoFile { get; init; }
+
+    /// <summary>
+    /// Whether to apply the native ClosedXML DataBar visual to percentage summary-table columns.
+    /// Wired to the structured custom-report builder's chart-option toggle (e.g. "Tables only, no
+    /// visual emphasis") - true (the default) preserves today's behaviour unchanged.
+    /// </summary>
+    public bool IncludeChartVisuals { get; init; } = true;
 }

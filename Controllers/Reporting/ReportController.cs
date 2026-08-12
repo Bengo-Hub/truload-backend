@@ -241,6 +241,9 @@ public class ReportController : ControllerBase
         [FromQuery] string? status = null,
         [FromQuery] string? weighingType = null,
         [FromQuery] string? controlStatus = null,
+        [FromQuery] string? columns = null,
+        [FromQuery] string? chartType = null,
+        [FromQuery] bool useDefaults = true,
         CancellationToken ct = default)
     {
         // Verify the tenant has access to this report module
@@ -283,6 +286,11 @@ public class ReportController : ControllerBase
                 Status = status,
                 WeighingType = weighingType,
                 ControlStatus = controlStatus,
+                Columns = string.IsNullOrWhiteSpace(columns)
+                    ? null
+                    : columns.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+                ChartType = chartType,
+                UseDefaults = useDefaults,
                 OrganizationName = orgName,
                 OrgLogoFile = orgLogoFile,
                 IsEnforcement = isEnforcement

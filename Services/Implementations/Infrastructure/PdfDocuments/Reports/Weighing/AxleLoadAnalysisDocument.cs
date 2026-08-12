@@ -12,9 +12,15 @@ internal sealed class AxleLoadAnalysisDocument : BaseReportDocument
 {
     public string[] Headers { get; set; } = [];
     public string[][] Rows { get; set; } = [];
-    public int StatusColumnIndex { get; set; }
+    public int? StatusColumnIndex { get; set; }
     public (string colorHex, string label)[] Legend { get; set; } = [];
     public (string title, string[] headers, string[][] rows)[] SummaryTables { get; set; } = [];
+
+    /// <summary>Vehicle-type-by-axle-count proportions rendered as a stacked bar, when <see cref="IncludeChartVisuals"/>.</summary>
+    public (string label, decimal value, string colorHex)[] VehicleTypeProportions { get; set; } = [];
+
+    /// <summary>Mirrors the structured builder's "Tables only, no visual emphasis" chart-option toggle.</summary>
+    public bool IncludeChartVisuals { get; set; } = true;
 
     public AxleLoadAnalysisDocument()
     {
@@ -29,6 +35,9 @@ internal sealed class AxleLoadAnalysisDocument : BaseReportDocument
 
             col.Item().Element(c => ComposeDataTable(c, Headers, Rows, conditionalStatusColumnIndex: StatusColumnIndex));
             col.Item().Element(c => ComposeLegend(c, Legend));
+
+            if (IncludeChartVisuals && VehicleTypeProportions.Length > 0)
+                col.Item().Element(c => ComposeProportionBar(c, VehicleTypeProportions));
 
             foreach (var table in SummaryTables)
                 col.Item().Element(c => ComposeTitledTable(c, table.title, table.headers, table.rows));

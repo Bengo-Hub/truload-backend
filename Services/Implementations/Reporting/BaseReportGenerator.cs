@@ -237,7 +237,7 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
         if (request.SummaryTables is { Length: > 0 } summaryTables)
         {
             foreach (var table in summaryTables)
-                nextRow = WriteSummaryTable(worksheet, table, nextRow);
+                nextRow = WriteSummaryTable(worksheet, table, nextRow, request.IncludeChartVisuals);
         }
 
         if (!string.IsNullOrWhiteSpace(request.OrgLogoFile))
@@ -269,7 +269,8 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
     }
 
     /// <summary>Writes one titled summary/breakdown table (bold title, header row, data rows, borders).</summary>
-    private static int WriteSummaryTable(IXLWorksheet worksheet, ExcelSummaryTable table, int startRow)
+    private static int WriteSummaryTable(
+        IXLWorksheet worksheet, ExcelSummaryTable table, int startRow, bool includeChartVisuals = true)
     {
         var row = startRow + 1;
         worksheet.Cell(row, 1).Value = table.Title;
@@ -305,7 +306,7 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
             // Native in-cell "chart": ClosedXML's DataBar conditional format on the last column
             // when it reads as a percentage share (e.g. "% OF TOTAL", "% Overloaded by GVW") -
             // a real Excel visual, no image-embedding or new package needed.
-            if (table.Headers.Length > 0 && table.Headers[^1].Contains('%') && row > startDataRow)
+            if (includeChartVisuals && table.Headers.Length > 0 && table.Headers[^1].Contains('%') && row > startDataRow)
             {
                 var pctRange = worksheet.Range(startDataRow, table.Headers.Length, row - 1, table.Headers.Length);
                 ApplyPercentageDataBar(pctRange);
@@ -362,6 +363,55 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
             Module = Module,
             SupportedFormats = formats ?? ["pdf", "csv", "xlsx"]
         };
+
+    /// <summary>
+    /// Overload for report types that opt into the structured custom-report builder - adds a
+    /// curated column/chart catalog to the definition (see <see cref="ReportColumnDefinition"/>).
+    /// </summary>
+    protected ReportDefinitionDto Def(
+        string id, string name, string description,
+        List<ReportColumnDefinition> columns, List<ReportChartOption>? chartOptions = null,
+        string[]? formats = null)
+    {
+        var def = Def(id, name, description, formats);
+        def.Columns = columns;
+        def.ChartOptions = chartOptions;
+        return def;
+    }
+
+    /// <summary>
+    /// Filters a report's header/row output down to a caller-selected subset of columns, matched
+    /// by header text (each report's headers are already its stable column identifiers - see
+    /// <see cref="ReportColumnDefinition.Key"/>). Every report generator keeps building its full
+    /// existing projection unchanged; this is the one shared point where a structured builder
+    /// selection is actually applied, so no report needs N query variants for N column combinations.
+    /// Returns the original headers/rows unchanged when <paramref name="selectedKeys"/> is null/empty
+    /// or matches nothing (fails safe to "show everything" rather than silently emptying a report).
+    /// </summary>
+    protected static (string[] Headers, List<string[]> Rows) ApplyColumnSelection(
+        string[] headers, IEnumerable<string[]> rows, string[]? selectedKeys)
+    {
+        var rowList = rows is List<string[]> list ? list : rows.ToList();
+
+        if (selectedKeys == null || selectedKeys.Length == 0)
+            return (headers, rowList);
+
+        var indices = selectedKeys
+            .Select(key => Array.FindIndex(headers, h => string.Equals(h, key, StringComparison.OrdinalIgnoreCase)))
+            .Where(i => i >= 0)
+            .Distinct()
+            .ToList();
+
+        if (indices.Count == 0)
+            return (headers, rowList);
+
+        var newHeaders = indices.Select(i => headers[i]).ToArray();
+        var newRows = rowList
+            .Select(r => indices.Select(i => i < r.Length ? r[i] : "-").ToArray())
+            .ToList();
+
+        return (newHeaders, newRows);
+    }
 
     /// <summary>
     /// Applies tenant org context (name, logo, enforcement flag) from filters to a report document.

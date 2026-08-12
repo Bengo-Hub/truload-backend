@@ -31,6 +31,8 @@ using TruLoad.Backend.Models.Notifications;
 using TruLoad.Backend.Models.Views;
 using TruLoad.Backend.Models.Portal;
 using TruLoad.Backend.Data.Configurations.Portal;
+using TruLoad.Backend.Data.Configurations.Reporting;
+using TruLoad.Backend.Models.Reporting;
 
 
 namespace TruLoad.Backend.Data;
@@ -263,6 +265,8 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     public DbSet<MvVehicleViolationHistory> MvVehicleViolationHistories { get; set; } = null!;
     public DbSet<MvStationPerformanceScorecard> MvStationPerformanceScorecards { get; set; } = null!;
 
+    public DbSet<SavedReportConfig> SavedReportConfigs { get; set; } = null!;
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -286,6 +290,7 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
         modelBuilder.ApplyFinancialConfigurations();
         modelBuilder.ApplyOfflineConfigurations();
         modelBuilder.ApplyPortalConfigurations();
+        modelBuilder.ApplyReportingConfigurations();
 
         // ===== Database Views & Keyless Entities Configuration =====
         modelBuilder.Entity<ActiveVehicleTag>(e => { e.HasNoKey(); e.ToView("active_vehicle_tags"); });

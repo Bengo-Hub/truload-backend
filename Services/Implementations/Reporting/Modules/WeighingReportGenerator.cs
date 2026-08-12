@@ -22,6 +22,33 @@ public class WeighingReportGenerator : BaseReportGenerator
 {
     private readonly TruLoadDbContext _context;
 
+    /// <summary>
+    /// Structured custom-report-builder column catalog for `axle-load-analysis` - Key MUST match
+    /// the literal header text built in <see cref="GenerateAxleLoadAnalysisAsync"/> (column
+    /// selection matches by header string, see <c>BaseReportGenerator.ApplyColumnSelection</c>).
+    /// </summary>
+    private static readonly List<ReportColumnDefinition> AxleLoadAnalysisColumns =
+    [
+        new() { Key = "S/No.", Label = "Serial Number" },
+        new() { Key = "Reg No.", Label = "Vehicle Registration" },
+        new() { Key = "No. of Axle", Label = "Number of Axles" },
+        new() { Key = "Legal", Label = "Legal (Permissible) Weight (kg)" },
+        new() { Key = "Actual", Label = "Actual (Measured) Weight (kg)" },
+        new() { Key = "Overload", Label = "Overload (kg)" },
+        new() { Key = "% Gross Overload", Label = "% Gross Overload" },
+        new() { Key = "Overloaded", Label = "Overloaded (Yes/No)" },
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "County", Label = "County" },
+        new() { Key = "Sub County", Label = "Sub County" },
+        new() { Key = "Road", Label = "Road" }
+    ];
+
+    private static readonly List<ReportChartOption> AxleLoadAnalysisChartOptions =
+    [
+        new() { Key = "proportion-bar", Label = "Vehicle-type proportion bar + Excel data bars (default)" },
+        new() { Key = "none", Label = "Tables only, no visual emphasis" }
+    ];
+
     public WeighingReportGenerator(TruLoadDbContext context)
     {
         _context = context;
@@ -88,7 +115,8 @@ public class WeighingReportGenerator : BaseReportGenerator
             "Detailed register of all weighing transactions with vehicle, driver, weight, and compliance data."),
         Def("axle-load-analysis", "Axle Load Data Analysis",
             "Per-vehicle axle load analysis scoped by a single station, with vehicle-type/axle-count " +
-            "and overload-by-GVW summary breakdowns, colour-coded status and legend - matches the KURA NRB template."),
+            "and overload-by-GVW summary breakdowns, colour-coded status and legend - matches the KURA NRB template.",
+            columns: AxleLoadAnalysisColumns, chartOptions: AxleLoadAnalysisChartOptions),
         Def("compliance-trend", "Compliance Trend Analysis",
             "Daily compliance rates over the selected period, showing overload vs compliant vehicle counts."),
         Def("axle-overload", "Axle Overload Analysis",
@@ -473,19 +501,42 @@ public class WeighingReportGenerator : BaseReportGenerator
             (BrandingConstants.Colors.SampleTemplateRed, "Overloaded and charged")
         };
 
+        // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
+        // exact fixed output unchanged. Only when a caller explicitly opts out does column
+        // selection / the chart-visual toggle apply.
+        var outputHeaders = headers;
+        List<string[]> outputRows = rows;
+        int? effectiveStatusColumnIndex = statusColumnIndex;
+        var includeChartVisuals = true;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, rows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+            var statusIdx = Array.IndexOf(outputHeaders, "Status");
+            effectiveStatusColumnIndex = statusIdx >= 0 ? statusIdx : null;
+            includeChartVisuals = filters.ChartType != "none";
+        }
+
+        var palette = new[] { "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#06B6D4", "#EC4899", "#84CC16" };
+        var vehicleTypeProportions = bucketWeighed.Keys
+            .Select((bucket, i) => (BucketLabel(bucket), (decimal)bucketWeighed[bucket], palette[i % palette.Length]))
+            .ToArray();
+
         if (format == "csv")
-            return CsvResult(GenerateCsv(headers, rows), "axle_load_data_analysis", from, to);
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "axle_load_data_analysis", from, to);
 
         if (format == "xlsx")
         {
             var request = new ExcelReportRequest
             {
                 ReportTitle = $"AXLE LOAD DATA ANALYSIS FOR {stationName.ToUpperInvariant()}",
-                Headers = headers,
-                Rows = rows,
+                Headers = outputHeaders,
+                Rows = outputRows,
                 DateFrom = from,
                 DateTo = to,
-                ConditionalStatusColumnIndex = statusColumnIndex,
+                ConditionalStatusColumnIndex = effectiveStatusColumnIndex,
                 Legend = legend,
                 SummaryTables =
                 [
@@ -501,7 +552,8 @@ public class WeighingReportGenerator : BaseReportGenerator
                     }
                 ],
                 OrgName = filters.OrganizationName,
-                OrgLogoFile = filters.OrgLogoFile
+                OrgLogoFile = filters.OrgLogoFile,
+                IncludeChartVisuals = includeChartVisuals
             };
             return ExcelResult(GenerateExcel(request), "axle_load_data_analysis", from, to);
         }
@@ -511,10 +563,12 @@ public class WeighingReportGenerator : BaseReportGenerator
             ReportSubtitle = $"{stationName} - {stationRoadName}, {subcountyName}, {countyName}",
             DateFrom = from,
             DateTo = to,
-            Headers = headers,
-            Rows = rows.ToArray(),
-            StatusColumnIndex = statusColumnIndex,
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
+            StatusColumnIndex = effectiveStatusColumnIndex,
             Legend = legend,
+            VehicleTypeProportions = vehicleTypeProportions,
+            IncludeChartVisuals = includeChartVisuals,
             SummaryTables =
             [
                 ("Vehicle Type Breakdown (by Axle Count)", vehicleTypeHeaders, vehicleTypeRows.ToArray()),
