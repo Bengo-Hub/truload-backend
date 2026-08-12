@@ -36,7 +36,7 @@ public class FinancialReportGenerator : BaseReportGenerator
         new() { Key = "Date", Label = "Payment Date" }
     ];
 
-    private static readonly List<ReportFilterDefinition> InvoiceAgingFilters =
+    private static readonly List<ReportFilterDefinition> FinancialGeoFilters =
     [
         new() { Key = "countyId", Label = "County", Kind = "county" },
         new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" }
@@ -82,13 +82,13 @@ public class FinancialReportGenerator : BaseReportGenerator
     [
         Def("revenue-collection", "Revenue Collection",
             "Summary of all revenue collected from receipts, grouped by payment method and period.",
-            columns: RevenueCollectionColumns),
+            columns: RevenueCollectionColumns, filters: FinancialGeoFilters),
         Def("invoice-aging", "Invoice Aging",
             "Outstanding invoices grouped by aging buckets (current, 30-day, 60-day, 90-day+).",
-            columns: InvoiceAgingColumns, filters: InvoiceAgingFilters),
+            columns: InvoiceAgingColumns, filters: FinancialGeoFilters),
         Def("payment-reconciliation", "Payment Reconciliation",
             "Reconciliation of invoices against receipts to identify paid, partial, and outstanding balances.",
-            columns: PaymentReconciliationColumns)
+            columns: PaymentReconciliationColumns, filters: FinancialGeoFilters)
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -112,9 +112,18 @@ public class FinancialReportGenerator : BaseReportGenerator
     {
         var (from, to) = GetDateRange(filters);
 
-        var receipts = await _context.Receipts
+        var receiptQuery = _context.Receipts
             .Where(r => r.DeletedAt == null)
-            .Where(r => r.PaymentDate >= from && r.PaymentDate <= to)
+            .Where(r => r.PaymentDate >= from && r.PaymentDate <= to);
+
+        // County/Sub County via Receipt -> Invoice -> CaseRegister (which carries its own direct
+        // CountyId/SubcountyId FKs) - same pattern as invoice-aging.
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            receiptQuery = receiptQuery.Where(r => r.Invoice != null && r.Invoice.CaseRegister != null && r.Invoice.CaseRegister.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            receiptQuery = receiptQuery.Where(r => r.Invoice != null && r.Invoice.CaseRegister != null && r.Invoice.CaseRegister.SubcountyId == subcountyId);
+
+        var receipts = await receiptQuery
             .Select(r => new
             {
                 r.ReceiptNo,
@@ -325,9 +334,17 @@ public class FinancialReportGenerator : BaseReportGenerator
     {
         var (from, to) = GetDateRange(filters);
 
-        var invoices = await _context.Invoices
+        var reconciliationQuery = _context.Invoices
             .Where(i => i.DeletedAt == null)
-            .Where(i => i.GeneratedAt >= from && i.GeneratedAt <= to)
+            .Where(i => i.GeneratedAt >= from && i.GeneratedAt <= to);
+
+        // County/Sub County via the invoice's linked CaseRegister - same pattern as invoice-aging.
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            reconciliationQuery = reconciliationQuery.Where(i => i.CaseRegister != null && i.CaseRegister.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            reconciliationQuery = reconciliationQuery.Where(i => i.CaseRegister != null && i.CaseRegister.SubcountyId == subcountyId);
+
+        var invoices = await reconciliationQuery
             .Include(i => i.Receipts.Where(r => r.DeletedAt == null))
             .OrderByDescending(i => i.GeneratedAt)
             .Select(i => new
