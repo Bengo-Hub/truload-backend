@@ -46,6 +46,8 @@ public class ProsecutionReportGenerator : BaseReportGenerator
     [
         new() { Key = "Date", Label = "Date" },
         new() { Key = "Case No", Label = "Case Number" },
+        new() { Key = "County", Label = "County" },
+        new() { Key = "Sub County", Label = "Sub County" },
         new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
         new() { Key = "Ticket No", Label = "Weighing Ticket Number" },
         new() { Key = "GVW Overload (kg)", Label = "GVW Overload (kg)" },
@@ -94,6 +96,20 @@ public class ProsecutionReportGenerator : BaseReportGenerator
         new() { Key = "Date", Label = "Date" }
     ];
 
+    // =====================================================================
+    // Structured custom-report-builder filter catalog, shared across the Prosecution module's
+    // report types - lets the builder UI show only the filters a given report actually supports.
+    // ProsecutionCase itself has no direct CountyId/SubcountyId FK - every report here reaches
+    // CaseRegister (which does) either via the ProsecutionCase.CaseRegister navigation, or, for
+    // court-calendar/court-fines, via CourtHearing.CaseRegister / Invoice.ProsecutionCase.CaseRegister.
+    // =====================================================================
+
+    private static readonly List<ReportFilterDefinition> ProsecutionGeoFilters =
+    [
+        new() { Key = "countyId", Label = "County", Kind = "county" },
+        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" }
+    ];
+
     public ProsecutionReportGenerator(TruLoadDbContext context)
     {
         _context = context;
@@ -105,22 +121,22 @@ public class ProsecutionReportGenerator : BaseReportGenerator
     [
         Def("prosecution-statistics", "Prosecution Statistics",
             "Summary statistics of prosecution cases including charge basis breakdown and fees collected.",
-            columns: ProsecutionStatisticsColumns),
+            columns: ProsecutionStatisticsColumns, filters: ProsecutionGeoFilters),
         Def("court-calendar", "Court Calendar",
             "Upcoming and past court hearings with case references, dates, and presiding officers.",
-            columns: CourtCalendarColumns),
+            columns: CourtCalendarColumns, filters: ProsecutionGeoFilters),
         Def("daily-charged", "Daily Charged Vehicles",
             "List of vehicles charged per day with overload details, fees, and officer information.",
-            columns: DailyChargedColumns),
+            columns: DailyChargedColumns, filters: ProsecutionGeoFilters),
         Def("payment-list", "Prosecution Payment List",
             "Prosecution cases with associated invoice and payment status for revenue tracking.",
-            columns: PaymentListColumns),
+            columns: PaymentListColumns, filters: ProsecutionGeoFilters),
         Def("court-fines", "Court Fines Summary",
             "Summary of court-imposed fines aggregated by status and period.",
-            columns: CourtFinesColumns),
+            columns: CourtFinesColumns, filters: ProsecutionGeoFilters),
         Def("habitual-offenders", "Habitual Offenders",
             "Vehicles with multiple prosecution cases within 12 months flagged as repeat offenders.",
-            columns: HabitualOffendersColumns)
+            columns: HabitualOffendersColumns, filters: ProsecutionGeoFilters)
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -153,6 +169,14 @@ public class ProsecutionReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.Status))
             query = query.Where(p => p.Status == filters.Status);
+
+        // ProsecutionCase has no direct CountyId/SubcountyId FK - reach it via the joined
+        // CaseRegister (CaseRegisterId is required, but the nav is still checked defensively to
+        // match the existing null-safe style used for CaseRegister/Weighing elsewhere in this file).
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(p => p.CaseRegister != null && p.CaseRegister.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(p => p.CaseRegister != null && p.CaseRegister.SubcountyId == subcountyId);
 
         var cases = await query
             .Select(p => new
@@ -255,9 +279,17 @@ public class ProsecutionReportGenerator : BaseReportGenerator
     {
         var (from, to) = GetDateRange(filters);
 
-        var hearings = await _context.CourtHearings
+        var hearingsQuery = _context.CourtHearings
             .Where(h => h.DeletedAt == null)
-            .Where(h => h.HearingDate >= from && h.HearingDate <= to)
+            .Where(h => h.HearingDate >= from && h.HearingDate <= to);
+
+        // CourtHearing has no direct CountyId/SubcountyId FK - reach it via the joined CaseRegister.
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            hearingsQuery = hearingsQuery.Where(h => h.CaseRegister != null && h.CaseRegister.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            hearingsQuery = hearingsQuery.Where(h => h.CaseRegister != null && h.CaseRegister.SubcountyId == subcountyId);
+
+        var hearings = await hearingsQuery
             .Include(h => h.CaseRegister)
             .Include(h => h.HearingType)
             .Include(h => h.HearingStatus)
@@ -335,9 +367,17 @@ public class ProsecutionReportGenerator : BaseReportGenerator
     {
         var (from, to) = GetDateRange(filters);
 
-        var cases = await _context.ProsecutionCases
+        var query = _context.ProsecutionCases
             .Where(p => p.DeletedAt == null)
-            .Where(p => p.CreatedAt >= from && p.CreatedAt <= to)
+            .Where(p => p.CreatedAt >= from && p.CreatedAt <= to);
+
+        // ProsecutionCase has no direct CountyId/SubcountyId FK - reach it via the joined CaseRegister.
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(p => p.CaseRegister != null && p.CaseRegister.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(p => p.CaseRegister != null && p.CaseRegister.SubcountyId == subcountyId);
+
+        var cases = await query
             .Include(p => p.CaseRegister)
             .Include(p => p.Weighing)
             .Include(p => p.ProsecutionOfficer)
@@ -345,6 +385,8 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             .Select(p => new
             {
                 CaseNo = p.CaseRegister != null ? p.CaseRegister.CaseNo : "-",
+                CountyId = p.CaseRegister != null ? p.CaseRegister.CountyId : null,
+                SubcountyId = p.CaseRegister != null ? p.CaseRegister.SubcountyId : null,
                 VehicleRegNumber = p.Weighing != null ? p.Weighing.VehicleRegNumber : "-",
                 WeighingTicketNo = p.Weighing != null ? p.Weighing.TicketNumber : "-",
                 p.GvwOverloadKg,
@@ -358,15 +400,31 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             })
             .ToListAsync(ct);
 
+        // Resolve County/Sub County names via lookup dictionaries (CaseRegister has no County/
+        // Subcounty navigation property, only the raw FKs) - same "resolve via dictionary" pattern
+        // used for vehicle registration numbers in the Case module's repeat-offenders report.
+        var countyIds = cases.Where(c => c.CountyId.HasValue).Select(c => c.CountyId!.Value).Distinct().ToList();
+        var subcountyIds = cases.Where(c => c.SubcountyId.HasValue).Select(c => c.SubcountyId!.Value).Distinct().ToList();
+        var countyNames = await _context.Counties
+            .Where(c => countyIds.Contains(c.Id))
+            .Select(c => new { c.Id, c.Name })
+            .ToDictionaryAsync(c => c.Id, c => c.Name, ct);
+        var subcountyNames = await _context.Subcounties
+            .Where(s => subcountyIds.Contains(s.Id))
+            .Select(s => new { s.Id, s.Name })
+            .ToDictionaryAsync(s => s.Id, s => s.Name, ct);
+
         string[] headers =
         [
-            "Date", "Case No", "Vehicle Reg", "Ticket No", "GVW Overload (kg)",
+            "Date", "Case No", "County", "Sub County", "Vehicle Reg", "Ticket No", "GVW Overload (kg)",
             "Max Axle Overload (kg)", "Charge Basis", "Fee (KES)", "Status", "Officer"
         ];
         var rows = cases.Select(c => new[]
         {
             FormatDate(c.CreatedAt),
             c.CaseNo,
+            c.CountyId.HasValue && countyNames.TryGetValue(c.CountyId.Value, out var countyName) ? countyName : "-",
+            c.SubcountyId.HasValue && subcountyNames.TryGetValue(c.SubcountyId.Value, out var subcountyName) ? subcountyName : "-",
             c.VehicleRegNumber,
             c.WeighingTicketNo,
             FormatNumber(c.GvwOverloadKg),
@@ -378,11 +436,11 @@ public class ProsecutionReportGenerator : BaseReportGenerator
         });
 
         // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
-        // exact fixed output unchanged. Only when a caller explicitly opts out does column
-        // selection apply.
+        // exact fixed output unchanged (plus the new County/Sub County columns added above).
+        // Only when a caller explicitly opts out does column selection apply.
         var outputHeaders = headers;
         var outputRows = rows;
-        int? effectiveStatusColumnIndex = 8;
+        int? effectiveStatusColumnIndex = 10; // "Status" now sits after the new County/Sub County columns
 
         if (!filters.UseDefaults)
         {
@@ -429,9 +487,17 @@ public class ProsecutionReportGenerator : BaseReportGenerator
     {
         var (from, to) = GetDateRange(filters);
 
-        var data = await _context.ProsecutionCases
+        var paymentListQuery = _context.ProsecutionCases
             .Where(p => p.DeletedAt == null)
-            .Where(p => p.CreatedAt >= from && p.CreatedAt <= to)
+            .Where(p => p.CreatedAt >= from && p.CreatedAt <= to);
+
+        // ProsecutionCase has no direct CountyId/SubcountyId FK - reach it via the joined CaseRegister.
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            paymentListQuery = paymentListQuery.Where(p => p.CaseRegister != null && p.CaseRegister.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            paymentListQuery = paymentListQuery.Where(p => p.CaseRegister != null && p.CaseRegister.SubcountyId == subcountyId);
+
+        var data = await paymentListQuery
             .Include(p => p.CaseRegister)
             .Include(p => p.Weighing)
             .Include(p => p.Invoices.Where(i => i.DeletedAt == null))
@@ -516,10 +582,22 @@ public class ProsecutionReportGenerator : BaseReportGenerator
     {
         var (from, to) = GetDateRange(filters);
 
-        var invoices = await _context.Invoices
+        var invoicesQuery = _context.Invoices
             .Where(i => i.DeletedAt == null)
             .Where(i => i.ProsecutionCaseId != null)
-            .Where(i => i.GeneratedAt >= from && i.GeneratedAt <= to)
+            .Where(i => i.GeneratedAt >= from && i.GeneratedAt <= to);
+
+        // Invoice has no direct CountyId/SubcountyId FK - reach it via ProsecutionCase.CaseRegister.
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            invoicesQuery = invoicesQuery.Where(i =>
+                i.ProsecutionCase != null && i.ProsecutionCase.CaseRegister != null &&
+                i.ProsecutionCase.CaseRegister.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            invoicesQuery = invoicesQuery.Where(i =>
+                i.ProsecutionCase != null && i.ProsecutionCase.CaseRegister != null &&
+                i.ProsecutionCase.CaseRegister.SubcountyId == subcountyId);
+
+        var invoices = await invoicesQuery
             .Include(i => i.ProsecutionCase)
                 .ThenInclude(p => p!.CaseRegister)
             .Include(i => i.Receipts.Where(r => r.DeletedAt == null))
@@ -606,10 +684,18 @@ public class ProsecutionReportGenerator : BaseReportGenerator
         var (from, to) = GetDateRange(filters);
 
         // Find vehicles with multiple prosecution cases (OffenseCount > 1 or PenaltyMultiplier > 1)
-        var offenders = await _context.ProsecutionCases
+        var offendersQuery = _context.ProsecutionCases
             .Where(p => p.DeletedAt == null)
             .Where(p => p.CreatedAt >= from && p.CreatedAt <= to)
-            .Where(p => p.OffenseCount > 1)
+            .Where(p => p.OffenseCount > 1);
+
+        // ProsecutionCase has no direct CountyId/SubcountyId FK - reach it via the joined CaseRegister.
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            offendersQuery = offendersQuery.Where(p => p.CaseRegister != null && p.CaseRegister.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            offendersQuery = offendersQuery.Where(p => p.CaseRegister != null && p.CaseRegister.SubcountyId == subcountyId);
+
+        var offenders = await offendersQuery
             .Include(p => p.Weighing)
             .Include(p => p.CaseRegister)
             .OrderByDescending(p => p.OffenseCount)

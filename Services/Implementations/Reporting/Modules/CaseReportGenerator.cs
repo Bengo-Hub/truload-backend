@@ -23,6 +23,8 @@ public class CaseReportGenerator : BaseReportGenerator
     private static readonly List<ReportColumnDefinition> CaseRegisterColumns =
     [
         new() { Key = "Case No", Label = "Case Number" },
+        new() { Key = "County", Label = "County" },
+        new() { Key = "Sub County", Label = "Sub County" },
         new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
         new() { Key = "Driver", Label = "Driver" },
         new() { Key = "Transporter", Label = "Transporter" },
@@ -53,6 +55,20 @@ public class CaseReportGenerator : BaseReportGenerator
         new() { Key = "Closed", Label = "Closed Count" }
     ];
 
+    // =====================================================================
+    // Structured custom-report-builder filter catalog, shared across the Case module's report
+    // types - lets the builder UI show only the filters a given report actually supports. Unlike
+    // WeighingTransaction, CaseRegister has its OWN direct CountyId/SubcountyId FK properties (no
+    // station join needed), so every report here that touches CaseRegister (directly or via a
+    // joined entity) can filter on them the same way.
+    // =====================================================================
+
+    private static readonly List<ReportFilterDefinition> CaseGeoFilters =
+    [
+        new() { Key = "countyId", Label = "County", Kind = "county" },
+        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" }
+    ];
+
     public CaseReportGenerator(TruLoadDbContext context)
     {
         _context = context;
@@ -64,13 +80,13 @@ public class CaseReportGenerator : BaseReportGenerator
     [
         Def("case-register", "Case Register",
             "Full register of violation cases with vehicle, driver, transporter, and status details.",
-            columns: CaseRegisterColumns),
+            columns: CaseRegisterColumns, filters: CaseGeoFilters),
         Def("repeat-offenders", "Repeat Offenders",
             "Vehicles or transporters with multiple cases, indicating habitual violation patterns.",
-            columns: RepeatOffendersColumns),
+            columns: RepeatOffendersColumns, filters: CaseGeoFilters),
         Def("case-status-summary", "Case Status Summary",
             "Aggregated breakdown of cases by status with counts and trends over the reporting period.",
-            columns: CaseStatusSummaryColumns)
+            columns: CaseStatusSummaryColumns, filters: CaseGeoFilters)
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -103,6 +119,13 @@ public class CaseReportGenerator : BaseReportGenerator
             query = query.Where(c => c.CaseStatus.Code == filters.Status);
         }
 
+        // CaseRegister carries its own direct CountyId/SubcountyId FKs (no station join needed,
+        // unlike WeighingTransaction) - filter directly on those columns.
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(c => c.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(c => c.SubcountyId == subcountyId);
+
         var cases = await (
             from c in query
             join cs in _context.CaseStatuses on c.CaseStatusId equals cs.Id
@@ -115,10 +138,16 @@ public class CaseReportGenerator : BaseReportGenerator
             from wt in wtj.DefaultIfEmpty()
             join t in _context.Transporters on wt.TransporterId equals t.Id into tj
             from t in tj.DefaultIfEmpty()
+            join cty in _context.Counties on c.CountyId equals cty.Id into ctyj
+            from cty in ctyj.DefaultIfEmpty()
+            join sct in _context.Subcounties on c.SubcountyId equals sct.Id into sctj
+            from sct in sctj.DefaultIfEmpty()
             orderby c.CreatedAt descending
             select new
             {
                 c.CaseNo,
+                CountyName = cty != null ? cty.Name : "-",
+                SubcountyName = sct != null ? sct.Name : "-",
                 VehicleRegNo = v != null ? v.RegNo : "-",
                 DriverName = d != null ? d.FullNames : "-",
                 TransporterName = t != null ? t.Name : "-",
@@ -132,12 +161,14 @@ public class CaseReportGenerator : BaseReportGenerator
 
         string[] headers =
         [
-            "Case No", "Vehicle Reg", "Driver", "Transporter",
+            "Case No", "County", "Sub County", "Vehicle Reg", "Driver", "Transporter",
             "Status", "Violation Type", "Created", "Updated", "Closed"
         ];
         var rows = cases.Select(c => new[]
         {
             c.CaseNo,
+            c.CountyName,
+            c.SubcountyName,
             c.VehicleRegNo,
             c.DriverName,
             c.TransporterName,
@@ -149,11 +180,11 @@ public class CaseReportGenerator : BaseReportGenerator
         });
 
         // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
-        // exact fixed output unchanged. Only when a caller explicitly opts out does column
-        // selection apply.
+        // exact fixed output unchanged (plus the new County/Sub County columns added above).
+        // Only when a caller explicitly opts out does column selection apply.
         var outputHeaders = headers;
         var outputRows = rows;
-        int? effectiveStatusColumnIndex = 4;
+        int? effectiveStatusColumnIndex = 6; // "Status" now sits after the new County/Sub County columns
 
         if (!filters.UseDefaults)
         {
@@ -199,10 +230,20 @@ public class CaseReportGenerator : BaseReportGenerator
     {
         var (from, to) = GetDateRange(filters);
 
-        // Group cases by vehicle to find repeats
+        Guid? countyId = null;
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var parsedCountyId))
+            countyId = parsedCountyId;
+        Guid? subcountyId = null;
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var parsedSubcountyId))
+            subcountyId = parsedSubcountyId;
+
+        // Group cases by vehicle to find repeats. CaseRegister carries its own direct
+        // CountyId/SubcountyId FKs (no station join needed) - filter directly on those columns.
         var vehicleCases = await _context.CaseRegisters
             .Where(c => c.DeletedAt == null)
             .Where(c => c.CreatedAt >= from && c.CreatedAt <= to)
+            .Where(c => countyId == null || c.CountyId == countyId)
+            .Where(c => subcountyId == null || c.SubcountyId == subcountyId)
             .Include(c => c.CaseStatus)
             .GroupBy(c => c.VehicleId)
             .Where(g => g.Count() > 1)
@@ -231,6 +272,8 @@ public class CaseReportGenerator : BaseReportGenerator
             .Where(cp => cp.TransporterId != null)
             .Where(cp => cp.CaseRegister != null && cp.CaseRegister.DeletedAt == null)
             .Where(cp => cp.CaseRegister!.CreatedAt >= from && cp.CaseRegister!.CreatedAt <= to)
+            .Where(cp => countyId == null || cp.CaseRegister!.CountyId == countyId)
+            .Where(cp => subcountyId == null || cp.CaseRegister!.SubcountyId == subcountyId)
             .GroupBy(cp => cp.TransporterId)
             .Where(g => g.Count() > 1)
             .Select(g => new
@@ -301,9 +344,18 @@ public class CaseReportGenerator : BaseReportGenerator
     {
         var (from, to) = GetDateRange(filters);
 
-        var statusGroups = await _context.CaseRegisters
+        // CaseRegister carries its own direct CountyId/SubcountyId FKs (no station join needed) -
+        // filter directly on those columns.
+        var statusGroupsQuery = _context.CaseRegisters
             .Where(c => c.DeletedAt == null)
-            .Where(c => c.CreatedAt >= from && c.CreatedAt <= to)
+            .Where(c => c.CreatedAt >= from && c.CreatedAt <= to);
+
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            statusGroupsQuery = statusGroupsQuery.Where(c => c.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            statusGroupsQuery = statusGroupsQuery.Where(c => c.SubcountyId == subcountyId);
+
+        var statusGroups = await statusGroupsQuery
             .Include(c => c.CaseStatus)
             .GroupBy(c => new { c.CaseStatus.Code, c.CaseStatus.Name })
             .Select(g => new
