@@ -54,7 +54,8 @@ public class YardReportGenerator : BaseReportGenerator
     [
         new() { Key = "stationId", Label = "Station", Kind = "station" },
         new() { Key = "countyId", Label = "County", Kind = "county" },
-        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" }
+        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" },
+        new() { Key = "roadId", Label = "Road", Kind = "road" }
     ];
 
     public YardReportGenerator(TruLoadDbContext context)
@@ -106,6 +107,10 @@ public class YardReportGenerator : BaseReportGenerator
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
         {
             query = query.Where(y => y.Station != null && y.Station.SubcountyId == subcountyId);
+        }
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+        {
+            query = query.Where(y => y.Station != null && y.Station.RoadId == roadId);
         }
 
         if (!string.IsNullOrEmpty(filters.Status))
@@ -247,6 +252,10 @@ public class YardReportGenerator : BaseReportGenerator
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
         {
             query = query.Where(y => y.Station != null && y.Station.SubcountyId == subcountyId);
+        }
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+        {
+            query = query.Where(y => y.Station != null && y.Station.RoadId == roadId);
         }
 
         var entries = await query

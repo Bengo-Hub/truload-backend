@@ -212,7 +212,8 @@ public class CommercialReportGenerator : BaseReportGenerator
     [
         new() { Key = "stationId", Label = "Station", Kind = "station" },
         new() { Key = "countyId", Label = "County", Kind = "county" },
-        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" }
+        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" },
+        new() { Key = "roadId", Label = "Road", Kind = "road" }
     ];
 
     public CommercialReportGenerator(TruLoadDbContext context)
@@ -322,6 +323,10 @@ public class CommercialReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         var rows = await query
             .Include(w => w.Station)
@@ -424,6 +429,10 @@ public class CommercialReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         var transporterData = await query
             .Include(w => w.Transporter)
@@ -519,6 +528,10 @@ public class CommercialReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         var cargoData = await query
             .Include(w => w.Cargo)
@@ -619,6 +632,10 @@ public class CommercialReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         var discrepancies = await query
             .Include(w => w.Station).ThenInclude(s => s!.County)
@@ -845,6 +862,10 @@ public class CommercialReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         var stationData = await query
             .Include(w => w.Station)
@@ -960,6 +981,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             query = query.Where(th => th.Station != null && th.Station.CountyId == countyId);
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
             query = query.Where(th => th.Station != null && th.Station.SubcountyId == subcountyId);
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(th => th.Station != null && th.Station.RoadId == roadId);
 
         // Use ControlStatus as vehicle reg filter if provided
         if (!string.IsNullOrEmpty(filters.WeighingType))
@@ -1113,6 +1136,10 @@ public class CommercialReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         var vehicleData = await query
             .Include(w => w.Vehicle)
@@ -1224,6 +1251,10 @@ public class CommercialReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         var driverData = await query
             .Include(w => w.Driver)
@@ -1334,6 +1365,10 @@ public class CommercialReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         var qualityData = await query
             .Include(w => w.Cargo)
@@ -1438,6 +1473,10 @@ public class CommercialReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         // Join with the operator's active UserShift on the date of the transaction
         // to group by shift. We do this client-side by correlating WeighedByUserId + date
@@ -1592,6 +1631,10 @@ public class CommercialReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         var rows = await query
             .Include(w => w.Transporter)
@@ -1716,6 +1759,10 @@ public class CommercialReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         var now = DateTime.UtcNow;
         var rows = await query
@@ -1832,6 +1879,10 @@ public class CommercialReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         var monthlyData = await query
             .GroupBy(w => new { w.WeighedAt.Year, w.WeighedAt.Month })

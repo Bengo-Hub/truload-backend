@@ -107,7 +107,8 @@ public class ProsecutionReportGenerator : BaseReportGenerator
     private static readonly List<ReportFilterDefinition> ProsecutionGeoFilters =
     [
         new() { Key = "countyId", Label = "County", Kind = "county" },
-        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" }
+        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" },
+        new() { Key = "roadId", Label = "Road", Kind = "road" }
     ];
 
     public ProsecutionReportGenerator(TruLoadDbContext context)
@@ -177,6 +178,8 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             query = query.Where(p => p.CaseRegister != null && p.CaseRegister.CountyId == countyId);
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
             query = query.Where(p => p.CaseRegister != null && p.CaseRegister.SubcountyId == subcountyId);
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(p => p.CaseRegister != null && p.CaseRegister.RoadId == roadId);
 
         var cases = await query
             .Select(p => new
@@ -288,6 +291,8 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             hearingsQuery = hearingsQuery.Where(h => h.CaseRegister != null && h.CaseRegister.CountyId == countyId);
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
             hearingsQuery = hearingsQuery.Where(h => h.CaseRegister != null && h.CaseRegister.SubcountyId == subcountyId);
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            hearingsQuery = hearingsQuery.Where(h => h.CaseRegister != null && h.CaseRegister.RoadId == roadId);
 
         var hearings = await hearingsQuery
             .Include(h => h.CaseRegister)
@@ -376,6 +381,8 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             query = query.Where(p => p.CaseRegister != null && p.CaseRegister.CountyId == countyId);
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
             query = query.Where(p => p.CaseRegister != null && p.CaseRegister.SubcountyId == subcountyId);
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(p => p.CaseRegister != null && p.CaseRegister.RoadId == roadId);
 
         var cases = await query
             .Include(p => p.CaseRegister)
@@ -496,6 +503,8 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             paymentListQuery = paymentListQuery.Where(p => p.CaseRegister != null && p.CaseRegister.CountyId == countyId);
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
             paymentListQuery = paymentListQuery.Where(p => p.CaseRegister != null && p.CaseRegister.SubcountyId == subcountyId);
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            paymentListQuery = paymentListQuery.Where(p => p.CaseRegister != null && p.CaseRegister.RoadId == roadId);
 
         var data = await paymentListQuery
             .Include(p => p.CaseRegister)
@@ -596,6 +605,10 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             invoicesQuery = invoicesQuery.Where(i =>
                 i.ProsecutionCase != null && i.ProsecutionCase.CaseRegister != null &&
                 i.ProsecutionCase.CaseRegister.SubcountyId == subcountyId);
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            invoicesQuery = invoicesQuery.Where(i =>
+                i.ProsecutionCase != null && i.ProsecutionCase.CaseRegister != null &&
+                i.ProsecutionCase.CaseRegister.RoadId == roadId);
 
         var invoices = await invoicesQuery
             .Include(i => i.ProsecutionCase)
@@ -694,6 +707,8 @@ public class ProsecutionReportGenerator : BaseReportGenerator
             offendersQuery = offendersQuery.Where(p => p.CaseRegister != null && p.CaseRegister.CountyId == countyId);
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
             offendersQuery = offendersQuery.Where(p => p.CaseRegister != null && p.CaseRegister.SubcountyId == subcountyId);
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            offendersQuery = offendersQuery.Where(p => p.CaseRegister != null && p.CaseRegister.RoadId == roadId);
 
         var offenders = await offendersQuery
             .Include(p => p.Weighing)

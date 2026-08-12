@@ -39,7 +39,8 @@ public class FinancialReportGenerator : BaseReportGenerator
     private static readonly List<ReportFilterDefinition> FinancialGeoFilters =
     [
         new() { Key = "countyId", Label = "County", Kind = "county" },
-        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" }
+        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" },
+        new() { Key = "roadId", Label = "Road", Kind = "road" }
     ];
 
     private static readonly List<ReportColumnDefinition> InvoiceAgingColumns =
@@ -122,6 +123,8 @@ public class FinancialReportGenerator : BaseReportGenerator
             receiptQuery = receiptQuery.Where(r => r.Invoice != null && r.Invoice.CaseRegister != null && r.Invoice.CaseRegister.CountyId == countyId);
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
             receiptQuery = receiptQuery.Where(r => r.Invoice != null && r.Invoice.CaseRegister != null && r.Invoice.CaseRegister.SubcountyId == subcountyId);
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            receiptQuery = receiptQuery.Where(r => r.Invoice != null && r.Invoice.CaseRegister != null && r.Invoice.CaseRegister.RoadId == roadId);
 
         var receipts = await receiptQuery
             .Select(r => new
@@ -225,6 +228,8 @@ public class FinancialReportGenerator : BaseReportGenerator
             invoiceQuery = invoiceQuery.Where(i => i.CaseRegister != null && i.CaseRegister.CountyId == countyId);
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
             invoiceQuery = invoiceQuery.Where(i => i.CaseRegister != null && i.CaseRegister.SubcountyId == subcountyId);
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            invoiceQuery = invoiceQuery.Where(i => i.CaseRegister != null && i.CaseRegister.RoadId == roadId);
 
         var invoices = await invoiceQuery
             .Include(i => i.Receipts.Where(r => r.DeletedAt == null))
@@ -343,6 +348,8 @@ public class FinancialReportGenerator : BaseReportGenerator
             reconciliationQuery = reconciliationQuery.Where(i => i.CaseRegister != null && i.CaseRegister.CountyId == countyId);
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
             reconciliationQuery = reconciliationQuery.Where(i => i.CaseRegister != null && i.CaseRegister.SubcountyId == subcountyId);
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            reconciliationQuery = reconciliationQuery.Where(i => i.CaseRegister != null && i.CaseRegister.RoadId == roadId);
 
         var invoices = await reconciliationQuery
             .Include(i => i.Receipts.Where(r => r.DeletedAt == null))

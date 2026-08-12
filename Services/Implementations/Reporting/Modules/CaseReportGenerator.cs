@@ -66,7 +66,8 @@ public class CaseReportGenerator : BaseReportGenerator
     private static readonly List<ReportFilterDefinition> CaseGeoFilters =
     [
         new() { Key = "countyId", Label = "County", Kind = "county" },
-        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" }
+        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" },
+        new() { Key = "roadId", Label = "Road", Kind = "road" }
     ];
 
     public CaseReportGenerator(TruLoadDbContext context)
@@ -125,6 +126,8 @@ public class CaseReportGenerator : BaseReportGenerator
             query = query.Where(c => c.CountyId == countyId);
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
             query = query.Where(c => c.SubcountyId == subcountyId);
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(c => c.RoadId == roadId);
 
         var cases = await (
             from c in query
@@ -236,14 +239,18 @@ public class CaseReportGenerator : BaseReportGenerator
         Guid? subcountyId = null;
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var parsedSubcountyId))
             subcountyId = parsedSubcountyId;
+        Guid? roadId = null;
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var parsedRoadId))
+            roadId = parsedRoadId;
 
         // Group cases by vehicle to find repeats. CaseRegister carries its own direct
-        // CountyId/SubcountyId FKs (no station join needed) - filter directly on those columns.
+        // CountyId/SubcountyId/RoadId FKs (no station join needed) - filter directly on those columns.
         var vehicleCases = await _context.CaseRegisters
             .Where(c => c.DeletedAt == null)
             .Where(c => c.CreatedAt >= from && c.CreatedAt <= to)
             .Where(c => countyId == null || c.CountyId == countyId)
             .Where(c => subcountyId == null || c.SubcountyId == subcountyId)
+            .Where(c => roadId == null || c.RoadId == roadId)
             .Include(c => c.CaseStatus)
             .GroupBy(c => c.VehicleId)
             .Where(g => g.Count() > 1)
@@ -274,6 +281,7 @@ public class CaseReportGenerator : BaseReportGenerator
             .Where(cp => cp.CaseRegister!.CreatedAt >= from && cp.CaseRegister!.CreatedAt <= to)
             .Where(cp => countyId == null || cp.CaseRegister!.CountyId == countyId)
             .Where(cp => subcountyId == null || cp.CaseRegister!.SubcountyId == subcountyId)
+            .Where(cp => roadId == null || cp.CaseRegister!.RoadId == roadId)
             .GroupBy(cp => cp.TransporterId)
             .Where(g => g.Count() > 1)
             .Select(g => new
@@ -354,6 +362,8 @@ public class CaseReportGenerator : BaseReportGenerator
             statusGroupsQuery = statusGroupsQuery.Where(c => c.CountyId == countyId);
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
             statusGroupsQuery = statusGroupsQuery.Where(c => c.SubcountyId == subcountyId);
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            statusGroupsQuery = statusGroupsQuery.Where(c => c.RoadId == roadId);
 
         var statusGroups = await statusGroupsQuery
             .Include(c => c.CaseStatus)
