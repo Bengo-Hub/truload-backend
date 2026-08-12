@@ -6,6 +6,8 @@ namespace TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments.R
 internal sealed class WeighbridgeRegisterDocument : WeighingReportDocumentBase
 {
     public int TotalRecords { get; set; }
+    public int? StatusColumnIndex { get; set; }
+    public (string colorHex, string label)[] Legend { get; set; } = [];
 
     public WeighbridgeRegisterDocument()
     {
@@ -22,7 +24,8 @@ internal sealed class WeighbridgeRegisterDocument : WeighingReportDocumentBase
             col.Item().PaddingBottom(5).Text($"Total Records: {TotalRecords}")
                 .FontSize(9).SemiBold();
 
-            col.Item().Element(c => ComposeDataTable(c, Headers, Rows));
+            col.Item().Element(c => ComposeDataTable(c, Headers, Rows, conditionalStatusColumnIndex: StatusColumnIndex));
+            col.Item().Element(c => ComposeLegend(c, Legend));
         });
     }
 }

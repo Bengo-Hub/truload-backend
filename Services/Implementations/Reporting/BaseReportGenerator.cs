@@ -232,6 +232,15 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
             var dataRange = worksheet.Range(headerRow, 1, dataRow - 1, headers.Length);
             dataRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
             dataRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+
+            if (request.IncludeChartVisuals && request.PercentageDataBarColumnIndexes is { Length: > 0 } pctCols)
+            {
+                foreach (var colIdx in pctCols)
+                {
+                    if (colIdx >= 0 && colIdx < headers.Length)
+                        ApplyPercentageDataBar(worksheet.Range(headerRow + 1, colIdx + 1, dataRow - 1, colIdx + 1));
+                }
+            }
         }
 
         var nextRow = dataRow + 1;

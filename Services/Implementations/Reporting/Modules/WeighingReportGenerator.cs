@@ -221,7 +221,20 @@ public class WeighingReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, csvRows), "weighing_daily_summary", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Daily Weighing Summary", headers, csvRows, from, to), "weighing_daily_summary", from, to);
+        {
+            var request = new ExcelReportRequest
+            {
+                ReportTitle = "Daily Weighing Summary",
+                Headers = headers,
+                Rows = csvRows,
+                DateFrom = from,
+                DateTo = to,
+                PercentageDataBarColumnIndexes = [5], // "Compliance %"
+                OrgName = filters.OrganizationName,
+                OrgLogoFile = filters.OrgLogoFile
+            };
+            return ExcelResult(GenerateExcel(request), "weighing_daily_summary", from, to);
+        }
 
         var stationName = !string.IsNullOrEmpty(filters.StationId)
             ? rows.FirstOrDefault()?.StationName
@@ -331,11 +344,32 @@ public class WeighingReportGenerator : BaseReportGenerator
             $"{(currency.Equals("KES", StringComparison.OrdinalIgnoreCase) && t.TotalFeeKes > 0 ? t.TotalFeeKes : t.TotalFeeUsd):N2}"
         });
 
+        const int statusColumnIndex = 11;
+        var legend = new[]
+        {
+            (BrandingConstants.Colors.ToleranceBlue, "Warning (axle overload)"),
+            (BrandingConstants.Colors.SampleTemplateRed, "Overloaded (GVW)")
+        };
+
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "weighbridge_register", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Weighbridge Register", headers, csvRows, from, to), "weighbridge_register", from, to);
+        {
+            var request = new ExcelReportRequest
+            {
+                ReportTitle = "Weighbridge Register",
+                Headers = headers,
+                Rows = csvRows,
+                DateFrom = from,
+                DateTo = to,
+                ConditionalStatusColumnIndex = statusColumnIndex,
+                Legend = legend,
+                OrgName = filters.OrganizationName,
+                OrgLogoFile = filters.OrgLogoFile
+            };
+            return ExcelResult(GenerateExcel(request), "weighbridge_register", from, to);
+        }
 
         var stationName = !string.IsNullOrEmpty(filters.StationId)
             ? transactions.FirstOrDefault()?.StationName
@@ -348,7 +382,9 @@ public class WeighingReportGenerator : BaseReportGenerator
             StationName = stationName,
             Headers = headers,
             Rows = csvRows.ToArray(),
-            TotalRecords = transactions.Count
+            TotalRecords = transactions.Count,
+            StatusColumnIndex = statusColumnIndex,
+            Legend = legend
         };
 
         return PdfResult(doc, filters, "weighbridge_register", from, to);
@@ -639,7 +675,20 @@ public class WeighingReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, csvRows), "compliance_trend", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Compliance Trend Analysis", headers, csvRows, from, to), "compliance_trend", from, to);
+        {
+            var request = new ExcelReportRequest
+            {
+                ReportTitle = "Compliance Trend Analysis",
+                Headers = headers,
+                Rows = csvRows,
+                DateFrom = from,
+                DateTo = to,
+                PercentageDataBarColumnIndexes = [5], // "Compliance %"
+                OrgName = filters.OrganizationName,
+                OrgLogoFile = filters.OrgLogoFile
+            };
+            return ExcelResult(GenerateExcel(request), "compliance_trend", from, to);
+        }
 
         var grandTotal = dailyData.Sum(d => d.Total);
         var grandCompliant = dailyData.Sum(d => d.Compliant);
@@ -741,7 +790,20 @@ public class WeighingReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, csvRows), "axle_overload_analysis", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Axle Overload Analysis", headers, csvRows, from, to), "axle_overload_analysis", from, to);
+        {
+            var request = new ExcelReportRequest
+            {
+                ReportTitle = "Axle Overload Analysis",
+                Headers = headers,
+                Rows = csvRows,
+                DateFrom = from,
+                DateTo = to,
+                PercentageDataBarColumnIndexes = [11], // "Overload %"
+                OrgName = filters.OrganizationName,
+                OrgLogoFile = filters.OrgLogoFile
+            };
+            return ExcelResult(GenerateExcel(request), "axle_overload_analysis", from, to);
+        }
 
         // Aggregate by axle type for summary
         var axleTypeSummary = axleData
@@ -838,7 +900,20 @@ public class WeighingReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, csvRows), "station_performance", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Station Performance Report", headers, csvRows, from, to), "station_performance", from, to);
+        {
+            var request = new ExcelReportRequest
+            {
+                ReportTitle = "Station Performance Report",
+                Headers = headers,
+                Rows = csvRows,
+                DateFrom = from,
+                DateTo = to,
+                PercentageDataBarColumnIndexes = [5], // "Compliance %"
+                OrgName = filters.OrganizationName,
+                OrgLogoFile = filters.OrgLogoFile
+            };
+            return ExcelResult(GenerateExcel(request), "station_performance", from, to);
+        }
 
         var grandTotal = stationData.Sum(s => s.TotalVehicles);
         var grandCompliant = stationData.Sum(s => s.Compliant);
@@ -932,7 +1007,20 @@ public class WeighingReportGenerator : BaseReportGenerator
             return CsvResult(GenerateCsv(headers, csvRows), "transporter_statement", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Transporter Statement", headers, csvRows, from, to), "transporter_statement", from, to);
+        {
+            var request = new ExcelReportRequest
+            {
+                ReportTitle = "Transporter Statement",
+                Headers = headers,
+                Rows = csvRows,
+                DateFrom = from,
+                DateTo = to,
+                PercentageDataBarColumnIndexes = [6], // "Compliance %"
+                OrgName = filters.OrganizationName,
+                OrgLogoFile = filters.OrgLogoFile
+            };
+            return ExcelResult(GenerateExcel(request), "transporter_statement", from, to);
+        }
 
         var doc = new TransporterStatementDocument
         {
@@ -1031,11 +1119,32 @@ public class WeighingReportGenerator : BaseReportGenerator
             $"{(currency.Equals("KES", StringComparison.OrdinalIgnoreCase) && o.TotalFeeKes > 0 ? o.TotalFeeKes : o.TotalFeeUsd):N2}"
         });
 
+        const int statusColumnIndex = 11;
+        var legend = new[]
+        {
+            (BrandingConstants.Colors.SampleTemplateRed, "Overloaded (GVW)")
+        };
+
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "overloaded_vehicles", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Overloaded Vehicles Register", headers, csvRows, from, to), "overloaded_vehicles", from, to);
+        {
+            var request = new ExcelReportRequest
+            {
+                ReportTitle = "Overloaded Vehicles Register",
+                Headers = headers,
+                Rows = csvRows,
+                DateFrom = from,
+                DateTo = to,
+                ConditionalStatusColumnIndex = statusColumnIndex,
+                Legend = legend,
+                PercentageDataBarColumnIndexes = [10], // "Overload %"
+                OrgName = filters.OrganizationName,
+                OrgLogoFile = filters.OrgLogoFile
+            };
+            return ExcelResult(GenerateExcel(request), "overloaded_vehicles", from, to);
+        }
 
         var doc = new OverloadedVehiclesDocument
         {
@@ -1043,6 +1152,8 @@ public class WeighingReportGenerator : BaseReportGenerator
             DateTo = to,
             Headers = headers,
             Rows = csvRows.ToArray(),
+            StatusColumnIndex = statusColumnIndex,
+            Legend = legend,
             SummaryItems =
             [
                 ("Overloaded Vehicles", overloaded.Count.ToString()),
@@ -1133,11 +1244,32 @@ public class WeighingReportGenerator : BaseReportGenerator
             r.IsCompliant ? "Compliant" : r.ControlStatus
         });
 
+        const int statusColumnIndex = 11;
+        var legend = new[]
+        {
+            (BrandingConstants.Colors.ToleranceBlue, "Warning (axle overload)"),
+            (BrandingConstants.Colors.SampleTemplateRed, "Overloaded (GVW)")
+        };
+
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "reweigh_statement", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Reweigh Statement", headers, csvRows, from, to), "reweigh_statement", from, to);
+        {
+            var request = new ExcelReportRequest
+            {
+                ReportTitle = "Reweigh Statement",
+                Headers = headers,
+                Rows = csvRows,
+                DateFrom = from,
+                DateTo = to,
+                ConditionalStatusColumnIndex = statusColumnIndex,
+                Legend = legend,
+                OrgName = filters.OrganizationName,
+                OrgLogoFile = filters.OrgLogoFile
+            };
+            return ExcelResult(GenerateExcel(request), "reweigh_statement", from, to);
+        }
 
         var compliantAfterReweigh = reweighData.Count(r => r.IsCompliant);
 
@@ -1147,6 +1279,8 @@ public class WeighingReportGenerator : BaseReportGenerator
             DateTo = to,
             Headers = headers,
             Rows = csvRows.ToArray(),
+            StatusColumnIndex = statusColumnIndex,
+            Legend = legend,
             SummaryItems =
             [
                 ("Total Reweighs", reweighData.Count.ToString()),
@@ -1235,11 +1369,32 @@ public class WeighingReportGenerator : BaseReportGenerator
             sr.Reason.Length > 80 ? sr.Reason[..80] + "..." : sr.Reason
         });
 
+        const int statusColumnIndex = 8;
+        var legend = new[]
+        {
+            (BrandingConstants.Colors.SampleTemplateRed, "Rejected"),
+            ("#FEF3C7", "Pending")
+        };
+
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "special_release_register", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Special Release Register", headers, csvRows, from, to), "special_release_register", from, to);
+        {
+            var request = new ExcelReportRequest
+            {
+                ReportTitle = "Special Release Register",
+                Headers = headers,
+                Rows = csvRows,
+                DateFrom = from,
+                DateTo = to,
+                ConditionalStatusColumnIndex = statusColumnIndex,
+                Legend = legend,
+                OrgName = filters.OrganizationName,
+                OrgLogoFile = filters.OrgLogoFile
+            };
+            return ExcelResult(GenerateExcel(request), "special_release_register", from, to);
+        }
 
         var approved = releases.Count(sr => sr.IsApproved);
         var rejected = releases.Count(sr => sr.IsRejected);
@@ -1251,6 +1406,8 @@ public class WeighingReportGenerator : BaseReportGenerator
             DateTo = to,
             Headers = headers,
             Rows = csvRows.ToArray(),
+            StatusColumnIndex = statusColumnIndex,
+            Legend = legend,
             SummaryItems =
             [
                 ("Total Releases", releases.Count.ToString()),
@@ -1324,11 +1481,31 @@ public class WeighingReportGenerator : BaseReportGenerator
             t.OfficerName
         });
 
+        const int statusColumnIndex = 9;
+        var legend = new[]
+        {
+            (BrandingConstants.Colors.SampleTemplateRed, "Fail")
+        };
+
         if (format == "csv")
             return CsvResult(GenerateCsv(headers, csvRows), "scale_test_log", from, to);
 
         if (format == "xlsx")
-            return ExcelResult(GenerateExcel("Scale Test Log", headers, csvRows, from, to), "scale_test_log", from, to);
+        {
+            var request = new ExcelReportRequest
+            {
+                ReportTitle = "Scale Test Log",
+                Headers = headers,
+                Rows = csvRows,
+                DateFrom = from,
+                DateTo = to,
+                ConditionalStatusColumnIndex = statusColumnIndex,
+                Legend = legend,
+                OrgName = filters.OrganizationName,
+                OrgLogoFile = filters.OrgLogoFile
+            };
+            return ExcelResult(GenerateExcel(request), "scale_test_log", from, to);
+        }
 
         var passed = tests.Count(t => t.Result.Equals("pass", StringComparison.OrdinalIgnoreCase));
         var failed = tests.Count(t => t.Result.Equals("fail", StringComparison.OrdinalIgnoreCase));
@@ -1339,6 +1516,8 @@ public class WeighingReportGenerator : BaseReportGenerator
             DateTo = to,
             Headers = headers,
             Rows = csvRows.ToArray(),
+            StatusColumnIndex = statusColumnIndex,
+            Legend = legend,
             SummaryItems =
             [
                 ("Total Tests", tests.Count.ToString()),
