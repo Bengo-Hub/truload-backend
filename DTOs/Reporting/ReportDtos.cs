@@ -38,6 +38,38 @@ public class ReportDefinitionDto
 
     /// <summary>Optional curated chart-option catalog for this report type.</summary>
     public List<ReportChartOption>? ChartOptions { get; set; }
+
+    /// <summary>
+    /// Optional curated filter catalog for the structured custom-report builder - same
+    /// present-only-if-opted-in convention as <see cref="Columns"/>. Lets the builder UI show only
+    /// the filters a given report type actually supports (e.g. a pre-aggregated report with no
+    /// per-vehicle rows has no "vehicle registration" filter) instead of one fixed generic set.
+    /// </summary>
+    public List<ReportFilterDefinition>? Filters { get; set; }
+}
+
+/// <summary>
+/// One selectable filter in a report's structured custom-report-builder catalog. <see cref="Key"/>
+/// matches a property on <see cref="ReportFilterParams"/> (e.g. "stationId", "countyId") - the
+/// frontend uses <see cref="Kind"/> to pick which control to render (a station/county/subcounty
+/// picker, a small fixed dropdown from <see cref="Options"/>, free text, or a date).
+/// </summary>
+public class ReportFilterDefinition
+{
+    public string Key { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>"station" | "county" | "subcounty" | "select" | "text" | "date".</summary>
+    public string Kind { get; set; } = "text";
+
+    /// <summary>Fixed option list for Kind == "select" (e.g. weighing type, control status).</summary>
+    public List<ReportFilterOption>? Options { get; set; }
+}
+
+public class ReportFilterOption
+{
+    public string Value { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -84,6 +116,10 @@ public class ReportFilterParams
     public DateTime? DateFrom { get; set; }
     public DateTime? DateTo { get; set; }
     public string? StationId { get; set; }
+    /// <summary>County filter - resolved via the station's CountyId (Weighing module) or a report's own CountyId FK where present.</summary>
+    public string? CountyId { get; set; }
+    /// <summary>Sub-county filter - resolved via the station's SubcountyId (Weighing module) or a report's own SubcountyId FK where present.</summary>
+    public string? SubcountyId { get; set; }
     public string? Status { get; set; }
     /// <summary>Weighing type filter (e.g. static, multideck, mobile) for weighing reports.</summary>
     public string? WeighingType { get; set; }

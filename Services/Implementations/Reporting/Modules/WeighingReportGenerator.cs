@@ -31,6 +31,7 @@ public class WeighingReportGenerator : BaseReportGenerator
     [
         new() { Key = "S/No.", Label = "Serial Number" },
         new() { Key = "Reg No.", Label = "Vehicle Registration" },
+        new() { Key = "Station", Label = "Station" },
         new() { Key = "No. of Axle", Label = "Number of Axles" },
         new() { Key = "Legal", Label = "Legal (Permissible) Weight (kg)" },
         new() { Key = "Actual", Label = "Actual (Measured) Weight (kg)" },
@@ -47,6 +48,44 @@ public class WeighingReportGenerator : BaseReportGenerator
     [
         new() { Key = "proportion-bar", Label = "Vehicle-type proportion bar + Excel data bars (default)" },
         new() { Key = "none", Label = "Tables only, no visual emphasis" }
+    ];
+
+    // =====================================================================
+    // Structured custom-report-builder filter catalogs, shared across the Weighing module's report
+    // types - lets the builder UI show only the filters a given report actually supports (Key
+    // matches a ReportFilterParams property; Kind tells the frontend which control to render).
+    // =====================================================================
+
+    private static readonly List<ReportFilterOption> WeighingTypeOptions =
+    [
+        new() { Value = "static", Label = "Static" },
+        new() { Value = "multideck", Label = "Multideck" },
+        new() { Value = "mobile", Label = "Mobile" }
+    ];
+
+    private static readonly List<ReportFilterOption> ControlStatusOptions =
+    [
+        new() { Value = "Compliant", Label = "Compliant" },
+        new() { Value = "Warning", Label = "Warning" },
+        new() { Value = "Overloaded", Label = "Overloaded" }
+    ];
+
+    /// <summary>Station/County/Sub County drill-down + weighing type/compliance status - the full set, for reports whose query applies all of them.</summary>
+    private static readonly List<ReportFilterDefinition> StandardWeighingFilters =
+    [
+        new() { Key = "stationId", Label = "Station", Kind = "station" },
+        new() { Key = "countyId", Label = "County", Kind = "county" },
+        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" },
+        new() { Key = "weighingType", Label = "Weighing Type", Kind = "select", Options = WeighingTypeOptions },
+        new() { Key = "controlStatus", Label = "Compliance Status", Kind = "select", Options = ControlStatusOptions }
+    ];
+
+    /// <summary>Station/County/Sub County drill-down only, for reports whose query doesn't apply a weighing-type/compliance-status filter.</summary>
+    private static readonly List<ReportFilterDefinition> StationGeoFilters =
+    [
+        new() { Key = "stationId", Label = "Station", Kind = "station" },
+        new() { Key = "countyId", Label = "County", Kind = "county" },
+        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" }
     ];
 
     // =====================================================================
@@ -76,6 +115,9 @@ public class WeighingReportGenerator : BaseReportGenerator
         new() { Key = "Ticket #", Label = "Ticket Number" },
         new() { Key = "Date/Time", Label = "Date/Time" },
         new() { Key = "Station", Label = "Station" },
+        new() { Key = "County", Label = "County" },
+        new() { Key = "Sub County", Label = "Sub County" },
+        new() { Key = "Road", Label = "Road" },
         new() { Key = "Bound", Label = "Bound" },
         new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
         new() { Key = "Axle Config", Label = "Axle Configuration" },
@@ -152,6 +194,9 @@ public class WeighingReportGenerator : BaseReportGenerator
         new() { Key = "Ticket #", Label = "Ticket Number" },
         new() { Key = "Date/Time", Label = "Date/Time" },
         new() { Key = "Station", Label = "Station" },
+        new() { Key = "County", Label = "County" },
+        new() { Key = "Sub County", Label = "Sub County" },
+        new() { Key = "Road", Label = "Road" },
         new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
         new() { Key = "Axle Config", Label = "Axle Configuration" },
         new() { Key = "Driver", Label = "Driver" },
@@ -169,6 +214,9 @@ public class WeighingReportGenerator : BaseReportGenerator
         new() { Key = "Ticket #", Label = "Ticket Number" },
         new() { Key = "Date/Time", Label = "Date/Time" },
         new() { Key = "Station", Label = "Station" },
+        new() { Key = "County", Label = "County" },
+        new() { Key = "Sub County", Label = "Sub County" },
+        new() { Key = "Road", Label = "Road" },
         new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
         new() { Key = "Cycle #", Label = "Reweigh Cycle #" },
         new() { Key = "Max Cycles", Label = "Max Cycles" },
@@ -260,6 +308,18 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        // WeighingTransaction has no direct CountyId FK (only SubcountyId, for mobile-unit capture) -
+        // county filtering goes through the weighing station's own CountyId, the reliable FK-based
+        // source for both static/multideck and mobile-unit transactions alike.
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        // Sub-county: prefer the transaction's own SubcountyId when set (mobile-unit capture
+        // location), fall back to its station's SubcountyId otherwise - matches the same
+        // transaction-first/station-fallback precedence used for display elsewhere in this report set.
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
         if (!string.IsNullOrEmpty(filters.WeighingType))
             query = query.Where(w => w.WeighingType == filters.WeighingType);
         if (!string.IsNullOrEmpty(filters.ControlStatus))
@@ -272,38 +332,39 @@ public class WeighingReportGenerator : BaseReportGenerator
     [
         Def("daily-summary", "Daily Weighing Summary",
             "Aggregated daily statistics including total vehicles weighed, compliance rate, and overload totals per station.",
-            columns: DailySummaryColumns),
+            columns: DailySummaryColumns, filters: StandardWeighingFilters),
         Def("weighbridge-register", "Weighbridge Register",
             "Detailed register of all weighing transactions with vehicle, driver, weight, and compliance data.",
-            columns: WeighbridgeRegisterColumns),
+            columns: WeighbridgeRegisterColumns, filters: StandardWeighingFilters),
         Def("axle-load-analysis", "Axle Load Data Analysis",
-            "Per-vehicle axle load analysis scoped by a single station, with vehicle-type/axle-count " +
-            "and overload-by-GVW summary breakdowns, colour-coded status and legend - matches the KURA NRB template.",
-            columns: AxleLoadAnalysisColumns, chartOptions: AxleLoadAnalysisChartOptions),
+            "Per-vehicle axle load analysis with vehicle-type/axle-count and overload-by-GVW summary " +
+            "breakdowns, colour-coded status and legend. Covers all stations by default, or a single " +
+            "station when filtered.",
+            columns: AxleLoadAnalysisColumns, filters: StandardWeighingFilters, chartOptions: AxleLoadAnalysisChartOptions),
         Def("compliance-trend", "Compliance Trend Analysis",
             "Daily compliance rates over the selected period, showing overload vs compliant vehicle counts.",
-            columns: ComplianceTrendColumns),
+            columns: ComplianceTrendColumns, filters: StandardWeighingFilters),
         Def("axle-overload", "Axle Overload Analysis",
             "Breakdown of overloaded axles by type and configuration, with pavement damage factor analysis.",
-            columns: AxleOverloadColumns),
+            columns: AxleOverloadColumns, filters: StationGeoFilters),
         Def("station-performance", "Station Performance Report",
             "Comparative performance metrics across weighbridge stations for the selected period.",
-            columns: StationPerformanceColumns),
+            columns: StationPerformanceColumns, filters: StationGeoFilters),
         Def("transporter-statement", "Transporter Statement",
             "Weighing history and compliance summary grouped by transporter company.",
-            columns: TransporterStatementColumns),
+            columns: TransporterStatementColumns, filters: StationGeoFilters),
         Def("overloaded-vehicles", "Overloaded Vehicles Register",
             "Filtered register showing only overloaded vehicles with overload amounts and violation details.",
-            columns: OverloadedVehiclesColumns),
+            columns: OverloadedVehiclesColumns, filters: StandardWeighingFilters),
         Def("reweigh-statement", "Reweigh Statement",
             "Tracks reweigh cycles for vehicles that underwent load redistribution or correction.",
-            columns: ReweighStatementColumns),
+            columns: ReweighStatementColumns, filters: StationGeoFilters),
         Def("special-release", "Special Release Register",
             "Register of all special releases issued, with release type, authorization, and compliance status.",
             columns: SpecialReleaseColumns),
         Def("scale-test", "Scale Test Log",
             "Log of daily scale calibration tests per station and bound, with pass/fail results and deviations.",
-            columns: ScaleTestColumns)
+            columns: ScaleTestColumns, filters: StationGeoFilters)
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -343,6 +404,12 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
         if (!string.IsNullOrEmpty(filters.WeighingType))
             query = query.Where(w => w.WeighingType == filters.WeighingType);
         if (!string.IsNullOrEmpty(filters.ControlStatus))
@@ -466,6 +533,12 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
         if (!string.IsNullOrEmpty(filters.WeighingType))
             query = query.Where(w => w.WeighingType == filters.WeighingType);
         if (!string.IsNullOrEmpty(filters.ControlStatus))
@@ -473,9 +546,12 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         var transactions = await query
             .Include(w => w.Vehicle).ThenInclude(v => v!.AxleConfiguration)
-            .Include(w => w.Station)
+            .Include(w => w.Station).ThenInclude(s => s!.County)
+            .Include(w => w.Station).ThenInclude(s => s!.Subcounty)
+            .Include(w => w.Station).ThenInclude(s => s!.Road)
             .Include(w => w.Driver)
             .Include(w => w.Transporter)
+            .Include(w => w.Road)
             .OrderBy(w => w.WeighedAt)
             .Take(filters.PageSize)
             .Select(w => new
@@ -498,14 +574,19 @@ public class WeighingReportGenerator : BaseReportGenerator
                 w.WeighingType,
                 w.ReweighCycleNo,
                 w.TotalFeeUsd,
-                w.TotalFeeKes
+                w.TotalFeeKes,
+                CountyName = !string.IsNullOrWhiteSpace(w.LocationCounty) ? w.LocationCounty
+                    : w.Station.County != null ? w.Station.County.Name : "-",
+                SubcountyName = !string.IsNullOrWhiteSpace(w.LocationSubcounty) ? w.LocationSubcounty
+                    : w.Station.Subcounty != null ? w.Station.Subcounty.Name : "-",
+                RoadName = w.Road != null ? w.Road.Name : w.Station.Road != null ? w.Station.Road.Name : "-"
             })
             .ToListAsync(ct);
 
         var headers = new[]
         {
-            "Ticket #", "Date/Time", "Station", "Bound", "Vehicle Reg", "Axle Config",
-            "Driver", "Transporter", "GVW (kg)", "Permissible (kg)", "Overload (kg)",
+            "Ticket #", "Date/Time", "Station", "County", "Sub County", "Road", "Bound", "Vehicle Reg",
+            "Axle Config", "Driver", "Transporter", "GVW (kg)", "Permissible (kg)", "Overload (kg)",
             "Status", "Type", "Reweigh #", $"Fee ({currency})"
         };
 
@@ -514,6 +595,9 @@ public class WeighingReportGenerator : BaseReportGenerator
             t.TicketNumber,
             t.WeighedAt.ToString("dd/MM/yyyy HH:mm"),
             t.StationName,
+            t.CountyName,
+            t.SubcountyName,
+            t.RoadName,
             t.Bound ?? "-",
             t.VehicleReg,
             t.AxleConfig,
@@ -528,7 +612,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             $"{(currency.Equals("KES", StringComparison.OrdinalIgnoreCase) && t.TotalFeeKes > 0 ? t.TotalFeeKes : t.TotalFeeUsd):N2}"
         });
 
-        const int statusColumnIndex = 11;
+        const int statusColumnIndex = 14;
         // Legend swatches must mirror the actual row colour, which is driven by the raw
         // ControlStatus text ("Warning"/"Overloaded") via ReportStatusColors.Resolve - not the
         // "Within Permissible Tolerance" bucket (blue), which only applies to the sample-template
@@ -592,36 +676,30 @@ public class WeighingReportGenerator : BaseReportGenerator
     }
 
     // =====================================================================
-    // Axle Load Data Analysis (scoped by station - matches the KURA NRB sample template)
+    // Axle Load Data Analysis (all stations by default; station is an optional drill-down filter)
     // =====================================================================
 
     private async Task<ReportResult> GenerateAxleLoadAnalysisAsync(
         ReportFilterParams filters, string format, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(filters.StationId) || !Guid.TryParse(filters.StationId, out var stationId))
+        // Station is an optional drill-down filter, not a requirement - this report covers all
+        // stations by default, same as every other report in the fleet.
+        Guid? stationId = null;
+        if (!string.IsNullOrEmpty(filters.StationId))
         {
-            throw new ArgumentException(
-                "axle-load-analysis requires a stationId - this report is scoped to a single " +
-                "station, matching the KURA NRB sample template's per-station title.");
+            if (!Guid.TryParse(filters.StationId, out var parsedStationId))
+                throw new ArgumentException("Invalid stationId.");
+            stationId = parsedStationId;
         }
 
         var (from, to) = GetDateRange(filters);
 
-        var station = await _context.Stations
-            .AsNoTracking()
-            .Include(s => s.County)
-            .Include(s => s.Subcounty)
-            .Include(s => s.Road)
-            .FirstOrDefaultAsync(s => s.Id == stationId, ct);
-
-        var stationName = station?.Name ?? "Station";
-        var countyName = station?.County?.Name ?? "-";
-        var subcountyName = station?.Subcounty?.Name ?? "-";
-        var stationRoadName = station?.Road?.Name ?? "-";
-
         var transactions = await BuildWeighingBaseQuery(filters, from, to)
             .Include(w => w.Vehicle).ThenInclude(v => v!.AxleConfiguration)
             .Include(w => w.Road)
+            .Include(w => w.Station).ThenInclude(s => s!.County)
+            .Include(w => w.Station).ThenInclude(s => s!.Subcounty)
+            .Include(w => w.Station).ThenInclude(s => s!.Road)
             .OrderBy(w => w.WeighedAt)
             .Take(filters.PageSize)
             .Select(w => new
@@ -633,6 +711,10 @@ public class WeighingReportGenerator : BaseReportGenerator
                 w.GvwMeasuredKg,
                 w.OverloadKg,
                 w.ControlStatus,
+                StationName = w.Station != null ? w.Station.Name : "-",
+                StationCountyName = w.Station != null && w.Station.County != null ? w.Station.County.Name : "-",
+                StationSubcountyName = w.Station != null && w.Station.Subcounty != null ? w.Station.Subcounty.Name : "-",
+                StationRoadName = w.Station != null && w.Station.Road != null ? w.Station.Road.Name : "-",
                 w.LocationCounty,
                 w.LocationSubcounty,
                 TransactionRoadName = w.Road != null ? w.Road.Name : null
@@ -641,10 +723,10 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         var headers = new[]
         {
-            "S/No.", "Reg No.", "No. of Axle", "Legal", "Actual", "Overload",
+            "S/No.", "Reg No.", "Station", "No. of Axle", "Legal", "Actual", "Overload",
             "% Gross Overload", "Overloaded", "Status", "County", "Sub County", "Road"
         };
-        const int statusColumnIndex = 8;
+        const int statusColumnIndex = 9;
 
         var rows = new List<string[]>();
         var bucketWeighed = new SortedDictionary<int, int>();
@@ -663,6 +745,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             {
                 serial.ToString(),
                 t.VehicleRegNumber,
+                t.StationName,
                 t.AxleCount.ToString(),
                 FormatNumber(t.GvwPermissibleKg),
                 FormatNumber(t.GvwMeasuredKg),
@@ -670,9 +753,9 @@ public class WeighingReportGenerator : BaseReportGenerator
                 $"{pctGrossOverload:F2}%",
                 isOverloaded ? "Yes" : "No",
                 sampleStatus,
-                !string.IsNullOrWhiteSpace(t.LocationCounty) ? t.LocationCounty : countyName,
-                !string.IsNullOrWhiteSpace(t.LocationSubcounty) ? t.LocationSubcounty : subcountyName,
-                t.TransactionRoadName ?? stationRoadName
+                !string.IsNullOrWhiteSpace(t.LocationCounty) ? t.LocationCounty : t.StationCountyName,
+                !string.IsNullOrWhiteSpace(t.LocationSubcounty) ? t.LocationSubcounty : t.StationSubcountyName,
+                t.TransactionRoadName ?? t.StationRoadName
             });
 
             // Bucket by axle count (2-6 exact, 7+ grouped) to mirror the sample's
@@ -761,6 +844,27 @@ public class WeighingReportGenerator : BaseReportGenerator
             .Select((bucket, i) => (BucketLabel(bucket), (decimal)bucketWeighed[bucket], palette[i % palette.Length]))
             .ToArray();
 
+        // Title/subtitle read sensibly whether scoped to one station or covering all of them.
+        var first = transactions.FirstOrDefault();
+        string reportTitle;
+        string reportSubtitle;
+        if (stationId.HasValue)
+        {
+            var scopedStationName = first?.StationName;
+            if (string.IsNullOrWhiteSpace(scopedStationName) || scopedStationName == "-")
+                scopedStationName = await _context.Stations.AsNoTracking()
+                    .Where(s => s.Id == stationId.Value).Select(s => s.Name).FirstOrDefaultAsync(ct) ?? "Station";
+            reportTitle = $"AXLE LOAD DATA ANALYSIS FOR {scopedStationName.ToUpperInvariant()}";
+            reportSubtitle = first != null
+                ? $"{scopedStationName} - {first.StationRoadName}, {first.StationSubcountyName}, {first.StationCountyName}"
+                : scopedStationName;
+        }
+        else
+        {
+            reportTitle = "AXLE LOAD DATA ANALYSIS - ALL STATIONS";
+            reportSubtitle = "All Stations";
+        }
+
         if (format == "csv")
             return CsvResult(GenerateCsv(outputHeaders, outputRows), "axle_load_data_analysis", from, to);
 
@@ -768,7 +872,7 @@ public class WeighingReportGenerator : BaseReportGenerator
         {
             var request = new ExcelReportRequest
             {
-                ReportTitle = $"AXLE LOAD DATA ANALYSIS FOR {stationName.ToUpperInvariant()}",
+                ReportTitle = reportTitle,
                 Headers = outputHeaders,
                 Rows = outputRows,
                 DateFrom = from,
@@ -797,7 +901,7 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         var doc = new AxleLoadAnalysisDocument
         {
-            ReportSubtitle = $"{stationName} - {stationRoadName}, {subcountyName}, {countyName}",
+            ReportSubtitle = reportSubtitle,
             DateFrom = from,
             DateTo = to,
             Headers = outputHeaders,
@@ -832,6 +936,12 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
         if (!string.IsNullOrEmpty(filters.WeighingType))
             query = query.Where(w => w.WeighingType == filters.WeighingType);
         if (!string.IsNullOrEmpty(filters.ControlStatus))
@@ -945,6 +1055,12 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             baseQuery = baseQuery.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            baseQuery = baseQuery.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            baseQuery = baseQuery.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         var overloadedTxIds = await baseQuery.Select(w => w.Id).ToListAsync(ct);
 
@@ -1073,6 +1189,12 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         var stationData = await query
             .Include(w => w.Station)
@@ -1196,6 +1318,12 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         var transporterData = await query
             .Include(w => w.Transporter)
@@ -1311,6 +1439,12 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
         if (!string.IsNullOrEmpty(filters.WeighingType))
             query = query.Where(w => w.WeighingType == filters.WeighingType);
         if (!string.IsNullOrEmpty(filters.ControlStatus))
@@ -1318,9 +1452,12 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         var overloaded = await query
             .Include(w => w.Vehicle).ThenInclude(v => v!.AxleConfiguration)
-            .Include(w => w.Station)
+            .Include(w => w.Station).ThenInclude(s => s!.County)
+            .Include(w => w.Station).ThenInclude(s => s!.Subcounty)
+            .Include(w => w.Station).ThenInclude(s => s!.Road)
             .Include(w => w.Driver)
             .Include(w => w.Transporter)
+            .Include(w => w.Road)
             .OrderByDescending(w => w.OverloadKg)
             .Take(filters.PageSize)
             .Select(w => new
@@ -1343,14 +1480,19 @@ public class WeighingReportGenerator : BaseReportGenerator
                 w.IsSentToYard,
                 w.ViolationReason,
                 w.TotalFeeUsd,
-                w.TotalFeeKes
+                w.TotalFeeKes,
+                CountyName = !string.IsNullOrWhiteSpace(w.LocationCounty) ? w.LocationCounty
+                    : w.Station.County != null ? w.Station.County.Name : "-",
+                SubcountyName = !string.IsNullOrWhiteSpace(w.LocationSubcounty) ? w.LocationSubcounty
+                    : w.Station.Subcounty != null ? w.Station.Subcounty.Name : "-",
+                RoadName = w.Road != null ? w.Road.Name : w.Station.Road != null ? w.Station.Road.Name : "-"
             })
             .ToListAsync(ct);
 
         var headers = new[]
         {
-            "Ticket #", "Date/Time", "Station", "Vehicle Reg", "Axle Config",
-            "Driver", "Transporter", "GVW (kg)", "Permissible (kg)", "Overload (kg)",
+            "Ticket #", "Date/Time", "Station", "County", "Sub County", "Road", "Vehicle Reg",
+            "Axle Config", "Driver", "Transporter", "GVW (kg)", "Permissible (kg)", "Overload (kg)",
             "Overload %", "Status", "Yard", $"Fee ({currency})"
         };
 
@@ -1359,6 +1501,9 @@ public class WeighingReportGenerator : BaseReportGenerator
             o.TicketNumber,
             o.WeighedAt.ToString("dd/MM/yyyy HH:mm"),
             o.StationName,
+            o.CountyName,
+            o.SubcountyName,
+            o.RoadName,
             o.VehicleReg,
             o.AxleConfig,
             o.DriverName,
@@ -1372,7 +1517,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             $"{(currency.Equals("KES", StringComparison.OrdinalIgnoreCase) && o.TotalFeeKes > 0 ? o.TotalFeeKes : o.TotalFeeUsd):N2}"
         });
 
-        const int statusColumnIndex = 11;
+        const int statusColumnIndex = 14;
         var legend = new[]
         {
             (BrandingConstants.Colors.SampleTemplateRed, "Overloaded (GVW)")
@@ -1381,7 +1526,7 @@ public class WeighingReportGenerator : BaseReportGenerator
         var outputHeaders = headers;
         List<string[]> outputRows = csvRows.ToList();
         int? effectiveStatusColumnIndex = statusColumnIndex;
-        int[]? pctIdx = [10]; // "Overload %"
+        int[]? pctIdx = [13]; // "Overload %"
 
         if (!filters.UseDefaults)
         {
@@ -1457,12 +1602,21 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         // Get reweigh transactions along with their original weighing data
         var reweighData = await query
-            .Include(w => w.Station)
+            .Include(w => w.Station).ThenInclude(s => s!.County)
+            .Include(w => w.Station).ThenInclude(s => s!.Subcounty)
+            .Include(w => w.Station).ThenInclude(s => s!.Road)
             .Include(w => w.Vehicle)
             .Include(w => w.OriginalWeighing)
+            .Include(w => w.Road)
             .OrderBy(w => w.VehicleRegNumber)
             .ThenBy(w => w.ReweighCycleNo)
             .Take(filters.PageSize)
@@ -1486,15 +1640,20 @@ public class WeighingReportGenerator : BaseReportGenerator
                 OriginalOverload = w.OriginalWeighing != null
                     ? w.OriginalWeighing.OverloadKg : 0,
                 WeightReduction = w.OriginalWeighing != null
-                    ? w.OriginalWeighing.GvwMeasuredKg - w.GvwMeasuredKg : 0
+                    ? w.OriginalWeighing.GvwMeasuredKg - w.GvwMeasuredKg : 0,
+                CountyName = !string.IsNullOrWhiteSpace(w.LocationCounty) ? w.LocationCounty
+                    : w.Station.County != null ? w.Station.County.Name : "-",
+                SubcountyName = !string.IsNullOrWhiteSpace(w.LocationSubcounty) ? w.LocationSubcounty
+                    : w.Station.Subcounty != null ? w.Station.Subcounty.Name : "-",
+                RoadName = w.Road != null ? w.Road.Name : w.Station.Road != null ? w.Station.Road.Name : "-"
             })
             .ToListAsync(ct);
 
         var headers = new[]
         {
-            "Ticket #", "Date/Time", "Station", "Vehicle Reg", "Cycle #", "Max Cycles",
-            "Original Ticket", "Original GVW (kg)", "Reweigh GVW (kg)", "Reduction (kg)",
-            "Overload (kg)", "Status"
+            "Ticket #", "Date/Time", "Station", "County", "Sub County", "Road", "Vehicle Reg",
+            "Cycle #", "Max Cycles", "Original Ticket", "Original GVW (kg)", "Reweigh GVW (kg)",
+            "Reduction (kg)", "Overload (kg)", "Status"
         };
 
         var csvRows = reweighData.Select(r => new[]
@@ -1502,6 +1661,9 @@ public class WeighingReportGenerator : BaseReportGenerator
             r.TicketNumber,
             r.WeighedAt.ToString("dd/MM/yyyy HH:mm"),
             r.StationName,
+            r.CountyName,
+            r.SubcountyName,
+            r.RoadName,
             r.VehicleReg,
             r.ReweighCycleNo.ToString(),
             r.ReweighLimit.ToString(),
@@ -1513,7 +1675,7 @@ public class WeighingReportGenerator : BaseReportGenerator
             r.IsCompliant ? "Compliant" : r.ControlStatus
         });
 
-        const int statusColumnIndex = 11;
+        const int statusColumnIndex = 14;
         var legend = new[]
         {
             (ReportStatusColors.Resolve("Warning").ExcelFillHex, "Warning (axle overload)"),
@@ -1731,6 +1893,10 @@ public class WeighingReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(st => st.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(st => st.Station != null && st.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(st => st.Station != null && st.Station.SubcountyId == subcountyId);
 
         var tests = await query
             .Include(st => st.Station)

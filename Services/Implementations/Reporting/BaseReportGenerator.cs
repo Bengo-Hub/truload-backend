@@ -394,6 +394,23 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
     }
 
     /// <summary>
+    /// Overload for report types that additionally opt into the structured filter catalog (see
+    /// <see cref="ReportFilterDefinition"/>) so the builder UI shows only the filters this report
+    /// actually supports, instead of one fixed generic set.
+    /// </summary>
+    protected ReportDefinitionDto Def(
+        string id, string name, string description,
+        List<ReportColumnDefinition>? columns, List<ReportFilterDefinition> filters,
+        List<ReportChartOption>? chartOptions = null, string[]? formats = null)
+    {
+        var def = Def(id, name, description, formats);
+        def.Columns = columns;
+        def.ChartOptions = chartOptions;
+        def.Filters = filters;
+        return def;
+    }
+
+    /// <summary>
     /// Filters a report's header/row output down to a caller-selected subset of columns, matched
     /// by header text (each report's headers are already its stable column identifiers - see
     /// <see cref="ReportColumnDefinition.Key"/>). Every report generator keeps building its full
