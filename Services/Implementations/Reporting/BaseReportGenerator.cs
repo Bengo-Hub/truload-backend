@@ -330,9 +330,34 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
         return row + 1;
     }
 
-    /// <summary>Applies ClosedXML's native DataBar conditional formatting to a percentage column.</summary>
+    /// <summary>
+    /// Applies ClosedXML's native DataBar conditional formatting to a percentage column. Every
+    /// percentage cell in this codebase is written as a pre-formatted DISPLAY STRING (e.g.
+    /// "45.00%", built via <c>$"{value:F2}%"</c>) so the plain CSV/table output reads correctly -
+    /// but a text cell has no numeric value for DataBar to size a bar against, so ClosedXML/Excel
+    /// silently renders no bar at all on a text-formatted range (confirmed bug, not a guess -
+    /// DataBar conditional formatting only operates on genuine numbers). Converts each cell to its
+    /// real underlying fraction (e.g. 0.45) with a "0.00%" number format first, which keeps the
+    /// exact same "45.00%" on-screen display while giving DataBar an actual number to work with.
+    /// </summary>
     protected static void ApplyPercentageDataBar(IXLRange range)
-        => range.AddConditionalFormat().DataBar(XLColor.FromHtml(BrandingConstants.Colors.KuraBlue));
+    {
+        foreach (var cell in range.Cells())
+        {
+            var text = cell.GetString();
+            if (string.IsNullOrWhiteSpace(text))
+                continue;
+
+            var trimmed = text.Trim().TrimEnd('%');
+            if (decimal.TryParse(trimmed, NumberStyles.Number, CultureInfo.InvariantCulture, out var percentValue))
+            {
+                cell.Value = percentValue / 100m;
+                cell.Style.NumberFormat.Format = "0.00%";
+            }
+        }
+
+        range.AddConditionalFormat().DataBar(XLColor.FromHtml(BrandingConstants.Colors.KuraBlue));
+    }
 
     /// <summary>
     /// Embeds the resolved org/fallback logo (same wwwroot/images/ resolution the PDF engine

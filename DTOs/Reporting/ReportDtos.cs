@@ -120,6 +120,8 @@ public class ReportFilterParams
     public string? CountyId { get; set; }
     /// <summary>Sub-county filter - resolved via the station's SubcountyId (Weighing module) or a report's own SubcountyId FK where present.</summary>
     public string? SubcountyId { get; set; }
+    /// <summary>Road filter - resolved via the transaction's own RoadId (falling back to the station's RoadId) or a report's own RoadId FK where present.</summary>
+    public string? RoadId { get; set; }
     public string? Status { get; set; }
     /// <summary>Weighing type filter (e.g. static, multideck, mobile) for weighing reports.</summary>
     public string? WeighingType { get; set; }

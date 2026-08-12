@@ -76,6 +76,7 @@ public class WeighingReportGenerator : BaseReportGenerator
         new() { Key = "stationId", Label = "Station", Kind = "station" },
         new() { Key = "countyId", Label = "County", Kind = "county" },
         new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" },
+        new() { Key = "roadId", Label = "Road", Kind = "road" },
         new() { Key = "weighingType", Label = "Weighing Type", Kind = "select", Options = WeighingTypeOptions },
         new() { Key = "controlStatus", Label = "Compliance Status", Kind = "select", Options = ControlStatusOptions }
     ];
@@ -85,7 +86,8 @@ public class WeighingReportGenerator : BaseReportGenerator
     [
         new() { Key = "stationId", Label = "Station", Kind = "station" },
         new() { Key = "countyId", Label = "County", Kind = "county" },
-        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" }
+        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" },
+        new() { Key = "roadId", Label = "Road", Kind = "road" }
     ];
 
     // =====================================================================
@@ -320,6 +322,12 @@ public class WeighingReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        // Road: prefer the transaction's own RoadId when set, fall back to its station's RoadId -
+        // same transaction-first/station-fallback precedence as County/Sub County above.
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
         if (!string.IsNullOrEmpty(filters.WeighingType))
             query = query.Where(w => w.WeighingType == filters.WeighingType);
         if (!string.IsNullOrEmpty(filters.ControlStatus))
@@ -410,6 +418,10 @@ public class WeighingReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
         if (!string.IsNullOrEmpty(filters.WeighingType))
             query = query.Where(w => w.WeighingType == filters.WeighingType);
         if (!string.IsNullOrEmpty(filters.ControlStatus))
@@ -539,6 +551,10 @@ public class WeighingReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
         if (!string.IsNullOrEmpty(filters.WeighingType))
             query = query.Where(w => w.WeighingType == filters.WeighingType);
         if (!string.IsNullOrEmpty(filters.ControlStatus))
@@ -942,6 +958,10 @@ public class WeighingReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
         if (!string.IsNullOrEmpty(filters.WeighingType))
             query = query.Where(w => w.WeighingType == filters.WeighingType);
         if (!string.IsNullOrEmpty(filters.ControlStatus))
@@ -1061,6 +1081,10 @@ public class WeighingReportGenerator : BaseReportGenerator
             baseQuery = baseQuery.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            baseQuery = baseQuery.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         var overloadedTxIds = await baseQuery.Select(w => w.Id).ToListAsync(ct);
 
@@ -1195,6 +1219,10 @@ public class WeighingReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         var stationData = await query
             .Include(w => w.Station)
@@ -1324,6 +1352,10 @@ public class WeighingReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         var transporterData = await query
             .Include(w => w.Transporter)
@@ -1445,6 +1477,10 @@ public class WeighingReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
         if (!string.IsNullOrEmpty(filters.WeighingType))
             query = query.Where(w => w.WeighingType == filters.WeighingType);
         if (!string.IsNullOrEmpty(filters.ControlStatus))
@@ -1608,6 +1644,10 @@ public class WeighingReportGenerator : BaseReportGenerator
             query = query.Where(w =>
                 (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
                 (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
 
         // Get reweigh transactions along with their original weighing data
         var reweighData = await query
@@ -1897,6 +1937,8 @@ public class WeighingReportGenerator : BaseReportGenerator
             query = query.Where(st => st.Station != null && st.Station.CountyId == countyId);
         if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
             query = query.Where(st => st.Station != null && st.Station.SubcountyId == subcountyId);
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(st => st.Station != null && st.Station.RoadId == roadId);
 
         var tests = await query
             .Include(st => st.Station)
