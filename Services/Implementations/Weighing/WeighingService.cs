@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Data.Repositories.Weighing;
@@ -22,6 +23,7 @@ using TruLoad.Backend.Services.Interfaces.System;
 using TruLoad.Backend.Services.Interfaces.Shared;
 using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.Subscription;
+using TruLoad.Backend.Services.BackgroundJobs;
 using TruLoad.Backend.Middleware;
 
 namespace TruLoad.Backend.Services.Implementations.Weighing;
@@ -51,6 +53,7 @@ public class WeighingService : IWeighingService
     private readonly ISubscriptionService _subscriptionService;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ITenantContext _tenantContext;
+    private readonly IBackgroundJobClient _jobs;
     private readonly ILogger<WeighingService> _logger;
 
     public WeighingService(
@@ -77,6 +80,7 @@ public class WeighingService : IWeighingService
         ISubscriptionService subscriptionService,
         IServiceScopeFactory scopeFactory,
         ITenantContext tenantContext,
+        IBackgroundJobClient jobs,
         ILogger<WeighingService> logger)
     {
         _weighingRepository = weighingRepository;
@@ -102,6 +106,7 @@ public class WeighingService : IWeighingService
         _subscriptionService = subscriptionService;
         _scopeFactory = scopeFactory;
         _tenantContext = tenantContext;
+        _jobs = jobs;
         _logger = logger;
     }
 
@@ -1041,6 +1046,25 @@ public class WeighingService : IWeighingService
                     "Failed auto-close/release/certificate for compliant reweigh {TransactionId}. Manual intervention required.",
                     transactionId);
                 // Don't throw — weighing result is still valid
+            }
+        }
+
+        // 15. Best-effort backfill of county/sub-county/road from GPS coordinates for mobile-unit
+        // captures that supplied coordinates but no location text. Fire-and-forget via Hangfire
+        // (durable, retried on failure, runs in its own DI scope) - deliberately the LAST thing in
+        // this method, after every enforcement auto-trigger above, and wrapped so an enqueue
+        // failure (e.g. job storage unreachable) can never affect the already-computed, valid
+        // weighing result being returned.
+        if (transaction.LocationLat.HasValue && transaction.LocationLng.HasValue &&
+            string.IsNullOrWhiteSpace(transaction.LocationCounty))
+        {
+            try
+            {
+                _jobs.Enqueue<GeocodeBackfillJob>(j => j.GeocodeAsync(transaction.Id, CancellationToken.None));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to enqueue GeocodeBackfillJob for weighing {TransactionId}", transaction.Id);
             }
         }
 

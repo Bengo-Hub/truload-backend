@@ -126,6 +126,7 @@ public class WeighingServiceTests
             _mockSubscriptionService.Object,
             Mock.Of<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(),
             Mock.Of<TruLoad.Backend.Middleware.ITenantContext>(),
+            Mock.Of<Hangfire.IBackgroundJobClient>(),
             _mockLogger.Object
         );
     }
