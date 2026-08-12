@@ -60,6 +60,9 @@ public class CommercialReportGenerator : BaseReportGenerator
         new() { Key = "Ticket #", Label = "Ticket Number" },
         new() { Key = "Date/Time", Label = "Date/Time" },
         new() { Key = "Station", Label = "Station" },
+        new() { Key = "County", Label = "County" },
+        new() { Key = "Sub County", Label = "Sub County" },
+        new() { Key = "Road", Label = "Road" },
         new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
         new() { Key = "Transporter", Label = "Transporter" },
         new() { Key = "Cargo", Label = "Cargo" },
@@ -93,6 +96,9 @@ public class CommercialReportGenerator : BaseReportGenerator
         new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
         new() { Key = "Date/Time", Label = "Date/Time" },
         new() { Key = "Station", Label = "Station" },
+        new() { Key = "County", Label = "County" },
+        new() { Key = "Sub County", Label = "Sub County" },
+        new() { Key = "Road", Label = "Road" },
         new() { Key = "Tare Weight (kg)", Label = "Tare Weight (kg)" },
         new() { Key = "Previous Tare (kg)", Label = "Previous Tare (kg)" },
         new() { Key = "Drift %", Label = "Drift %" },
@@ -172,6 +178,9 @@ public class CommercialReportGenerator : BaseReportGenerator
         new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
         new() { Key = "Transporter", Label = "Transporter" },
         new() { Key = "Station", Label = "Station" },
+        new() { Key = "County", Label = "County" },
+        new() { Key = "Sub County", Label = "Sub County" },
+        new() { Key = "Road", Label = "Road" },
         new() { Key = "First Weight At", Label = "First Weight At" },
         new() { Key = "Hours Pending", Label = "Hours Pending" },
         new() { Key = "First Weight (kg)", Label = "First Weight (kg)" }
@@ -189,6 +198,23 @@ public class CommercialReportGenerator : BaseReportGenerator
         new() { Key = "Avg Net Weight (kg)", Label = "Average Net Weight (kg)" }
     ];
 
+    // =====================================================================
+    // Structured custom-report-builder filter catalog, shared across the Commercial module's report
+    // types - lets the builder UI show only the filters a given report actually supports (Key
+    // matches a ReportFilterParams property; Kind tells the frontend which control to render).
+    // Unlike Weighing, Commercial reports have no WeighingType/ControlStatus selector concept (a
+    // couple of reports privately reuse those two ReportFilterParams fields as a discrepancy-kg
+    // threshold override and a vehicle-reg substring filter respectively - that's pre-existing
+    // behaviour, not a builder-exposed filter, so it's deliberately left out of this catalog), so
+    // every report gets the same Station/County/Sub County drill-down.
+    // =====================================================================
+    private static readonly List<ReportFilterDefinition> CommercialGeoFilters =
+    [
+        new() { Key = "stationId", Label = "Station", Kind = "station" },
+        new() { Key = "countyId", Label = "County", Kind = "county" },
+        new() { Key = "subcountyId", Label = "Sub County", Kind = "subcounty" }
+    ];
+
     public CommercialReportGenerator(TruLoadDbContext context)
     {
         _context = context;
@@ -200,46 +226,46 @@ public class CommercialReportGenerator : BaseReportGenerator
     [
         Def("commercial-daily-summary", "Commercial Daily Summary",
             "Total weighings, total net weight, grouped by cargo type and station. Date range filter.",
-            columns: CommercialDailySummaryColumns),
+            columns: CommercialDailySummaryColumns, filters: CommercialGeoFilters),
         Def("transporter-statement", "Transporter Statement",
             "Per-transporter: weighing count, total net weight, average net weight, and cargo breakdown. Date range + transporter filter.",
-            columns: TransporterStatementColumns),
+            columns: TransporterStatementColumns, filters: CommercialGeoFilters),
         Def("cargo-volume", "Cargo Volume Report",
             "Volume trends by cargo type over time, grouped by day, week, or month. Date range filter.",
-            columns: CargoVolumeColumns),
+            columns: CargoVolumeColumns, filters: CommercialGeoFilters),
         Def("weight-discrepancy", "Weight Discrepancy Report",
             "Transactions where weight discrepancy exceeds a threshold. Shows expected vs actual and variance %. Date range + threshold filter.",
-            columns: WeightDiscrepancyColumns),
+            columns: WeightDiscrepancyColumns, filters: CommercialGeoFilters),
         Def("commercial-revenue", "Commercial Revenue Report",
             "Revenue from commercial weighing fees (from invoices). Date range filter.",
             columns: CommercialRevenueColumns),
         Def("throughput", "Throughput Report",
             "Vehicles per hour, average processing time (SecondWeightAt - FirstWeightAt), by station. Date range filter.",
-            columns: ThroughputColumns),
+            columns: ThroughputColumns, filters: CommercialGeoFilters),
         Def("tare-weight-audit", "Tare Weight Audit Report",
             "Tare weight changes per vehicle from tare history. Flags anomalies (>5% drift). Date range + vehicle filter.",
-            columns: TareWeightAuditColumns),
+            columns: TareWeightAuditColumns, filters: CommercialGeoFilters),
         Def("fleet-utilization", "Fleet Utilization Report",
             "Per vehicle: trip count, total net weight, average payload, payload utilization. Date range + transporter filter.",
-            columns: FleetUtilizationColumns),
+            columns: FleetUtilizationColumns, filters: CommercialGeoFilters),
         Def("driver-productivity", "Driver Productivity Report",
             "Per driver: trip count, total net weight, average turnaround time. Date range filter.",
-            columns: DriverProductivityColumns),
+            columns: DriverProductivityColumns, filters: CommercialGeoFilters),
         Def("quality-commodity", "Quality & Commodity Report",
             "Quality deduction stats by cargo type for transactions with deductions or industry metadata. Date range filter.",
-            columns: QualityCommodityColumns),
+            columns: QualityCommodityColumns, filters: CommercialGeoFilters),
         Def("shift-performance", "Shift Performance Report",
             "Group by shift: total transactions, total net weight (kg), average cycle time (minutes), overloads and tolerance exceptions. Date range + station filter.",
-            columns: ShiftPerformanceColumns),
+            columns: ShiftPerformanceColumns, filters: CommercialGeoFilters),
         Def("transaction-audit-log", "Transaction Audit Log",
             "All commercial transactions including voided ones: ticket, vehicle, weights, quality deductions, status, void info, created by. Date range filter.",
-            columns: TransactionAuditLogColumns),
+            columns: TransactionAuditLogColumns, filters: CommercialGeoFilters),
         Def("pending-transactions", "Pending Transactions Report",
             "Transactions with first weight captured but no second weight and not voided. Shows hours pending. Date range + station filter.",
-            columns: PendingTransactionsColumns),
+            columns: PendingTransactionsColumns, filters: CommercialGeoFilters),
         Def("monthly-reconciliation", "Monthly Reconciliation Report",
             "Monthly summary: total transactions, net weight, fees, tolerance exceptions, voided count, completed count, average net weight. Date range filter.",
-            columns: MonthlyReconciliationColumns)
+            columns: MonthlyReconciliationColumns, filters: CommercialGeoFilters)
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -290,6 +316,12 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         var rows = await query
             .Include(w => w.Station)
@@ -386,6 +418,12 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         var transporterData = await query
             .Include(w => w.Transporter)
@@ -475,6 +513,12 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         var cargoData = await query
             .Include(w => w.Cargo)
@@ -569,11 +613,20 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         var discrepancies = await query
-            .Include(w => w.Station)
+            .Include(w => w.Station).ThenInclude(s => s!.County)
+            .Include(w => w.Station).ThenInclude(s => s!.Subcounty)
+            .Include(w => w.Station).ThenInclude(s => s!.Road)
             .Include(w => w.Cargo)
             .Include(w => w.Transporter)
+            .Include(w => w.Road)
             .OrderByDescending(w => Math.Abs(w.WeightDiscrepancyKg!.Value))
             .Take(filters.PageSize)
             .Select(w => new
@@ -589,13 +642,18 @@ public class CommercialReportGenerator : BaseReportGenerator
                 DiscrepancyKg = w.WeightDiscrepancyKg!.Value,
                 VariancePct = w.ExpectedNetWeightKg.HasValue && w.ExpectedNetWeightKg.Value > 0
                     ? (decimal)w.WeightDiscrepancyKg.Value / w.ExpectedNetWeightKg.Value * 100
-                    : 0m
+                    : 0m,
+                CountyName = !string.IsNullOrWhiteSpace(w.LocationCounty) ? w.LocationCounty
+                    : w.Station.County != null ? w.Station.County.Name : "-",
+                SubcountyName = !string.IsNullOrWhiteSpace(w.LocationSubcounty) ? w.LocationSubcounty
+                    : w.Station.Subcounty != null ? w.Station.Subcounty.Name : "-",
+                RoadName = w.Road != null ? w.Road.Name : w.Station.Road != null ? w.Station.Road.Name : "-"
             })
             .ToListAsync(ct);
 
         var headers = new[]
         {
-            "Ticket #", "Date/Time", "Station", "Vehicle Reg", "Transporter", "Cargo",
+            "Ticket #", "Date/Time", "Station", "County", "Sub County", "Road", "Vehicle Reg", "Transporter", "Cargo",
             "Expected (kg)", "Actual (kg)", "Discrepancy (kg)", "Variance %"
         };
 
@@ -604,6 +662,9 @@ public class CommercialReportGenerator : BaseReportGenerator
             d.TicketNumber,
             d.WeighedAt.ToString("dd/MM/yyyy HH:mm"),
             d.StationName,
+            d.CountyName,
+            d.SubcountyName,
+            d.RoadName,
             d.VehicleReg,
             d.TransporterName,
             d.CargoName,
@@ -778,6 +839,12 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         var stationData = await query
             .Include(w => w.Station)
@@ -887,6 +954,12 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(th => th.StationId == stationId);
+        // VehicleTareHistory has no own SubcountyId field (unlike WeighingTransaction) - county/
+        // subcounty filtering goes through the tare check's station, same as Weighing's Scale Test Log.
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(th => th.Station != null && th.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(th => th.Station != null && th.Station.SubcountyId == subcountyId);
 
         // Use ControlStatus as vehicle reg filter if provided
         if (!string.IsNullOrEmpty(filters.WeighingType))
@@ -897,7 +970,9 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         var tareData = await query
             .Include(th => th.Vehicle)
-            .Include(th => th.Station)
+            .Include(th => th.Station).ThenInclude(s => s!.County)
+            .Include(th => th.Station).ThenInclude(s => s!.Subcounty)
+            .Include(th => th.Station).ThenInclude(s => s!.Road)
             .OrderBy(th => th.VehicleId)
             .ThenBy(th => th.WeighedAt)
             .Take(filters.PageSize)
@@ -908,6 +983,9 @@ public class CommercialReportGenerator : BaseReportGenerator
                 th.TareWeightKg,
                 th.WeighedAt,
                 StationName = th.Station != null ? th.Station.Name : "-",
+                CountyName = th.Station != null && th.Station.County != null ? th.Station.County.Name : "-",
+                SubcountyName = th.Station != null && th.Station.Subcounty != null ? th.Station.Subcounty.Name : "-",
+                RoadName = th.Station != null && th.Station.Road != null ? th.Station.Road.Name : "-",
                 th.Source,
                 DefaultTare = th.Vehicle != null ? th.Vehicle.DefaultTareWeightKg : null,
                 th.Notes
@@ -936,6 +1014,9 @@ public class CommercialReportGenerator : BaseReportGenerator
                     entry.VehicleReg,
                     entry.WeighedAt.ToString("dd/MM/yyyy HH:mm"),
                     entry.StationName,
+                    entry.CountyName,
+                    entry.SubcountyName,
+                    entry.RoadName,
                     FormatNumber(entry.TareWeightKg),
                     FormatNumber(previousTare),
                     $"{driftPct:F1}%",
@@ -948,11 +1029,13 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         var headers = new[]
         {
-            "Vehicle Reg", "Date/Time", "Station", "Tare Weight (kg)", "Previous Tare (kg)",
-            "Drift %", "Source", "Status", "Notes"
+            "Vehicle Reg", "Date/Time", "Station", "County", "Sub County", "Road", "Tare Weight (kg)",
+            "Previous Tare (kg)", "Drift %", "Source", "Status", "Notes"
         };
 
-        const int statusColumnIndex = 7;
+        // Header layout shifted +3 (County/Sub County/Road inserted after Station) - "Status" is
+        // now at index 10, was 7.
+        const int statusColumnIndex = 10;
         var legend = new[] { (BrandingConstants.Colors.SampleTemplateRed, "Anomaly (>5% drift)") };
 
         // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
@@ -1024,6 +1107,12 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         var vehicleData = await query
             .Include(w => w.Vehicle)
@@ -1129,6 +1218,12 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         var driverData = await query
             .Include(w => w.Driver)
@@ -1233,6 +1328,12 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         var qualityData = await query
             .Include(w => w.Cargo)
@@ -1331,6 +1432,12 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         // Join with the operator's active UserShift on the date of the transaction
         // to group by shift. We do this client-side by correlating WeighedByUserId + date
@@ -1479,6 +1586,12 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         var rows = await query
             .Include(w => w.Transporter)
@@ -1597,11 +1710,20 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         var now = DateTime.UtcNow;
         var rows = await query
-            .Include(w => w.Station)
+            .Include(w => w.Station).ThenInclude(s => s!.County)
+            .Include(w => w.Station).ThenInclude(s => s!.Subcounty)
+            .Include(w => w.Station).ThenInclude(s => s!.Road)
             .Include(w => w.Transporter)
+            .Include(w => w.Road)
             .OrderBy(w => w.FirstWeightAt)
             .Take(filters.PageSize)
             .Select(w => new
@@ -1611,13 +1733,19 @@ public class CommercialReportGenerator : BaseReportGenerator
                 TransporterName = w.Transporter != null ? w.Transporter.Name : "-",
                 StationName = w.Station != null ? w.Station.Name : "-",
                 w.FirstWeightAt,
-                w.FirstWeightKg
+                w.FirstWeightKg,
+                CountyName = !string.IsNullOrWhiteSpace(w.LocationCounty) ? w.LocationCounty
+                    : w.Station != null && w.Station.County != null ? w.Station.County.Name : "-",
+                SubcountyName = !string.IsNullOrWhiteSpace(w.LocationSubcounty) ? w.LocationSubcounty
+                    : w.Station != null && w.Station.Subcounty != null ? w.Station.Subcounty.Name : "-",
+                RoadName = w.Road != null ? w.Road.Name
+                    : w.Station != null && w.Station.Road != null ? w.Station.Road.Name : "-"
             })
             .ToListAsync(ct);
 
         var headers = new[]
         {
-            "Ticket #", "Vehicle Reg", "Transporter", "Station",
+            "Ticket #", "Vehicle Reg", "Transporter", "Station", "County", "Sub County", "Road",
             "First Weight At", "Hours Pending", "First Weight (kg)"
         };
 
@@ -1627,6 +1755,9 @@ public class CommercialReportGenerator : BaseReportGenerator
             r.VehicleReg,
             r.TransporterName,
             r.StationName,
+            r.CountyName,
+            r.SubcountyName,
+            r.RoadName,
             r.FirstWeightAt.HasValue ? r.FirstWeightAt.Value.ToString("dd/MM/yyyy HH:mm") : "-",
             r.FirstWeightAt.HasValue ? $"{(now - r.FirstWeightAt.Value).TotalHours:F1}" : "-",
             r.FirstWeightKg.HasValue ? FormatNumber(r.FirstWeightKg.Value) : "-"
@@ -1695,6 +1826,12 @@ public class CommercialReportGenerator : BaseReportGenerator
 
         if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
             query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
 
         var monthlyData = await query
             .GroupBy(w => new { w.WeighedAt.Year, w.WeighedAt.Month })
