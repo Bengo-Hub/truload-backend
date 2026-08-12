@@ -203,7 +203,14 @@ public class ReportController : ControllerBase
 
         try
         {
-            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(catalog), TimeSpan.FromHours(4));
+            // Was 4 hours - too long for a catalog that changes shape whenever a report gains new
+            // columns/filters/chart options (as this session's work did, several times in one day).
+            // A stale entry from just before a deploy would keep serving the OLD catalog shape for
+            // up to 4 hours after the fix was already live, indistinguishable from "not deployed".
+            // 10 minutes still meaningfully caches within a browsing session while keeping that
+            // window short; this endpoint is cheap to recompute (in-memory Def() lists + one
+            // lightweight org lookup), so there's no real cost to caching it less aggressively.
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(catalog), TimeSpan.FromMinutes(10));
         }
         catch (Exception ex)
         {
