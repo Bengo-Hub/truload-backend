@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using System.Text.Json;
 using TruLoad.Backend.Authorization.Attributes;
+using TruLoad.Backend.Common;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Services.Interfaces;
 using TruLoad.Backend.Services.Interfaces.Weighing;
@@ -103,7 +104,10 @@ public class WeighingController : ControllerBase
                 request.PageSize,
                 request.SortBy,
                 request.SortOrder,
-                request.WeighingType);
+                request.WeighingType,
+                request.State,
+                request.AxleConfiguration,
+                request.SearchTicketNo);
 
             var dtos = items.Select(t => MapToDto(t)).ToList();
 
@@ -140,10 +144,11 @@ public class WeighingController : ControllerBase
                         where (wa.MeasuredWeightKg - wa.PermissibleWeightKg) > 0
                         select new { wa, wt };
 
-            if (dateFrom.HasValue)
-                query = query.Where(x => x.wt.WeighedAt >= dateFrom.Value);
-            if (dateTo.HasValue)
-                query = query.Where(x => x.wt.WeighedAt < dateTo.Value.Date.AddDays(1));
+            if (dateFrom.HasValue || dateTo.HasValue)
+            {
+                var (rangeFromUtc, rangeToUtcExclusive) = WeighingQueryHelpers.ResolveEatDayRange(dateFrom, dateTo);
+                query = query.Where(x => x.wt.WeighedAt >= rangeFromUtc && x.wt.WeighedAt < rangeToUtcExclusive);
+            }
             if (stationId.HasValue)
                 query = query.Where(x => x.wt.StationId == stationId.Value);
 
@@ -192,10 +197,11 @@ public class WeighingController : ControllerBase
                         where (wa.MeasuredWeightKg - wa.PermissibleWeightKg) > 0
                         select new { wa, wt };
 
-            if (dateFrom.HasValue)
-                query = query.Where(x => x.wt.WeighedAt >= dateFrom.Value);
-            if (dateTo.HasValue)
-                query = query.Where(x => x.wt.WeighedAt < dateTo.Value.Date.AddDays(1));
+            if (dateFrom.HasValue || dateTo.HasValue)
+            {
+                var (rangeFromUtc, rangeToUtcExclusive) = WeighingQueryHelpers.ResolveEatDayRange(dateFrom, dateTo);
+                query = query.Where(x => x.wt.WeighedAt >= rangeFromUtc && x.wt.WeighedAt < rangeToUtcExclusive);
+            }
             if (stationId.HasValue)
                 query = query.Where(x => x.wt.StationId == stationId.Value);
 
@@ -730,17 +736,20 @@ public class WeighingController : ControllerBase
         {
             var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
             var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
-            var from = (dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30)).Date;
-            var to = (dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow).Date;
+            // Centralized EAT-aware day-boundary resolution (Common/WeighingQueryHelpers.cs) - fixes
+            // the confirmed bug where SpecifyKind(...,Utc) relabelled the client's calendar date as
+            // UTC instead of converting from Nairobi local time, shifting every "selected day" by 3h.
+            var (from, toExclusive) = WeighingQueryHelpers.ResolveEatDayRange(dateFrom, dateTo);
+            var to = toExclusive.AddTicks(-1);
 
             int totalWeighings, legalCount, overloadedCount, warningCount;
             decimal totalFeesKes, totalFeesUsd, avgOverloadKg, complianceRate;
 
-            // MV has no WeighingType/ControlStatus columns — query live table directly when those filters are active
+            // MV has no WeighingType/ControlStatus columns to filter BY (it only has pre-aggregated
+            // counts per status) — query live table directly whenever either filter is active.
             bool useDirectQuery = !string.IsNullOrWhiteSpace(weighingType) || !string.IsNullOrWhiteSpace(controlStatus);
             if (useDirectQuery)
             {
-                var toExclusive = to.AddDays(1);
                 var q = _context.WeighingTransactions
                     .AsNoTracking()
                     .Where(wt => wt.WeighedAt >= from && wt.WeighedAt < toExclusive && wt.DeletedAt == null)
@@ -748,12 +757,12 @@ public class WeighingController : ControllerBase
                 if (!string.IsNullOrWhiteSpace(weighingType))
                     q = q.Where(wt => wt.WeighingType == weighingType);
                 if (!string.IsNullOrWhiteSpace(controlStatus))
-                    q = q.Where(wt => wt.ControlStatus == controlStatus);
+                    q = WeighingQueryHelpers.ApplyControlStatusFilter(q, controlStatus);
 
                 totalWeighings = await q.CountAsync(ct);
-                legalCount = await q.CountAsync(wt => wt.ControlStatus == "Compliant" || wt.ControlStatus == "LEGAL", ct);
-                overloadedCount = await q.CountAsync(wt => wt.ControlStatus == "Overloaded" || wt.ControlStatus == "OVERLOAD", ct);
-                warningCount = totalWeighings - legalCount - overloadedCount;
+                legalCount = await q.CountAsync(wt => wt.ControlStatus == "Compliant", ct);
+                overloadedCount = await q.CountAsync(wt => wt.ControlStatus == "Overloaded", ct);
+                warningCount = await q.CountAsync(wt => wt.ControlStatus == "Warning", ct);
                 complianceRate = totalWeighings > 0 ? Math.Round((decimal)legalCount / totalWeighings * 100, 1) : 0;
                 var directRows = await q.Select(wt => new { wt.TotalFeeKes, wt.TotalFeeUsd, wt.OverloadKg }).ToListAsync(ct);
                 totalFeesKes = directRows.Sum(r => r.TotalFeeKes);
@@ -768,13 +777,12 @@ public class WeighingController : ControllerBase
                 var todayUtc = DateTime.UtcNow.Date;
                 var rows = await _context.MvDailyWeighingStats
                     .AsNoTracking()
-                    .Where(m => m.WeighingDate >= from && m.WeighingDate <= to)
+                    .Where(m => m.WeighingDate >= from.Date && m.WeighingDate <= to.Date)
                     .Where(m => !effectiveStationId.HasValue || m.StationId == effectiveStationId)
                     .Where(m => m.WeighingDate < todayUtc) // Exclude today - use live data below
                     .ToListAsync(ct);
 
                 // MV only tracks KES fees; sum USD fees from live table for the full range
-                var toExclusive = to.AddDays(1);
                 totalFeesUsd = await _context.WeighingTransactions
                     .AsNoTracking()
                     .Where(wt => wt.WeighedAt >= from && wt.WeighedAt < toExclusive && wt.DeletedAt == null)
@@ -782,17 +790,18 @@ public class WeighingController : ControllerBase
                     .SumAsync(wt => (decimal?)wt.TotalFeeUsd ?? 0, ct);
 
                 // Live fallback for today: MV may not be refreshed yet
-                int todayWeighings = 0, todayLegal = 0, todayOverloaded = 0;
+                int todayWeighings = 0, todayLegal = 0, todayOverloaded = 0, todayWarning = 0;
                 decimal todayFees = 0, todayAvgOverload = 0;
-                if (to >= todayUtc)
+                if (toExclusive > todayUtc)
                 {
                     var todayQuery = _context.WeighingTransactions
                         .AsNoTracking()
                         .Where(wt => wt.WeighedAt >= todayUtc && wt.WeighedAt < todayUtc.AddDays(1) && wt.DeletedAt == null)
                         .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId);
                     todayWeighings = await todayQuery.CountAsync(ct);
-                    todayLegal = await todayQuery.CountAsync(wt => wt.ControlStatus == "Compliant" || wt.ControlStatus == "LEGAL", ct);
-                    todayOverloaded = await todayQuery.CountAsync(wt => wt.ControlStatus == "Overloaded" || wt.ControlStatus == "OVERLOAD", ct);
+                    todayLegal = await todayQuery.CountAsync(wt => wt.ControlStatus == "Compliant", ct);
+                    todayOverloaded = await todayQuery.CountAsync(wt => wt.ControlStatus == "Overloaded", ct);
+                    todayWarning = await todayQuery.CountAsync(wt => wt.ControlStatus == "Warning", ct);
                     var todayRows = await todayQuery
                         .Select(wt => new { wt.TotalFeeKes, wt.OverloadKg })
                         .ToListAsync(ct);
@@ -805,14 +814,23 @@ public class WeighingController : ControllerBase
 
                 totalWeighings = (int)rows.Sum(m => m.TotalWeighings) + todayWeighings;
                 legalCount = (int)rows.Sum(m => m.CompliantCount) + todayLegal;
-                overloadedCount = (int)rows.Sum(m => m.NonCompliantCount) + todayOverloaded;
-                warningCount = totalWeighings - legalCount - overloadedCount;
+                // Real 3-way split from the MV's warning_count/overloaded_count columns (added
+                // 2026-08-12 to fix the confirmed bug where this used to derive overloadedCount
+                // from the boolean non_compliant_count, folding axle-only warnings into it and
+                // collapsing warningCount to ~0).
+                overloadedCount = (int)rows.Sum(m => m.OverloadedCount) + todayOverloaded;
+                warningCount = (int)rows.Sum(m => m.WarningCount) + todayWarning;
                 complianceRate = totalWeighings > 0 ? Math.Round((decimal)legalCount / totalWeighings * 100, 1) : 0;
                 totalFeesKes = rows.Sum(m => m.TotalFeesCollected ?? 0) + todayFees;
-                var mvOverloadedCount = (int)rows.Sum(m => m.NonCompliantCount);
+
+                // avgOverloadKg weighted by the TRUE gvw-overloaded count (matches what AvgOverload
+                // was itself averaged over: `AVG(overload_kg) FILTER (WHERE overload_kg > 0)`) -
+                // previously weighted by non_compliant_count, which double-counted axle warnings
+                // that have zero GVW overload, skewing the average.
+                var mvOverloadedCount = (int)rows.Sum(m => m.OverloadedCount);
                 var mvWeightedOverload = rows
-                    .Where(m => m.NonCompliantCount > 0 && m.AvgOverload.HasValue)
-                    .Sum(m => (decimal)(m.AvgOverload!.Value * m.NonCompliantCount));
+                    .Where(m => m.OverloadedCount > 0 && m.AvgOverload.HasValue)
+                    .Sum(m => (decimal)(m.AvgOverload!.Value * m.OverloadedCount));
                 var totalOverloadedForAvg = mvOverloadedCount + todayOverloaded;
                 avgOverloadKg = totalOverloadedForAvg > 0
                     ? Math.Round((mvWeightedOverload + todayAvgOverload * todayOverloaded) / totalOverloadedForAvg, 0)
@@ -856,24 +874,24 @@ public class WeighingController : ControllerBase
         {
             var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
             var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
-            var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-            var to = dateTo.HasValue
-                ? DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc)
-                : DateTime.UtcNow.Date.AddDays(1).ToUniversalTime();
+            var (from, to) = WeighingQueryHelpers.ResolveEatDayRange(dateFrom, dateTo);
 
             // Server-side GROUP BY using composite index IX_weighing_transactions_station_status_date
             var trendData = await _context.WeighingTransactions
                 .AsNoTracking()
                 .Where(wt => wt.WeighedAt >= from && wt.WeighedAt < to && wt.DeletedAt == null)
                 .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId)
-                .GroupBy(wt => wt.WeighedAt.Date)
+                // Group by the EAT-local calendar date (not the raw UTC date) so an early-morning
+                // EAT weighing (e.g. 01:00 EAT = 22:00 UTC the previous day) lands on the day the
+                // officer actually weighed it on, not the day before.
+                .GroupBy(wt => wt.WeighedAt.AddHours(3).Date)
                 .OrderBy(g => g.Key)
                 .Select(g => new
                 {
                     Date = g.Key,
-                    Compliant = g.Count(t => t.ControlStatus == "Compliant" || t.ControlStatus == "LEGAL"),
-                    Overloaded = g.Count(t => t.ControlStatus == "Overloaded" || t.ControlStatus == "OVERLOAD"),
-                    Warning = g.Count(t => t.ControlStatus == "Warning" || t.ControlStatus == "WARNING")
+                    Compliant = g.Count(t => t.ControlStatus == "Compliant"),
+                    Overloaded = g.Count(t => t.ControlStatus == "Overloaded"),
+                    Warning = g.Count(t => t.ControlStatus == "Warning")
                 })
                 .ToListAsync(ct);
 
@@ -911,22 +929,23 @@ public class WeighingController : ControllerBase
         {
             var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
             var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
-            var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-            var to = dateTo.HasValue
-                ? DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc)
-                : DateTime.UtcNow.Date.AddDays(1).ToUniversalTime();
+            var (from, to) = WeighingQueryHelpers.ResolveEatDayRange(dateFrom, dateTo);
 
-            var cacheKey = $"dashboard:overload-dist:{from:yyyyMMdd}:{to:yyyyMMdd}:{effectiveStationId}";
+            var cacheKey = $"dashboard:overload-dist:{from:yyyyMMddHHmm}:{to:yyyyMMddHHmm}:{effectiveStationId}";
             var cached = await _cacheService.GetStringAsync(cacheKey, ct);
             if (cached != null)
                 return Ok(JsonSerializer.Deserialize<List<OverloadDistributionDto>>(cached));
 
-            // Project only the overload percentage from DB (avoids loading full records)
-            var pcts = await _context.WeighingTransactions
-                .AsNoTracking()
-                .Where(wt => wt.WeighedAt >= from && wt.WeighedAt < to && wt.DeletedAt == null)
-                .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId)
-                .Where(wt => wt.ControlStatus == "OVERLOAD" && wt.GvwPermissibleKg > 0)
+            // Project only the overload percentage from DB (avoids loading full records).
+            // "ControlStatus == \"OVERLOAD\"" was a confirmed bug - that value is never persisted
+            // (the real value is "Overloaded"), so this chart was always empty.
+            var pcts = await WeighingQueryHelpers
+                .ApplyControlStatusFilter(
+                    _context.WeighingTransactions.AsNoTracking()
+                        .Where(wt => wt.WeighedAt >= from && wt.WeighedAt < to && wt.DeletedAt == null)
+                        .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId)
+                        .Where(wt => wt.GvwPermissibleKg > 0),
+                    "Overloaded")
                 .Select(wt => (double)wt.OverloadKg / (double)wt.GvwPermissibleKg * 100)
                 .ToListAsync(ct);
 
@@ -978,12 +997,9 @@ public class WeighingController : ControllerBase
         {
             var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
             var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
-            var from = dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
-            var to = dateTo.HasValue
-                ? DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc)
-                : DateTime.UtcNow.Date.AddDays(1).ToUniversalTime();
+            var (from, to) = WeighingQueryHelpers.ResolveEatDayRange(dateFrom, dateTo);
 
-            var cacheKey = $"dashboard:vehicle-dist:{from:yyyyMMdd}:{to:yyyyMMdd}:{effectiveStationId}";
+            var cacheKey = $"dashboard:vehicle-dist:{from:yyyyMMddHHmm}:{to:yyyyMMddHHmm}:{effectiveStationId}";
             var cached = await _cacheService.GetStringAsync(cacheKey, ct);
             if (cached != null)
                 return Ok(JsonSerializer.Deserialize<List<object>>(cached));
@@ -1026,8 +1042,17 @@ public class WeighingController : ControllerBase
         {
             var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
             var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
-            var from = (dateFrom.HasValue ? DateTime.SpecifyKind(dateFrom.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30)).Date;
-            var to = (dateTo.HasValue ? DateTime.SpecifyKind(dateTo.Value, DateTimeKind.Utc) : DateTime.UtcNow).Date;
+            var (fromUtc, toUtcExclusive) = WeighingQueryHelpers.ResolveEatDayRange(dateFrom, dateTo);
+
+            // NOTE: mv_daily_weighing_stats.weighing_date is DATE(weighed_at) - a UTC calendar date,
+            // not an EAT one. Filtering its bounds with EAT-converted from/to (below) is still an
+            // improvement over the previous raw SpecifyKind (it no longer drops/adds a boundary day
+            // outright), but a weighing in the first/last 3 EAT hours of the selected range can still
+            // land in the adjacent UTC-dated MV row. Fully fixing this needs the MV's own DATE(...)
+            // grouping changed to an EAT-shifted expression, a larger change (affects its unique
+            // index) deliberately not bundled into this pass - flagged as a follow-up.
+            var from = fromUtc.Date;
+            var to = toUtcExclusive.AddTicks(-1).Date;
 
             var rows = await _context.MvDailyWeighingStats
                 .AsNoTracking()

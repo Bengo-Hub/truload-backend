@@ -27,6 +27,13 @@ SELECT
     COUNT(*) AS total_weighings,
     COUNT(*) FILTER (WHERE wt."IsCompliant" = TRUE) AS compliant_count,
     COUNT(*) FILTER (WHERE wt."IsCompliant" = FALSE) AS non_compliant_count,
+    -- Real 3-way split (matches ControlStatus, the authoritative AxleGroupAggregationService
+    -- result): non_compliant_count above conflates GVW overloads with axle-only warnings, which
+    -- was a confirmed dashboard-stats bug (2026-08-12 audit) - these two columns let the controller
+    -- report the true Legal/Warning/Overloaded breakdown from the MV instead of deriving
+    -- warning_count by subtraction (which silently collapsed to ~0).
+    COUNT(*) FILTER (WHERE wt.control_status = 'Warning') AS warning_count,
+    COUNT(*) FILTER (WHERE wt.control_status = 'Overloaded') AS overloaded_count,
     COUNT(*) FILTER (WHERE wt."IsSentToYard" = TRUE) AS sent_to_yard_count,
     AVG(wt.gvw_measured_kg) AS avg_gvw_measured,
     AVG(wt.overload_kg) FILTER (WHERE wt.overload_kg > 0) AS avg_overload,

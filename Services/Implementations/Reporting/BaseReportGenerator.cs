@@ -108,15 +108,20 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
     /// <summary>
     /// Gets effective date range (defaults to last 30 days if not specified).
     /// </summary>
+    /// <summary>
+    /// Resolves the report's date range as `[from, to]` (inclusive end, this method's long-standing
+    /// contract), delegating the actual EAT-aware day-boundary math to the same
+    /// <see cref="TruLoad.Backend.Common.WeighingQueryHelpers.ResolveEatDayRange"/> the dashboard/
+    /// stats endpoints use - a 2026-08-12 audit found this previously did its own
+    /// <c>DateTime.SpecifyKind(...,Utc)</c>, which only relabels the client's calendar date as UTC
+    /// without converting it, shifting every "selected day" by Nairobi's UTC+3 offset. Centralizing
+    /// here fixes every report generator that calls this (all ~30 report types) in one place.
+    /// </summary>
     protected static (DateTime from, DateTime to) GetDateRange(ReportFilterParams filters)
     {
-        var to = filters.DateTo.HasValue
-            ? DateTime.SpecifyKind(filters.DateTo.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc)
-            : DateTime.UtcNow;
-        var from = filters.DateFrom.HasValue
-            ? DateTime.SpecifyKind(filters.DateFrom.Value.Date, DateTimeKind.Utc)
-            : to.AddDays(-30);
-        return (from, to);
+        var (fromUtc, toUtcExclusive) = TruLoad.Backend.Common.WeighingQueryHelpers.ResolveEatDayRange(
+            filters.DateFrom, filters.DateTo);
+        return (fromUtc, toUtcExclusive.AddTicks(-1));
     }
 
     /// <summary>

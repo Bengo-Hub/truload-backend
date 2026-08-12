@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TruLoad.Backend.Common;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Models.Weighing;
 
@@ -139,7 +140,10 @@ public class WeighingRepository : IWeighingRepository
         int take = 50,
         string sortBy = "WeighedAt",
         string sortOrder = "desc",
-        string? weighingType = null)
+        string? weighingType = null,
+        string? state = null,
+        string? axleConfiguration = null,
+        string? searchTicketNo = null)
     {
         var query = _context.WeighingTransactions
             .AsNoTracking()
@@ -164,14 +168,17 @@ public class WeighingRepository : IWeighingRepository
         if (!string.IsNullOrWhiteSpace(vehicleRegNo))
             query = query.Where(t => t.VehicleRegNumber.Contains(vehicleRegNo));
 
-        if (fromDate.HasValue)
-            query = query.Where(t => t.WeighedAt >= fromDate.Value);
-
-        if (toDate.HasValue)
-            query = query.Where(t => t.WeighedAt <= toDate.Value);
+        // Centralized EAT-aware day-boundary resolution (see TruLoad.Backend.Common.WeighingQueryHelpers) -
+        // this endpoint previously used a raw fromDate.Value/<=toDate.Value with no timezone
+        // normalization at all, the only date filter in the codebase that skipped it.
+        if (fromDate.HasValue || toDate.HasValue)
+        {
+            var (rangeFromUtc, rangeToUtcExclusive) = WeighingQueryHelpers.ResolveEatDayRange(fromDate, toDate);
+            query = query.Where(t => t.WeighedAt >= rangeFromUtc && t.WeighedAt < rangeToUtcExclusive);
+        }
 
         if (!string.IsNullOrWhiteSpace(controlStatus))
-            query = query.Where(t => t.ControlStatus == controlStatus);
+            query = WeighingQueryHelpers.ApplyControlStatusFilter(query, controlStatus);
 
         if (isCompliant.HasValue)
             query = query.Where(t => t.IsCompliant == isCompliant.Value);
@@ -181,6 +188,25 @@ public class WeighingRepository : IWeighingRepository
 
         if (!string.IsNullOrWhiteSpace(weighingType))
             query = query.Where(t => t.WeighingType == weighingType);
+
+        // "Active"/"Recent" are UI-convenience states (TicketsFilterBar.tsx), not a persisted enum:
+        // Active = not yet finalized/closed at the station; Recent = last 24 hours.
+        if (string.Equals(state, "Active", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(t => t.ControlStatus != "Released" && t.ControlStatus != "Voided");
+        }
+        else if (string.Equals(state, "Recent", StringComparison.OrdinalIgnoreCase))
+        {
+            var recentSince = DateTime.UtcNow.AddHours(-24);
+            query = query.Where(t => t.WeighedAt >= recentSince);
+        }
+
+        if (!string.IsNullOrWhiteSpace(axleConfiguration))
+            query = query.Where(t => t.Vehicle != null && t.Vehicle.AxleConfiguration != null
+                && t.Vehicle.AxleConfiguration.AxleCode == axleConfiguration);
+
+        if (!string.IsNullOrWhiteSpace(searchTicketNo))
+            query = query.Where(t => t.TicketNumber.Contains(searchTicketNo));
 
         // Get total count before pagination
         var totalCount = await query.CountAsync();
@@ -230,11 +256,11 @@ public class WeighingRepository : IWeighingRepository
         if (stationId.HasValue)
             query = query.Where(t => t.StationId == stationId.Value);
 
-        if (fromDate.HasValue)
-            query = query.Where(t => t.WeighedAt >= fromDate.Value);
-
-        if (toDate.HasValue)
-            query = query.Where(t => t.WeighedAt <= toDate.Value);
+        if (fromDate.HasValue || toDate.HasValue)
+        {
+            var (rangeFromUtc, rangeToUtcExclusive) = WeighingQueryHelpers.ResolveEatDayRange(fromDate, toDate);
+            query = query.Where(t => t.WeighedAt >= rangeFromUtc && t.WeighedAt < rangeToUtcExclusive);
+        }
 
         var totalCount = await query.CountAsync();
 

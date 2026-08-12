@@ -23,7 +23,10 @@ public interface IWeighingRepository
         int take = 50,
         string sortBy = "WeighedAt",
         string sortOrder = "desc",
-        string? weighingType = null);
+        string? weighingType = null,
+        string? state = null,
+        string? axleConfiguration = null,
+        string? searchTicketNo = null);
 
     /// <summary>
     /// Lightweight search without navigation property includes.

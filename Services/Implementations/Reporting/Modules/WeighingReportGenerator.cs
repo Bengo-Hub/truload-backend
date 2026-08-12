@@ -1360,16 +1360,12 @@ public class WeighingReportGenerator : BaseReportGenerator
     // Services/Implementations/Infrastructure/PdfDocuments/Reports/Weighing/
     // (extracted so this file stays within the project's file-length guideline).
 
+    /// <summary>
+    /// Delegates to the shared <see cref="WeighingQueryHelpers.ApplyControlStatusFilter"/> so this
+    /// module and the dashboard/stats endpoints in <c>WeighingController</c> can't drift into two
+    /// different status-alias mappings again (they already had - see the 2026-08-12 audit).
+    /// </summary>
     private static IQueryable<WeighingTransaction> ApplyControlStatusFilter(
         IQueryable<WeighingTransaction> query, string controlStatus)
-    {
-        var normalized = controlStatus.Trim().ToUpperInvariant();
-        return normalized switch
-        {
-            "LEGAL" or "COMPLIANT" => query.Where(w => w.ControlStatus == "Compliant" || w.ControlStatus == "LEGAL"),
-            "OVERLOAD" or "OVERLOADED" => query.Where(w => w.ControlStatus == "Overloaded" || w.ControlStatus == "OVERLOAD"),
-            "WARNING" => query.Where(w => w.ControlStatus == "Warning" || w.ControlStatus == "WARNING"),
-            _ => query.Where(w => w.ControlStatus == controlStatus)
-        };
-    }
+        => TruLoad.Backend.Common.WeighingQueryHelpers.ApplyControlStatusFilter(query, controlStatus);
 }

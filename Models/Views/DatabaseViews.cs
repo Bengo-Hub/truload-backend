@@ -233,6 +233,14 @@ public class MvDailyWeighingStats : ITenantAware
     public long TotalWeighings { get; set; }
     public long CompliantCount { get; set; }
     public long NonCompliantCount { get; set; }
+
+    /// <summary>Axle-group-only violations (GVW compliant) - distinct from <see cref="OverloadedCount"/>.</summary>
+    public long WarningCount { get; set; }
+
+    /// <summary>True GVW overloads only - do not conflate with <see cref="NonCompliantCount"/>, which
+    /// includes axle-only warnings too (that conflation was a confirmed dashboard-stats bug).</summary>
+    public long OverloadedCount { get; set; }
+
     public long SentToYardCount { get; set; }
     public decimal? AvgGvwMeasured { get; set; }
     public decimal? AvgOverload { get; set; }
