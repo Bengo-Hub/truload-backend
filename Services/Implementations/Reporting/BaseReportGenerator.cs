@@ -3,6 +3,7 @@ using System.Text;
 using ClosedXML.Excel;
 using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.DTOs.Reporting;
+using TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments;
 using TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments.Reports;
 using TruLoad.Backend.Services.Interfaces.Reporting;
 
@@ -119,24 +120,48 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
     }
 
     /// <summary>
-    /// Generates an Excel workbook from headers and rows with professional formatting.
+    /// Generates a flat Excel workbook from headers and rows with professional formatting.
+    /// Thin pass-through onto <see cref="GenerateExcel(ExcelReportRequest)"/> so the ~30 existing
+    /// call sites across the module generators keep compiling unchanged; migrate a report to the
+    /// richer overload (status colouring, legend, summary tables, branding) individually.
     /// </summary>
     protected static byte[] GenerateExcel(string reportTitle, string[] headers, IEnumerable<string[]> rows,
         DateTime? dateFrom = null, DateTime? dateTo = null)
+        => GenerateExcel(new ExcelReportRequest
+        {
+            ReportTitle = reportTitle,
+            Headers = headers,
+            Rows = rows,
+            DateFrom = dateFrom,
+            DateTo = dateTo
+        });
+
+    /// <summary>
+    /// Generates an Excel workbook with professional formatting, optionally including
+    /// status-driven row colouring, a "Key:" legend, one or more titled summary/breakdown
+    /// tables, and tenant branding (org name + logo) - the shared primitives every report can
+    /// opt into via <see cref="ExcelReportRequest"/> without duplicating this rendering logic.
+    /// </summary>
+    protected static byte[] GenerateExcel(ExcelReportRequest request)
     {
+        var headers = request.Headers;
+
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add("Report");
 
-        // Title row
-        worksheet.Cell(1, 1).Value = reportTitle;
+        // Title row (org name prefixed when known, for tenant-branding-aware Excel exports)
+        var titleText = string.IsNullOrWhiteSpace(request.OrgName)
+            ? request.ReportTitle
+            : $"{request.OrgName} - {request.ReportTitle}";
+        worksheet.Cell(1, 1).Value = titleText;
         worksheet.Range(1, 1, 1, headers.Length).Merge();
         worksheet.Cell(1, 1).Style.Font.Bold = true;
         worksheet.Cell(1, 1).Style.Font.FontSize = 14;
         worksheet.Cell(1, 1).Style.Font.FontColor = XLColor.FromHtml(BrandingConstants.Colors.KuraBlue);
 
         // Date range row
-        var dateRange = dateFrom.HasValue && dateTo.HasValue
-            ? $"Period: {dateFrom.Value:dd/MM/yyyy} - {dateTo.Value:dd/MM/yyyy}"
+        var dateRange = request.DateFrom.HasValue && request.DateTo.HasValue
+            ? $"Period: {request.DateFrom.Value:dd/MM/yyyy} - {request.DateTo.Value:dd/MM/yyyy}"
             : $"Generated: {DateTime.UtcNow:dd/MM/yyyy HH:mm}";
         worksheet.Cell(2, 1).Value = dateRange;
         worksheet.Range(2, 1, 2, headers.Length).Merge();
@@ -156,18 +181,35 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
             cell.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
         }
 
-        // Data rows with alternating colors
+        // Data rows: status-driven full-row colouring (when a status column is designated and the
+        // status is an "exception" state) takes precedence over the default alternating banding -
+        // verified against the sample KURA NRB template, whose tolerance/overloaded rows are
+        // filled edge-to-edge across every column, not just the Status cell.
         var dataRow = headerRow + 1;
-        foreach (var row in rows)
+        foreach (var row in request.Rows)
         {
+            ReportStatusColors.StatusStyle? highlight = null;
+            if (request.ConditionalStatusColumnIndex is { } statusIdx && statusIdx < row.Length
+                && ReportStatusColors.ShouldHighlightRow(row[statusIdx]))
+            {
+                highlight = ReportStatusColors.Resolve(row[statusIdx]);
+            }
+
             for (var i = 0; i < row.Length && i < headers.Length; i++)
             {
                 var cell = worksheet.Cell(dataRow, i + 1);
                 cell.Value = row[i];
                 cell.Style.Font.FontSize = 10;
+
+                if (highlight != null)
+                {
+                    cell.Style.Fill.BackgroundColor = XLColor.FromHtml(highlight.ExcelFillHex);
+                    cell.Style.Font.FontColor = XLColor.FromHtml(highlight.ExcelFontHex);
+                    cell.Style.Font.Bold = true;
+                }
             }
 
-            if (dataRow % 2 == 0)
+            if (highlight == null && dataRow % 2 == 0)
             {
                 var range = worksheet.Range(dataRow, 1, dataRow, headers.Length);
                 range.Style.Fill.BackgroundColor = XLColor.FromHtml("#F9FAFB");
@@ -187,9 +229,112 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
             dataRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
         }
 
+        var nextRow = dataRow + 1;
+
+        if (request.Legend is { Length: > 0 } legend)
+            nextRow = WriteLegend(worksheet, legend, nextRow);
+
+        if (request.SummaryTables is { Length: > 0 } summaryTables)
+        {
+            foreach (var table in summaryTables)
+                nextRow = WriteSummaryTable(worksheet, table, nextRow);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.OrgLogoFile))
+            TryEmbedLogo(worksheet, request.OrgLogoFile!, headers.Length);
+
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();
+    }
+
+    /// <summary>Writes the "Key:" legend block (fill-colour swatch + label per row) below the data table.</summary>
+    private static int WriteLegend(IXLWorksheet worksheet, (string colorHex, string label)[] legend, int startRow)
+    {
+        var row = startRow + 1;
+        worksheet.Cell(row, 1).Value = "Key:";
+        worksheet.Cell(row, 1).Style.Font.Bold = true;
+        row++;
+
+        foreach (var (colorHex, label) in legend)
+        {
+            var swatch = worksheet.Cell(row, 1);
+            swatch.Style.Fill.BackgroundColor = XLColor.FromHtml(colorHex);
+            swatch.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            worksheet.Cell(row, 2).Value = label;
+            row++;
+        }
+
+        return row;
+    }
+
+    /// <summary>Writes one titled summary/breakdown table (bold title, header row, data rows, borders).</summary>
+    private static int WriteSummaryTable(IXLWorksheet worksheet, ExcelSummaryTable table, int startRow)
+    {
+        var row = startRow + 1;
+        worksheet.Cell(row, 1).Value = table.Title;
+        worksheet.Cell(row, 1).Style.Font.Bold = true;
+        worksheet.Cell(row, 1).Style.Font.FontColor = XLColor.FromHtml(BrandingConstants.Colors.KuraBlue);
+        row++;
+
+        var headerRowIndex = row;
+        for (var i = 0; i < table.Headers.Length; i++)
+        {
+            var cell = worksheet.Cell(row, i + 1);
+            cell.Value = table.Headers[i];
+            cell.Style.Font.Bold = true;
+            cell.Style.Font.FontColor = XLColor.White;
+            cell.Style.Fill.BackgroundColor = XLColor.FromHtml(BrandingConstants.Colors.KuraBlue);
+        }
+        row++;
+
+        var startDataRow = row;
+        foreach (var dataRow in table.Rows)
+        {
+            for (var i = 0; i < dataRow.Length && i < table.Headers.Length; i++)
+                worksheet.Cell(row, i + 1).Value = dataRow[i];
+            row++;
+        }
+
+        if (row > startDataRow)
+        {
+            var range = worksheet.Range(headerRowIndex, 1, row - 1, table.Headers.Length);
+            range.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            range.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+
+            // Native in-cell "chart": ClosedXML's DataBar conditional format on the last column
+            // when it reads as a percentage share (e.g. "% OF TOTAL", "% Overloaded by GVW") -
+            // a real Excel visual, no image-embedding or new package needed.
+            if (table.Headers.Length > 0 && table.Headers[^1].Contains('%') && row > startDataRow)
+            {
+                var pctRange = worksheet.Range(startDataRow, table.Headers.Length, row - 1, table.Headers.Length);
+                ApplyPercentageDataBar(pctRange);
+            }
+        }
+
+        return row + 1;
+    }
+
+    /// <summary>Applies ClosedXML's native DataBar conditional formatting to a percentage column.</summary>
+    protected static void ApplyPercentageDataBar(IXLRange range)
+        => range.AddConditionalFormat().DataBar(XLColor.FromHtml(BrandingConstants.Colors.KuraBlue));
+
+    /// <summary>
+    /// Embeds the resolved org/fallback logo (same wwwroot/images/ resolution the PDF engine
+    /// uses via <see cref="BaseDocument.LoadLogo"/>) at a fixed anchor to the right of the title
+    /// row, so Excel exports get the same tenant branding PDF exports already have.
+    /// </summary>
+    private static void TryEmbedLogo(IXLWorksheet worksheet, string orgLogoFile, int headerCount)
+    {
+        var resolvedFile = BaseDocument.ResolveOrgLogo(orgLogoFile);
+        var bytes = BaseDocument.LoadLogo(resolvedFile);
+        if (bytes == null || bytes.Length == 0)
+            return;
+
+        using var imageStream = new MemoryStream(bytes);
+        worksheet.AddPicture(imageStream)
+            .MoveTo(worksheet.Cell(1, headerCount + 2))
+            .Scale(0.25);
     }
 
     /// <summary>

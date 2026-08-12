@@ -45,6 +45,20 @@ public static class BrandingConstants
         /// Gray for neutral elements and secondary text.
         /// </summary>
         public const string NeutralGray = "#6B7280";
+
+        /// <summary>
+        /// "Within Permissible Tolerance" blue used by the KURA NRB Axle Load Data Analysis
+        /// template's Excel status legend. Kept distinct from <see cref="KuraBlue"/> (platform
+        /// header/branding blue) so report exports can match the external template exactly.
+        /// </summary>
+        public const string ToleranceBlue = "#00B0F0";
+
+        /// <summary>
+        /// Solid "Overloaded and charged" red used by the KURA NRB Axle Load Data Analysis
+        /// template's Excel status legend. Kept distinct from <see cref="OfficialRed"/> (the
+        /// platform's softer prohibition/alert red) for exact template fidelity in Excel exports.
+        /// </summary>
+        public const string SampleTemplateRed = "#FF0000";
     }
 
     /// <summary>

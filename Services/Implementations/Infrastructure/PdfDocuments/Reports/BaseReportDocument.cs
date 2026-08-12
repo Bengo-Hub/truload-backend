@@ -2,6 +2,7 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using TruLoad.Backend.Common.Constants;
+using TruLoad.Backend.Services.Implementations.Reporting;
 
 namespace TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments.Reports;
 
@@ -67,7 +68,12 @@ public abstract class BaseReportDocument : BaseDocument
     protected abstract void ComposeContent(IContainer container);
 
     /// <summary>
-    /// Renders a data table with headers and rows.
+    /// Renders a data table with headers and rows. When <paramref name="conditionalStatusColumnIndex"/>
+    /// is set, the status found in that column drives the background/text colour for the WHOLE
+    /// row (resolved via <see cref="ReportStatusColors"/>), overriding the flat zebra striping for
+    /// that row - verified against the actual sample KURA NRB Axle Load Data Analysis workbook,
+    /// whose "Within Permissible Tolerance"/"Overloaded and charged" rows are filled edge-to-edge
+    /// (every column, not just the Status cell).
     /// </summary>
     protected void ComposeDataTable(
         IContainer container,
@@ -75,7 +81,8 @@ public abstract class BaseReportDocument : BaseDocument
         IEnumerable<string[]> rows,
         float[]? columnWidths = null,
         string? summaryLabel = null,
-        string? summaryValue = null)
+        string? summaryValue = null,
+        int? conditionalStatusColumnIndex = null)
     {
         container.Column(col =>
         {
@@ -117,11 +124,32 @@ public abstract class BaseReportDocument : BaseDocument
                 var rowIndex = 0;
                 foreach (var row in rows)
                 {
-                    var bgColor = rowIndex % 2 == 0 ? Colors.White : Colors.Grey.Lighten4;
+                    var zebraColor = rowIndex % 2 == 0 ? Colors.White : Colors.Grey.Lighten4;
+
+                    // Row-level status highlight: the status found in conditionalStatusColumnIndex
+                    // colours every cell in ITS row (not just the Status cell itself) when it's an
+                    // exception state - verified against the sample template, whose tolerance/
+                    // overloaded rows are filled edge-to-edge across every column.
+                    ReportStatusColors.StatusStyle? highlight = null;
+                    if (conditionalStatusColumnIndex.HasValue && conditionalStatusColumnIndex.Value < row.Length)
+                    {
+                        var status = row[conditionalStatusColumnIndex.Value];
+                        if (ReportStatusColors.ShouldHighlightRow(status))
+                            highlight = ReportStatusColors.Resolve(status);
+                    }
+
                     foreach (var cell in row)
                     {
-                        table.Cell().Background(bgColor).Padding(3)
-                            .Text(cell ?? "-").FontSize(7);
+                        if (highlight != null)
+                        {
+                            table.Cell().Background(highlight.PdfBackgroundHex).Padding(3)
+                                .Text(cell ?? "-").FontSize(7).FontColor(highlight.PdfTextHex).SemiBold();
+                        }
+                        else
+                        {
+                            table.Cell().Background(zebraColor).Padding(3)
+                                .Text(cell ?? "-").FontSize(7);
+                        }
                     }
                     rowIndex++;
                 }
@@ -154,6 +182,88 @@ public abstract class BaseReportDocument : BaseDocument
                     c.Item().Text(value).FontSize(11).Bold();
                 });
             }
+        });
+    }
+
+    /// <summary>
+    /// Renders a "Key:" legend block - a colour swatch + label per row - mirroring the sample KURA
+    /// NRB template's Status legend beneath its data table.
+    /// </summary>
+    protected void ComposeLegend(IContainer container, (string colorHex, string label)[] items)
+    {
+        if (items.Length == 0)
+            return;
+
+        container.PaddingTop(6).Column(col =>
+        {
+            col.Spacing(2);
+            col.Item().Text("Key:").FontSize(8).Bold();
+            foreach (var (colorHex, label) in items)
+            {
+                col.Item().Row(row =>
+                {
+                    row.ConstantItem(16).Height(10).Background(colorHex)
+                        .Border(0.5f).BorderColor(Colors.Grey.Lighten1);
+                    row.RelativeItem().PaddingLeft(6).Text(label).FontSize(8);
+                });
+            }
+        });
+    }
+
+    /// <summary>
+    /// Renders a titled summary/breakdown table - a bold section heading followed by
+    /// <see cref="ComposeDataTable"/> - the shared shape for the multi-table sections that
+    /// reports like the Axle Load Data Analysis template need beneath their main register.
+    /// </summary>
+    protected void ComposeTitledTable(
+        IContainer container, string title, string[] headers, IEnumerable<string[]> rows)
+    {
+        container.PaddingTop(10).Column(col =>
+        {
+            col.Spacing(3);
+            col.Item().Text(title).FontSize(10).Bold().FontColor(KuraBlue);
+            col.Item().Element(c => ComposeDataTable(c, headers, rows));
+        });
+    }
+
+    /// <summary>
+    /// Renders a single horizontal stacked proportion bar - the PDF "chart" primitive for simple
+    /// share-of-total breakdowns (e.g. vehicle-type mix, overload share). QuestPDF has no real
+    /// charting API, so this reuses the same coloured-box idiom as <see cref="ComposeSummaryCards"/>
+    /// rather than attempting fragile custom-drawn charts; genuine multi-series/interactive charts
+    /// stay on Recharts on-screen and Superset/AI-query for ad-hoc BI.
+    /// </summary>
+    protected void ComposeProportionBar(IContainer container, (string label, decimal value, string colorHex)[] segments)
+    {
+        var total = segments.Sum(s => s.value);
+        if (total <= 0)
+            return;
+
+        container.Column(col =>
+        {
+            col.Spacing(3);
+
+            col.Item().Height(18).Row(row =>
+            {
+                foreach (var (_, value, colorHex) in segments)
+                {
+                    if (value <= 0) continue;
+                    row.RelativeItem((float)value).Background(colorHex);
+                }
+            });
+
+            col.Item().Row(row =>
+            {
+                foreach (var (label, value, colorHex) in segments)
+                {
+                    row.AutoItem().PaddingRight(10).Row(legend =>
+                    {
+                        legend.ConstantItem(8).Height(8).Background(colorHex);
+                        legend.AutoItem().PaddingLeft(3)
+                            .Text($"{label} ({(decimal)value / total * 100:F1}%)").FontSize(6.5f);
+                    });
+                }
+            });
         });
     }
 }

@@ -2,11 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Reporting;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models;
+using TruLoad.Backend.Services.Implementations.Reporting;
 using TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments.Reports;
+using TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments.Reports.Weighing;
 
 namespace TruLoad.Backend.Services.Implementations.Reporting.Modules;
 
@@ -54,12 +57,38 @@ public class WeighingReportGenerator : BaseReportGenerator
             : w.TotalFeeUsd;
     }
 
+    /// <summary>
+    /// Shared station/date/status filter chain used by the per-transaction weighing reports
+    /// (weighbridge register, overloaded vehicles, axle load analysis) so new report types don't
+    /// re-duplicate this exact chain.
+    /// </summary>
+    private IQueryable<WeighingTransaction> BuildWeighingBaseQuery(
+        ReportFilterParams filters, DateTime from, DateTime to)
+    {
+        var query = _context.WeighingTransactions
+            .Where(w => w.DeletedAt == null)
+            .Where(w => w.WeighedAt >= from && w.WeighedAt <= to)
+            .Where(w => w.CaptureStatus == "captured");
+
+        if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
+            query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.WeighingType))
+            query = query.Where(w => w.WeighingType == filters.WeighingType);
+        if (!string.IsNullOrEmpty(filters.ControlStatus))
+            query = ApplyControlStatusFilter(query, filters.ControlStatus);
+
+        return query;
+    }
+
     public override List<ReportDefinitionDto> GetDefinitions() =>
     [
         Def("daily-summary", "Daily Weighing Summary",
             "Aggregated daily statistics including total vehicles weighed, compliance rate, and overload totals per station."),
         Def("weighbridge-register", "Weighbridge Register",
             "Detailed register of all weighing transactions with vehicle, driver, weight, and compliance data."),
+        Def("axle-load-analysis", "Axle Load Data Analysis",
+            "Per-vehicle axle load analysis scoped by a single station, with vehicle-type/axle-count " +
+            "and overload-by-GVW summary breakdowns, colour-coded status and legend - matches the KURA NRB template."),
         Def("compliance-trend", "Compliance Trend Analysis",
             "Daily compliance rates over the selected period, showing overload vs compliant vehicle counts."),
         Def("axle-overload", "Axle Overload Analysis",
@@ -85,6 +114,7 @@ public class WeighingReportGenerator : BaseReportGenerator
         {
             "daily-summary" => await GenerateDailySummaryAsync(filters, format, ct),
             "weighbridge-register" => await GenerateWeighbridgeRegisterAsync(filters, format, ct),
+            "axle-load-analysis" => await GenerateAxleLoadAnalysisAsync(filters, format, ct),
             "compliance-trend" => await GenerateComplianceTrendAsync(filters, format, ct),
             "axle-overload" => await GenerateAxleOverloadAsync(filters, format, ct),
             "station-performance" => await GenerateStationPerformanceAsync(filters, format, ct),
@@ -294,6 +324,205 @@ public class WeighingReportGenerator : BaseReportGenerator
         };
 
         return PdfResult(doc, filters, "weighbridge_register", from, to);
+    }
+
+    // =====================================================================
+    // Axle Load Data Analysis (scoped by station - matches the KURA NRB sample template)
+    // =====================================================================
+
+    private async Task<ReportResult> GenerateAxleLoadAnalysisAsync(
+        ReportFilterParams filters, string format, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(filters.StationId) || !Guid.TryParse(filters.StationId, out var stationId))
+        {
+            throw new ArgumentException(
+                "axle-load-analysis requires a stationId - this report is scoped to a single " +
+                "station, matching the KURA NRB sample template's per-station title.");
+        }
+
+        var (from, to) = GetDateRange(filters);
+
+        var station = await _context.Stations
+            .AsNoTracking()
+            .Include(s => s.County)
+            .Include(s => s.Subcounty)
+            .Include(s => s.Road)
+            .FirstOrDefaultAsync(s => s.Id == stationId, ct);
+
+        var stationName = station?.Name ?? "Station";
+        var countyName = station?.County?.Name ?? "-";
+        var subcountyName = station?.Subcounty?.Name ?? "-";
+        var stationRoadName = station?.Road?.Name ?? "-";
+
+        var transactions = await BuildWeighingBaseQuery(filters, from, to)
+            .Include(w => w.Vehicle).ThenInclude(v => v!.AxleConfiguration)
+            .Include(w => w.Road)
+            .OrderBy(w => w.WeighedAt)
+            .Take(filters.PageSize)
+            .Select(w => new
+            {
+                w.VehicleRegNumber,
+                AxleCount = w.Vehicle != null && w.Vehicle.AxleConfiguration != null
+                    ? w.Vehicle.AxleConfiguration.AxleNumber : 0,
+                w.GvwPermissibleKg,
+                w.GvwMeasuredKg,
+                w.OverloadKg,
+                w.ControlStatus,
+                w.LocationCounty,
+                w.LocationSubcounty,
+                TransactionRoadName = w.Road != null ? w.Road.Name : null
+            })
+            .ToListAsync(ct);
+
+        var headers = new[]
+        {
+            "S/No.", "Reg No.", "No. of Axle", "Legal", "Actual", "Overload",
+            "% Gross Overload", "Overloaded", "Status", "County", "Sub County", "Road"
+        };
+        const int statusColumnIndex = 8;
+
+        var rows = new List<string[]>();
+        var bucketWeighed = new SortedDictionary<int, int>();
+        var bucketOverloaded = new SortedDictionary<int, int>();
+        var serial = 1;
+
+        foreach (var t in transactions)
+        {
+            var pctGrossOverload = t.GvwPermissibleKg > 0
+                ? (decimal)t.OverloadKg / t.GvwPermissibleKg * 100
+                : 0m;
+            var isOverloaded = t.OverloadKg > 0;
+            var sampleStatus = ReportStatusColors.ToSampleTemplateStatus(t.ControlStatus);
+
+            rows.Add(new[]
+            {
+                serial.ToString(),
+                t.VehicleRegNumber,
+                t.AxleCount.ToString(),
+                FormatNumber(t.GvwPermissibleKg),
+                FormatNumber(t.GvwMeasuredKg),
+                t.OverloadKg > 0 ? FormatNumber(t.OverloadKg) : "0",
+                $"{pctGrossOverload:F2}%",
+                isOverloaded ? "Yes" : "No",
+                sampleStatus,
+                !string.IsNullOrWhiteSpace(t.LocationCounty) ? t.LocationCounty : countyName,
+                !string.IsNullOrWhiteSpace(t.LocationSubcounty) ? t.LocationSubcounty : subcountyName,
+                t.TransactionRoadName ?? stationRoadName
+            });
+
+            // Bucket by axle count (2-6 exact, 7+ grouped) to mirror the sample's
+            // "N Axle Truck" vehicle-type breakdown; 0/1 (unclassified/no axle config) is its own bucket.
+            var bucket = t.AxleCount switch { >= 2 and <= 6 => t.AxleCount, > 6 => 7, _ => 0 };
+            bucketWeighed[bucket] = bucketWeighed.GetValueOrDefault(bucket) + 1;
+            if (isOverloaded)
+                bucketOverloaded[bucket] = bucketOverloaded.GetValueOrDefault(bucket) + 1;
+
+            serial++;
+        }
+
+        static string BucketLabel(int bucket) => bucket switch
+        {
+            0 => "Unclassified",
+            7 => "7+ Axle Truck",
+            _ => $"{bucket} Axle Truck"
+        };
+
+        var totalWeighed = transactions.Count;
+
+        var vehicleTypeHeaders = new[] { "No.", "Type of Vehicle", "No. of Vehicles Weighed", "% OF TOTAL" };
+        var vehicleTypeRows = new List<string[]>();
+        var rowNo = 1;
+        foreach (var bucket in bucketWeighed.Keys)
+        {
+            var count = bucketWeighed[bucket];
+            vehicleTypeRows.Add(new[]
+            {
+                rowNo.ToString(), BucketLabel(bucket), count.ToString(),
+                totalWeighed > 0 ? $"{(decimal)count / totalWeighed * 100:F2}%" : "0.00%"
+            });
+            rowNo++;
+        }
+        vehicleTypeRows.Add(new[] { "", "Total", totalWeighed.ToString(), totalWeighed > 0 ? "100.00%" : "0.00%" });
+
+        var overloadHeaders = new[]
+        {
+            "Type of Vehicle", "No. of Vehicles Weighed", "No. of Vehicles Overloaded by GVW", "% Overloaded by GVW"
+        };
+        var overloadRows = new List<string[]>();
+        var totalOverloaded = 0;
+        foreach (var bucket in bucketWeighed.Keys)
+        {
+            var count = bucketWeighed[bucket];
+            var overloadedCount = bucketOverloaded.GetValueOrDefault(bucket);
+            totalOverloaded += overloadedCount;
+            overloadRows.Add(new[]
+            {
+                BucketLabel(bucket), count.ToString(), overloadedCount.ToString(),
+                count > 0 ? $"{(decimal)overloadedCount / count * 100:F2}%" : "0.00%"
+            });
+        }
+        overloadRows.Add(new[]
+        {
+            "Total", totalWeighed.ToString(), totalOverloaded.ToString(),
+            totalWeighed > 0 ? $"{(decimal)totalOverloaded / totalWeighed * 100:F2}%" : "0.00%"
+        });
+
+        var legend = new[]
+        {
+            (BrandingConstants.Colors.ToleranceBlue, "Within Permissible Tolerance"),
+            (BrandingConstants.Colors.SampleTemplateRed, "Overloaded and charged")
+        };
+
+        if (format == "csv")
+            return CsvResult(GenerateCsv(headers, rows), "axle_load_data_analysis", from, to);
+
+        if (format == "xlsx")
+        {
+            var request = new ExcelReportRequest
+            {
+                ReportTitle = $"AXLE LOAD DATA ANALYSIS FOR {stationName.ToUpperInvariant()}",
+                Headers = headers,
+                Rows = rows,
+                DateFrom = from,
+                DateTo = to,
+                ConditionalStatusColumnIndex = statusColumnIndex,
+                Legend = legend,
+                SummaryTables =
+                [
+                    new ExcelSummaryTable
+                    {
+                        Title = "Vehicle Type Breakdown (by Axle Count)",
+                        Headers = vehicleTypeHeaders, Rows = vehicleTypeRows
+                    },
+                    new ExcelSummaryTable
+                    {
+                        Title = "Overload by GVW (by Vehicle Type)",
+                        Headers = overloadHeaders, Rows = overloadRows
+                    }
+                ],
+                OrgName = filters.OrganizationName,
+                OrgLogoFile = filters.OrgLogoFile
+            };
+            return ExcelResult(GenerateExcel(request), "axle_load_data_analysis", from, to);
+        }
+
+        var doc = new AxleLoadAnalysisDocument
+        {
+            ReportSubtitle = $"{stationName} - {stationRoadName}, {subcountyName}, {countyName}",
+            DateFrom = from,
+            DateTo = to,
+            Headers = headers,
+            Rows = rows.ToArray(),
+            StatusColumnIndex = statusColumnIndex,
+            Legend = legend,
+            SummaryTables =
+            [
+                ("Vehicle Type Breakdown (by Axle Count)", vehicleTypeHeaders, vehicleTypeRows.ToArray()),
+                ("Overload by GVW (by Vehicle Type)", overloadHeaders, overloadRows.ToArray())
+            ]
+        };
+
+        return PdfResult(doc, filters, "axle_load_data_analysis", from, to);
     }
 
     // =====================================================================
@@ -1073,138 +1302,9 @@ public class WeighingReportGenerator : BaseReportGenerator
         return PdfResult(doc, filters, "scale_test_log", from, to);
     }
 
-    // =====================================================================
-    // Inner PDF Document Classes
-    // =====================================================================
-
-    /// <summary>
-    /// Base for all weighing report PDF documents that follow the standard
-    /// summary cards + data table pattern.
-    /// </summary>
-    private abstract class WeighingReportDocumentBase : BaseReportDocument
-    {
-        public string[] Headers { get; set; } = [];
-        public string[][] Rows { get; set; } = [];
-        public (string label, string value)[] SummaryItems { get; set; } = [];
-
-        protected override void ComposeContent(IContainer container)
-        {
-            container.Column(col =>
-            {
-                col.Spacing(5);
-
-                if (SummaryItems.Length > 0)
-                    col.Item().Element(c => ComposeSummaryCards(c, SummaryItems));
-
-                col.Item().Element(c => ComposeDataTable(c, Headers, Rows));
-            });
-        }
-    }
-
-    private sealed class DailySummaryDocument : WeighingReportDocumentBase
-    {
-        public DailySummaryDocument()
-        {
-            ReportTitle = "Daily Weighing Summary";
-            ReportSubtitle = "Aggregated weighing statistics by date and station";
-        }
-    }
-
-    private sealed class WeighbridgeRegisterDocument : WeighingReportDocumentBase
-    {
-        public int TotalRecords { get; set; }
-
-        public WeighbridgeRegisterDocument()
-        {
-            ReportTitle = "Weighbridge Register";
-            ReportSubtitle = "Detailed record of all weighing transactions";
-        }
-
-        protected override void ComposeContent(IContainer container)
-        {
-            container.Column(col =>
-            {
-                col.Spacing(5);
-
-                col.Item().PaddingBottom(5).Text($"Total Records: {TotalRecords}")
-                    .FontSize(9).SemiBold();
-
-                col.Item().Element(c => ComposeDataTable(c, Headers, Rows));
-            });
-        }
-    }
-
-    private sealed class ComplianceTrendDocument : WeighingReportDocumentBase
-    {
-        public ComplianceTrendDocument()
-        {
-            ReportTitle = "Compliance Trend Analysis";
-            ReportSubtitle = "Daily compliance rates over the reporting period";
-        }
-    }
-
-    private sealed class AxleOverloadDocument : WeighingReportDocumentBase
-    {
-        public AxleOverloadDocument()
-        {
-            ReportTitle = "Axle Overload Analysis";
-            ReportSubtitle = "Breakdown of overloaded axles by type and configuration";
-        }
-    }
-
-    private sealed class StationPerformanceDocument : WeighingReportDocumentBase
-    {
-        public StationPerformanceDocument()
-        {
-            ReportTitle = "Station Performance Report";
-            ReportSubtitle = "Comparative performance across weighbridge stations";
-        }
-    }
-
-    private sealed class TransporterStatementDocument : WeighingReportDocumentBase
-    {
-        public TransporterStatementDocument()
-        {
-            ReportTitle = "Transporter Statement";
-            ReportSubtitle = "Weighing history and compliance summary by transporter";
-        }
-    }
-
-    private sealed class OverloadedVehiclesDocument : WeighingReportDocumentBase
-    {
-        public OverloadedVehiclesDocument()
-        {
-            ReportTitle = "Overloaded Vehicles Register";
-            ReportSubtitle = "Vehicles exceeding permissible gross vehicle weight";
-        }
-    }
-
-    private sealed class ReweighStatementDocument : WeighingReportDocumentBase
-    {
-        public ReweighStatementDocument()
-        {
-            ReportTitle = "Reweigh Statement";
-            ReportSubtitle = "Load correction and reweigh cycle tracking";
-        }
-    }
-
-    private sealed class SpecialReleaseDocument : WeighingReportDocumentBase
-    {
-        public SpecialReleaseDocument()
-        {
-            ReportTitle = "Special Release Register";
-            ReportSubtitle = "Special release certificates issued for case dispositions";
-        }
-    }
-
-    private sealed class ScaleTestDocument : WeighingReportDocumentBase
-    {
-        public ScaleTestDocument()
-        {
-            ReportTitle = "Scale Test Log";
-            ReportSubtitle = "Daily scale calibration tests and results";
-        }
-    }
+    // Inner PDF document classes for this module's reports live in
+    // Services/Implementations/Infrastructure/PdfDocuments/Reports/Weighing/
+    // (extracted so this file stays within the project's file-length guideline).
 
     private static IQueryable<WeighingTransaction> ApplyControlStatusFilter(
         IQueryable<WeighingTransaction> query, string controlStatus)

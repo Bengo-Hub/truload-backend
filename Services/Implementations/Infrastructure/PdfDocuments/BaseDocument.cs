@@ -2,6 +2,7 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using TruLoad.Backend.Common.Constants;
+using TruLoad.Backend.Services.Implementations.Reporting;
 
 namespace TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments;
 
@@ -63,8 +64,11 @@ public abstract class BaseDocument
     /// <summary>
     /// Loads an image from wwwroot/images/ as byte array.
     /// Returns null if the file does not exist (graceful degradation).
+    /// Public (not just protected) so the Excel report engine (<c>BaseReportGenerator</c>, a
+    /// sibling class hierarchy, not a subclass of this one) can reuse the same logo resolution
+    /// instead of duplicating the wwwroot/images/ file-loading logic.
     /// </summary>
-    protected static byte[]? LoadLogo(string fileName)
+    public static byte[]? LoadLogo(string fileName)
     {
         var path = Path.Combine(ImagesBasePath, fileName);
         return File.Exists(path) ? File.ReadAllBytes(path) : null;
@@ -337,20 +341,16 @@ public abstract class BaseDocument
 
     /// <summary>
     /// Composes a conditional cell with color based on compliance status.
+    /// Sourced from <see cref="ReportStatusColors"/> - the single shared status/colour mapping
+    /// used by both the PDF (here) and Excel (<c>BaseReportGenerator</c>) report engines, so a
+    /// status always renders the same colour family regardless of output format.
     /// </summary>
     protected void ComposeConditionalCell(IContainer container, string text, string status)
     {
-        var (bgColor, textColor) = status.ToLower() switch
-        {
-            "overloaded" or "violation" or "failed" or "overload" => ("#FEE2E2", OfficialRed),
-            "compliant" or "passed" or "success" => ("#DCFCE7", OfficialGreen),
-            "warning" or "pending" or "tolerance" => ("#FEF3C7", "#B45309"),
-            "legal" => ("#DBEAFE", KuraBlue),
-            _ => ("#F3F4F6", KuraBlack)
-        };
+        var style = ReportStatusColors.Resolve(status);
 
-        container.Background(bgColor).Padding(3)
-            .Text(text).FontSize(8).FontColor(textColor).SemiBold();
+        container.Background(style.PdfBackgroundHex).Padding(3)
+            .Text(text).FontSize(8).FontColor(style.PdfTextHex).SemiBold();
     }
 
     /// <summary>
