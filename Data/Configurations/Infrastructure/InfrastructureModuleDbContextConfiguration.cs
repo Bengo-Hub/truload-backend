@@ -144,7 +144,21 @@ namespace TruLoad.Backend.Data.Configurations.Infrastructure
                     .OnDelete(DeleteBehavior.SetNull);
 
                 // Indexes
-                entity.HasIndex(e => e.Code).IsUnique();
+                // Code uniqueness is per-scope, not global: the shared/global catalog
+                // (OrganizationId IS NULL) is its own uniqueness bucket, and each tenant's
+                // private catalog (OrganizationId IS NOT NULL) is uniqued separately per
+                // OrganizationId. A plain unique(OrganizationId, Code) index would NOT enforce
+                // uniqueness among the shared rows against each other, because Postgres treats
+                // NULL as distinct from every other NULL - hence the two filtered indexes below
+                // instead of a single composite unique index.
+                entity.HasIndex(e => e.Code)
+                    .IsUnique()
+                    .HasDatabaseName("IX_cargo_types_code_shared")
+                    .HasFilter("organization_id IS NULL");
+                entity.HasIndex(e => new { e.OrganizationId, e.Code })
+                    .IsUnique()
+                    .HasDatabaseName("IX_cargo_types_organization_id_code")
+                    .HasFilter("organization_id IS NOT NULL");
                 entity.HasIndex(e => e.Name);
                 entity.HasIndex(e => e.IsActive);
                 entity.HasIndex(e => e.OrganizationId);
@@ -206,7 +220,18 @@ namespace TruLoad.Backend.Data.Configurations.Infrastructure
                     .OnDelete(DeleteBehavior.SetNull);
 
                 // Indexes
-                entity.HasIndex(e => e.Code).IsUnique();
+                // Same per-scope Code uniqueness rationale as CargoTypes above: a plain
+                // unique(OrganizationId, Code) index would not enforce uniqueness among the
+                // shared/global rows against each other (Postgres treats NULL as distinct from
+                // every other NULL), so use two filtered unique indexes instead.
+                entity.HasIndex(e => e.Code)
+                    .IsUnique()
+                    .HasDatabaseName("IX_origins_destinations_code_shared")
+                    .HasFilter("organization_id IS NULL");
+                entity.HasIndex(e => new { e.OrganizationId, e.Code })
+                    .IsUnique()
+                    .HasDatabaseName("IX_origins_destinations_organization_id_code")
+                    .HasFilter("organization_id IS NOT NULL");
                 entity.HasIndex(e => e.Name);
                 entity.HasIndex(e => e.Country);
                 entity.HasIndex(e => e.IsActive);

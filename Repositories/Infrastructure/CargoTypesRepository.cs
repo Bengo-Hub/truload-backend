@@ -56,6 +56,25 @@ public class CargoTypesRepository : ICargoTypesRepository
             .FirstOrDefaultAsync(c => c.Code == code && c.DeletedAt == null, cancellationToken);
     }
 
+    /// <summary>
+    /// Scoped duplicate-code check mirroring the two filtered unique indexes on (OrganizationId,
+    /// Code): pass organizationId = null to check the shared/global bucket, or a specific org id to
+    /// check that org's own private bucket. Unlike GetByCodeAsync, this never treats a code taken in
+    /// one org's private catalog as a conflict for a different scope.
+    /// </summary>
+    public async Task<bool> CodeExistsInScopeAsync(string code, Guid? organizationId, Guid? excludeId = null, CancellationToken cancellationToken = default)
+    {
+        var query = _context.CargoTypes
+            .Where(c => c.Code == code && c.DeletedAt == null && c.OrganizationId == organizationId);
+
+        if (excludeId.HasValue)
+        {
+            query = query.Where(c => c.Id != excludeId.Value);
+        }
+
+        return await query.AnyAsync(cancellationToken);
+    }
+
     public async Task<List<CargoTypes>> GetByCategoryAsync(string category, CancellationToken cancellationToken = default)
     {
         var orgId = _tenantContext.OrganizationId;

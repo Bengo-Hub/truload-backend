@@ -79,10 +79,6 @@ public class CargoTypesController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var existing = await _repository.GetByCodeAsync(request.Code);
-        if (existing != null)
-            return Conflict(new { Message = $"Cargo type with code {request.Code} already exists" });
-
         // Auto-stamp the caller's org unless a Superuser explicitly asked for a shared/global entry
         // (MakeGlobal), or the caller is a Superuser with no resolvable tenant context at all (e.g.
         // cross-tenant mode - see TenantContext memory) - there is nothing to stamp in that case
@@ -91,6 +87,16 @@ public class CargoTypesController : ControllerBase
         Guid? organizationId = isSuperuser && request.MakeGlobal
             ? null
             : (_tenantContext.OrganizationId != Guid.Empty ? _tenantContext.OrganizationId : null);
+
+        // Duplicate-code check is scoped: a code already used in the shared catalog or in this
+        // org's own private catalog is a conflict, but a code that only exists in a DIFFERENT
+        // org's private catalog is not - it mirrors the two filtered unique indexes on
+        // (OrganizationId, Code).
+        if (await _repository.CodeExistsInScopeAsync(request.Code, organizationId))
+        {
+            var scope = organizationId == null ? "the shared catalog" : "your organisation";
+            return Conflict(new { Message = $"A cargo type with code {request.Code} already exists in {scope}" });
+        }
 
         var cargoType = new CargoTypes
         {
@@ -123,15 +129,21 @@ public class CargoTypesController : ControllerBase
         if (existing == null)
             return NotFound(new { Message = $"Cargo type with ID {id} not found" });
 
-        var duplicate = await _repository.GetByCodeAsync(cargoType.Code);
-        if (duplicate != null && duplicate.Id != id)
-            return Conflict(new { Message = $"Cargo type with code {cargoType.Code} already exists" });
-
         // Preserve the existing OrganizationId unless the caller is a Superuser explicitly changing
         // it - a regular tenant admin with config.manage_taxonomy should not be able to move/re-scope
         // a row to another org or make it shared/global just by round-tripping the entity on Update
         // (same superuser-only bypass rule Create enforces above).
-        cargoType.OrganizationId = User.IsInRole("Superuser") ? cargoType.OrganizationId : existing.OrganizationId;
+        var effectiveOrganizationId = User.IsInRole("Superuser") ? cargoType.OrganizationId : existing.OrganizationId;
+
+        // Duplicate-code check is scoped to the row's effective (post-update) organization - same
+        // rationale as Create, mirroring the two filtered unique indexes on (OrganizationId, Code).
+        if (await _repository.CodeExistsInScopeAsync(cargoType.Code, effectiveOrganizationId, excludeId: id))
+        {
+            var scope = effectiveOrganizationId == null ? "the shared catalog" : "your organisation";
+            return Conflict(new { Message = $"A cargo type with code {cargoType.Code} already exists in {scope}" });
+        }
+
+        cargoType.OrganizationId = effectiveOrganizationId;
 
         var updated = await _repository.UpdateAsync(cargoType);
         return Ok(updated);
