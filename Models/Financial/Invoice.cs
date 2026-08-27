@@ -102,6 +102,8 @@ public class Invoice : TenantAwareEntity
 
     /// <summary>
     /// Treasury-api payment intent ID for commercial invoices (PaymentGateway = "treasury").
+    /// Only set once the invoice is actually offered for online payment — null while an
+    /// on-account (pay-later) commercial invoice sits unpaid in treasury AR.
     /// </summary>
     public string? TreasuryIntentId { get; set; }
 
@@ -109,6 +111,14 @@ public class Invoice : TenantAwareEntity
     /// Status mirrored from treasury-api: null | "pending" | "succeeded" | "failed".
     /// </summary>
     public string? TreasuryIntentStatus { get; set; }
+
+    /// <summary>
+    /// Treasury-api Invoice.Id for commercial invoices (PaymentGateway = "treasury"). This is the
+    /// real AR/GL-backed invoice — created and sent (Dr AR / Cr Revenue posted) at the same time
+    /// the local Invoice row is created, distinct from TreasuryIntentId which is only the
+    /// optional online-payment-collection leg on top of it.
+    /// </summary>
+    public string? TreasuryInvoiceId { get; set; }
 
     // Navigation properties
     public CaseRegister? CaseRegister { get; set; }

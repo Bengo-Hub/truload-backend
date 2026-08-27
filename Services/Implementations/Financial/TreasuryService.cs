@@ -37,6 +37,7 @@ public class TreasuryService : ITreasuryService
         decimal amountKes,
         string referenceId,
         string description,
+        string referenceType = "weighing_invoice",
         CancellationToken ct = default)
     {
         var (apiKey, baseUrl) = await ResolveConfigAsync(ct);
@@ -44,7 +45,7 @@ public class TreasuryService : ITreasuryService
         var body = new
         {
             reference_id = referenceId,
-            reference_type = "weighing_invoice",
+            reference_type = referenceType,
             payment_method = "pending",
             currency = "KES",
             amount = amountKes.ToString("F2"),
@@ -112,6 +113,126 @@ public class TreasuryService : ITreasuryService
             result.Currency);
     }
 
+    public async Task<TreasuryInvoiceResult> CreateInvoiceAsync(
+        string tenantSlug,
+        TreasuryInvoiceRequest invoiceRequest,
+        CancellationToken ct = default)
+    {
+        var (apiKey, baseUrl) = await ResolveConfigAsync(ct);
+
+        var now = DateTime.UtcNow;
+        var body = new
+        {
+            customer_id = invoiceRequest.CustomerId,
+            crm_customer_id = invoiceRequest.CrmCustomerId,
+            customer_name = invoiceRequest.CustomerName,
+            customer_email = invoiceRequest.CustomerEmail,
+            customer_phone = invoiceRequest.CustomerPhone,
+            invoice_type = invoiceRequest.InvoiceType,
+            invoice_date = now.ToString("O"),
+            due_date = invoiceRequest.DueDate.ToString("O"),
+            currency = "KES",
+            reference_id = invoiceRequest.ReferenceId,
+            reference_type = invoiceRequest.ReferenceType,
+            lines = new[]
+            {
+                new
+                {
+                    description = invoiceRequest.Description,
+                    quantity = "1",
+                    unit_price = invoiceRequest.AmountKes.ToString("F2"),
+                    tax_rate = "0"
+                }
+            }
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Post,
+            $"{baseUrl}/api/v1/s2s/{tenantSlug}/invoices")
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(body, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull }),
+                Encoding.UTF8,
+                "application/json")
+        };
+        request.Headers.Add("X-API-Key", apiKey);
+        request.Headers.Add("Idempotency-Key", invoiceRequest.ReferenceId);
+
+        var response = await _httpClient.SendAsync(request, ct);
+        var json = await response.Content.ReadAsStringAsync(ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("Treasury CreateInvoice failed ({Status}): {Body}", response.StatusCode, json);
+            throw new HttpRequestException($"Treasury API error {response.StatusCode}: {json}");
+        }
+
+        var result = JsonSerializer.Deserialize<TreasuryInvoiceResponse>(json, _jsonOptions)
+            ?? throw new InvalidOperationException("Empty response from treasury-api");
+
+        return new TreasuryInvoiceResult(result.Id, result.InvoiceNumber);
+    }
+
+    public async Task SendInvoiceAsync(
+        string tenantSlug,
+        string treasuryInvoiceId,
+        CancellationToken ct = default)
+    {
+        var (apiKey, baseUrl) = await ResolveConfigAsync(ct);
+
+        var request = new HttpRequestMessage(HttpMethod.Post,
+            $"{baseUrl}/api/v1/s2s/{tenantSlug}/invoices/{treasuryInvoiceId}/send")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        };
+        request.Headers.Add("X-API-Key", apiKey);
+
+        var response = await _httpClient.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var json = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Treasury SendInvoice failed ({Status}): {Body}", response.StatusCode, json);
+            throw new HttpRequestException($"Treasury API error {response.StatusCode}: {json}");
+        }
+    }
+
+    public async Task RecordInvoicePaymentAsync(
+        string tenantSlug,
+        string treasuryInvoiceId,
+        decimal amountKes,
+        string method,
+        string? reference = null,
+        CancellationToken ct = default)
+    {
+        var (apiKey, baseUrl) = await ResolveConfigAsync(ct);
+
+        var body = new
+        {
+            amount = amountKes.ToString("F2"),
+            method,
+            reference
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Post,
+            $"{baseUrl}/api/v1/s2s/{tenantSlug}/invoices/{treasuryInvoiceId}/record-payment")
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(body, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull }),
+                Encoding.UTF8,
+                "application/json")
+        };
+        request.Headers.Add("X-API-Key", apiKey);
+        if (!string.IsNullOrWhiteSpace(reference))
+            request.Headers.Add("Idempotency-Key", $"{treasuryInvoiceId}:{reference}");
+
+        var response = await _httpClient.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var json = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Treasury RecordInvoicePayment failed ({Status}): {Body}", response.StatusCode, json);
+            throw new HttpRequestException($"Treasury API error {response.StatusCode}: {json}");
+        }
+    }
+
     // Resolves (apiKey, baseUrl) from IntegrationConfig DB first, then falls back to env/config.
     private async Task<(string apiKey, string baseUrl)> ResolveConfigAsync(CancellationToken ct)
     {
@@ -145,6 +266,15 @@ public class TreasuryService : ITreasuryService
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         PropertyNameCaseInsensitive = true
     };
+
+    private sealed class TreasuryInvoiceResponse
+    {
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonPropertyName("invoice_number")]
+        public string InvoiceNumber { get; set; } = string.Empty;
+    }
 
     private sealed class TreasuryIntentResponse
     {

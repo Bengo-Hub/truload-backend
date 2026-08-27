@@ -220,6 +220,7 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     public DbSet<PaymentCallback> PaymentCallbacks { get; set; } = null!;
     public DbSet<Receipt> Receipts { get; set; } = null!;
     public DbSet<ExchangeRate> ExchangeRates { get; set; } = null!;
+    public DbSet<CommercialTariffRule> CommercialTariffRules { get; set; } = null!;
 
     // ===== Exchange Rate API Settings =====
     public DbSet<ExchangeRateApiSettings> ExchangeRateApiSettings { get; set; } = null!;

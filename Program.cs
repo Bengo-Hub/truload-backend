@@ -467,6 +467,7 @@ builder.Services.AddScoped<IStatusLookupService, StatusLookupService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IWeighingService, WeighingService>();
 builder.Services.AddScoped<ICommercialWeighingService, CommercialWeighingService>();
+builder.Services.AddScoped<ICommercialTariffService, CommercialTariffService>();
 builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
 
 // Document numbering service (Sprint 22)

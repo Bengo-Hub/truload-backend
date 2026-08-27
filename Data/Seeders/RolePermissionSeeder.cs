@@ -233,6 +233,9 @@ public static class RolePermissionSeeder
                 "invoice.create", "invoice.read", "invoice.read_own", "invoice.update", "invoice.void",
                 "receipt.create", "receipt.read", "receipt.read_own", "receipt.void",
                 "financial.audit",
+                // Billing: tariff rules, transporter statements, treasury reconciliation
+                "billing.tariffs.view", "billing.tariffs.manage",
+                "billing.statements.view", "billing.reconciliation.view",
                 // Security & data: audit logs, security policy, backup/restore
                 "system.security_policy", "system.audit_logs", "system.backup_restore"
             }
@@ -256,7 +259,9 @@ public static class RolePermissionSeeder
                 // Financial read (for reconciliation reference)
                 "invoice.read", "invoice.read_own", "invoice.create", "invoice.update",
                 "receipt.read", "receipt.read_own", "receipt.create",
-                "financial.audit"
+                "financial.audit",
+                // Billing: view-only
+                "billing.tariffs.view", "billing.statements.view", "billing.reconciliation.view"
             }
         },
         {
@@ -288,7 +293,10 @@ public static class RolePermissionSeeder
                 "transporter.read",
                 "driver.read",
                 // Analytics (for financial reports)
-                "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit"
+                "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit",
+                // Billing: manage tariffs, full statement/reconciliation view
+                "billing.tariffs.view", "billing.tariffs.manage",
+                "billing.statements.view", "billing.reconciliation.view"
             }
         },
         {
@@ -304,7 +312,9 @@ public static class RolePermissionSeeder
                 "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit",
                 "invoice.read", "invoice.read_own",
                 "receipt.read", "receipt.read_own",
-                "financial.audit"
+                "financial.audit",
+                // Billing: view-only
+                "billing.tariffs.view", "billing.statements.view", "billing.reconciliation.view"
             }
         },
 
@@ -314,14 +324,18 @@ public static class RolePermissionSeeder
             {
                 // Full portal: fleet management + team management + billing + export
                 "portal.access", "portal.manage_fleet", "portal.manage_team",
-                "portal.manage_billing", "portal.export"
+                "portal.manage_billing", "portal.export",
+                // Own statement/outstanding-invoices view (scoped to their own transporter by
+                // PortalAccountId->Transporter.Id in the query layer, not by this permission alone)
+                "billing.statements.view"
             }
         },
         {
             "TRANSPORTER_MANAGER", new List<string>
             {
                 // Fleet management + history + export — no team/billing management
-                "portal.access", "portal.manage_fleet", "portal.export"
+                "portal.access", "portal.manage_fleet", "portal.export",
+                "billing.statements.view"
             }
         },
         {

@@ -144,6 +144,7 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.HasIndex(e => e.Email);
                 entity.HasIndex(e => e.Phone);
                 entity.HasIndex(e => e.IsActive);
+                entity.HasIndex(e => e.CrmContactId).HasFilter("crm_contact_id IS NOT NULL");
             });
 
             // Vehicle entity configuration

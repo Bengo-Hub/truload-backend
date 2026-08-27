@@ -93,6 +93,11 @@ public static class FinancialModuleDbContextConfiguration
                 .HasMaxLength(20)
                 .HasComment("Sync status: null (not applicable), pending, synced, failed");
 
+            entity.Property(e => e.TreasuryInvoiceId)
+                .HasColumnName("treasury_invoice_id")
+                .HasMaxLength(100)
+                .HasComment("treasury-api Invoice.Id — the real AR/GL-backed invoice, distinct from TreasuryIntentId");
+
             entity.Property(e => e.IsActive)
                 .HasColumnName("is_active")
                 .HasDefaultValue(true);
@@ -290,6 +295,87 @@ public static class FinancialModuleDbContextConfiguration
 
             entity.HasCheckConstraint("chk_receipt_amount",
                 "amount_paid > 0");
+        });
+
+        // ===== CommercialTariffRule Entity Configuration =====
+        modelBuilder.Entity<CommercialTariffRule>(entity =>
+        {
+            entity.ToTable("commercial_tariff_rules");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasColumnName("id")
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.TransporterId)
+                .HasColumnName("transporter_id");
+
+            entity.Property(e => e.VehicleType)
+                .HasColumnName("vehicle_type")
+                .HasMaxLength(50);
+
+            entity.Property(e => e.AxleCountMin)
+                .HasColumnName("axle_count_min");
+
+            entity.Property(e => e.AxleCountMax)
+                .HasColumnName("axle_count_max");
+
+            entity.Property(e => e.WeightBracketMinKg)
+                .HasColumnName("weight_bracket_min_kg");
+
+            entity.Property(e => e.WeightBracketMaxKg)
+                .HasColumnName("weight_bracket_max_kg");
+
+            entity.Property(e => e.FeeKes)
+                .HasColumnName("fee_kes")
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+
+            entity.Property(e => e.EffectiveFrom)
+                .HasColumnName("effective_from")
+                .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.EffectiveTo)
+                .HasColumnName("effective_to");
+
+            entity.Property(e => e.Label)
+                .HasColumnName("label")
+                .HasMaxLength(255);
+
+            entity.Property(e => e.IsActive)
+                .HasColumnName("is_active")
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at")
+                .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
+
+            entity.Property(e => e.DeletedAt)
+                .HasColumnName("deleted_at");
+
+            entity.HasOne(e => e.Transporter)
+                .WithMany()
+                .HasForeignKey(e => e.TransporterId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.OrganizationId)
+                .HasDatabaseName("idx_commercial_tariff_rules_organization_id");
+
+            entity.HasIndex(e => e.TransporterId)
+                .HasDatabaseName("idx_commercial_tariff_rules_transporter_id");
+
+            entity.HasCheckConstraint("chk_commercial_tariff_rule_fee",
+                "fee_kes >= 0");
         });
 
         return modelBuilder;

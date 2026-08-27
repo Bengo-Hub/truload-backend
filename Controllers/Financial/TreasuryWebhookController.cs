@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
+using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.Shared;
 using TruLoad.Backend.Services.Interfaces.System;
 
@@ -22,6 +23,7 @@ public class TreasuryWebhookController : ControllerBase
     private readonly TruLoadDbContext _dbContext;
     private readonly INotificationService _notificationService;
     private readonly IIntegrationConfigService _integrationConfigService;
+    private readonly ITreasuryService _treasuryService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<TreasuryWebhookController> _logger;
 
@@ -29,12 +31,14 @@ public class TreasuryWebhookController : ControllerBase
         TruLoadDbContext dbContext,
         INotificationService notificationService,
         IIntegrationConfigService integrationConfigService,
+        ITreasuryService treasuryService,
         IConfiguration configuration,
         ILogger<TreasuryWebhookController> logger)
     {
         _dbContext = dbContext;
         _notificationService = notificationService;
         _integrationConfigService = integrationConfigService;
+        _treasuryService = treasuryService;
         _configuration = configuration;
         _logger = logger;
     }
@@ -100,6 +104,7 @@ public class TreasuryWebhookController : ControllerBase
         }
 
         invoice.TreasuryIntentStatus = payload.Status;
+        var wasAlreadyPaid = invoice.Status == "paid";
 
         if (payload.Status == "succeeded")
         {
@@ -107,6 +112,38 @@ public class TreasuryWebhookController : ControllerBase
             _logger.LogInformation(
                 "Invoice {InvoiceNo} marked paid via treasury intent {IntentId}",
                 invoice.InvoiceNo, payload.IntentId);
+
+            // Close out the AR balance opened when the invoice was sent (Dr AR / Cr Revenue) —
+            // there is no automatic treasury-side link from a successful payment intent to an
+            // invoice (GLSubscriber deliberately skips reference_type="invoice" intents
+            // specifically because this call is expected to do it). Guarded on wasAlreadyPaid so
+            // a webhook redelivery can't record the same payment twice.
+            if (!wasAlreadyPaid && !string.IsNullOrWhiteSpace(invoice.TreasuryInvoiceId))
+            {
+                var org = await _dbContext.Organizations
+                    .AsNoTracking()
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(o => o.Id == invoice.OrganizationId);
+
+                if (org != null && !string.IsNullOrWhiteSpace(org.SsoTenantSlug))
+                {
+                    try
+                    {
+                        await _treasuryService.RecordInvoicePaymentAsync(
+                            org.SsoTenantSlug,
+                            invoice.TreasuryInvoiceId,
+                            invoice.AmountDue,
+                            method: "online",
+                            reference: payload.IntentId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,
+                            "Failed to record treasury invoice payment for {InvoiceNo} (treasury invoice {TreasuryInvoiceId}). Local invoice marked paid; treasury AR NOT closed — needs manual reconciliation.",
+                            invoice.InvoiceNo, invoice.TreasuryInvoiceId);
+                    }
+                }
+            }
 
             // Notify the officer who created the weighing session
             if (invoice.WeighingId.HasValue)

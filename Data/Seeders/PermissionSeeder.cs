@@ -140,6 +140,12 @@ public static class PermissionSeeder
         ("receipt.void", "Void Receipt", "Financial", "Void receipts"),
         ("financial.audit", "Audit Financial", "Financial", "View financial audit logs"),
 
+        // Billing Category (4 permissions) — commercial weighing tariffs/statements/reconciliation
+        ("billing.tariffs.view", "View Tariffs", "Billing", "View commercial weighing tariff rules"),
+        ("billing.tariffs.manage", "Manage Tariffs", "Billing", "Create and edit commercial weighing tariff rules"),
+        ("billing.statements.view", "View Statements", "Billing", "View transporter AR statements"),
+        ("billing.reconciliation.view", "View Reconciliation", "Billing", "View treasury payment reconciliation for commercial invoices"),
+
         // Vehicle Category (3 permissions)
         ("vehicle.create", "Create Vehicle", "Vehicle", "Create new vehicle records"),
         ("vehicle.read", "Read Vehicles", "Vehicle", "Read vehicle records"),
@@ -275,6 +281,7 @@ public static class PermissionSeeder
             "Case" => "Enforcement",
             "Prosecution" => "Enforcement",
             "Portal" => "Commercial",
+            "Billing" => "Commercial",
             _ => "Shared"
         };
     }
