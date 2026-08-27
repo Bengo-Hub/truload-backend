@@ -19,6 +19,7 @@ using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Data.Repositories.Weighing;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
+using TruLoad.Backend.Services.Implementations.Reporting;
 using System.Security.Claims;
 
 namespace TruLoad.Backend.Controllers.WeighingOperations;
@@ -107,7 +108,9 @@ public class WeighingController : ControllerBase
                 request.WeighingType,
                 request.State,
                 request.AxleConfiguration,
-                request.SearchTicketNo);
+                request.SearchTicketNo,
+                request.FromTime,
+                request.ToTime);
 
             var dtos = items.Select(t => MapToDto(t)).ToList();
 
@@ -120,6 +123,98 @@ public class WeighingController : ControllerBase
         {
             _logger.LogError(ex, "Error searching weighing transactions");
             return StatusCode(500, "An error occurred while searching weighing transactions.");
+        }
+    }
+
+    /// <summary>
+    /// Exports the commercial ticket list matching the given filters as CSV. Takes the same
+    /// filters as <see cref="Search"/> (including FromTime/ToTime) and reuses the Reports module's
+    /// shared CSV writer (<c>BaseReportGenerator.GenerateCsv</c>) rather than a new serializer.
+    /// Columns are commercial-ticket fields only - enforcement-only fields (overload/compliance/
+    /// tags/case) belong to the separate Reports module, not this export.
+    /// </summary>
+    [HttpGet("export")]
+    [Authorize(Policy = "Permission:weighing.export")]
+    [Produces("text/csv")]
+    [ProducesResponseType(typeof(FileContentResult), 200)]
+    [ProducesResponseType(400)]
+    public async Task<IActionResult> Export([FromQuery] SearchWeighingRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+            var stationId = (request.StationId == null && isHqOrAdmin) ? null : (request.StationId ?? _tenantContext.StationId);
+
+            // Not paginated - streams up to a sane cap so a single export request can't attempt
+            // to dump the entire table (mirrors SearchTransactionsLightAsync's existing cap).
+            var (items, _) = await _weighingService.SearchTransactionsAsync(
+                stationId,
+                request.VehicleRegNo,
+                request.FromDate,
+                request.ToDate,
+                request.ControlStatus,
+                request.IsCompliant,
+                request.OperatorId,
+                skip: 0,
+                take: 20000,
+                request.SortBy,
+                request.SortOrder,
+                request.WeighingType,
+                request.State,
+                request.AxleConfiguration,
+                request.SearchTicketNo,
+                request.FromTime,
+                request.ToTime);
+
+            var commercialItems = items.Where(t => t.WeighingMode == "commercial").ToList();
+
+            // Batch-fetch the weighing fee per ticket (commercial fee lives on the Invoice record,
+            // not on WeighingTransaction) - same lookup CommercialWeighingService.GetCommercialResultAsync
+            // uses, just batched instead of per-row.
+            var transactionIds = commercialItems.Select(t => t.Id).ToList();
+            var feesByWeighingId = await _context.Invoices
+                .AsNoTracking()
+                .Where(i => i.WeighingId.HasValue && transactionIds.Contains(i.WeighingId.Value)
+                    && i.InvoiceType == "commercial_weighing_fee")
+                .ToDictionaryAsync(i => i.WeighingId!.Value, i => i.AmountDue);
+
+            var headers = new[]
+            {
+                "Ticket Number", "Date/Time", "Station", "Vehicle Reg", "Transporter", "Driver",
+                "Cargo Type", "Tare (kg)", "Gross (kg)", "Net (kg)", "Adjusted Net (kg)",
+                "Tare Source", "Status", "Fee (KES)"
+            };
+
+            var rows = commercialItems.Select(t => new[]
+            {
+                t.TicketNumber ?? string.Empty,
+                t.WeighedAt.ToString("yyyy-MM-dd HH:mm"),
+                t.Station?.Name ?? string.Empty,
+                t.VehicleRegNumber ?? string.Empty,
+                t.SnapshotTransporterName ?? t.Transporter?.Name ?? string.Empty,
+                t.SnapshotDriverName ?? (t.Driver != null ? $"{t.Driver.FullNames} {t.Driver.Surname}".Trim() : string.Empty),
+                t.SnapshotCargoTypeName ?? t.Cargo?.Name ?? string.Empty,
+                t.TareWeightKg?.ToString() ?? string.Empty,
+                t.GrossWeightKg?.ToString() ?? string.Empty,
+                t.NetWeightKg?.ToString() ?? string.Empty,
+                t.AdjustedNetWeightKg?.ToString() ?? string.Empty,
+                t.TareSource ?? string.Empty,
+                t.ControlStatus ?? string.Empty,
+                feesByWeighingId.TryGetValue(t.Id, out var fee) ? fee.ToString("F2") : string.Empty,
+            });
+
+            var csvBytes = BaseReportGenerator.GenerateCsv(headers, rows);
+            return File(csvBytes, "text/csv", $"weighing-tickets_{DateTime.UtcNow:yyyyMMdd}.csv");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error exporting weighing tickets");
+            return StatusCode(500, "An error occurred while exporting weighing tickets.");
         }
     }
 

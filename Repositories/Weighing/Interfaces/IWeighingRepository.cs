@@ -26,7 +26,9 @@ public interface IWeighingRepository
         string? weighingType = null,
         string? state = null,
         string? axleConfiguration = null,
-        string? searchTicketNo = null);
+        string? searchTicketNo = null,
+        TimeSpan? fromTime = null,
+        TimeSpan? toTime = null);
 
     /// <summary>
     /// Lightweight search without navigation property includes.

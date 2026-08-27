@@ -103,6 +103,8 @@ public class VehicleController : ControllerBase
         if (vehicle.OwnerId.HasValue) existing.OwnerId = vehicle.OwnerId;
         if (vehicle.TransporterId.HasValue) existing.TransporterId = vehicle.TransporterId;
         if (vehicle.Description != null) existing.Description = vehicle.Description;
+        if (vehicle.DefaultTareWeightKg.HasValue) existing.DefaultTareWeightKg = vehicle.DefaultTareWeightKg;
+        if (vehicle.TareExpiryDays.HasValue) existing.TareExpiryDays = vehicle.TareExpiryDays;
 
         await _vehicleRepository.UpdateAsync(existing);
         return NoContent();

@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
+using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Services.Interfaces.Shared;
+using TruLoad.Backend.Services.Interfaces.System;
 
 namespace TruLoad.Backend.Services.BackgroundJobs;
 
@@ -31,8 +33,10 @@ public class StaleWeighingNotificationJob
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
         var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+        var settingsService = scope.ServiceProvider.GetRequiredService<ISettingsService>();
 
-        var thresholdHours = DefaultThresholdHours;
+        var thresholdHours = await settingsService.GetSettingValueAsync(
+            SettingKeys.CommercialPendingWeighingThresholdHours, DefaultThresholdHours, ct);
         var cutoff = DateTime.UtcNow.AddHours(-thresholdHours);
 
         // Find stale transactions: first weight captured, still open, within double threshold (don't notify forever)

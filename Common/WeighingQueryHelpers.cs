@@ -40,6 +40,41 @@ public static class WeighingQueryHelpers
     }
 
     /// <summary>
+    /// Filters by time-of-day (EAT local clock) regardless of which day it falls on, e.g. "only
+    /// tickets weighed between 06:00 and 18:00" across the whole selected date range. Compares the
+    /// EAT-local hour/minute/second of <c>WeighedAt</c> (a true UTC instant) against the requested
+    /// bounds - <c>.Hour</c>/<c>.Minute</c>/<c>.Second</c> are used (rather than <c>.TimeOfDay</c>)
+    /// because they are the properties reliably translated to SQL by the Npgsql EF Core provider.
+    /// A <paramref name="fromTime"/> greater than <paramref name="toTime"/> is treated as an
+    /// overnight window that wraps past midnight (e.g. 22:00-06:00). Either bound may be omitted,
+    /// in which case it is treated as the start/end of the day respectively.
+    /// </summary>
+    public static IQueryable<WeighingTransaction> ApplyTimeOfDayFilter(
+        IQueryable<WeighingTransaction> query, TimeSpan? fromTime, TimeSpan? toTime)
+    {
+        if (!fromTime.HasValue && !toTime.HasValue)
+            return query;
+
+        var fromSeconds = (int)(fromTime ?? TimeSpan.Zero).TotalSeconds;
+        var toSeconds = (int)(toTime ?? new TimeSpan(23, 59, 59)).TotalSeconds;
+
+        // Expression is inlined (rather than calling a helper method) because EF Core can only
+        // translate the LINQ expression tree it sees directly in the lambda - a call to a plain
+        // C# static method here would not be recognized and would throw at query execution time.
+        if (fromTime.HasValue && toTime.HasValue && fromTime.Value > toTime.Value)
+        {
+            // Overnight window wraps past midnight, e.g. 22:00-06:00.
+            return query.Where(t =>
+                ((t.WeighedAt.AddHours(3).Hour * 3600) + (t.WeighedAt.AddHours(3).Minute * 60) + t.WeighedAt.AddHours(3).Second) >= fromSeconds
+                || ((t.WeighedAt.AddHours(3).Hour * 3600) + (t.WeighedAt.AddHours(3).Minute * 60) + t.WeighedAt.AddHours(3).Second) <= toSeconds);
+        }
+
+        return query.Where(t =>
+            ((t.WeighedAt.AddHours(3).Hour * 3600) + (t.WeighedAt.AddHours(3).Minute * 60) + t.WeighedAt.AddHours(3).Second) >= fromSeconds
+            && ((t.WeighedAt.AddHours(3).Hour * 3600) + (t.WeighedAt.AddHours(3).Minute * 60) + t.WeighedAt.AddHours(3).Second) <= toSeconds);
+    }
+
+    /// <summary>
     /// Known aliases for each real, persisted <c>ControlStatus</c> value. The canonical value
     /// (what <c>AxleGroupAggregationService</c>/<c>WeighingService</c> actually write) is always
     /// first; the rest are values a UI dropdown or older client has been confirmed to send instead.

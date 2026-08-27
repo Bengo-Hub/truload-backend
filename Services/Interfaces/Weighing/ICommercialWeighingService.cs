@@ -94,6 +94,14 @@ public interface ICommercialWeighingService
     Task<CommercialWeighingResultDto> ApproveToleranceExceptionAsync(Guid transactionId, Guid approvedByUserId);
 
     /// <summary>
+    /// Rejects a tolerance exception for a transaction where discrepancy exceeded configured bands.
+    /// Reuses the Void state transition (ControlStatus becomes "Voided") with a fixed, recorded
+    /// reason so the rejection is auditable via the same VoidReason field Void already uses.
+    /// Requires weighing.override permission (same policy as Approve).
+    /// </summary>
+    Task<CommercialWeighingResultDto> RejectToleranceExceptionAsync(Guid transactionId, string? reason, Guid rejectedByUserId);
+
+    /// <summary>
     /// Voids a pending commercial weighing transaction.
     /// </summary>
     Task<CommercialWeighingResultDto> VoidCommercialWeighingAsync(Guid transactionId, VoidCommercialWeighingRequest request, Guid voidedByUserId);

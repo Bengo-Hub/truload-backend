@@ -6,6 +6,7 @@ using System.Security.Claims;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Middleware;
+using TruLoad.Backend.Services.Interfaces.Authorization;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using TruLoad.Backend.Services.Interfaces.Subscription;
 using TruLoad.Backend.Services.Interfaces.Weighing;
@@ -23,6 +24,7 @@ public class CommercialWeighingController : ControllerBase
     private readonly ISubscriptionService _subscriptionService;
     private readonly ITenantContext _tenantContext;
     private readonly TruLoadDbContext _db;
+    private readonly IPermissionVerificationService _permissionVerificationService;
     private readonly ILogger<CommercialWeighingController> _logger;
 
     public CommercialWeighingController(
@@ -31,6 +33,7 @@ public class CommercialWeighingController : ControllerBase
         ISubscriptionService subscriptionService,
         ITenantContext tenantContext,
         TruLoadDbContext db,
+        IPermissionVerificationService permissionVerificationService,
         ILogger<CommercialWeighingController> logger)
     {
         _commercialWeighingService = commercialWeighingService;
@@ -38,6 +41,7 @@ public class CommercialWeighingController : ControllerBase
         _subscriptionService = subscriptionService;
         _tenantContext = tenantContext;
         _db = db;
+        _permissionVerificationService = permissionVerificationService;
         _logger = logger;
     }
 
@@ -135,11 +139,15 @@ public class CommercialWeighingController : ControllerBase
     [Produces("application/json")]
     [ProducesResponseType(typeof(CommercialWeighingResultDto), 200)]
     [ProducesResponseType(400)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> CaptureFirstWeight(Guid id, [FromBody] CaptureFirstWeightRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
+
+        if (request.IsManualEntry && !await HasManualWeightOverridePermissionAsync())
+            return Forbid();
 
         try
         {
@@ -171,11 +179,15 @@ public class CommercialWeighingController : ControllerBase
     [Produces("application/json")]
     [ProducesResponseType(typeof(CommercialWeighingResultDto), 200)]
     [ProducesResponseType(400)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> CaptureSecondWeight(Guid id, [FromBody] CaptureSecondWeightRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
+
+        if (request.IsManualEntry && !await HasManualWeightOverridePermissionAsync())
+            return Forbid();
 
         try
         {
@@ -297,11 +309,28 @@ public class CommercialWeighingController : ControllerBase
     [Produces("application/pdf")]
     [ProducesResponseType(typeof(FileContentResult), 200)]
     [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
     public async Task<IActionResult> GetWeightTicketPdf(Guid id)
     {
         try
         {
             var result = await _commercialWeighingService.GetCommercialResultAsync(id);
+
+            // A transaction that breached tolerance must be approved (or rejected) by a supervisor
+            // before the "final" ticket is issued — printing it unapproved would let an unresolved
+            // discrepancy leave the station as if it were a clean weighing. The interim ticket
+            // (first-pass-only) remains available regardless, since it never carries a final net
+            // weight or tolerance verdict.
+            if (result.ToleranceExceeded && !result.ToleranceExceptionApproved)
+            {
+                return StatusCode(409, new
+                {
+                    code = "tolerance_exception_pending_approval",
+                    message = "This transaction exceeded the configured weight tolerance and has not yet been approved by a supervisor. " +
+                        "Approve or reject the tolerance exception before printing the final ticket, or use the interim ticket in the meantime."
+                });
+            }
+
             var pdfBytes = await _pdfService.GenerateCommercialWeightTicketAsync(result, result.StationId);
             return File(pdfBytes, "application/pdf", $"weight-ticket-{result.TicketNumber}.pdf");
         }
@@ -375,6 +404,47 @@ public class CommercialWeighingController : ControllerBase
         {
             _logger.LogError(ex, "Error approving tolerance exception for transaction {TransactionId}", id);
             return StatusCode(500, "An error occurred while approving the tolerance exception.");
+        }
+    }
+
+    /// <summary>
+    /// Rejects a tolerance exception for a transaction where the weight discrepancy
+    /// exceeded configured tolerance bands. Reuses the Void state transition, recording
+    /// the reason via the existing VoidReason field. Requires weighing.override permission
+    /// (same policy as approve-tolerance-exception).
+    /// </summary>
+    [HttpPost("{id}/reject-tolerance-exception")]
+    [Authorize(Policy = "Permission:weighing.override")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(CommercialWeighingResultDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> RejectToleranceException(Guid id, [FromBody] VoidCommercialWeighingRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userGuid))
+            return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var result = await _commercialWeighingService.RejectToleranceExceptionAsync(id, request.Reason, userGuid);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound($"Weighing transaction {id} not found");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error rejecting tolerance exception for transaction {TransactionId}", id);
+            return StatusCode(500, "An error occurred while rejecting the tolerance exception.");
         }
     }
 
@@ -564,4 +634,12 @@ public class CommercialWeighingController : ControllerBase
             return StatusCode(500, "An error occurred while looking up pending transactions.");
         }
     }
+
+    /// <summary>
+    /// Checks the caller's manual_weight_override permission (docs: "Scale fault during capture").
+    /// A plain [Authorize(Policy = ...)] attribute can't be used here because the requirement is
+    /// conditional on request.IsManualEntry, not on the endpoint as a whole.
+    /// </summary>
+    private Task<bool> HasManualWeightOverridePermissionAsync()
+        => _permissionVerificationService.UserHasPermissionAsync(HttpContext, "manual_weight_override");
 }

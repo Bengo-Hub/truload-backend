@@ -1205,7 +1205,9 @@ public class WeighingService : IWeighingService
         string? weighingType = null,
         string? state = null,
         string? axleConfiguration = null,
-        string? searchTicketNo = null)
+        string? searchTicketNo = null,
+        TimeSpan? fromTime = null,
+        TimeSpan? toTime = null)
     {
         return await _weighingRepository.SearchTransactionsAsync(
             stationId,
@@ -1222,7 +1224,9 @@ public class WeighingService : IWeighingService
             weighingType,
             state,
             axleConfiguration,
-            searchTicketNo);
+            searchTicketNo,
+            fromTime,
+            toTime);
     }
 
     public async Task<(List<WeighingTransaction> Items, int TotalCount)> SearchTransactionsLightAsync(

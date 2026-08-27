@@ -143,7 +143,9 @@ public class WeighingRepository : IWeighingRepository
         string? weighingType = null,
         string? state = null,
         string? axleConfiguration = null,
-        string? searchTicketNo = null)
+        string? searchTicketNo = null,
+        TimeSpan? fromTime = null,
+        TimeSpan? toTime = null)
     {
         var query = _context.WeighingTransactions
             .AsNoTracking()
@@ -176,6 +178,9 @@ public class WeighingRepository : IWeighingRepository
             var (rangeFromUtc, rangeToUtcExclusive) = WeighingQueryHelpers.ResolveEatDayRange(fromDate, toDate);
             query = query.Where(t => t.WeighedAt >= rangeFromUtc && t.WeighedAt < rangeToUtcExclusive);
         }
+
+        if (fromTime.HasValue || toTime.HasValue)
+            query = WeighingQueryHelpers.ApplyTimeOfDayFilter(query, fromTime, toTime);
 
         if (!string.IsNullOrWhiteSpace(controlStatus))
             query = WeighingQueryHelpers.ApplyControlStatusFilter(query, controlStatus);

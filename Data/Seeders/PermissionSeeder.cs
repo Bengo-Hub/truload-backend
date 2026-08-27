@@ -29,6 +29,9 @@ public static class PermissionSeeder
         ("weighing.delete", "Delete Weighing", "Weighing", "Delete weighing records"),
         ("weighing.webhook", "Weighing Webhook", "Weighing", "Manage weighing webhooks"),
         ("weighing.audit", "Audit Weighing", "Weighing", "View weighing audit logs"),
+        // Named without a "weighing." prefix to match the exact permission key documented in
+        // commercial/two-pass-weighing.md ("Scale fault during capture").
+        ("manual_weight_override", "Manual Weight Override", "Weighing", "Enter a manual weight with justification when the scale/TruConnect connection is unavailable mid-capture"),
 
         // Yard Category (8 permissions)
         ("yard.create", "Create Yard Entry", "Yard", "Create new yard entries"),

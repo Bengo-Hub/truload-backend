@@ -22,8 +22,11 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
 
     /// <summary>
     /// Generates a CSV byte array from a list of column headers and row data.
+    /// Public (not just protected) so callers outside the report generator hierarchy - e.g.
+    /// <c>WeighingController</c>'s ticket-list export - can reuse the same CSV writer instead of
+    /// duplicating it.
     /// </summary>
-    protected static byte[] GenerateCsv(string[] headers, IEnumerable<string[]> rows)
+    public static byte[] GenerateCsv(string[] headers, IEnumerable<string[]> rows)
     {
         var sb = new StringBuilder();
         sb.AppendLine(string.Join(",", headers.Select(EscapeCsvField)));

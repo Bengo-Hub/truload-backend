@@ -117,6 +117,14 @@ public class CommercialWeightTicketDocument : BaseDocument
                 col.Item().Element(ComposeRemarks);
             }
 
+            // Billing (weighing fee) - only rendered when the org actually charges a fee for
+            // this transaction (Third-Party-Weighbridge model). Mirrors the frontend's
+            // TicketDetailSheet "Billing" section, which uses these same invoice fields.
+            if (_result.InvoiceAmountKes.HasValue && _result.InvoiceAmountKes.Value > 0)
+            {
+                col.Item().Element(ComposeBilling);
+            }
+
             // Signature blocks
             col.Item().PaddingTop(10).Element(ComposeSignatures);
         });
@@ -182,8 +190,11 @@ public class CommercialWeightTicketDocument : BaseDocument
 
         container.Border(1.5f).BorderColor(accentColor).Column(col =>
         {
-            col.Item().Background(accentColor).Padding(5)
-                .Text("WEIGHT SUMMARY").FontSize(10).Bold().FontColor(Colors.White);
+            col.Item().Background(accentColor).Padding(5).Row(row =>
+            {
+                row.RelativeItem().Text("WEIGHT SUMMARY").FontSize(10).Bold().FontColor(Colors.White);
+                row.AutoItem().Element(ComposeStatusBadge);
+            });
 
             col.Item().Padding(8).Column(weightCol =>
             {
@@ -378,6 +389,12 @@ public class CommercialWeightTicketDocument : BaseDocument
                     c.Item().Text($"{(isOver ? "+" : "")}{varianceKg:N0} kg ({variancePct:F1}%)")
                         .FontSize(10).SemiBold().FontColor(textColor);
                 });
+
+                row.RelativeItem().Column(c =>
+                {
+                    c.Item().Text("Tolerance").FontSize(7.5f).SemiBold().FontColor("#4B5563");
+                    c.Item().Text(_result.ToleranceDisplay ?? "N/A").FontSize(10).SemiBold();
+                });
             });
         });
     }
@@ -390,6 +407,63 @@ public class CommercialWeightTicketDocument : BaseDocument
             col.Item().Text("REMARKS").FontSize(8.5f).SemiBold();
             col.Item().PaddingTop(2).Text(_result.Remarks).FontSize(8.5f);
         });
+    }
+
+    private void ComposeBilling(IContainer container)
+    {
+        container.Background("#F9FAFB").Border(0.5f).BorderColor(Colors.Grey.Lighten1)
+            .Padding(6).Column(col =>
+        {
+            col.Item().Text("BILLING").FontSize(8.5f).SemiBold();
+
+            col.Item().PaddingTop(3).Row(row =>
+            {
+                row.RelativeItem().Column(c =>
+                {
+                    c.Item().Text("Weighing Fee (KES)").FontSize(7.5f).SemiBold().FontColor("#4B5563");
+                    c.Item().Text($"{_result.InvoiceAmountKes:N2}").FontSize(10).SemiBold();
+                });
+
+                row.RelativeItem().Column(c =>
+                {
+                    c.Item().Text("Invoice No").FontSize(7.5f).SemiBold().FontColor("#4B5563");
+                    c.Item().Text(_result.InvoiceNo ?? "N/A").FontSize(10).SemiBold();
+                });
+
+                row.RelativeItem().Column(c =>
+                {
+                    c.Item().Text("Invoice Status").FontSize(7.5f).SemiBold().FontColor("#4B5563");
+                    c.Item().Text(string.IsNullOrEmpty(_result.InvoiceStatus) ? "N/A" : Capitalize(_result.InvoiceStatus))
+                        .FontSize(10).SemiBold();
+                });
+            });
+        });
+    }
+
+    /// <summary>
+    /// Small colored badge showing the transaction's real lifecycle status. Uses <see cref="_isInterim"/>
+    /// (already computed by <c>QuestPdfService</c> as "first weight captured, second not yet done") to
+    /// distinguish the "FirstWeightCaptured" stage from a still-untouched "Pending" transaction, since
+    /// <see cref="CommercialWeighingResultDto.ControlStatus"/> only ever persists Pending/Complete/
+    /// ToleranceExceeded/Voided.
+    /// </summary>
+    private void ComposeStatusBadge(IContainer container)
+    {
+        var effectiveStatus = _isInterim && _result.ControlStatus == "Pending"
+            ? "FirstWeightCaptured"
+            : _result.ControlStatus;
+
+        var (bgColor, textColor, label) = effectiveStatus switch
+        {
+            "Complete" => ("#DCFCE7", OfficialGreen, "COMPLETE"),
+            "ToleranceExceeded" => ("#FEF3C7", "#B45309", "TOLERANCE EXCEEDED"),
+            "Voided" => ("#FEE2E2", OfficialRed, "VOIDED"),
+            "FirstWeightCaptured" => ("#DBEAFE", "#1D4ED8", "FIRST WEIGHT CAPTURED"),
+            "Pending" => ("#F3F4F6", "#4B5563", "PENDING"),
+            _ => ("#F3F4F6", "#4B5563", string.IsNullOrEmpty(effectiveStatus) ? "PENDING" : effectiveStatus.ToUpperInvariant())
+        };
+
+        container.Background(bgColor).Padding(4).Text(label).FontSize(8).Bold().FontColor(textColor);
     }
 
     private void ComposeSignatures(IContainer container)

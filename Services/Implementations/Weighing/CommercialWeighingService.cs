@@ -140,7 +140,11 @@ public class CommercialWeighingService : ICommercialWeighingService
             WeighingType = "static",
             ControlStatus = "Pending",
             CaptureStatus = "pending",
-            CaptureSource = "frontend",
+            // Default assumption at initiation - no weight has been captured yet. Overwritten to
+            // "Manual" by CaptureFirstWeightAsync/CaptureSecondWeightAsync if the operator ends up
+            // hand-entering a weight (e.g. scale fault mid-capture); otherwise stays "TruConnect"
+            // to reflect the normal live-scale two-pass flow.
+            CaptureSource = "TruConnect",
             WeighedAt = DateTime.UtcNow,
             OrganizationId = orgId,
             WeighingScaleType = request.WeighingScaleType ?? "multideck",
@@ -180,6 +184,8 @@ public class CommercialWeighingService : ICommercialWeighingService
         transaction.FirstWeightAt = DateTime.UtcNow;
         transaction.CaptureStatus = "first_weight_captured";
         transaction.UpdatedAt = DateTime.UtcNow;
+
+        ApplyManualEntryIfRequested(transaction, request.IsManualEntry, request.ManualEntryJustification);
 
         // Store per-deck/axle weights in IndustryMetadata JSON (commercial doesn't use weighing_axles enforcement schema)
         if (request.AxleWeights != null && request.AxleWeights.Count > 0)
@@ -239,6 +245,8 @@ public class CommercialWeighingService : ICommercialWeighingService
         transaction.NetWeightKg = grossWeightKg - tareWeightKg;
         transaction.TareSource = "measured";
         transaction.GvwMeasuredKg = grossWeightKg;
+
+        ApplyManualEntryIfRequested(transaction, request.IsManualEntry, request.ManualEntryJustification);
 
         // Allow operator to provide/override expected net weight at capture time
         if (request.ExpectedNetWeightKg.HasValue)
@@ -310,6 +318,14 @@ public class CommercialWeighingService : ICommercialWeighingService
 
         if (request.OverrideTareWeightKg.HasValue)
         {
+            // "Preset Tare" per tare-management.md - a supervisor manually entering a tare weight
+            // requires a recorded justification for audit purposes.
+            if (string.IsNullOrWhiteSpace(request.Justification))
+            {
+                throw new InvalidOperationException(
+                    "Justification is required when providing a manual override (preset) tare weight.");
+            }
+
             tareWeightKg = request.OverrideTareWeightKg.Value;
             tareSource = "preset";
         }
@@ -382,6 +398,15 @@ public class CommercialWeighingService : ICommercialWeighingService
         transaction.NetWeightKg = grossWeightKg - tareWeightKg;
         transaction.TareSource = tareSource;
         transaction.GvwMeasuredKg = grossWeightKg;
+
+        // Record the preset-tare justification for audit purposes. Reuses Remarks (no dedicated
+        // column) - same pattern UpdateQualityDeductionAsync uses to append an audit note.
+        if (tareSource == "preset" && !string.IsNullOrWhiteSpace(request.Justification))
+        {
+            transaction.Remarks = string.IsNullOrEmpty(transaction.Remarks)
+                ? $"Preset tare justification: {request.Justification}"
+                : $"{transaction.Remarks}; Preset tare justification: {request.Justification}";
+        }
 
         // Calculate discrepancy if expected weight provided
         if (transaction.ExpectedNetWeightKg.HasValue && transaction.NetWeightKg.HasValue)
@@ -855,6 +880,30 @@ public class CommercialWeighingService : ICommercialWeighingService
     }
 
     /// <summary>
+    /// Records a manual weight entry on the transaction: validates the required justification,
+    /// stamps CaptureSource = "Manual", and appends the justification to Remarks for audit purposes
+    /// (docs: "Scale fault during capture"). The <c>manual_weight_override</c> permission itself is
+    /// enforced by the controller before this is ever reached. No-op when <paramref name="isManualEntry"/>
+    /// is false - CaptureSource keeps whatever it already was ("TruConnect" from initiation, for the
+    /// normal live-scale capture path).
+    /// </summary>
+    private static void ApplyManualEntryIfRequested(WeighingTransaction transaction, bool isManualEntry, string? justification)
+    {
+        if (!isManualEntry) return;
+
+        if (string.IsNullOrWhiteSpace(justification))
+        {
+            throw new InvalidOperationException(
+                "Justification is required when entering a manual weight (scale/TruConnect unavailable).");
+        }
+
+        transaction.CaptureSource = "Manual";
+        transaction.Remarks = string.IsNullOrEmpty(transaction.Remarks)
+            ? $"Manual weight entry: {justification}"
+            : $"{transaction.Remarks}; Manual weight entry: {justification}";
+    }
+
+    /// <summary>
     /// Checks commercial tolerance settings for the transaction's organization and cargo type.
     /// Sets ToleranceApplied and related fields on the transaction.
     /// </summary>
@@ -1124,6 +1173,43 @@ public class CommercialWeighingService : ICommercialWeighingService
 
         await _dbContext.SaveChangesAsync();
         _logger.LogInformation("Tolerance exception approved for transaction {TransactionId} by user {UserId}", transactionId, approvedByUserId);
+
+        return MapToCommercialResultDto(transaction);
+    }
+
+    public async Task<CommercialWeighingResultDto> RejectToleranceExceptionAsync(Guid transactionId, string? reason, Guid rejectedByUserId)
+    {
+        var transaction = await GetTransactionOrThrowAsync(transactionId);
+        EnsureCommercialMode(transaction);
+
+        if (!transaction.ToleranceExceeded)
+            throw new InvalidOperationException("This transaction did not exceed tolerance; there is no exception to reject.");
+
+        if (transaction.ToleranceExceptionApproved)
+            throw new InvalidOperationException("This tolerance exception has already been approved and cannot be rejected.");
+
+        if (transaction.VoidedAt.HasValue)
+            throw new InvalidOperationException("This transaction has already been voided.");
+
+        // Reuses the Void state transition/fields — a rejected tolerance exception is, in effect,
+        // a supervisor-voided transaction, with the reason recorded via the existing VoidReason
+        // column rather than a new one.
+        var rejectionReason = string.IsNullOrWhiteSpace(reason)
+            ? "Tolerance exception rejected by supervisor."
+            : $"Tolerance exception rejected: {reason}";
+
+        transaction.VoidedAt = DateTime.UtcNow;
+        transaction.VoidReason = rejectionReason;
+        transaction.VoidedByUserId = rejectedByUserId;
+        transaction.ControlStatus = "Voided";
+        transaction.CaptureStatus = "voided";
+        transaction.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Tolerance exception rejected for transaction {TransactionId} by user {UserId}: {Reason}",
+            transactionId, rejectedByUserId, rejectionReason);
 
         return MapToCommercialResultDto(transaction);
     }

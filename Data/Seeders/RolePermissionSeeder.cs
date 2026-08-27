@@ -211,6 +211,7 @@ public static class RolePermissionSeeder
                 // Full commercial weighing stack — no enforcement-only perms (yard, tag, case, prosecution)
                 "weighing.create", "weighing.read", "weighing.read_own", "weighing.update",
                 "weighing.approve", "weighing.override", "weighing.export", "weighing.audit", "weighing.scale_test",
+                "manual_weight_override",
                 "vehicle.create", "vehicle.read", "vehicle.update",
                 "transporter.create", "transporter.read", "transporter.update",
                 "driver.create", "driver.read", "driver.update",
@@ -242,6 +243,7 @@ public static class RolePermissionSeeder
                 // Weighing review, tare approval, reports — no user management or config changes
                 "weighing.create", "weighing.read", "weighing.read_own", "weighing.update",
                 "weighing.approve", "weighing.export", "weighing.audit",
+                "manual_weight_override",
                 "vehicle.create", "vehicle.read", "vehicle.update",
                 "transporter.read", "transporter.create", "transporter.update",
                 "driver.read", "driver.create", "driver.update",

@@ -120,6 +120,21 @@ public class CaptureFirstWeightRequest
     /// For multideck: per-deck kg values (deck 1–4). Stored in weighing_axles.
     /// </summary>
     public List<int>? AxleWeights { get; set; }
+
+    /// <summary>
+    /// True when this weight was hand-entered by a supervisor (e.g. TruConnect lost the scale
+    /// connection mid-capture) rather than read live from the scale. Requires the
+    /// <c>manual_weight_override</c> permission and a non-empty <see cref="ManualEntryJustification"/>
+    /// (enforced in the controller/service, not just here since it is conditionally required).
+    /// </summary>
+    public bool IsManualEntry { get; set; } = false;
+
+    /// <summary>
+    /// Required when <see cref="IsManualEntry"/> is true. Recorded onto the transaction's Remarks
+    /// for audit purposes (see docs: "Scale fault during capture").
+    /// </summary>
+    [MaxLength(500)]
+    public string? ManualEntryJustification { get; set; }
 }
 
 /// <summary>
@@ -146,6 +161,21 @@ public class CaptureSecondWeightRequest
     /// </summary>
     [Range(0, 200000)]
     public int? ExpectedNetWeightKg { get; set; }
+
+    /// <summary>
+    /// True when this weight was hand-entered by a supervisor (e.g. TruConnect lost the scale
+    /// connection mid-capture) rather than read live from the scale. Requires the
+    /// <c>manual_weight_override</c> permission and a non-empty <see cref="ManualEntryJustification"/>
+    /// (enforced in the controller/service, not just here since it is conditionally required).
+    /// </summary>
+    public bool IsManualEntry { get; set; } = false;
+
+    /// <summary>
+    /// Required when <see cref="IsManualEntry"/> is true. Recorded onto the transaction's Remarks
+    /// for audit purposes (see docs: "Scale fault during capture").
+    /// </summary>
+    [MaxLength(500)]
+    public string? ManualEntryJustification { get; set; }
 }
 
 /// <summary>
@@ -155,9 +185,20 @@ public class UseStoredTareRequest
 {
     /// <summary>
     /// Optional override tare weight in kg. If null, the vehicle's stored tare is used.
+    /// Providing this sets TareSource to "preset" and requires <see cref="Justification"/>.
     /// </summary>
     [Range(1, 100000)]
     public int? OverrideTareWeightKg { get; set; }
+
+    /// <summary>
+    /// Required when <see cref="OverrideTareWeightKg"/> is provided - the docs (tare-management.md)
+    /// call this "Preset Tare" (a supervisor manually entering a tare weight instead of measuring
+    /// or reusing a stored value) and require justification for audit purposes. Enforced in
+    /// <c>CommercialWeighingService.UseStoredTareAsync</c>, not just here, since it is only
+    /// conditionally required. Persisted onto the transaction's Remarks (no dedicated column).
+    /// </summary>
+    [MaxLength(500)]
+    public string? Justification { get; set; }
 }
 
 /// <summary>
