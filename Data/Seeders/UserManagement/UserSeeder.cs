@@ -31,15 +31,24 @@ public class UserSeeder
         _context = context;
     }
 
+    // Demo/dev accounts retired 2026-08-27 and hard-deleted directly from both the shared
+    // truload and dedicated kuraweigh databases (via kubectl/psql): admin@truload.codevertexafrica.com,
+    // supervisor/operator/finance/auditor@truload.codevertexafrica.com,
+    // manager/officer@enforcement.truload.codevertexafrica.com, and the SAVANNAH-HAULAGE demo
+    // transporter + its 3 portal accounts (admin/manager/viewer@savannahhaulage.co.ke) — all
+    // confirmed to have zero real references before deletion. Replaced by the codevertex-demo
+    // convention below (SeedCommercialDemoTenantAdminAsync/SeedCommercialDemoStaffAsync).
+    // gadmin@masterspace.co.ke was investigated and deliberately KEPT (see SeedSuperUserAsync) —
+    // it has real linked KURA production data (a live prosecution case, thousands of audit log
+    // rows) and now serves as KURA's own service-level superuser, distinct from the platform-wide
+    // SSO superuser wired in AuthController.SsoExchange.
     public async Task SeedAsync()
     {
         await SeedPlatformOwnerAsync();
         await SeedSuperUserAsync();
         await SeedMiddlewareServiceUserAsync();
-        await SeedTruLoadDemoAdminAsync();
-        await SeedCommercialDemoUsersAsync();
-        await SeedEnforcementDemoUsersAsync();
-        await SeedTransporterPortalDemoUsersAsync();
+        await SeedCommercialDemoTenantAdminAsync();
+        await SeedCommercialDemoStaffAsync();
     }
 
     /// <summary>
@@ -298,11 +307,14 @@ public class UserSeeder
     }
 
     /// <summary>
-    /// Seeds a demo admin user for the TruLoad Demo commercial weighing organization.
-    /// This user logs in via SSO (auth-api "truload" tenant) in production.
-    /// A local account is also seeded here as a fallback for development/testing.
+    /// Seeds/repairs admin@demo.codevertexafrica.com as the TRULOAD-DEMO (commercial weighing)
+    /// tenant admin. This is the SAME account used platform-wide as the codevertex-demo tenant
+    /// admin (auth-api's seedDemoTenantAdmin) — replaces the old truload-only
+    /// admin@truload.codevertexafrica.com fallback. Production login is via SSO
+    /// (Organization.SsoTenantSlug == "codevertex-demo"); this local account is a dev/test
+    /// fallback and self-heals org/role on every run, same pattern as before.
     /// </summary>
-    private async Task SeedTruLoadDemoAdminAsync()
+    private async Task SeedCommercialDemoTenantAdminAsync()
     {
         var truloadDemoOrg = await _context.Organizations
             .IgnoreQueryFilters()
@@ -310,7 +322,7 @@ public class UserSeeder
 
         if (truloadDemoOrg == null)
         {
-            Console.WriteLine("⚠ TRULOAD-DEMO organization not found, skipping demo admin seed");
+            Console.WriteLine("⚠ TRULOAD-DEMO organization not found, skipping commercial demo tenant admin seed");
             return;
         }
 
@@ -322,11 +334,11 @@ public class UserSeeder
         var commercialManagerRole = await _roleManager.FindByNameAsync("Commercial Weighing Manager");
         if (commercialManagerRole == null)
         {
-            Console.WriteLine("⚠ Commercial Weighing Manager role not found, skipping TruLoad demo admin seed");
+            Console.WriteLine("⚠ Commercial Weighing Manager role not found, skipping commercial demo tenant admin seed");
             return;
         }
 
-        var demoAdminEmail = "admin@truload.codevertexafrica.com";
+        const string demoAdminEmail = "admin@demo.codevertexafrica.com";
         var existingAdmin = await _userManager.FindByEmailAsync(demoAdminEmail);
 
         if (existingAdmin == null)
@@ -337,7 +349,7 @@ public class UserSeeder
                 NormalizedEmail = demoAdminEmail.ToUpper(),
                 UserName = demoAdminEmail,
                 NormalizedUserName = demoAdminEmail.ToUpper(),
-                FullName = "TruLoad Demo Admin",
+                FullName = "Demo Admin",
                 PhoneNumber = "+254700000010",
                 OrganizationId = truloadDemoOrg.Id,
                 StationId = demoStation?.Id,
@@ -350,18 +362,18 @@ public class UserSeeder
             var result = await _userManager.CreateAsync(demoAdmin, DefaultPassword);
             if (!result.Succeeded)
             {
-                Console.WriteLine($"⚠ Failed to create TruLoad demo admin: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                Console.WriteLine($"⚠ Failed to create commercial demo tenant admin: {string.Join(", ", result.Errors.Select(e => e.Description))}");
                 return;
             }
 
             var roleResult = await _userManager.AddToRoleAsync(demoAdmin, "Commercial Weighing Manager");
             if (!roleResult.Succeeded)
             {
-                Console.WriteLine($"⚠ Failed to assign role to TruLoad demo admin: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
+                Console.WriteLine($"⚠ Failed to assign role to commercial demo tenant admin: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
                 return;
             }
 
-            Console.WriteLine($"✓ Seeded TruLoad demo admin: {demoAdminEmail} → TRULOAD-DEMO org ({truloadDemoOrg.Name}), role: Commercial Weighing Manager");
+            Console.WriteLine($"✓ Seeded commercial demo tenant admin: {demoAdminEmail} → TRULOAD-DEMO org ({truloadDemoOrg.Name}), role: Commercial Weighing Manager");
             Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY — production login is via SSO)");
         }
         else
@@ -380,10 +392,10 @@ public class UserSeeder
             if (updated)
             {
                 await _userManager.UpdateAsync(existingAdmin);
-                Console.WriteLine($"✓ Updated TruLoad demo admin {demoAdminEmail}: org + station linked");
+                Console.WriteLine($"✓ Updated commercial demo tenant admin {demoAdminEmail}: org + station linked");
             }
 
-            // Repair role: remove any enforcement roles and ensure Commercial Weighing Manager is assigned
+            // Repair role: remove any stale roles and ensure Commercial Weighing Manager is assigned
             var currentRoles = await _userManager.GetRolesAsync(existingAdmin);
             if (!currentRoles.Contains("Commercial Weighing Manager"))
             {
@@ -394,16 +406,19 @@ public class UserSeeder
             }
             else
             {
-                Console.WriteLine($"✓ TruLoad demo admin {demoAdminEmail} already exists with correct role, skipping seed");
+                Console.WriteLine($"✓ Commercial demo tenant admin {demoAdminEmail} already exists with correct role, skipping seed");
             }
         }
     }
 
     /// <summary>
-    /// Seeds demo users for commercial weighing roles (Operator and Auditor) in TRULOAD-DEMO org.
-    /// These are used for testing, demos, and onboarding commercial weighing tenants.
+    /// Seeds a small curated set of commercial-weighing demo staff under codevertex-demo,
+    /// mirroring auth-api's erpDemoStaff convention (one demo user per role that matters for
+    /// the use case, not a full role roster). Deliberately does NOT reintroduce enforcement-side
+    /// demo staff (retired SeedEnforcementDemoUsersAsync) — out of scope for the commercial
+    /// weighing demo sync.
     /// </summary>
-    private async Task SeedCommercialDemoUsersAsync()
+    private async Task SeedCommercialDemoStaffAsync()
     {
         var truloadDemoOrg = await _context.Organizations
             .IgnoreQueryFilters()
@@ -411,7 +426,7 @@ public class UserSeeder
 
         if (truloadDemoOrg == null)
         {
-            Console.WriteLine("⚠ TRULOAD-DEMO organization not found, skipping commercial demo user seed");
+            Console.WriteLine("⚠ TRULOAD-DEMO organization not found, skipping commercial demo staff seed");
             return;
         }
 
@@ -423,15 +438,7 @@ public class UserSeeder
         {
             new
             {
-                Email = "supervisor@truload.codevertexafrica.com",
-                FullName = "Demo Weighbridge Supervisor",
-                Phone = "+254700000011",
-                RoleName = "Commercial Supervisor",
-                Label = "commercial supervisor"
-            },
-            new
-            {
-                Email = "operator@truload.codevertexafrica.com",
+                Email = "commercial.operator@demo.codevertexafrica.com",
                 FullName = "Demo Weighbridge Operator",
                 Phone = "+254700000013",
                 RoleName = "Commercial Weighing Operator",
@@ -439,19 +446,11 @@ public class UserSeeder
             },
             new
             {
-                Email = "finance@truload.codevertexafrica.com",
+                Email = "commercial.finance@demo.codevertexafrica.com",
                 FullName = "Demo Finance Officer",
                 Phone = "+254700000014",
                 RoleName = "Commercial Finance",
                 Label = "commercial finance"
-            },
-            new
-            {
-                Email = "auditor@truload.codevertexafrica.com",
-                FullName = "Demo Commercial Auditor",
-                Phone = "+254700000015",
-                RoleName = "Commercial Auditor",
-                Label = "commercial auditor"
             }
         };
 
@@ -514,239 +513,6 @@ public class UserSeeder
             }
 
             Console.WriteLine($"✓ Seeded {userData.Label}: {userData.Email} → TRULOAD-DEMO org, role: {userData.RoleName}");
-            Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY)");
-        }
-    }
-
-    /// <summary>
-    /// Seeds demo enforcement users linked to ENFORCEMENT-DEMO org.
-    /// These provide a working demo login for the enforcement use-case at /enforcement-demo/auth/login.
-    /// </summary>
-    private async Task SeedEnforcementDemoUsersAsync()
-    {
-        var demoOrg = await _context.Organizations
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(o => o.Code == "ENFORCEMENT-DEMO");
-
-        if (demoOrg == null)
-        {
-            Console.WriteLine("⚠ ENFORCEMENT-DEMO organization not found, skipping enforcement demo user seed");
-            return;
-        }
-
-        var hqStation = await _context.Stations
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(s => s.OrganizationId == demoOrg.Id && s.IsHq);
-
-        var demoUsers = new[]
-        {
-            new
-            {
-                Email = "manager@enforcement.truload.codevertexafrica.com",
-                FullName = "Demo Station Manager",
-                Phone = "+254700000020",
-                RoleName = "Station Manager",
-                Label = "enforcement station manager"
-            },
-            new
-            {
-                Email = "officer@enforcement.truload.codevertexafrica.com",
-                FullName = "Demo Enforcement Officer",
-                Phone = "+254700000021",
-                RoleName = "Enforcement Officer",
-                Label = "enforcement officer"
-            }
-        };
-
-        foreach (var userData in demoUsers)
-        {
-            var role = await _roleManager.FindByNameAsync(userData.RoleName);
-            if (role == null)
-            {
-                Console.WriteLine($"⚠ Role '{userData.RoleName}' not found, skipping {userData.Label} seed");
-                continue;
-            }
-
-            var existing = await _userManager.FindByEmailAsync(userData.Email);
-            if (existing != null)
-            {
-                var currentRoles = await _userManager.GetRolesAsync(existing);
-                if (!currentRoles.Contains(userData.RoleName))
-                {
-                    if (currentRoles.Any()) await _userManager.RemoveFromRolesAsync(existing, currentRoles);
-                    await _userManager.AddToRoleAsync(existing, userData.RoleName);
-                    Console.WriteLine($"✓ Repaired role for {userData.Email}: assigned {userData.RoleName}");
-                }
-                else
-                {
-                    Console.WriteLine($"✓ Demo {userData.Label} {userData.Email} already exists, skipping seed");
-                }
-                continue;
-            }
-
-            var user = new ApplicationUser
-            {
-                Email = userData.Email,
-                NormalizedEmail = userData.Email.ToUpper(),
-                UserName = userData.Email,
-                NormalizedUserName = userData.Email.ToUpper(),
-                FullName = userData.FullName,
-                PhoneNumber = userData.Phone,
-                OrganizationId = demoOrg.Id,
-                StationId = hqStation?.Id,
-                EmailConfirmed = true,
-                PhoneNumberConfirmed = true,
-                TwoFactorEnabled = false,
-                LockoutEnabled = false
-            };
-
-            var createResult = await _userManager.CreateAsync(user, DefaultPassword);
-            if (!createResult.Succeeded)
-            {
-                Console.WriteLine($"⚠ Failed to create {userData.Label}: {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
-                continue;
-            }
-
-            await _userManager.AddToRoleAsync(user, userData.RoleName);
-            Console.WriteLine($"✓ Seeded {userData.Label}: {userData.Email} → ENFORCEMENT-DEMO org, role: {userData.RoleName}");
-            Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY)");
-        }
-    }
-
-    /// <summary>
-    /// Seeds demo transporter portal users for the demo transporter company (Savannah Haulage Ltd).
-    /// Covers all three portal access levels: Admin, Manager, and Viewer.
-    /// These users represent transporters accessing the self-service portal — NOT weighbridge operators.
-    /// </summary>
-    private async Task SeedTransporterPortalDemoUsersAsync()
-    {
-        // Transporter portal users are linked to TRULOAD-DEMO org so they can access
-        // weighing records from that tenant through the portal.
-        var truloadDemoOrg = await _context.Organizations
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(o => o.Code == "TRULOAD-DEMO");
-
-        if (truloadDemoOrg == null)
-        {
-            Console.WriteLine("⚠ TRULOAD-DEMO org not found, skipping transporter portal user seed");
-            return;
-        }
-
-        // Seed the demo transporter record first (Savannah Haulage Ltd)
-        var demoTransporter = await _context.Transporters
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(t => t.Code == "SAVANNAH-HAULAGE");
-
-        if (demoTransporter == null)
-        {
-            demoTransporter = new Transporter
-            {
-                Id = Guid.NewGuid(),
-                Code = "SAVANNAH-HAULAGE",
-                Name = "Savannah Haulage Ltd",
-                RegistrationNo = "PVT-2019-00423",
-                Phone = "+254711000100",
-                Email = "info@savannahhaulage.co.ke",
-                Address = "Industrial Area, Nairobi",
-                PortalAccountEmail = "admin@savannahhaulage.co.ke",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            await _context.Transporters.AddAsync(demoTransporter);
-            await _context.SaveChangesAsync();
-            Console.WriteLine("✓ Seeded demo transporter: Savannah Haulage Ltd (SAVANNAH-HAULAGE)");
-        }
-        else
-        {
-            Console.WriteLine("✓ Demo transporter Savannah Haulage Ltd already exists, skipping seed");
-        }
-
-        // Seed portal users for Savannah Haulage Ltd
-        var portalUsers = new[]
-        {
-            new
-            {
-                Email = "admin@savannahhaulage.co.ke",
-                FullName = "Savannah Haulage Admin",
-                Phone = "+254711000101",
-                RoleName = "Transporter Admin",
-                Label = "transporter portal admin"
-            },
-            new
-            {
-                Email = "manager@savannahhaulage.co.ke",
-                FullName = "Savannah Fleet Manager",
-                Phone = "+254711000102",
-                RoleName = "Transporter Manager",
-                Label = "transporter portal manager"
-            },
-            new
-            {
-                Email = "viewer@savannahhaulage.co.ke",
-                FullName = "Savannah Haulage Driver",
-                Phone = "+254711000103",
-                RoleName = "Transporter Viewer",
-                Label = "transporter portal viewer"
-            }
-        };
-
-        foreach (var userData in portalUsers)
-        {
-            var role = await _roleManager.FindByNameAsync(userData.RoleName);
-            if (role == null)
-            {
-                Console.WriteLine($"⚠ Role '{userData.RoleName}' not found, skipping {userData.Label} seed");
-                continue;
-            }
-
-            var existing = await _userManager.FindByEmailAsync(userData.Email);
-            if (existing != null)
-            {
-                Console.WriteLine($"✓ {userData.Label} {userData.Email} already exists, skipping seed");
-                continue;
-            }
-
-            var user = new ApplicationUser
-            {
-                Email = userData.Email,
-                NormalizedEmail = userData.Email.ToUpper(),
-                UserName = userData.Email,
-                NormalizedUserName = userData.Email.ToUpper(),
-                FullName = userData.FullName,
-                PhoneNumber = userData.Phone,
-                OrganizationId = truloadDemoOrg.Id,
-                StationId = null, // Portal users are not station-bound
-                EmailConfirmed = true,
-                PhoneNumberConfirmed = true,
-                TwoFactorEnabled = false,
-                LockoutEnabled = false
-            };
-
-            var createResult = await _userManager.CreateAsync(user, DefaultPassword);
-            if (!createResult.Succeeded)
-            {
-                Console.WriteLine($"⚠ Failed to create {userData.Label}: {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
-                continue;
-            }
-
-            var roleResult = await _userManager.AddToRoleAsync(user, userData.RoleName);
-            if (!roleResult.Succeeded)
-            {
-                Console.WriteLine($"⚠ Failed to assign {userData.RoleName} to {userData.Email}: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
-                continue;
-            }
-
-            // Link portal admin to transporter record
-            if (userData.RoleName == "Transporter Admin")
-            {
-                demoTransporter.PortalAccountId = user.Id;
-                demoTransporter.PortalAccountEmail = user.Email;
-                demoTransporter.UpdatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-            }
-
-            Console.WriteLine($"✓ Seeded {userData.Label}: {userData.Email} → Savannah Haulage Ltd, role: {userData.RoleName}");
             Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY)");
         }
     }

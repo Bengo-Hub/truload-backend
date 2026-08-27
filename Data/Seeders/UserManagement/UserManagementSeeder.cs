@@ -135,8 +135,11 @@ public class UserManagementSeeder
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             },
-            // Demo commercial weighing organization — TenantType = CommercialWeighing
-            // SsoTenantSlug matches the auth-api "truload" tenant for PKCE/SSO login
+            // Demo commercial weighing organization — TenantType = CommercialWeighing.
+            // SsoTenantSlug matches auth-api's real "codevertex-demo" tenant (2026-08-27: was
+            // "truload", which no auth-api tenant has ever actually been slugged — a dead end
+            // that made SSO login into this org impossible; repointed to the platform's real
+            // shared demo tenant so admin@demo.codevertexafrica.com can SSO in here).
             new Organization
             {
                 Id = Guid.NewGuid(),
@@ -144,11 +147,11 @@ public class UserManagementSeeder
                 Name = "TruLoad Demo Weighbridge",
                 OrgType = "Private",
                 TenantType = "CommercialWeighing",
-                SsoTenantSlug = "truload",
+                SsoTenantSlug = "codevertex-demo",
                 PaymentGateway = "treasury",
                 CommercialWeighingFeeKes = 500m,
                 EnabledModulesJson = "[\"dashboard\",\"weighing\",\"reporting\",\"users\",\"shifts\",\"technical\",\"financial_invoices\",\"financial_receipts\",\"setup_weighing_metadata\",\"setup_settings\",\"setup_system_config\",\"setup_security\",\"setup_notifications\",\"tare_register\",\"setup_tolerance\",\"billing\"]",
-                ContactEmail = "admin@truload.codevertexafrica.com",
+                ContactEmail = "admin@demo.codevertexafrica.com",
                 ContactPhone = "+254700000010",
                 Address = "Nairobi, Kenya",
                 PrimaryColor = "#0cbd4a",
@@ -201,6 +204,14 @@ public class UserManagementSeeder
                 if (platformLogoNeedsUpdate && !string.IsNullOrEmpty(org.PlatformLogoUrl))
                 {
                     existing.PlatformLogoUrl = org.PlatformLogoUrl;
+                    updated = true;
+                }
+                // Always correct TRULOAD-DEMO's SsoTenantSlug — a prior seed run set it to the
+                // dead-end value "truload" (no matching auth-api tenant), which broke SSO login
+                // into this org entirely.
+                if (org.Code == "TRULOAD-DEMO" && existing.SsoTenantSlug != org.SsoTenantSlug)
+                {
+                    existing.SsoTenantSlug = org.SsoTenantSlug;
                     updated = true;
                 }
                 if (string.IsNullOrEmpty(existing.LoginPageImageUrl) && !string.IsNullOrEmpty(org.LoginPageImageUrl))
