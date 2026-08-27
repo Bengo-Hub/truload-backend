@@ -637,6 +637,130 @@ public class CommercialWeighingController : ControllerBase
     }
 
     // ============================================================================
+    // Tare Anomaly Detection - VehicleTareHistory-anchored resolution (Phase 7 follow-up)
+    // ============================================================================
+    // Mirrors the WeighingTransaction-anchored approve/reject/override-tare-anomaly endpoints above
+    // as closely as possible, operating on a VehicleTareHistory id (the standalone Tare Register
+    // "Record Tare" dialog's anomaly anchor, see TareAnomalyDto/VehicleTareHistory) instead of a
+    // transaction id.
+
+    /// <summary>
+    /// Approves a flagged tare anomaly on a VehicleTareHistory entry as-is. Requires
+    /// weighing.override permission (same policy as approve-tare-anomaly).
+    /// </summary>
+    [HttpPost("tare-history/{id}/approve-tare-anomaly")]
+    [Authorize(Policy = "Permission:weighing.override")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(VehicleTareHistoryDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> ApproveTareHistoryAnomaly(Guid id)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userGuid))
+            return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var result = await _commercialWeighingService.ApproveTareHistoryAnomalyAsync(id, userGuid);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error approving tare anomaly for tare history entry {HistoryId}", id);
+            return StatusCode(500, "An error occurred while approving the tare anomaly.");
+        }
+    }
+
+    /// <summary>
+    /// Rejects a flagged tare anomaly on a VehicleTareHistory entry. Does not change the already-
+    /// recorded tare value - see ICommercialWeighingService.RejectTareHistoryAnomalyAsync. Requires
+    /// weighing.override permission.
+    /// </summary>
+    [HttpPost("tare-history/{id}/reject-tare-anomaly")]
+    [Authorize(Policy = "Permission:weighing.override")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(VehicleTareHistoryDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> RejectTareHistoryAnomaly(Guid id, [FromBody] ResolveTareAnomalyRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userGuid))
+            return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var result = await _commercialWeighingService.RejectTareHistoryAnomalyAsync(id, request.Reason, userGuid);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error rejecting tare anomaly for tare history entry {HistoryId}", id);
+            return StatusCode(500, "An error occurred while rejecting the tare anomaly.");
+        }
+    }
+
+    /// <summary>
+    /// Overrides a flagged tare anomaly on a VehicleTareHistory entry with a supervisor-corrected
+    /// tare value (required justification). Updates the vehicle's stored tare going forward.
+    /// Requires weighing.override permission.
+    /// </summary>
+    [HttpPost("tare-history/{id}/override-tare-anomaly")]
+    [Authorize(Policy = "Permission:weighing.override")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(VehicleTareHistoryDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> OverrideTareHistoryAnomaly(Guid id, [FromBody] OverrideTareAnomalyRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userGuid))
+            return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var result = await _commercialWeighingService.OverrideTareHistoryAnomalyAsync(id, request, userGuid);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error overriding tare anomaly for tare history entry {HistoryId}", id);
+            return StatusCode(500, "An error occurred while overriding the tare anomaly.");
+        }
+    }
+
+    // ============================================================================
     // Commercial Tolerance Settings
     // ============================================================================
 

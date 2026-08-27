@@ -605,22 +605,11 @@ public class CommercialWeighingService : ICommercialWeighingService
         await _dbContext.SaveChangesAsync();
 
         // history is guaranteed non-null: the vehicle existence check above already passed.
-        return new VehicleTareHistoryDto
-        {
-            Id = history!.Id,
-            VehicleId = history.VehicleId,
-            VehicleRegNo = vehicle.RegNo,
-            TareWeightKg = history.TareWeightKg,
-            WeighedAt = history.WeighedAt,
-            StationId = history.StationId,
-            StationName = null,
-            Source = history.Source,
-            Notes = history.Notes,
-            RecordedByUserId = history.RecordedByUserId,
-            RecordedByName = history.RecordedByName,
-            TareAnomalyFlaggedAt = history.TareAnomalyFlaggedAt,
-            TareAnomalyReason = history.TareAnomalyReason
-        };
+        // Vehicle nav prop wasn't loaded via Include (it's a freshly-added row) - set it explicitly
+        // so the shared mapper can populate VehicleRegNo. No StationId is recorded on this path
+        // (RecordTareWeightAsync above was called with stationId: null), so StationName stays null.
+        history!.Vehicle = vehicle;
+        return MapToTareHistoryDto(history);
     }
 
     public async Task<WeighingTransaction> UpdateQualityDeductionAsync(
@@ -773,22 +762,7 @@ public class CommercialWeighingService : ICommercialWeighingService
             .OrderByDescending(h => h.WeighedAt)
             .ToListAsync();
 
-        return history.Select(h => new VehicleTareHistoryDto
-        {
-            Id = h.Id,
-            VehicleId = h.VehicleId,
-            VehicleRegNo = h.Vehicle?.RegNo,
-            TareWeightKg = h.TareWeightKg,
-            WeighedAt = h.WeighedAt,
-            StationId = h.StationId,
-            StationName = h.Station?.Name,
-            Source = h.Source,
-            Notes = h.Notes,
-            RecordedByUserId = h.RecordedByUserId,
-            RecordedByName = h.RecordedByName,
-            TareAnomalyFlaggedAt = h.TareAnomalyFlaggedAt,
-            TareAnomalyReason = h.TareAnomalyReason
-        }).ToList();
+        return history.Select(MapToTareHistoryDto).ToList();
     }
 
     public async Task<List<CommercialToleranceSettingDto>> GetCommercialToleranceSettingsAsync()
@@ -1050,6 +1024,51 @@ public class CommercialWeighingService : ICommercialWeighingService
             throw new KeyNotFoundException($"Weighing transaction {transactionId} not found");
 
         return transaction;
+    }
+
+    /// <summary>
+    /// Loads a VehicleTareHistory entry for anomaly resolution, tenant-scoped like
+    /// GetVehicleTareHistoryAsync. Tracked (not AsNoTracking) since callers mutate and save it.
+    /// </summary>
+    private async Task<VehicleTareHistory> GetTareHistoryOrThrowAsync(Guid historyId)
+    {
+        var orgId = _tenantContext.OrganizationId;
+        var history = await _dbContext.VehicleTareHistory
+            .Include(h => h.Vehicle)
+            .Include(h => h.Station)
+            .FirstOrDefaultAsync(h => h.Id == historyId && (orgId == Guid.Empty || h.OrganizationId == orgId));
+
+        if (history == null)
+            throw new KeyNotFoundException($"Vehicle tare history entry {historyId} not found");
+
+        return history;
+    }
+
+    /// <summary>
+    /// Shared VehicleTareHistory -> VehicleTareHistoryDto mapper, used by GetVehicleTareHistoryAsync,
+    /// RecordTareHistoryEntryAsync, and the tare-history-anchored anomaly resolution methods below.
+    /// </summary>
+    private static VehicleTareHistoryDto MapToTareHistoryDto(VehicleTareHistory h)
+    {
+        return new VehicleTareHistoryDto
+        {
+            Id = h.Id,
+            VehicleId = h.VehicleId,
+            VehicleRegNo = h.Vehicle?.RegNo,
+            TareWeightKg = h.TareWeightKg,
+            WeighedAt = h.WeighedAt,
+            StationId = h.StationId,
+            StationName = h.Station?.Name,
+            Source = h.Source,
+            Notes = h.Notes,
+            RecordedByUserId = h.RecordedByUserId,
+            RecordedByName = h.RecordedByName,
+            TareAnomalyFlaggedAt = h.TareAnomalyFlaggedAt,
+            TareAnomalyReason = h.TareAnomalyReason,
+            TareAnomalyResolvedByUserId = h.TareAnomalyResolvedByUserId,
+            TareAnomalyResolvedAt = h.TareAnomalyResolvedAt,
+            TareAnomalyResolution = h.TareAnomalyResolution
+        };
     }
 
     private static void EnsureCommercialMode(WeighingTransaction transaction)
@@ -1672,5 +1691,97 @@ public class CommercialWeighingService : ICommercialWeighingService
         var page = combined.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
 
         return PagedResponse<TareAnomalyDto>.Create(page, total, pageNumber, pageSize);
+    }
+
+    // ============================================================================
+    // Tare Anomaly Detection - VehicleTareHistory-anchored resolution (Phase 7 follow-up)
+    // ============================================================================
+    // Mirrors ApproveTareAnomalyAsync/RejectTareAnomalyAsync/OverrideTareAnomalyAsync above as
+    // closely as possible - see those methods and their XML docs for the reasoning shared by both
+    // anchor types. These operate on a VehicleTareHistory id instead of a transaction id.
+
+    public async Task<VehicleTareHistoryDto> ApproveTareHistoryAnomalyAsync(Guid historyId, Guid approvedByUserId)
+    {
+        var history = await GetTareHistoryOrThrowAsync(historyId);
+
+        if (!history.TareAnomalyFlaggedAt.HasValue)
+            throw new InvalidOperationException("This tare history entry has no flagged anomaly to approve.");
+        if (history.TareAnomalyResolvedAt.HasValue)
+            throw new InvalidOperationException("This tare anomaly has already been resolved.");
+
+        // TareAnomalyFlaggedAt/Reason are left untouched (permanent audit trail) - same convention as
+        // ApproveTareAnomalyAsync.
+        history.TareAnomalyResolvedByUserId = approvedByUserId;
+        history.TareAnomalyResolvedAt = DateTime.UtcNow;
+        history.TareAnomalyResolution = "Approved";
+        history.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+        _logger.LogInformation("Tare anomaly approved for tare history {HistoryId} by user {UserId}", historyId, approvedByUserId);
+
+        return MapToTareHistoryDto(history);
+    }
+
+    public async Task<VehicleTareHistoryDto> RejectTareHistoryAnomalyAsync(Guid historyId, string? reason, Guid rejectedByUserId)
+    {
+        var history = await GetTareHistoryOrThrowAsync(historyId);
+
+        if (!history.TareAnomalyFlaggedAt.HasValue)
+            throw new InvalidOperationException("This tare history entry has no flagged anomaly to reject.");
+        if (history.TareAnomalyResolvedAt.HasValue)
+            throw new InvalidOperationException("This tare anomaly has already been resolved.");
+
+        // Deliberately does NOT change the already-recorded TareWeightKg on this entry (or
+        // Vehicle.LastTareWeightKg, if this entry had been set as default) - same data-integrity
+        // judgment call as RejectTareAnomalyAsync. Rejecting simply records that a supervisor
+        // reviewed and dismissed the flag; the expectation per tare-management.md is the vehicle's
+        // tare gets re-verified on its next visit.
+        history.TareAnomalyResolvedByUserId = rejectedByUserId;
+        history.TareAnomalyResolvedAt = DateTime.UtcNow;
+        history.TareAnomalyResolution = string.IsNullOrWhiteSpace(reason) ? "Rejected" : $"Rejected: {reason}";
+        history.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+        _logger.LogInformation("Tare anomaly rejected for tare history {HistoryId} by user {UserId}", historyId, rejectedByUserId);
+
+        return MapToTareHistoryDto(history);
+    }
+
+    public async Task<VehicleTareHistoryDto> OverrideTareHistoryAnomalyAsync(Guid historyId, OverrideTareAnomalyRequest request, Guid overriddenByUserId)
+    {
+        var history = await GetTareHistoryOrThrowAsync(historyId);
+
+        if (!history.TareAnomalyFlaggedAt.HasValue)
+            throw new InvalidOperationException("This tare history entry has no flagged anomaly to override.");
+        if (history.TareAnomalyResolvedAt.HasValue)
+            throw new InvalidOperationException("This tare anomaly has already been resolved.");
+
+        // Reuses the same required-justification rule UseStoredTareAsync/OverrideTareAnomalyAsync
+        // enforce for preset tare.
+        EnsureJustificationForPresetTare(request.Justification);
+
+        // Corrects the vehicle's stored tare going forward (and logs a NEW VehicleTareHistory audit
+        // entry via the shared helper). Deliberately does NOT retroactively rewrite this entry's own
+        // already-recorded TareWeightKg - same data-integrity reasoning as OverrideTareAnomalyAsync.
+        await RecordTareWeightAsync(
+            history.VehicleId,
+            request.CorrectedTareWeightKg,
+            history.StationId,
+            source: "manual",
+            notes: $"Tare anomaly override for tare history entry {history.Id}: {request.Justification}",
+            recordedByUserId: overriddenByUserId,
+            setAsDefault: true);
+
+        history.TareAnomalyResolvedByUserId = overriddenByUserId;
+        history.TareAnomalyResolvedAt = DateTime.UtcNow;
+        history.TareAnomalyResolution = $"Overridden: corrected tare {request.CorrectedTareWeightKg}kg — {request.Justification}";
+        history.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+        _logger.LogInformation(
+            "Tare anomaly overridden for tare history {HistoryId} by user {UserId}: corrected tare {TareKg}kg",
+            historyId, overriddenByUserId, request.CorrectedTareWeightKg);
+
+        return MapToTareHistoryDto(history);
     }
 }

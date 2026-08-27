@@ -314,12 +314,13 @@ public class OverrideTareAnomalyRequest
 /// <summary>
 /// A single flagged, unresolved tare anomaly for the Tare Register "Pending Review" queue.
 /// <see cref="AnchorType"/> distinguishes the two places an anomaly can be flagged (Phase 7 MVP):
-/// "WeighingTransaction" for the two-pass capture / stored-tare-override paths (resolvable via the
-/// Approve/Reject/Override endpoints below, TicketNumber populated), or "VehicleTareHistory" for the
-/// standalone Tare Register "Record Tare" dialog (RecordTareHistoryEntryAsync), which isn't tied to
-/// any live transaction - see CommercialWeighingService for why this entity was chosen as the
-/// fallback anchor. Both anchor types are listed here for visibility, but only WeighingTransaction-
-/// anchored anomalies currently have dedicated resolve endpoints (see Stage C report for reasoning).
+/// "WeighingTransaction" for the two-pass capture / stored-tare-override paths (resolvable via
+/// CommercialWeighingController's {id}/approve|reject|override-tare-anomaly, TicketNumber populated),
+/// or "VehicleTareHistory" for the standalone Tare Register "Record Tare" dialog
+/// (RecordTareHistoryEntryAsync), which isn't tied to any live transaction and is instead resolvable
+/// via tare-history/{id}/approve|reject|override-tare-anomaly - see CommercialWeighingService for why
+/// this entity was chosen as the fallback anchor. Callers should route each row's resolution action
+/// to the matching endpoint family based on AnchorType.
 /// </summary>
 public class TareAnomalyDto
 {
@@ -528,4 +529,13 @@ public class VehicleTareHistoryDto
     // (the standalone "Record Tare" dialog isn't tied to a WeighingTransaction, so it's flagged here).
     public DateTime? TareAnomalyFlaggedAt { get; set; }
     public string? TareAnomalyReason { get; set; }
+
+    /// <summary>User ID of the supervisor who resolved (approved/rejected/overrode) the flagged anomaly.</summary>
+    public Guid? TareAnomalyResolvedByUserId { get; set; }
+
+    /// <summary>Timestamp when the anomaly was resolved. Null while still pending review.</summary>
+    public DateTime? TareAnomalyResolvedAt { get; set; }
+
+    /// <summary>Resolution outcome text (see WeighingTransaction.TareAnomalyResolution for format).</summary>
+    public string? TareAnomalyResolution { get; set; }
 }

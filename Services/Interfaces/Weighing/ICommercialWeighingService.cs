@@ -176,4 +176,40 @@ public interface ICommercialWeighingService
     /// TareAnomalyDto), newest-flagged first, optionally filtered to a station.
     /// </summary>
     Task<PagedResponse<TareAnomalyDto>> GetFlaggedTareAnomaliesAsync(Guid? stationId, int pageNumber, int pageSize);
+
+    // ============================================================================
+    // Tare Anomaly Detection - VehicleTareHistory-anchored resolution (Phase 7 follow-up)
+    // ============================================================================
+    // The standalone Tare Register "Record Tare" dialog (RecordTareHistoryEntryAsync) has no live
+    // WeighingTransaction to anchor an anomaly flag on, so it anchors on the VehicleTareHistory row
+    // itself instead (same TareAnomaly* field shape). These three mirror
+    // ApproveTareAnomalyAsync/RejectTareAnomalyAsync/OverrideTareAnomalyAsync above as closely as
+    // possible, operating on a VehicleTareHistory id rather than a transaction id and returning
+    // VehicleTareHistoryDto rather than CommercialWeighingResultDto.
+
+    /// <summary>
+    /// Approves a flagged tare anomaly on a VehicleTareHistory entry as-is: stamps
+    /// resolver/timestamp/resolution ("Approved") and removes it from the unresolved review queue.
+    /// TareAnomalyFlaggedAt/Reason are left untouched (permanent audit trail). Requires
+    /// weighing.override permission (same policy as ApproveTareAnomalyAsync).
+    /// </summary>
+    Task<VehicleTareHistoryDto> ApproveTareHistoryAnomalyAsync(Guid historyId, Guid approvedByUserId);
+
+    /// <summary>
+    /// Rejects a flagged tare anomaly on a VehicleTareHistory entry: stamps
+    /// resolver/timestamp/resolution ("Rejected[: reason]") and removes it from the unresolved review
+    /// queue. Does NOT retroactively change the already-recorded TareWeightKg on this entry (same
+    /// data-integrity reasoning as RejectTareAnomalyAsync) - the expectation is the vehicle's tare is
+    /// re-verified on its next visit. Requires weighing.override permission (same policy as Approve).
+    /// </summary>
+    Task<VehicleTareHistoryDto> RejectTareHistoryAnomalyAsync(Guid historyId, string? reason, Guid rejectedByUserId);
+
+    /// <summary>
+    /// Overrides a flagged tare anomaly on a VehicleTareHistory entry with a supervisor-corrected tare
+    /// value (required justification, same pattern as OverrideTareAnomalyAsync). Updates the vehicle's
+    /// stored tare going forward via RecordTareWeightAsync (which also logs a new VehicleTareHistory
+    /// audit entry) but does NOT retroactively rewrite this entry's already-recorded TareWeightKg.
+    /// Requires weighing.override permission.
+    /// </summary>
+    Task<VehicleTareHistoryDto> OverrideTareHistoryAnomalyAsync(Guid historyId, OverrideTareAnomalyRequest request, Guid overriddenByUserId);
 }
