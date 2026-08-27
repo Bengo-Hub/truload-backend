@@ -7,6 +7,7 @@ using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Portal;
 using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Models.Portal;
+using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using TruLoad.Backend.Services.Interfaces.Portal;
 using TruLoad.Backend.Services.Interfaces.Shared;
@@ -25,6 +26,7 @@ public class TransporterPortalService : ITransporterPortalService
     private readonly ISubscriptionService _subscriptionService;
     private readonly IPdfService _pdfService;
     private readonly INotificationService _notificationService;
+    private readonly ITreasuryService _treasuryService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<TransporterPortalService> _logger;
 
@@ -33,6 +35,7 @@ public class TransporterPortalService : ITransporterPortalService
         ISubscriptionService subscriptionService,
         IPdfService pdfService,
         INotificationService notificationService,
+        ITreasuryService treasuryService,
         IConfiguration configuration,
         ILogger<TransporterPortalService> logger)
     {
@@ -40,6 +43,7 @@ public class TransporterPortalService : ITransporterPortalService
         _subscriptionService = subscriptionService;
         _pdfService = pdfService;
         _notificationService = notificationService;
+        _treasuryService = treasuryService;
         _configuration = configuration;
         _logger = logger;
     }
@@ -953,6 +957,73 @@ public class TransporterPortalService : ITransporterPortalService
             await _dbContext.SaveChangesAsync(cancellationToken);
 
         return (imported, skipped, errors);
+    }
+
+    public async Task<PortalStatementDto> GetStatementAsync(Guid userId, DateTime? fromDate, DateTime? toDate)
+    {
+        var transporter = await GetTransporterForUserAsync(userId);
+
+        if (transporter.CrmContactId == null)
+        {
+            return new PortalStatementDto
+            {
+                IsLinked = false,
+                OnAccountBilling = transporter.OnAccountBilling,
+                CreditLimitKes = transporter.CreditLimitKes
+            };
+        }
+
+        // Transporter is a global entity (not org-scoped — the same transporter can weigh at
+        // multiple commercial orgs). A treasury statement is inherently per-org (one treasury
+        // tenant per SsoTenantSlug), so resolve via the org of this transporter's most recent
+        // weighing — their current/active commercial relationship — rather than a field that
+        // doesn't exist on Transporter.
+        var recentOrgId = await _dbContext.WeighingTransactions
+            .IgnoreQueryFilters()
+            .Where(t => t.TransporterId == transporter.Id)
+            .OrderByDescending(t => t.CreatedAt)
+            .Select(t => t.OrganizationId)
+            .FirstOrDefaultAsync();
+
+        var org = recentOrgId != Guid.Empty
+            ? await _dbContext.Organizations.AsNoTracking().IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Id == recentOrgId)
+            : null;
+
+        if (org == null || string.IsNullOrWhiteSpace(org.SsoTenantSlug))
+        {
+            return new PortalStatementDto
+            {
+                IsLinked = false,
+                OnAccountBilling = transporter.OnAccountBilling,
+                CreditLimitKes = transporter.CreditLimitKes
+            };
+        }
+
+        var stmt = await _treasuryService.GetCustomerStatementAsync(
+            org.SsoTenantSlug, transporter.CrmContactId.Value, fromDate, toDate);
+
+        return new PortalStatementDto
+        {
+            IsLinked = true,
+            CustomerName = stmt.CustomerName ?? transporter.Name,
+            From = stmt.From,
+            To = stmt.To,
+            TotalInvoiced = stmt.TotalInvoiced,
+            TotalPaid = stmt.TotalPaid,
+            ClosingBalance = stmt.ClosingBalance,
+            OnAccountBilling = transporter.OnAccountBilling,
+            CreditLimitKes = transporter.CreditLimitKes,
+            Lines = stmt.Lines.Select(l => new PortalStatementLineDto
+            {
+                Date = l.Date,
+                DocType = l.DocType,
+                Reference = l.Reference,
+                Debit = l.Debit,
+                Credit = l.Credit,
+                Balance = l.Balance,
+                Status = l.Status
+            }).ToList()
+        };
     }
 
     // ── Private helpers ──

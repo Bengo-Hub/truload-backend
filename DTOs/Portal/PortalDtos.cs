@@ -238,3 +238,34 @@ public class PortalFeatureAccess
     /// <summary>Track consignments across weighbridges.</summary>
     public bool ConsignmentTracking { get; set; }
 }
+
+/// <summary>
+/// A transporter's AR statement — the running balance built from every commercial weighing
+/// invoice sent for them, sourced live from treasury-api. Not linked yet (no treasury Invoice
+/// has been created for this transporter's CrmContactId) is a distinct, non-error state from
+/// having a linked account with zero activity.
+/// </summary>
+public class PortalStatementDto
+{
+    public bool IsLinked { get; set; }
+    public string? CustomerName { get; set; }
+    public DateTime From { get; set; }
+    public DateTime To { get; set; }
+    public decimal TotalInvoiced { get; set; }
+    public decimal TotalPaid { get; set; }
+    public decimal ClosingBalance { get; set; }
+    public bool OnAccountBilling { get; set; }
+    public decimal? CreditLimitKes { get; set; }
+    public List<PortalStatementLineDto> Lines { get; set; } = new();
+}
+
+public class PortalStatementLineDto
+{
+    public DateTime Date { get; set; }
+    public string DocType { get; set; } = string.Empty;
+    public string Reference { get; set; } = string.Empty;
+    public decimal Debit { get; set; }
+    public decimal Credit { get; set; }
+    public decimal Balance { get; set; }
+    public string Status { get; set; } = string.Empty;
+}

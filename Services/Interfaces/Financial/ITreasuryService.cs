@@ -17,7 +17,35 @@ public record PaymentIntentResult(
 /// </summary>
 public record TreasuryInvoiceResult(
     string InvoiceId,
-    string InvoiceNumber
+    string InvoiceNumber,
+    string? CrmCustomerId = null
+);
+
+/// <summary>
+/// One line of a treasury customer AR statement.
+/// </summary>
+public record StatementLine(
+    DateTime Date,
+    string DocType,
+    string Reference,
+    decimal Debit,
+    decimal Credit,
+    decimal Balance,
+    string Status
+);
+
+/// <summary>
+/// A customer's period AR statement from treasury-api.
+/// </summary>
+public record CustomerStatement(
+    string? CrmContactId,
+    string? CustomerName,
+    DateTime From,
+    DateTime To,
+    decimal TotalInvoiced,
+    decimal TotalPaid,
+    decimal ClosingBalance,
+    List<StatementLine> Lines
 );
 
 /// <summary>
@@ -100,5 +128,18 @@ public interface ITreasuryService
         decimal amountKes,
         string method,
         string? reference = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Fetches a customer's period AR statement — the running balance built from every treasury
+    /// Invoice sent for this transporter (via CreateInvoiceAsync/SendInvoiceAsync) plus every
+    /// payment recorded against them (via RecordInvoicePaymentAsync). Defaults to a wide range
+    /// covering effectively "all time" when from/to are omitted.
+    /// </summary>
+    Task<CustomerStatement> GetCustomerStatementAsync(
+        string tenantSlug,
+        Guid crmContactId,
+        DateTime? from = null,
+        DateTime? to = null,
         CancellationToken ct = default);
 }

@@ -29,6 +29,13 @@ public interface ITransporterPortalService
     Task<PortalWeighingDto> GetWeighingDetailAsync(Guid userId, Guid weighingId);
 
     /// <summary>
+    /// Gets the transporter's AR statement (live from treasury-api), scoped to their own
+    /// transporter record. IsLinked=false when no treasury Invoice has been created for them yet
+    /// (CrmContactId unset) — not an error, just nothing to show.
+    /// </summary>
+    Task<PortalStatementDto> GetStatementAsync(Guid userId, DateTime? fromDate, DateTime? toDate);
+
+    /// <summary>
     /// Gets the transporter's vehicles.
     /// </summary>
     Task<List<PortalVehicleDto>> GetVehiclesAsync(Guid userId);

@@ -308,6 +308,32 @@ public class TransporterPortalController : ControllerBase
     /// <summary>
     /// Gets current subscription status and feature access flags.
     /// </summary>
+    [HttpGet("statement")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(PortalStatementDto), 200)]
+    public async Task<IActionResult> GetStatement(
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var result = await _portalService.GetStatementAsync(userId.Value, fromDate, toDate);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting portal statement");
+            return StatusCode(500, "An error occurred while retrieving the statement.");
+        }
+    }
+
     [HttpGet("subscription")]
     [Produces("application/json")]
     [ProducesResponseType(typeof(PortalSubscriptionDto), 200)]

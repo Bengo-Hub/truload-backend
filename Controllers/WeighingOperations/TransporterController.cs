@@ -1,9 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Authorization.Attributes;
+using TruLoad.Backend.Data;
+using TruLoad.Backend.DTOs.Portal;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
+using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.Shared;
 
 namespace TruLoad.Backend.Controllers.WeighingOperations;
@@ -20,6 +25,9 @@ public class TransporterController : ControllerBase
 {
     private readonly ITransporterRepository _repository;
     private readonly INotificationService _notificationService;
+    private readonly ITreasuryService _treasuryService;
+    private readonly TruLoadDbContext _dbContext;
+    private readonly ITenantContext _tenantContext;
     private readonly IConfiguration _configuration;
     private readonly ILogger<TransporterController> _logger;
     private static readonly Random _rnd = new();
@@ -27,11 +35,17 @@ public class TransporterController : ControllerBase
     public TransporterController(
         ITransporterRepository repository,
         INotificationService notificationService,
+        ITreasuryService treasuryService,
+        TruLoadDbContext dbContext,
+        ITenantContext tenantContext,
         IConfiguration configuration,
         ILogger<TransporterController> logger)
     {
         _repository = repository;
         _notificationService = notificationService;
+        _treasuryService = treasuryService;
+        _dbContext = dbContext;
+        _tenantContext = tenantContext;
         _configuration = configuration;
         _logger = logger;
     }
@@ -302,6 +316,85 @@ public class TransporterController : ControllerBase
         {
             _logger.LogError(ex, "Error sending portal invite for transporter {TransporterId}", id);
             return StatusCode(500, new { Message = "An error occurred while sending the portal invite." });
+        }
+    }
+
+    /// <summary>
+    /// Gets a transporter's AR statement (live from treasury-api) — the commercial-ops view,
+    /// unlike the transporter-portal's own-account-only GetStatement. IsLinked=false when no
+    /// treasury Invoice has been created for them yet (CrmContactId unset).
+    /// </summary>
+    [HttpGet("{id}/statement")]
+    [HasPermission("billing.statements.view")]
+    [ProducesResponseType(typeof(PortalStatementDto), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetStatement(
+        Guid id,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null)
+    {
+        var transporter = await _repository.GetByIdAsync(id);
+        if (transporter == null)
+            return NotFound(new { Message = $"Transporter with ID {id} not found" });
+
+        if (transporter.CrmContactId == null)
+        {
+            return Ok(new PortalStatementDto
+            {
+                IsLinked = false,
+                OnAccountBilling = transporter.OnAccountBilling,
+                CreditLimitKes = transporter.CreditLimitKes
+            });
+        }
+
+        // Transporter is a global entity (not org-scoped). This is the commercial-ops view, so
+        // "statement" means "what this transporter owes OUR org" — resolve via the caller's own
+        // current tenant, not any org the transporter may have also weighed at elsewhere.
+        var org = await _dbContext.Organizations
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(o => o.Id == _tenantContext.OrganizationId);
+
+        if (org == null || string.IsNullOrWhiteSpace(org.SsoTenantSlug))
+        {
+            return Ok(new PortalStatementDto
+            {
+                IsLinked = false,
+                OnAccountBilling = transporter.OnAccountBilling,
+                CreditLimitKes = transporter.CreditLimitKes
+            });
+        }
+
+        try
+        {
+            var stmt = await _treasuryService.GetCustomerStatementAsync(org.SsoTenantSlug, transporter.CrmContactId.Value, fromDate, toDate);
+            return Ok(new PortalStatementDto
+            {
+                IsLinked = true,
+                CustomerName = stmt.CustomerName ?? transporter.Name,
+                From = stmt.From,
+                To = stmt.To,
+                TotalInvoiced = stmt.TotalInvoiced,
+                TotalPaid = stmt.TotalPaid,
+                ClosingBalance = stmt.ClosingBalance,
+                OnAccountBilling = transporter.OnAccountBilling,
+                CreditLimitKes = transporter.CreditLimitKes,
+                Lines = stmt.Lines.Select(l => new PortalStatementLineDto
+                {
+                    Date = l.Date,
+                    DocType = l.DocType,
+                    Reference = l.Reference,
+                    Debit = l.Debit,
+                    Credit = l.Credit,
+                    Balance = l.Balance,
+                    Status = l.Status
+                }).ToList()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching statement for transporter {TransporterId}", id);
+            return StatusCode(500, new { Message = "An error occurred while retrieving the statement." });
         }
     }
 }

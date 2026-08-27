@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -169,7 +170,7 @@ public class TreasuryService : ITreasuryService
         var result = JsonSerializer.Deserialize<TreasuryInvoiceResponse>(json, _jsonOptions)
             ?? throw new InvalidOperationException("Empty response from treasury-api");
 
-        return new TreasuryInvoiceResult(result.Id, result.InvoiceNumber);
+        return new TreasuryInvoiceResult(result.Id, result.InvoiceNumber, string.IsNullOrEmpty(result.CrmCustomerId) ? null : result.CrmCustomerId);
     }
 
     public async Task SendInvoiceAsync(
@@ -233,6 +234,85 @@ public class TreasuryService : ITreasuryService
         }
     }
 
+    public async Task<CustomerStatement> GetCustomerStatementAsync(
+        string tenantSlug,
+        Guid crmContactId,
+        DateTime? from = null,
+        DateTime? to = null,
+        CancellationToken ct = default)
+    {
+        var (apiKey, baseUrl) = await ResolveConfigAsync(ct);
+
+        var query = new List<string>();
+        if (from.HasValue) query.Add($"from={from.Value:yyyy-MM-dd}");
+        if (to.HasValue) query.Add($"to={to.Value:yyyy-MM-dd}");
+        var queryString = query.Count > 0 ? "?" + string.Join("&", query) : "";
+
+        var request = new HttpRequestMessage(HttpMethod.Get,
+            $"{baseUrl}/api/v1/s2s/{tenantSlug}/ar/customers/{crmContactId}/statement{queryString}");
+        request.Headers.Add("X-API-Key", apiKey);
+
+        var response = await _httpClient.SendAsync(request, ct);
+        var json = await response.Content.ReadAsStringAsync(ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("Treasury GetCustomerStatement failed ({Status}): {Body}", response.StatusCode, json);
+            throw new HttpRequestException($"Treasury API error {response.StatusCode}: {json}");
+        }
+
+        // Parsed via JsonDocument rather than a typed record: treasury serializes Go
+        // decimal.Decimal fields as quoted strings by default, but this guards against either
+        // representation (quoted or raw number) instead of assuming one.
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        var lines = new List<StatementLine>();
+        if (root.TryGetProperty("lines", out var linesEl) && linesEl.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var lineEl in linesEl.EnumerateArray())
+            {
+                lines.Add(new StatementLine(
+                    GetDateTime(lineEl, "date"),
+                    GetString(lineEl, "doc_type"),
+                    GetString(lineEl, "reference"),
+                    GetDecimal(lineEl, "debit"),
+                    GetDecimal(lineEl, "credit"),
+                    GetDecimal(lineEl, "balance"),
+                    GetString(lineEl, "status")));
+            }
+        }
+
+        return new CustomerStatement(
+            root.TryGetProperty("crm_contact_id", out var cid) ? cid.GetString() : null,
+            root.TryGetProperty("customer_name", out var cn) ? cn.GetString() : null,
+            GetDateTime(root, "from"),
+            GetDateTime(root, "to"),
+            GetDecimal(root, "total_invoiced"),
+            GetDecimal(root, "total_paid"),
+            GetDecimal(root, "closing_balance"),
+            lines);
+    }
+
+    private static string GetString(JsonElement el, string prop) =>
+        el.TryGetProperty(prop, out var v) ? (v.GetString() ?? string.Empty) : string.Empty;
+
+    private static DateTime GetDateTime(JsonElement el, string prop) =>
+        el.TryGetProperty(prop, out var v) && v.ValueKind != JsonValueKind.Null && DateTime.TryParse(v.GetString(), out var dt)
+            ? dt
+            : default;
+
+    private static decimal GetDecimal(JsonElement el, string prop)
+    {
+        if (!el.TryGetProperty(prop, out var v)) return 0m;
+        return v.ValueKind switch
+        {
+            JsonValueKind.String => decimal.TryParse(v.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var s) ? s : 0m,
+            JsonValueKind.Number => v.GetDecimal(),
+            _ => 0m
+        };
+    }
+
     // Resolves (apiKey, baseUrl) from IntegrationConfig DB first, then falls back to env/config.
     private async Task<(string apiKey, string baseUrl)> ResolveConfigAsync(CancellationToken ct)
     {
@@ -274,6 +354,9 @@ public class TreasuryService : ITreasuryService
 
         [JsonPropertyName("invoice_number")]
         public string InvoiceNumber { get; set; } = string.Empty;
+
+        [JsonPropertyName("crm_customer_id")]
+        public string? CrmCustomerId { get; set; }
     }
 
     private sealed class TreasuryIntentResponse

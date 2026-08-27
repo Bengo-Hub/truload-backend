@@ -1103,6 +1103,25 @@ public class CommercialWeighingService : ICommercialWeighingService
                     invoice.TreasuryInvoiceId = treasuryInvoice.InvoiceId;
                     await _dbContext.SaveChangesAsync();
 
+                    // Backfill the transporter's CrmContactId the first time treasury resolves/
+                    // creates one for us (when we didn't already have one to send as customer_id).
+                    // Without this, every subsequent invoice for this transporter would keep going
+                    // out customer-anonymous instead of accumulating onto one real AR statement.
+                    if (transporter != null && transporter.CrmContactId == null
+                        && !string.IsNullOrWhiteSpace(treasuryInvoice.CrmCustomerId)
+                        && Guid.TryParse(treasuryInvoice.CrmCustomerId, out var resolvedCrmId))
+                    {
+                        var trackedTransporter = await _dbContext.Transporters
+                            .IgnoreQueryFilters()
+                            .FirstOrDefaultAsync(t => t.Id == transporter.Id);
+                        if (trackedTransporter != null)
+                        {
+                            trackedTransporter.CrmContactId = resolvedCrmId;
+                            trackedTransporter.UpdatedAt = DateTime.UtcNow;
+                            await _dbContext.SaveChangesAsync();
+                        }
+                    }
+
                     // Send: posts the AR journal (Dr AR / Cr Revenue) and projects the customer
                     // statement. This is what makes a transporter's repeat weighing sessions
                     // accumulate into a real running balance instead of anonymous cash entries.
