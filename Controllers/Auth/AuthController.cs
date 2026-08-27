@@ -291,7 +291,7 @@ public class AuthController : ControllerBase
     /// Used by both Login() and the 2FA verify endpoint.
     /// When require2FASetup is true, response includes requires2FASetup so frontend can force user to enable 2FA from profile.
     /// </summary>
-    private async Task<IActionResult> CompleteLoginAsync(ApplicationUser user, bool require2FASetup = false, Organization? contextOrg = null)
+    private async Task<IActionResult> CompleteLoginAsync(ApplicationUser user, bool require2FASetup = false, Organization? contextOrg = null, bool isPlatformOwner = false)
     {
         var roles = await _userManager.GetRolesAsync(user);
 
@@ -340,7 +340,7 @@ public class AuthController : ControllerBase
         }
 
         // Generate JWT access token (include isHqUser so middleware does not apply station filter when HQ user does not send X-Station-ID)
-        var accessToken = _jwtService.GenerateAccessToken(user, roles, uniquePermissions, isHqUser);
+        var accessToken = _jwtService.GenerateAccessToken(user, roles, uniquePermissions, isHqUser, isPlatformOwner);
 
         // Store refresh token server-side (hashed)
         var refreshToken = await _jwtService.StoreRefreshTokenAsync(user.Id);
@@ -907,26 +907,47 @@ public class AuthController : ControllerBase
         var fullName = ssoPrincipal.FindFirst(ClaimTypes.Name)?.Value
                        ?? ssoPrincipal.FindFirst("name")?.Value
                        ?? email;
+        var isPlatformOwner = ssoPrincipal.FindFirst("is_platform_owner")?.Value == "true";
 
         if (string.IsNullOrWhiteSpace(email))
             return Unauthorized(new { message = "SSO token missing email claim" });
 
-        if (string.IsNullOrWhiteSpace(tenantSlug))
-            return Unauthorized(new { message = "SSO token missing tenant_slug claim" });
-
-        // 3. Find matching Organization by SsoTenantSlug
-        var org = await _organizationRepository.GetBySsoTenantSlugAsync(tenantSlug);
-        if (org == null)
+        // 3. Resolve the target Organization.
+        // Platform owner + an explicit TargetOrgCode: resolve by Organization.Code directly —
+        // this is the ONLY way to reach real enforcement orgs (KURA/KENHA/KERRA), which have no
+        // SsoTenantSlug of their own (they aren't auth-api tenants). Falls back to the normal
+        // SsoTenantSlug resolution if no TargetOrgCode is supplied (e.g. first-ever platform-owner
+        // login before they've picked an org). Non-platform-owner SSO users are UNCHANGED — always
+        // resolved strictly by SsoTenantSlug, TargetOrgCode is ignored for them.
+        Organization? org = null;
+        if (isPlatformOwner && !string.IsNullOrWhiteSpace(request.TargetOrgCode))
         {
-            _logger.LogWarning("No organization found for SSO tenant slug {TenantSlug}", tenantSlug);
-            return NotFound(new { message = "No TruLoad organization mapped to this SSO tenant" });
+            var codeTrimmed = request.TargetOrgCode.Trim();
+            org = await _organizationRepository.GetByCodeAsync(codeTrimmed)
+                ?? await _organizationRepository.GetByCodeAsync(codeTrimmed.ToUpperInvariant())
+                ?? await _organizationRepository.GetByCodeAsync(codeTrimmed.ToLowerInvariant());
+            if (org == null)
+                return NotFound(new { message = $"No TruLoad organisation with code '{request.TargetOrgCode}'" });
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(tenantSlug))
+                return Unauthorized(new { message = "SSO token missing tenant_slug claim" });
+
+            org = await _organizationRepository.GetBySsoTenantSlugAsync(tenantSlug);
+            if (org == null)
+            {
+                _logger.LogWarning("No organization found for SSO tenant slug {TenantSlug}", tenantSlug);
+                return NotFound(new { message = "No TruLoad organization mapped to this SSO tenant" });
+            }
         }
 
         // 4. Find or JIT-provision user
         var user = await _userManager.FindByEmailAsync(email);
-        if (user != null && user.OrganizationId != org.Id)
+        if (user != null && user.OrganizationId != org.Id && !isPlatformOwner)
         {
-            // User exists but belongs to a different organization — block cross-org login
+            // User exists but belongs to a different organization — block cross-org login.
+            // Platform owners are exempt: they can legitimately reach any organisation.
             _logger.LogWarning("SSO cross-org login blocked: {Email} belongs to org {UserOrg} but SSO resolved to org {SsoOrg}",
                 email, user.OrganizationId, org.Id);
             return StatusCode(403, new { message = "You are not a member of this organisation. Please contact the organisation administrator to join first.", code = "org_mismatch" });
@@ -954,14 +975,75 @@ public class AuthController : ControllerBase
             _logger.LogInformation("JIT-provisioned SSO user {Email} for org {OrgCode}", email, org.Code);
         }
 
-        // 5. Issue short-lived SSO exchange token (station selection required before full session)
-        var ssoExchangeToken = _jwtService.GenerateSsoExchangeToken(user.Id, org.Id);
+        if (isPlatformOwner)
+        {
+            // Idempotently grant Superuser — this is what makes CommercialModeFilter,
+            // TenantContext's cross-tenant mode, and PermissionRequirementHandler's bypass all
+            // already work with zero further changes (all three key off IsInRole("Superuser")).
+            if (!await _userManager.IsInRoleAsync(user, "Superuser"))
+            {
+                var grantResult = await _userManager.AddToRoleAsync(user, "Superuser");
+                if (!grantResult.Succeeded)
+                {
+                    _logger.LogError("Failed to grant Superuser to platform owner {Email}: {Errors}",
+                        email, string.Join(", ", grantResult.Errors.Select(e => e.Description)));
+                    return StatusCode(500, new { message = "Failed to provision platform owner access" });
+                }
+                _logger.LogInformation("Granted Superuser role to platform owner {Email} via SSO", email);
+            }
+
+            if (user.OrganizationId != org.Id)
+            {
+                _logger.LogInformation("Platform owner {Email} SSO context switched to org {OrgCode}", email, org.Code);
+            }
+        }
+
+        // 5. Issue short-lived SSO exchange token (station selection required before full session).
+        // Embeds the RESOLVED org (may differ from user.OrganizationId for a platform owner) so
+        // SelectStation looks up stations for the org actually being accessed, without mutating
+        // the user's own home OrganizationId.
+        var ssoExchangeToken = _jwtService.GenerateSsoExchangeToken(user.Id, org.Id, isPlatformOwner);
 
         return Ok(new
         {
             requiresStationSelection = true,
             ssoExchangeToken
         });
+    }
+
+    /// <summary>
+    /// Lists every TruLoad organisation for the platform-owner org picker shown on the SSO
+    /// callback page BEFORE a full truload session exists (the picker needs to run ahead of
+    /// sso-exchange so TargetOrgCode can be supplied on that call). Takes the raw SSO access
+    /// token directly (not a truload session token) and re-validates it via the same JWKS check
+    /// SsoExchange uses. Returns 403 for a non-platform-owner token — this is NOT a general
+    /// organisation-listing endpoint, only the platform-owner picker's pre-session bootstrap.
+    /// </summary>
+    [HttpPost("sso-platform-organizations")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SsoPlatformOrganizations([FromBody] SsoExchangeRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.AccessToken))
+            return BadRequest(new { message = "accessToken is required" });
+
+        ClaimsPrincipal? ssoPrincipal;
+        try
+        {
+            ssoPrincipal = await ValidateSsoTokenAsync(request.AccessToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "SSO token validation failed (platform-organizations)");
+            return Unauthorized(new { message = "Invalid or expired SSO token" });
+        }
+
+        if (ssoPrincipal == null || ssoPrincipal.FindFirst("is_platform_owner")?.Value != "true")
+            return StatusCode(403, new { message = "Not a platform owner" });
+
+        var orgs = await _organizationRepository.GetAllAsync(includeInactive: false);
+        return Ok(orgs
+            .OrderBy(o => o.TenantType).ThenBy(o => o.Name)
+            .Select(o => new { code = o.Code, name = o.Name, tenantType = o.TenantType }));
     }
 
     /// <summary>
@@ -976,6 +1058,8 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "stationCode is required" });
 
         ApplicationUser? user = null;
+        Organization? contextOrg = null;
+        var isPlatformOwner = false;
 
         if (!string.IsNullOrWhiteSpace(request.SsoExchangeToken))
         {
@@ -987,6 +1071,12 @@ public class AuthController : ControllerBase
             user = await _userManager.FindByIdAsync(exchangeResult.Value.userId.ToString());
             if (user == null)
                 return Unauthorized(new { message = "User not found" });
+
+            isPlatformOwner = exchangeResult.Value.isPlatformOwner;
+            // Use the org RESOLVED at sso-exchange time (may differ from user.OrganizationId for
+            // a platform owner drilling into a different org than their own) rather than the
+            // user's persisted OrganizationId, so station lookup below targets the right org.
+            contextOrg = await _organizationRepository.GetByIdAsync(exchangeResult.Value.orgId);
         }
         else if (!string.IsNullOrWhiteSpace(request.AccessToken))
         {
@@ -1004,11 +1094,13 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "Either ssoExchangeToken or accessToken is required" });
         }
 
-        // Find station by code, scoped to the user's organization
+        // Find station by code, scoped to the resolved context org (SSO path) or the user's own
+        // organization (local path, unchanged).
+        var targetOrgId = contextOrg?.Id ?? user.OrganizationId;
         Station? station = null;
-        if (user.OrganizationId.HasValue)
+        if (targetOrgId.HasValue)
         {
-            var orgStations = await _stationRepository.GetByOrganizationIdAsync(user.OrganizationId.Value);
+            var orgStations = await _stationRepository.GetByOrganizationIdAsync(targetOrgId.Value);
             station = orgStations.FirstOrDefault(s =>
                 s.Code.Equals(request.StationCode, StringComparison.OrdinalIgnoreCase) && s.IsActive);
         }
@@ -1016,12 +1108,15 @@ public class AuthController : ControllerBase
         if (station == null)
             return NotFound(new { message = "Station not found or not active" });
 
-        // Bind the station to the user and issue full JWT
+        // Bind the station to the user and issue full JWT. For a platform owner drilling into a
+        // different org than their own, OrganizationId is intentionally NOT overwritten here —
+        // contextOrg carries the drill-in target through to CompleteLoginAsync instead, the same
+        // pattern the local Login() endpoint already uses for a Superuser + OrganizationCode.
         user.StationId = station.Id;
         user.UpdatedAt = DateTime.UtcNow;
         await _userManager.UpdateAsync(user);
 
-        return await CompleteLoginAsync(user);
+        return await CompleteLoginAsync(user, contextOrg: contextOrg, isPlatformOwner: isPlatformOwner);
     }
 
     /// <summary>

@@ -115,6 +115,15 @@ public class SsoExchangeRequest
 {
     /// <summary>SSO access token issued by auth-api after PKCE flow.</summary>
     public string AccessToken { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Organization.Code to log into, e.g. "KURA" or "TRULOAD-DEMO". Only honored when the SSO
+    /// token carries is_platform_owner — lets the Codevertex platform owner reach ANY TruLoad
+    /// organisation (including real government tenants with no SsoTenantSlug of their own),
+    /// bypassing the normal SsoTenantSlug-only resolution and cross-org block. Ignored for
+    /// non-platform-owner SSO logins.
+    /// </summary>
+    public string? TargetOrgCode { get; set; }
 }
 
 /// <summary>

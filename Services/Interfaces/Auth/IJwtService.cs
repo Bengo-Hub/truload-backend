@@ -5,9 +5,12 @@ namespace TruLoad.Backend.Services.Interfaces.Auth;
 public interface IJwtService
 {
     /// <summary>
-    /// Generate JWT access token for authenticated user
+    /// Generate JWT access token for authenticated user. isPlatformOwner stamps an
+    /// is_platform_owner claim (parity with the Go services' auth-api-derived claim of the same
+    /// name) — purely informational/auditable; the actual cross-tenant bypass comes from the
+    /// Superuser role already present in `roles`.
     /// </summary>
-    string GenerateAccessToken(ApplicationUser user, IEnumerable<string> roles, IEnumerable<string> permissions, bool isHqUser = false);
+    string GenerateAccessToken(ApplicationUser user, IEnumerable<string> roles, IEnumerable<string> permissions, bool isHqUser = false, bool isPlatformOwner = false);
 
     /// <summary>
     /// Generate a cryptographically random refresh token string
@@ -56,13 +59,15 @@ public interface IJwtService
 
     /// <summary>
     /// Generate a short-lived (5 min) SSO exchange token used only for the /auth/select-station
-    /// call after a successful SSO token exchange. Embeds userId and orgId.
+    /// call after a successful SSO token exchange. Embeds userId, orgId (the RESOLVED target org
+    /// — for a platform owner this may differ from the user's own OrganizationId), and whether
+    /// this login carries the platform-owner claim.
     /// </summary>
-    string GenerateSsoExchangeToken(Guid userId, Guid orgId);
+    string GenerateSsoExchangeToken(Guid userId, Guid orgId, bool isPlatformOwner = false);
 
     /// <summary>
-    /// Validate an SSO exchange token and extract userId + orgId.
+    /// Validate an SSO exchange token and extract userId + orgId + isPlatformOwner.
     /// Returns null if token is invalid, expired, or wrong purpose.
     /// </summary>
-    (Guid userId, Guid orgId)? ValidateSsoExchangeToken(string token);
+    (Guid userId, Guid orgId, bool isPlatformOwner)? ValidateSsoExchangeToken(string token);
 }

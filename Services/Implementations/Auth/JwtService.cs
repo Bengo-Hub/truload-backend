@@ -25,7 +25,7 @@ public class JwtService : IJwtService
         _logger = logger;
     }
 
-    public string GenerateAccessToken(ApplicationUser user, IEnumerable<string> roles, IEnumerable<string> permissions, bool isHqUser = false)
+    public string GenerateAccessToken(ApplicationUser user, IEnumerable<string> roles, IEnumerable<string> permissions, bool isHqUser = false, bool isPlatformOwner = false)
     {
         var secretKey = _configuration["Jwt:SecretKey"]
             ?? throw new InvalidOperationException("JWT SecretKey not configured");
@@ -94,6 +94,9 @@ public class JwtService : IJwtService
 
         if (isHqUser)
             claims.Add(new Claim("is_hq_user", "true"));
+
+        if (isPlatformOwner)
+            claims.Add(new Claim("is_platform_owner", "true"));
 
         if (user.DepartmentId.HasValue)
             claims.Add(new Claim("department_id", user.DepartmentId.Value.ToString()));
@@ -360,7 +363,7 @@ public class JwtService : IJwtService
         }
     }
 
-    public string GenerateSsoExchangeToken(Guid userId, Guid orgId)
+    public string GenerateSsoExchangeToken(Guid userId, Guid orgId, bool isPlatformOwner = false)
     {
         var secretKey = _configuration["Jwt:SecretKey"]
             ?? throw new InvalidOperationException("JWT SecretKey not configured");
@@ -377,6 +380,9 @@ public class JwtService : IJwtService
             new("purpose", "sso-exchange")
         };
 
+        if (isPlatformOwner)
+            claims.Add(new Claim("is_platform_owner", "true"));
+
         var token = new JwtSecurityToken(
             issuer: issuer,
             audience: "truload-sso-exchange",
@@ -388,7 +394,7 @@ public class JwtService : IJwtService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public (Guid userId, Guid orgId)? ValidateSsoExchangeToken(string token)
+    public (Guid userId, Guid orgId, bool isPlatformOwner)? ValidateSsoExchangeToken(string token)
     {
         try
         {
@@ -417,10 +423,11 @@ public class JwtService : IJwtService
 
             var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier);
             var orgIdClaim = principal.FindFirst("org_id");
+            var isPlatformOwner = principal.FindFirst("is_platform_owner")?.Value == "true";
 
             if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId)
                 && orgIdClaim != null && Guid.TryParse(orgIdClaim.Value, out var orgId))
-                return (userId, orgId);
+                return (userId, orgId, isPlatformOwner);
 
             return null;
         }
