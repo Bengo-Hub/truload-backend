@@ -826,6 +826,13 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                     .HasColumnName("notes")
                     .HasMaxLength(500);
 
+                entity.Property(e => e.RecordedByUserId)
+                    .HasColumnName("recorded_by_user_id");
+
+                entity.Property(e => e.RecordedByName)
+                    .HasColumnName("recorded_by_name")
+                    .HasMaxLength(255);
+
                 entity.Property(e => e.IsActive)
                     .HasColumnName("is_active")
                     .HasDefaultValue(true);

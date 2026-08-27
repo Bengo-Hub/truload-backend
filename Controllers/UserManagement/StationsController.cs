@@ -147,6 +147,13 @@ public class StationsController : ControllerBase
             Latitude = request.Latitude,
             Longitude = request.Longitude,
             SupportsBidirectional = request.SupportsBidirectional,
+            BoundACode = request.BoundACode,
+            BoundBCode = request.BoundBCode,
+            OperatingHoursStart = request.OperatingHoursStart,
+            OperatingHoursEnd = request.OperatingHoursEnd,
+            PrinterConfiguration = request.PrinterConfiguration,
+            TicketTemplate = request.TicketTemplate,
+            DefaultWeighingMode = request.DefaultWeighingMode,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -187,6 +194,13 @@ public class StationsController : ControllerBase
         if (request.Longitude.HasValue) station.Longitude = request.Longitude;
         if (request.SupportsBidirectional.HasValue) station.SupportsBidirectional = request.SupportsBidirectional.Value;
         if (request.IsActive.HasValue) station.IsActive = request.IsActive.Value;
+        if (request.BoundACode != null) station.BoundACode = request.BoundACode;
+        if (request.BoundBCode != null) station.BoundBCode = request.BoundBCode;
+        if (request.OperatingHoursStart.HasValue) station.OperatingHoursStart = request.OperatingHoursStart;
+        if (request.OperatingHoursEnd.HasValue) station.OperatingHoursEnd = request.OperatingHoursEnd;
+        if (request.PrinterConfiguration != null) station.PrinterConfiguration = request.PrinterConfiguration;
+        if (request.TicketTemplate != null) station.TicketTemplate = request.TicketTemplate;
+        if (request.DefaultWeighingMode != null) station.DefaultWeighingMode = request.DefaultWeighingMode;
 
         var updated = await _stationRepository.UpdateAsync(station, cancellationToken);
         _logger.LogInformation("Station updated: {StationId}", updated.Id);
@@ -299,6 +313,11 @@ public class StationsController : ControllerBase
             BoundBCode = station.BoundBCode,
             IsActive = station.IsActive,
             IsHq = station.IsHq,
+            OperatingHoursStart = station.OperatingHoursStart,
+            OperatingHoursEnd = station.OperatingHoursEnd,
+            PrinterConfiguration = station.PrinterConfiguration,
+            TicketTemplate = station.TicketTemplate,
+            DefaultWeighingMode = station.DefaultWeighingMode,
             CreatedAt = station.CreatedAt,
             UpdatedAt = station.UpdatedAt
         };

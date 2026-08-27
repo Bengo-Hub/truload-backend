@@ -207,7 +207,11 @@ public class UseStoredTareRequest
 public class UpdateQualityDeductionRequest
 {
     /// <summary>
-    /// Quality deduction in kg (e.g., moisture, foreign matter).
+    /// Quality deduction in kg (e.g., moisture, foreign matter). Used as-is only as a fallback
+    /// when the cargo type has no MoistureTargetPercent/ForeignMatterLimitPercent configured, or
+    /// when neither actual percentage below is supplied. When actual percentages ARE supplied and
+    /// the cargo type has quality-deduction rules configured, the formula-computed value overrides
+    /// this field server-side (see CommercialWeighingService.UpdateQualityDeductionAsync).
     /// </summary>
     [Required]
     [Range(0, 100000)]
@@ -218,6 +222,61 @@ public class UpdateQualityDeductionRequest
     /// </summary>
     [MaxLength(500)]
     public string? Reason { get; set; }
+
+    /// <summary>
+    /// Actual measured moisture percentage for this load. When supplied and the cargo type has a
+    /// MoistureTargetPercent configured, the moisture deduction is computed as
+    /// NetWeightKg * (ActualMoisturePercent - CargoType.MoistureTargetPercent) / 100 (only when
+    /// actual exceeds target, per setup.md's documented formula).
+    /// </summary>
+    [Range(0, 100)]
+    public decimal? ActualMoisturePercent { get; set; }
+
+    /// <summary>
+    /// Actual measured foreign-matter percentage for this load. When supplied and the cargo type
+    /// has a ForeignMatterLimitPercent configured, the foreign-matter deduction is computed as
+    /// NetWeightKg * ActualForeignMatterPercent / 100 (only when actual exceeds the limit, per
+    /// setup.md's documented formula).
+    /// </summary>
+    [Range(0, 100)]
+    public decimal? ActualForeignMatterPercent { get; set; }
+}
+
+/// <summary>
+/// Request to record a new tare weight history entry for a vehicle (Tare Register "Record Tare"
+/// dialog). Distinct from <see cref="UseStoredTareRequest"/>, which consumes an existing/preset
+/// tare during a two-pass weighing rather than logging a new measurement.
+/// </summary>
+public class RecordTareHistoryRequest
+{
+    [Required]
+    public Guid VehicleId { get; set; }
+
+    [Required]
+    [Range(1, 100000)]
+    public int TareWeightKg { get; set; }
+
+    /// <summary>
+    /// Source of this tare entry: "measured" (from scale) or "manual" (operator input).
+    /// Matches the vehicle_tare_history.source check constraint (chk_tare_source).
+    /// </summary>
+    [Required]
+    public string Source { get; set; } = "measured";
+
+    /// <summary>
+    /// Optional notes about this measurement. Required when <see cref="Source"/> is "manual" -
+    /// a manually punched-in tare weight (not read off the scale) is treated the same as the
+    /// "preset" tare override on <see cref="UseStoredTareRequest"/>, which also requires a
+    /// recorded justification for audit purposes.
+    /// </summary>
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+
+    /// <summary>
+    /// When true (default), also updates the vehicle's stored tare (Vehicle.LastTareWeightKg /
+    /// LastTareWeighedAt) so it is used by single-pass commercial weighing going forward.
+    /// </summary>
+    public bool SetAsDefault { get; set; } = true;
 }
 
 // ── Response DTOs ──
@@ -268,6 +327,25 @@ public class CommercialWeighingResultDto
     // Quality and adjustments
     public int? QualityDeductionKg { get; set; }
     public int? AdjustedNetWeightKg { get; set; }
+
+    /// <summary>Actual measured moisture percentage that drove MoistureDeductionKg, when supplied.</summary>
+    public decimal? ActualMoisturePercent { get; set; }
+
+    /// <summary>Actual measured foreign-matter percentage that drove ForeignMatterDeductionKg, when supplied.</summary>
+    public decimal? ActualForeignMatterPercent { get; set; }
+
+    /// <summary>Moisture portion of QualityDeductionKg, computed from the setup.md formula.</summary>
+    public decimal? MoistureDeductionKg { get; set; }
+
+    /// <summary>Foreign-matter portion of QualityDeductionKg, computed from the setup.md formula.</summary>
+    public decimal? ForeignMatterDeductionKg { get; set; }
+
+    /// <summary>
+    /// Which deduction type(s) drove QualityDeductionKg — derived from the stored measurements
+    /// rather than a separate enum column: "moisture" / "foreignMatter" (formula-driven) or
+    /// "manual" (flat kg entry with no actual percentages, e.g. cargo type has no quality rules).
+    /// </summary>
+    public List<string> QualityDeductionTypesApplied { get; set; } = new();
 
     // Order/consignment
     public string? ConsignmentNo { get; set; }
@@ -380,4 +458,6 @@ public class VehicleTareHistoryDto
     public string? StationName { get; set; }
     public string Source { get; set; } = "measured";
     public string? Notes { get; set; }
+    public Guid? RecordedByUserId { get; set; }
+    public string? RecordedByName { get; set; }
 }

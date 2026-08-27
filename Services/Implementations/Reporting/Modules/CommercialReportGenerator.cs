@@ -195,7 +195,31 @@ public class CommercialReportGenerator : BaseReportGenerator
         new() { Key = "Tolerance Exceptions", Label = "Tolerance Exceptions" },
         new() { Key = "Voided", Label = "Voided" },
         new() { Key = "Completed", Label = "Completed" },
+        new() { Key = "Avg Net Weight (kg)", Label = "Average Net Weight (kg)" },
+        new() { Key = "Prev Month Transactions", Label = "Previous Month Transactions" },
+        new() { Key = "Prev Month Net Weight (kg)", Label = "Previous Month Net Weight (kg)" },
+        new() { Key = "Prev Month Fee (KES)", Label = "Previous Month Fee (KES)" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> TonnageByRouteColumns =
+    [
+        new() { Key = "Origin", Label = "Origin" },
+        new() { Key = "Destination", Label = "Destination" },
+        new() { Key = "Trip Count", Label = "Trip Count" },
+        new() { Key = "Total Net Weight (kg)", Label = "Total Net Weight (kg)" },
         new() { Key = "Avg Net Weight (kg)", Label = "Average Net Weight (kg)" }
+    ];
+
+    private static readonly List<ReportColumnDefinition> TareVerificationColumns =
+    [
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "Transporter", Label = "Transporter" },
+        new() { Key = "Status", Label = "Status" },
+        new() { Key = "Stored Tare (kg)", Label = "Stored Tare (kg)" },
+        new() { Key = "Last Weighed At", Label = "Last Weighed At" },
+        new() { Key = "Expiry Date", Label = "Expiry Date" },
+        new() { Key = "Days Until Expiry", Label = "Days Until Expiry" },
+        new() { Key = "Drift Alert", Label = "Drift Alert" }
     ];
 
     // =====================================================================
@@ -216,6 +240,23 @@ public class CommercialReportGenerator : BaseReportGenerator
         new() { Key = "roadId", Label = "Road", Kind = "road" }
     ];
 
+    /// <summary>
+    /// This codebase's real seeded commercial roles (Data/Seeders/RoleSeeder.cs), mapped onto
+    /// reports.md's "Access by Role" table (which uses the generic labels Operator/Supervisor/
+    /// Finance/Admin). Auditor has no column in that doc table, but its seeded description ("Read-only
+    /// access to commercial weighing records, financial data, and analytics for audit and compliance")
+    /// makes it the one role that should see every report regardless of doc-table restrictions, so it
+    /// is added to every non-null AllowedRoles list below rather than only where the doc mentions it.
+    /// </summary>
+    private static class Roles
+    {
+        public const string Admin = "Commercial Weighing Manager";
+        public const string Supervisor = "Commercial Supervisor";
+        public const string Operator = "Commercial Weighing Operator";
+        public const string Finance = "Commercial Finance";
+        public const string Auditor = "Commercial Auditor";
+    }
+
     public CommercialReportGenerator(TruLoadDbContext context)
     {
         _context = context;
@@ -225,48 +266,93 @@ public class CommercialReportGenerator : BaseReportGenerator
 
     public override List<ReportDefinitionDto> GetDefinitions() =>
     [
+        // reports.md: "Daily Weighing Summary" - Operator, Supervisor, Finance, Admin all checked -
+        // no restriction beyond the flat analytics.read permission.
         Def("commercial-daily-summary", "Commercial Daily Summary",
             "Total weighings, total net weight, grouped by cargo type and station. Date range filter.",
             columns: CommercialDailySummaryColumns, filters: CommercialGeoFilters),
+        // reports.md: "Tonnage by Transporter" - Supervisor, Finance, Admin (not Operator).
         Def("transporter-statement", "Transporter Statement",
             "Per-transporter: weighing count, total net weight, average net weight, and cargo breakdown. Date range + transporter filter.",
-            columns: TransporterStatementColumns, filters: CommercialGeoFilters),
+            columns: TransporterStatementColumns, filters: CommercialGeoFilters,
+            allowedRoles: [Roles.Supervisor, Roles.Finance, Roles.Admin, Roles.Auditor]),
+        // reports.md: "Tonnage by Cargo Type" - Supervisor, Finance, Admin (not Operator).
         Def("cargo-volume", "Cargo Volume Report",
             "Volume trends by cargo type over time, grouped by day, week, or month. Date range filter.",
-            columns: CargoVolumeColumns, filters: CommercialGeoFilters),
+            columns: CargoVolumeColumns, filters: CommercialGeoFilters,
+            allowedRoles: [Roles.Supervisor, Roles.Finance, Roles.Admin, Roles.Auditor]),
+        // Not in reports.md's table - judgement call: an audit/quality-control style report, same
+        // sensitivity tier as Vehicle Utilization/Shift Performance (Supervisor+Admin, not
+        // Operator/Finance).
         Def("weight-discrepancy", "Weight Discrepancy Report",
             "Transactions where weight discrepancy exceeds a threshold. Shows expected vs actual and variance %. Date range + threshold filter.",
-            columns: WeightDiscrepancyColumns, filters: CommercialGeoFilters),
+            columns: WeightDiscrepancyColumns, filters: CommercialGeoFilters,
+            allowedRoles: [Roles.Supervisor, Roles.Admin, Roles.Auditor]),
+        // Not in reports.md's table - judgement call: financial data, same tier as Monthly
+        // Reconciliation (Finance+Admin only).
         Def("commercial-revenue", "Commercial Revenue Report",
             "Revenue from commercial weighing fees (from invoices). Date range filter.",
-            columns: CommercialRevenueColumns),
+            columns: CommercialRevenueColumns,
+            allowedRoles: [Roles.Finance, Roles.Admin, Roles.Auditor]),
+        // Not in reports.md's table - judgement call: operational throughput metric, same tier as
+        // Daily Weighing Summary - no restriction.
         Def("throughput", "Throughput Report",
             "Vehicles per hour, average processing time (SecondWeightAt - FirstWeightAt), by station. Date range filter.",
             columns: ThroughputColumns, filters: CommercialGeoFilters),
+        // Not in reports.md's table - judgement call: same drift-log sensitivity as the new
+        // Tare Verification report (Supervisor+Admin, not Operator/Finance).
         Def("tare-weight-audit", "Tare Weight Audit Report",
             "Tare weight changes per vehicle from tare history. Flags anomalies (>5% drift). Date range + vehicle filter.",
-            columns: TareWeightAuditColumns, filters: CommercialGeoFilters),
+            columns: TareWeightAuditColumns, filters: CommercialGeoFilters,
+            allowedRoles: [Roles.Supervisor, Roles.Admin, Roles.Auditor]),
+        // reports.md: "Vehicle Utilization" - Supervisor, Admin only (not Operator, not Finance).
         Def("fleet-utilization", "Fleet Utilization Report",
             "Per vehicle: trip count, total net weight, average payload, payload utilization. Date range + transporter filter.",
-            columns: FleetUtilizationColumns, filters: CommercialGeoFilters),
+            columns: FleetUtilizationColumns, filters: CommercialGeoFilters,
+            allowedRoles: [Roles.Supervisor, Roles.Admin, Roles.Auditor]),
+        // Not in reports.md's table - judgement call: per-driver performance data, same tier as
+        // Vehicle Utilization (Supervisor+Admin only).
         Def("driver-productivity", "Driver Productivity Report",
             "Per driver: trip count, total net weight, average turnaround time. Date range filter.",
-            columns: DriverProductivityColumns, filters: CommercialGeoFilters),
+            columns: DriverProductivityColumns, filters: CommercialGeoFilters,
+            allowedRoles: [Roles.Supervisor, Roles.Admin, Roles.Auditor]),
+        // reports.md: "Quality Deductions" - Supervisor, Finance, Admin (not Operator).
         Def("quality-commodity", "Quality & Commodity Report",
             "Quality deduction stats by cargo type for transactions with deductions or industry metadata. Date range filter.",
-            columns: QualityCommodityColumns, filters: CommercialGeoFilters),
+            columns: QualityCommodityColumns, filters: CommercialGeoFilters,
+            allowedRoles: [Roles.Supervisor, Roles.Finance, Roles.Admin, Roles.Auditor]),
+        // reports.md: "Shift Performance" - Supervisor, Admin only (not Operator, not Finance).
         Def("shift-performance", "Shift Performance Report",
             "Group by shift: total transactions, total net weight (kg), average cycle time (minutes), overloads and tolerance exceptions. Date range + station filter.",
-            columns: ShiftPerformanceColumns, filters: CommercialGeoFilters),
+            columns: ShiftPerformanceColumns, filters: CommercialGeoFilters,
+            allowedRoles: [Roles.Supervisor, Roles.Admin, Roles.Auditor]),
+        // reports.md: "Transaction Audit Log" - Admin only.
         Def("transaction-audit-log", "Transaction Audit Log",
             "All commercial transactions including voided ones: ticket, vehicle, weights, quality deductions, status, void info, created by. Date range filter.",
-            columns: TransactionAuditLogColumns, filters: CommercialGeoFilters),
+            columns: TransactionAuditLogColumns, filters: CommercialGeoFilters,
+            allowedRoles: [Roles.Admin, Roles.Auditor]),
+        // reports.md: "Pending Transactions" - Operator, Supervisor, Admin (not Finance).
         Def("pending-transactions", "Pending Transactions Report",
             "Transactions with first weight captured but no second weight and not voided. Shows hours pending. Date range + station filter.",
-            columns: PendingTransactionsColumns, filters: CommercialGeoFilters),
+            columns: PendingTransactionsColumns, filters: CommercialGeoFilters,
+            allowedRoles: [Roles.Operator, Roles.Supervisor, Roles.Admin, Roles.Auditor]),
+        // reports.md: "Monthly Reconciliation" - Finance, Admin only.
         Def("monthly-reconciliation", "Monthly Reconciliation Report",
-            "Monthly summary: total transactions, net weight, fees, tolerance exceptions, voided count, completed count, average net weight. Date range filter.",
-            columns: MonthlyReconciliationColumns, filters: CommercialGeoFilters)
+            "Monthly summary: total transactions, net weight, fees, tolerance exceptions, voided count, completed count, average net weight, revenue by cargo type, and comparison with the previous month. Date range filter.",
+            columns: MonthlyReconciliationColumns, filters: CommercialGeoFilters,
+            allowedRoles: [Roles.Finance, Roles.Admin, Roles.Auditor]),
+        // 5b: new report - reuses OriginId/DestinationId, same sensitivity tier as Tonnage by
+        // Cargo Type/Transporter (Supervisor, Finance, Admin - not Operator).
+        Def("tonnage-by-route", "Tonnage by Route Report",
+            "Net weight totals grouped by origin -> destination route over a selected period. Date range + station filter.",
+            columns: TonnageByRouteColumns, filters: CommercialGeoFilters,
+            allowedRoles: [Roles.Supervisor, Roles.Finance, Roles.Admin, Roles.Auditor]),
+        // 5c: new report, separate from tare-weight-audit's drift log - reports.md: "Tare
+        // Verification" - Supervisor, Admin only (not Operator, not Finance).
+        Def("tare-verification", "Tare Verification Report",
+            "Buckets vehicles by stored-tare status (valid / expiring within 14 days / expired) plus a drift-alert count. Date range not applicable - reflects current fleet state.",
+            columns: TareVerificationColumns,
+            allowedRoles: [Roles.Supervisor, Roles.Admin, Roles.Auditor])
     ];
 
     public override async Task<ReportResult> GenerateAsync(
@@ -288,6 +374,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             "transaction-audit-log" => await GenerateTransactionAuditLogAsync(filters, format, ct),
             "pending-transactions" => await GeneratePendingTransactionsAsync(filters, format, ct),
             "monthly-reconciliation" => await GenerateMonthlyReconciliationAsync(filters, format, ct),
+            "tonnage-by-route" => await GenerateTonnageByRouteAsync(filters, format, ct),
+            "tare-verification" => await GenerateTareVerificationAsync(filters, format, ct),
             _ => throw new ArgumentException($"Unknown commercial report type: {reportType}")
         };
     }
@@ -603,6 +691,97 @@ public class CommercialReportGenerator : BaseReportGenerator
         };
 
         return PdfResult(doc, filters, "cargo_volume", from, to);
+    }
+
+    // =====================================================================
+    // Tonnage by Route Report (5b) - same pattern as Cargo Volume, grouped by
+    // origin -> destination pair instead of cargo type.
+    // =====================================================================
+
+    private async Task<ReportResult> GenerateTonnageByRouteAsync(
+        ReportFilterParams filters, string format, CancellationToken ct)
+    {
+        var (from, to) = GetDateRange(filters);
+
+        var query = CommercialBaseQuery()
+            .Where(w => w.WeighedAt >= from && w.WeighedAt <= to)
+            .Where(w => w.OriginId != null && w.DestinationId != null);
+
+        if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
+            query = query.Where(w => w.StationId == stationId);
+        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
+        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+            query = query.Where(w =>
+                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+            query = query.Where(w =>
+                (w.RoadId.HasValue && w.RoadId == roadId) ||
+                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
+
+        var routeData = await query
+            .Include(w => w.Origin)
+            .Include(w => w.Destination)
+            .GroupBy(w => new { w.OriginId, w.DestinationId, OriginName = w.Origin!.Name, DestinationName = w.Destination!.Name })
+            .Select(g => new
+            {
+                OriginName = g.Key.OriginName,
+                DestinationName = g.Key.DestinationName,
+                TripCount = g.Count(),
+                TotalNetWeightKg = g.Sum(x => (long)(x.NetWeightKg ?? 0)),
+                AvgNetWeightKg = (int)g.Average(x => x.NetWeightKg ?? 0)
+            })
+            .OrderByDescending(r => r.TotalNetWeightKg)
+            .ToListAsync(ct);
+
+        var headers = new[] { "Origin", "Destination", "Trip Count", "Total Net Weight (kg)", "Avg Net Weight (kg)" };
+
+        var csvRows = routeData.Select(r => new[]
+        {
+            r.OriginName,
+            r.DestinationName,
+            r.TripCount.ToString(),
+            FormatNumber(r.TotalNetWeightKg),
+            FormatNumber(r.AvgNetWeightKg)
+        });
+
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
+        if (format == "csv")
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "tonnage_by_route", from, to);
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Tonnage by Route Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "tonnage_by_route", from, to);
+
+        var doc = new CommercialReportDocumentBase
+        {
+            ReportTitle = "Tonnage by Route Report",
+            ReportSubtitle = "Net weight totals by origin -> destination route over the reporting period",
+            DateFrom = from,
+            DateTo = to,
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
+            SummaryItems =
+            [
+                ("Routes", routeData.Count.ToString()),
+                ("Total Trips", FormatNumber(routeData.Sum(r => r.TripCount))),
+                ("Total Net Weight", $"{FormatNumber(routeData.Sum(r => r.TotalNetWeightKg))} kg")
+            ]
+        };
+
+        return PdfResult(doc, filters, "tonnage_by_route", from, to);
     }
 
     // =====================================================================
@@ -1027,9 +1206,7 @@ public class CommercialReportGenerator : BaseReportGenerator
             {
                 var entry = entries[i];
                 var previousTare = i > 0 ? entries[i - 1].TareWeightKg : (entry.DefaultTare ?? entry.TareWeightKg);
-                var driftPct = previousTare > 0
-                    ? Math.Abs((decimal)(entry.TareWeightKg - previousTare) / previousTare * 100)
-                    : 0m;
+                var driftPct = ComputeTareDriftPercent(entry.TareWeightKg, previousTare);
                 var isAnomaly = driftPct > 5;
                 if (isAnomaly) anomalyCount++;
 
@@ -1114,6 +1291,156 @@ public class CommercialReportGenerator : BaseReportGenerator
         };
 
         return PdfResult(doc, filters, "tare_weight_audit", from, to);
+    }
+
+    /// <summary>
+    /// Shared >5% drift check - the anomaly rule Tare Weight Audit already applies to every
+    /// consecutive tare-history transition. Extracted so Tare Verification (5c) can reuse it for
+    /// its per-vehicle drift-alert flag instead of reimplementing the calculation.
+    /// </summary>
+    private static decimal ComputeTareDriftPercent(int currentTareKg, int previousTareKg)
+    {
+        return previousTareKg > 0
+            ? Math.Abs((decimal)(currentTareKg - previousTareKg) / previousTareKg * 100)
+            : 0m;
+    }
+
+    // =====================================================================
+    // Tare Verification Report (5c) - separate from Tare Weight Audit's drift log. Buckets the
+    // fleet by stored-tare status (valid / expiring within 14 days / expired / no tare) and flags
+    // vehicles whose latest tare measurement drifted >5% (reusing ComputeTareDriftPercent above).
+    // =====================================================================
+
+    private async Task<ReportResult> GenerateTareVerificationAsync(
+        ReportFilterParams filters, string format, CancellationToken ct)
+    {
+        var (from, to) = GetDateRange(filters);
+
+        // Vehicle carries no OrganizationId of its own (vehicles are shared across a transporter's
+        // orgs) - scope the fleet the same way Fleet Utilization/Driver Productivity do, via the
+        // tenant-filtered WeighingTransactions this org has actually captured. Not date-bounded -
+        // this is a current fleet-state snapshot, not a transactional report - but still supports
+        // narrowing to a single station.
+        var vehicleIdsQuery = CommercialBaseQuery();
+        if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
+            vehicleIdsQuery = vehicleIdsQuery.Where(w => w.StationId == stationId);
+
+        var vehicleIds = await vehicleIdsQuery.Select(w => w.VehicleId).Distinct().ToListAsync(ct);
+
+        var vehicles = await _context.Vehicles
+            .Where(v => vehicleIds.Contains(v.Id))
+            .Include(v => v.Transporter)
+            .OrderBy(v => v.RegNo)
+            .Take(filters.PageSize)
+            .ToListAsync(ct);
+
+        var tareHistory = await _context.VehicleTareHistory
+            .Where(th => th.DeletedAt == null && vehicleIds.Contains(th.VehicleId))
+            .OrderBy(th => th.VehicleId).ThenBy(th => th.WeighedAt)
+            .Select(th => new { th.VehicleId, th.TareWeightKg, th.WeighedAt })
+            .ToListAsync(ct);
+        var historyByVehicle = tareHistory.GroupBy(h => h.VehicleId).ToDictionary(g => g.Key, g => g.ToList());
+
+        var now = DateTime.UtcNow;
+        var processedRows = new List<string[]>();
+        var statusCounts = new Dictionary<string, int> { ["Valid"] = 0, ["Expiring Soon"] = 0, ["Expired"] = 0, ["No Tare"] = 0 };
+        var driftAlertCount = 0;
+
+        foreach (var vehicle in vehicles)
+        {
+            string status;
+            DateTime? expiryDate = null;
+            int? daysUntilExpiry = null;
+
+            if (!vehicle.LastTareWeighedAt.HasValue)
+            {
+                status = "No Tare";
+            }
+            else
+            {
+                // Same expiry resolution as CommercialWeighingService.UseStoredTareAsync (vehicle
+                // override, falling back to the 90-day default; org grace period is a stored-tare
+                // usability extension, not part of the underlying expiry date shown here).
+                var expiryDays = vehicle.TareExpiryDays ?? 90;
+                expiryDate = vehicle.LastTareWeighedAt.Value.AddDays(expiryDays);
+                daysUntilExpiry = (int)Math.Ceiling((expiryDate.Value - now).TotalDays);
+
+                status = daysUntilExpiry < 0 ? "Expired"
+                    : daysUntilExpiry <= 14 ? "Expiring Soon"
+                    : "Valid";
+            }
+            statusCounts[status]++;
+
+            var driftAlert = false;
+            if (historyByVehicle.TryGetValue(vehicle.Id, out var history) && history.Count >= 2)
+            {
+                var last = history[^1];
+                var previous = history[^2];
+                driftAlert = ComputeTareDriftPercent(last.TareWeightKg, previous.TareWeightKg) > 5;
+            }
+            if (driftAlert) driftAlertCount++;
+
+            processedRows.Add([
+                vehicle.RegNo,
+                vehicle.Transporter?.Name ?? "-",
+                status,
+                vehicle.LastTareWeightKg.HasValue ? FormatNumber(vehicle.LastTareWeightKg.Value) : "-",
+                vehicle.LastTareWeighedAt?.ToString("dd/MM/yyyy HH:mm") ?? "-",
+                expiryDate?.ToString("dd/MM/yyyy") ?? "-",
+                daysUntilExpiry?.ToString() ?? "-",
+                driftAlert ? "DRIFT ALERT" : "-"
+            ]);
+        }
+
+        var headers = new[]
+        {
+            "Vehicle Reg", "Transporter", "Status", "Stored Tare (kg)", "Last Weighed At",
+            "Expiry Date", "Days Until Expiry", "Drift Alert"
+        };
+
+        // Plain table, not the ConditionalStatusColumnIndex/Legend mechanism - that mechanism's
+        // vocabulary (ReportStatusColors.Classify) is oriented at compliance states (Overloaded/
+        // Warning/Compliant), not tare-expiry buckets, so hijacking it would misclassify these rows
+        // rather than highlight them meaningfully. The bucket counts below carry the signal instead.
+        var outputHeaders = headers;
+        var outputRows = processedRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, processedRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
+        if (format == "csv")
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "tare_verification", from, to);
+        if (format == "xlsx")
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Tare Verification Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "tare_verification", from, to);
+
+        var doc = new CommercialReportDocumentBase
+        {
+            ReportTitle = "Tare Verification Report",
+            ReportSubtitle = "Fleet stored-tare status: valid, expiring within 14 days, or expired",
+            DateFrom = from,
+            DateTo = to,
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
+            SummaryItems =
+            [
+                ("Total Vehicles", vehicles.Count.ToString()),
+                ("Valid", statusCounts["Valid"].ToString()),
+                ("Expiring Soon", statusCounts["Expiring Soon"].ToString()),
+                ("Expired", statusCounts["Expired"].ToString()),
+                ("No Tare", statusCounts["No Tare"].ToString()),
+                ("Drift Alerts", driftAlertCount.ToString())
+            ]
+        };
+
+        return PdfResult(doc, filters, "tare_verification", from, to);
     }
 
     // =====================================================================
@@ -1866,25 +2193,39 @@ public class CommercialReportGenerator : BaseReportGenerator
     {
         var (from, to) = GetDateRange(filters);
 
-        var query = _context.WeighingTransactions
+        // Shared geo filters (station/county/subcounty/road), applied identically to the monthly
+        // aggregate query below and the cargo-type revenue breakdown so both reconcile to the same
+        // population of transactions.
+        IQueryable<Models.Weighing.WeighingTransaction> ApplyGeoFilters(IQueryable<Models.Weighing.WeighingTransaction> q)
+        {
+            if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
+                q = q.Where(w => w.StationId == stationId);
+            if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
+                q = q.Where(w => w.Station != null && w.Station.CountyId == countyId);
+            if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
+                q = q.Where(w =>
+                    (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
+                    (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
+            if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
+                q = q.Where(w =>
+                    (w.RoadId.HasValue && w.RoadId == roadId) ||
+                    (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
+            return q;
+        }
+
+        // Extend the query window one calendar month earlier than `from` so the first displayed
+        // month still has a previous-month baseline for the "comparison with previous month"
+        // enrichment - that lead-in month is used only to build previousMonthLookup below, never
+        // shown as its own row.
+        var rangeStartMonth = new DateTime(from.Year, from.Month, 1);
+        var extendedFrom = rangeStartMonth.AddMonths(-1);
+
+        var extendedQuery = ApplyGeoFilters(_context.WeighingTransactions
             .Where(w => w.DeletedAt == null)
             .Where(w => w.WeighingMode == "commercial")
-            .Where(w => w.WeighedAt >= from && w.WeighedAt <= to);
+            .Where(w => w.WeighedAt >= extendedFrom && w.WeighedAt <= to));
 
-        if (!string.IsNullOrEmpty(filters.StationId) && Guid.TryParse(filters.StationId, out var stationId))
-            query = query.Where(w => w.StationId == stationId);
-        if (!string.IsNullOrEmpty(filters.CountyId) && Guid.TryParse(filters.CountyId, out var countyId))
-            query = query.Where(w => w.Station != null && w.Station.CountyId == countyId);
-        if (!string.IsNullOrEmpty(filters.SubcountyId) && Guid.TryParse(filters.SubcountyId, out var subcountyId))
-            query = query.Where(w =>
-                (w.SubcountyId.HasValue && w.SubcountyId == subcountyId) ||
-                (!w.SubcountyId.HasValue && w.Station != null && w.Station.SubcountyId == subcountyId));
-        if (!string.IsNullOrEmpty(filters.RoadId) && Guid.TryParse(filters.RoadId, out var roadId))
-            query = query.Where(w =>
-                (w.RoadId.HasValue && w.RoadId == roadId) ||
-                (!w.RoadId.HasValue && w.Station != null && w.Station.RoadId == roadId));
-
-        var monthlyData = await query
+        var extendedMonthlyData = await extendedQuery
             .GroupBy(w => new { w.WeighedAt.Year, w.WeighedAt.Month })
             .Select(g => new
             {
@@ -1903,22 +2244,53 @@ public class CommercialReportGenerator : BaseReportGenerator
             .OrderBy(r => r.Year).ThenBy(r => r.Month)
             .ToListAsync(ct);
 
+        var previousMonthLookup = extendedMonthlyData.ToDictionary(r => (r.Year, r.Month));
+        var monthlyData = extendedMonthlyData.Where(r => new DateTime(r.Year, r.Month, 1) >= rangeStartMonth).ToList();
+
+        // Revenue by cargo type (5d) - same population/filters as the monthly totals above (so
+        // summing this breakdown across cargo types reconciles with "Total Fees"), just within the
+        // originally requested [from, to] rather than the extended lead-in window.
+        var revenueByCargoType = await ApplyGeoFilters(_context.WeighingTransactions
+                .Where(w => w.DeletedAt == null)
+                .Where(w => w.WeighingMode == "commercial")
+                .Where(w => w.WeighedAt >= from && w.WeighedAt <= to)
+                .Where(w => w.CargoId != null))
+            .Include(w => w.Cargo)
+            .GroupBy(w => new { w.CargoId, CargoName = w.Cargo!.Name })
+            .Select(g => new
+            {
+                CargoName = g.Key.CargoName,
+                TransactionCount = g.Count(),
+                TotalRevenueKes = g.Sum(x => x.TotalFeeKes)
+            })
+            .OrderByDescending(c => c.TotalRevenueKes)
+            .ToListAsync(ct);
+
         var headers = new[]
         {
             "Month", "Total Transactions", "Total Net Weight (kg)",
-            "Total Fee (KES)", "Tolerance Exceptions", "Voided", "Completed", "Avg Net Weight (kg)"
+            "Total Fee (KES)", "Tolerance Exceptions", "Voided", "Completed", "Avg Net Weight (kg)",
+            "Prev Month Transactions", "Prev Month Net Weight (kg)", "Prev Month Fee (KES)"
         };
 
-        var csvRows = monthlyData.Select(r => new[]
+        var csvRows = monthlyData.Select(r =>
         {
-            new DateTime(r.Year, r.Month, 1).ToString("MMMM yyyy"),
-            r.TotalTransactions.ToString(),
-            FormatNumber(r.TotalNetWeightKg),
-            $"{r.TotalFeeKes:N2}",
-            r.ToleranceExceptions.ToString(),
-            r.VoidedCount.ToString(),
-            r.CompletedCount.ToString(),
-            FormatNumber(r.AvgNetWeightKg)
+            var prevMonthDate = new DateTime(r.Year, r.Month, 1).AddMonths(-1);
+            previousMonthLookup.TryGetValue((prevMonthDate.Year, prevMonthDate.Month), out var prev);
+            return new[]
+            {
+                new DateTime(r.Year, r.Month, 1).ToString("MMMM yyyy"),
+                r.TotalTransactions.ToString(),
+                FormatNumber(r.TotalNetWeightKg),
+                $"{r.TotalFeeKes:N2}",
+                r.ToleranceExceptions.ToString(),
+                r.VoidedCount.ToString(),
+                r.CompletedCount.ToString(),
+                FormatNumber(r.AvgNetWeightKg),
+                prev?.TotalTransactions.ToString() ?? "N/A",
+                prev != null ? FormatNumber(prev.TotalNetWeightKg) : "N/A",
+                prev != null ? $"{prev.TotalFeeKes:N2}" : "N/A"
+            };
         });
 
         // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
@@ -1934,12 +2306,21 @@ public class CommercialReportGenerator : BaseReportGenerator
             outputRows = selectedRows;
         }
 
+        var cargoRevenueHeaders = new[] { "Cargo Type", "Transactions", "Total Revenue (KES)" };
+        var cargoRevenueRows = revenueByCargoType.Select(c => new[]
+        {
+            c.CargoName,
+            c.TransactionCount.ToString(),
+            $"{c.TotalRevenueKes:N2}"
+        }).ToList();
+
         if (format == "csv")
             return CsvResult(GenerateCsv(outputHeaders, outputRows), "monthly_reconciliation", from, to);
         if (format == "xlsx")
             return ExcelResult(GenerateExcel(new ExcelReportRequest
             {
                 ReportTitle = "Monthly Reconciliation Report", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                SummaryTables = [new ExcelSummaryTable { Title = "Revenue by Cargo Type", Headers = cargoRevenueHeaders, Rows = cargoRevenueRows }],
                 OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
             }), "monthly_reconciliation", from, to);
 
@@ -1951,6 +2332,7 @@ public class CommercialReportGenerator : BaseReportGenerator
             DateTo = to,
             Headers = outputHeaders,
             Rows = outputRows.ToArray(),
+            SummaryTables = [("Revenue by Cargo Type", cargoRevenueHeaders, cargoRevenueRows.ToArray())],
             SummaryItems =
             [
                 ("Months", monthlyData.Count.ToString()),
@@ -1981,6 +2363,13 @@ public class CommercialReportGenerator : BaseReportGenerator
         public int? StatusColumnIndex { get; set; }
         public (string colorHex, string label)[] Legend { get; set; } = [];
 
+        /// <summary>
+        /// Optional titled breakdown tables rendered beneath the main table (e.g. Monthly
+        /// Reconciliation's "Revenue by Cargo Type") - a different grain than the main per-row
+        /// table, so it can't just be extra columns. Mirrors AxleLoadAnalysisDocument's SummaryTables.
+        /// </summary>
+        public (string title, string[] headers, string[][] rows)[] SummaryTables { get; set; } = [];
+
         protected override void ComposeContent(IContainer container)
         {
             container.Column(col =>
@@ -1992,6 +2381,9 @@ public class CommercialReportGenerator : BaseReportGenerator
 
                 col.Item().Element(c => ComposeDataTable(c, Headers, Rows, conditionalStatusColumnIndex: StatusColumnIndex));
                 col.Item().Element(c => ComposeLegend(c, Legend));
+
+                foreach (var table in SummaryTables)
+                    col.Item().Element(c => ComposeTitledTable(c, table.title, table.headers, table.rows));
             });
         }
     }

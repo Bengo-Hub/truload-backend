@@ -302,6 +302,45 @@ public class CommercialWeighingController : ControllerBase
     }
 
     /// <summary>
+    /// Records a new tare weight history entry for a vehicle (Tare Register "Record Tare" dialog).
+    /// Optionally updates the vehicle's stored tare (SetAsDefault) so it is used by single-pass
+    /// commercial weighing going forward.
+    /// </summary>
+    [HttpPost("tare-history")]
+    [Authorize(Policy = "Permission:weighing.create")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(VehicleTareHistoryDto), 201)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> RecordTareHistory([FromBody] RecordTareHistoryRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        Guid? recordedByUserId = Guid.TryParse(userIdClaim, out var userGuid) ? userGuid : null;
+
+        try
+        {
+            var result = await _commercialWeighingService.RecordTareHistoryEntryAsync(request, recordedByUserId);
+            return CreatedAtAction(nameof(GetVehicleTareHistory), new { vehicleId = request.VehicleId }, result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recording tare history entry for vehicle {VehicleId}", request.VehicleId);
+            return StatusCode(500, "An error occurred while recording the tare weight.");
+        }
+    }
+
+    /// <summary>
     /// Generates and returns a PDF weight ticket for a commercial weighing transaction.
     /// </summary>
     [HttpGet("{id}/ticket/pdf")]
@@ -618,7 +657,7 @@ public class CommercialWeighingController : ControllerBase
     [HttpGet("pending-by-plate/{regNo}")]
     [Authorize(Policy = "Permission:weighing.read")]
     [ProducesResponseType(typeof(List<CommercialWeighingResultDto>), 200)]
-    public async Task<IActionResult> GetPendingByPlate(string regNo, [FromQuery] int thresholdHours = 8)
+    public async Task<IActionResult> GetPendingByPlate(string regNo, [FromQuery] int? thresholdHours = null)
     {
         if (string.IsNullOrWhiteSpace(regNo))
             return BadRequest(new { message = "regNo is required" });

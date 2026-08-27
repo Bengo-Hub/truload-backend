@@ -50,10 +50,29 @@ public interface ICommercialWeighingService
     Task<CommercialWeighingResultDto> GetCommercialResultAsync(Guid transactionId);
 
     /// <summary>
-    /// Records a tare weight measurement for a vehicle.
-    /// Updates Vehicle.LastTareWeightKg, Vehicle.LastTareWeighedAt, and adds VehicleTareHistory entry.
+    /// Records a tare weight measurement for a vehicle: adds a VehicleTareHistory entry and,
+    /// when <paramref name="setAsDefault"/> is true (the default), updates Vehicle.LastTareWeightKg /
+    /// Vehicle.LastTareWeighedAt so it becomes the vehicle's stored tare for single-pass weighing.
+    /// Does not call SaveChangesAsync - the caller persists as part of its own unit of work.
+    /// Returns null (and logs a warning) if the vehicle doesn't exist.
     /// </summary>
-    Task RecordTareWeightAsync(Guid vehicleId, int tareWeightKg, Guid? stationId, string source = "measured", string? notes = null);
+    Task<VehicleTareHistory?> RecordTareWeightAsync(
+        Guid vehicleId,
+        int tareWeightKg,
+        Guid? stationId,
+        string source = "measured",
+        string? notes = null,
+        Guid? recordedByUserId = null,
+        bool setAsDefault = true);
+
+    /// <summary>
+    /// Records a new tare weight history entry for a vehicle (Tare Register "Record Tare" dialog).
+    /// Calls SaveChangesAsync itself (unlike RecordTareWeightAsync, which is a shared building block
+    /// used mid-transaction elsewhere). Requires a justification (passed via Source == "manual"'s
+    /// Notes) for manually-entered tare weights, same rule as UseStoredTareAsync's preset override.
+    /// Throws KeyNotFoundException if the vehicle doesn't exist.
+    /// </summary>
+    Task<VehicleTareHistoryDto> RecordTareHistoryEntryAsync(RecordTareHistoryRequest request, Guid? recordedByUserId);
 
     /// <summary>
     /// Updates quality deduction and recalculates adjusted net weight.
@@ -114,6 +133,8 @@ public interface ICommercialWeighingService
     /// <summary>
     /// Finds open first-weight-only transactions for a vehicle plate within the configured time threshold.
     /// Used by the capture screen to detect vehicles that need a second pass rather than a new transaction.
+    /// When <paramref name="thresholdHours"/> is null, falls back to the configured
+    /// commercial.pending_weighing_threshold_hours setting (same setting used by StaleWeighingNotificationJob).
     /// </summary>
-    Task<List<CommercialWeighingResultDto>> GetPendingByPlateAsync(string vehicleRegNo, int thresholdHours = 8);
+    Task<List<CommercialWeighingResultDto>> GetPendingByPlateAsync(string vehicleRegNo, int? thresholdHours = null);
 }

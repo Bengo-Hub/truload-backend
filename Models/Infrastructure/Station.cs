@@ -65,6 +65,44 @@ public class Station : TenantAwareEntity
     /// </summary>
     public string? BoundBCode { get; set; }
 
+    // ── Station configuration (setup.md) ──
+
+    /// <summary>
+    /// Start of this station's operating hours/shift boundary (EAT local clock), e.g. 06:00.
+    /// Null means no configured operating-hours restriction. Uses TimeSpan for consistency with
+    /// WeighingQueryHelpers.ApplyTimeOfDayFilter's time-of-day representation.
+    /// </summary>
+    public TimeSpan? OperatingHoursStart { get; set; }
+
+    /// <summary>
+    /// End of this station's operating hours/shift boundary (EAT local clock), e.g. 18:00.
+    /// A value earlier than <see cref="OperatingHoursStart"/> means an overnight shift that wraps
+    /// past midnight (same convention as ApplyTimeOfDayFilter). Null means no configured
+    /// operating-hours restriction.
+    /// </summary>
+    public TimeSpan? OperatingHoursEnd { get; set; }
+
+    /// <summary>
+    /// Printer configuration for this station, stored as JSON (e.g.
+    /// {"printerName":"...","model":"...","connection":"..."}). Metadata only for now - no real
+    /// printer integration exists yet, so this is not wired to an actual print pipeline.
+    /// </summary>
+    public string? PrinterConfiguration { get; set; }
+
+    /// <summary>
+    /// Selected weight-ticket layout/template name for this station (commercial vs. enforcement
+    /// ticket variants). Free-form string - no fixed template-name enum exists elsewhere yet.
+    /// </summary>
+    public string? TicketTemplate { get; set; }
+
+    /// <summary>
+    /// Advisory/informational default weighing mode for this station: "Enforcement" or "Commercial".
+    /// Display/reporting/future-use only - does NOT gate the actual enforcement-vs-commercial
+    /// routing logic, which is correctly derived from Organization.TenantType and remains
+    /// unchanged (used by live enforcement tenants today).
+    /// </summary>
+    public string? DefaultWeighingMode { get; set; }
+
     // Navigation properties
     public Roads? Road { get; set; }
     public Counties? County { get; set; }

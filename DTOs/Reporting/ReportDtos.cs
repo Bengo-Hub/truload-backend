@@ -46,6 +46,16 @@ public class ReportDefinitionDto
     /// per-vehicle rows has no "vehicle registration" filter) instead of one fixed generic set.
     /// </summary>
     public List<ReportFilterDefinition>? Filters { get; set; }
+
+    /// <summary>
+    /// Optional role-name allowlist restricting which roles may see/generate this specific report
+    /// type, on top of the flat "analytics.read" permission both GetCatalog and GenerateReport
+    /// already require (see reports.md's "Access by Role" table for Commercial reports). Null/empty
+    /// means no additional restriction - visible to anyone with analytics.read, same as before this
+    /// field existed. Checked via ClaimsPrincipal.IsInRole against the caller's role claims; a
+    /// Superuser/System Admin caller always bypasses this, same convention as the rest of the app.
+    /// </summary>
+    public string[]? AllowedRoles { get; set; }
 }
 
 /// <summary>

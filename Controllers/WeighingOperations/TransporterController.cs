@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using TruLoad.Backend.Authorization.Attributes;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
+using TruLoad.Backend.Services.Interfaces.Shared;
 
 namespace TruLoad.Backend.Controllers.WeighingOperations;
 
@@ -18,12 +19,20 @@ namespace TruLoad.Backend.Controllers.WeighingOperations;
 public class TransporterController : ControllerBase
 {
     private readonly ITransporterRepository _repository;
+    private readonly INotificationService _notificationService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<TransporterController> _logger;
     private static readonly Random _rnd = new();
 
-    public TransporterController(ITransporterRepository repository, ILogger<TransporterController> logger)
+    public TransporterController(
+        ITransporterRepository repository,
+        INotificationService notificationService,
+        IConfiguration configuration,
+        ILogger<TransporterController> logger)
     {
         _repository = repository;
+        _notificationService = notificationService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -231,5 +240,68 @@ public class TransporterController : ControllerBase
 
         _logger.LogInformation("Soft deleted transporter {Id}", id);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Sends a portal invite email to the transporter's registered PortalAccountEmail, inviting
+    /// them to self-service link/register their TruLoad Portal account. Portal linking itself is
+    /// otherwise entirely self-service (TransporterPortalService.RegisterAsync matches the signing-up
+    /// user by email/phone/transporter code) with no existing trigger to prompt a transporter to do
+    /// so - this just sends that prompt. Reuses the same email template and INotificationService
+    /// plumbing as the existing team-member invite (TransporterPortalService.InviteTeamMemberAsync)
+    /// rather than adding a new email-sending mechanism.
+    /// </summary>
+    [HttpPost("{id}/invite-portal")]
+    [Authorize(Policy = "Permission:transporter.update")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> InvitePortal(Guid id)
+    {
+        var transporter = await _repository.GetByIdAsync(id);
+        if (transporter == null)
+            return NotFound(new { Message = $"Transporter with ID {id} not found" });
+
+        if (string.IsNullOrWhiteSpace(transporter.PortalAccountEmail))
+        {
+            return BadRequest(new
+            {
+                Message = "This transporter has no portal account email configured. Set PortalAccountEmail before sending an invite."
+            });
+        }
+
+        var portalUrl = $"{(_configuration["FrontendUrl"]?.TrimEnd('/') ?? "https://truload.codevertexafrica.com")}/portal";
+
+        try
+        {
+            var sent = await _notificationService.SendEmailAsync(
+                "truload/portal_team_invite",
+                transporter.PortalAccountEmail!,
+                transporter.Name,
+                new Dictionary<string, object>
+                {
+                    ["transporter_name"] = transporter.Name,
+                    ["role"] = "owner",
+                    ["invite_url"] = portalUrl,
+                    ["expires_at"] = "-"
+                },
+                subject: $"You're invited to {transporter.Name}'s TruLoad Portal",
+                cancellationToken: HttpContext.RequestAborted,
+                tenantSlug: null);
+
+            if (!sent)
+            {
+                _logger.LogWarning("Portal invite email failed to send for transporter {TransporterId} ({Email})", id, transporter.PortalAccountEmail);
+                return StatusCode(500, new { Message = "Failed to send the portal invite email." });
+            }
+
+            _logger.LogInformation("Portal invite email sent for transporter {TransporterId} ({Email})", id, transporter.PortalAccountEmail);
+            return Ok(new { Message = $"Portal invite sent to {transporter.PortalAccountEmail}." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending portal invite for transporter {TransporterId}", id);
+            return StatusCode(500, new { Message = "An error occurred while sending the portal invite." });
+        }
     }
 }

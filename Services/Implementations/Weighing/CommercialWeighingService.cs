@@ -12,6 +12,7 @@ using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.Shared;
 using TruLoad.Backend.Services.Interfaces.Weighing;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
+using TruLoad.Backend.Services.Interfaces.System;
 using STJson = System.Text.Json;
 
 namespace TruLoad.Backend.Services.Implementations.Weighing;
@@ -24,8 +25,11 @@ public class CommercialWeighingService : ICommercialWeighingService
     private readonly IDocumentNumberService _documentNumberService;
     private readonly ITreasuryService _treasuryService;
     private readonly INotificationService _notificationService;
+    private readonly ISettingsService _settingsService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<CommercialWeighingService> _logger;
+
+    private const int DefaultPendingWeighingThresholdHours = 8;
 
     public CommercialWeighingService(
         TruLoadDbContext dbContext,
@@ -34,6 +38,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         IDocumentNumberService documentNumberService,
         ITreasuryService treasuryService,
         INotificationService notificationService,
+        ISettingsService settingsService,
         IConfiguration configuration,
         ILogger<CommercialWeighingService> logger)
     {
@@ -43,6 +48,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         _documentNumberService = documentNumberService;
         _treasuryService = treasuryService;
         _notificationService = notificationService;
+        _settingsService = settingsService;
         _configuration = configuration;
         _logger = logger;
     }
@@ -279,7 +285,8 @@ public class CommercialWeighingService : ICommercialWeighingService
             tareWeightKg,
             transaction.StationId,
             "measured",
-            $"Measured during commercial weighing {transaction.TicketNumber}");
+            $"Measured during commercial weighing {transaction.TicketNumber}",
+            recordedByUserId: transaction.WeighedByUserId);
 
         await _dbContext.SaveChangesAsync();
 
@@ -320,11 +327,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         {
             // "Preset Tare" per tare-management.md - a supervisor manually entering a tare weight
             // requires a recorded justification for audit purposes.
-            if (string.IsNullOrWhiteSpace(request.Justification))
-            {
-                throw new InvalidOperationException(
-                    "Justification is required when providing a manual override (preset) tare weight.");
-            }
+            EnsureJustificationForPresetTare(request.Justification);
 
             tareWeightKg = request.OverrideTareWeightKg.Value;
             tareSource = "preset";
@@ -476,23 +479,38 @@ public class CommercialWeighingService : ICommercialWeighingService
         return dto;
     }
 
-    public async Task RecordTareWeightAsync(
+    public async Task<VehicleTareHistory?> RecordTareWeightAsync(
         Guid vehicleId,
         int tareWeightKg,
         Guid? stationId,
         string source = "measured",
-        string? notes = null)
+        string? notes = null,
+        Guid? recordedByUserId = null,
+        bool setAsDefault = true)
     {
         var vehicle = await _dbContext.Vehicles.FindAsync(vehicleId);
         if (vehicle == null)
         {
             _logger.LogWarning("Cannot record tare weight: vehicle {VehicleId} not found", vehicleId);
-            return;
+            return null;
         }
 
-        vehicle.LastTareWeightKg = tareWeightKg;
-        vehicle.LastTareWeighedAt = DateTime.UtcNow;
-        vehicle.UpdatedAt = DateTime.UtcNow;
+        if (setAsDefault)
+        {
+            vehicle.LastTareWeightKg = tareWeightKg;
+            vehicle.LastTareWeighedAt = DateTime.UtcNow;
+            vehicle.UpdatedAt = DateTime.UtcNow;
+        }
+
+        string? recordedByName = null;
+        if (recordedByUserId.HasValue)
+        {
+            recordedByName = await _dbContext.Users
+                .AsNoTracking()
+                .Where(u => u.Id == recordedByUserId.Value)
+                .Select(u => u.FullName)
+                .FirstOrDefaultAsync();
+        }
 
         var history = new VehicleTareHistory
         {
@@ -502,15 +520,75 @@ public class CommercialWeighingService : ICommercialWeighingService
             StationId = stationId,
             OrganizationId = _tenantContext.OrganizationId,
             Source = source,
-            Notes = notes
+            Notes = notes,
+            RecordedByUserId = recordedByUserId,
+            RecordedByName = recordedByName
         };
 
         _dbContext.VehicleTareHistory.Add(history);
         // SaveChanges is called by the caller or at end of operation
 
         _logger.LogInformation(
-            "Recorded tare weight for vehicle {VehicleId}: {TareKg}kg ({Source})",
-            vehicleId, tareWeightKg, source);
+            "Recorded tare weight for vehicle {VehicleId}: {TareKg}kg ({Source}), setAsDefault={SetAsDefault}",
+            vehicleId, tareWeightKg, source, setAsDefault);
+
+        return history;
+    }
+
+    /// <summary>
+    /// Records a new tare weight history entry for a vehicle (Tare Register "Record Tare" dialog).
+    /// Unlike RecordTareWeightAsync (a shared building block used mid-transaction elsewhere and left
+    /// to the caller to persist), this method validates the vehicle up front and saves itself, since
+    /// it is the sole action of the request it backs.
+    /// </summary>
+    public async Task<VehicleTareHistoryDto> RecordTareHistoryEntryAsync(RecordTareHistoryRequest request, Guid? recordedByUserId)
+    {
+        if (request.Source != "measured" && request.Source != "manual")
+        {
+            throw new InvalidOperationException("Source must be 'measured' or 'manual'.");
+        }
+
+        // A manually punched-in tare weight (not read off the scale) is the same "preset" style
+        // entry Stage A already gated behind a required justification on UseStoredTareAsync - reuse
+        // that rule here via the shared helper, using Notes as the justification text (the frontend's
+        // Record Tare dialog has no separate justification field).
+        if (request.Source == "manual")
+        {
+            EnsureJustificationForPresetTare(request.Notes);
+        }
+
+        var vehicle = await _dbContext.Vehicles.FindAsync(request.VehicleId);
+        if (vehicle == null)
+        {
+            throw new KeyNotFoundException($"Vehicle {request.VehicleId} not found.");
+        }
+
+        var history = await RecordTareWeightAsync(
+            request.VehicleId,
+            request.TareWeightKg,
+            stationId: null,
+            source: request.Source,
+            notes: request.Notes,
+            recordedByUserId: recordedByUserId,
+            setAsDefault: request.SetAsDefault);
+
+        await _dbContext.SaveChangesAsync();
+
+        // history is guaranteed non-null: the vehicle existence check above already passed.
+        return new VehicleTareHistoryDto
+        {
+            Id = history!.Id,
+            VehicleId = history.VehicleId,
+            VehicleRegNo = vehicle.RegNo,
+            TareWeightKg = history.TareWeightKg,
+            WeighedAt = history.WeighedAt,
+            StationId = history.StationId,
+            StationName = null,
+            Source = history.Source,
+            Notes = history.Notes,
+            RecordedByUserId = history.RecordedByUserId,
+            RecordedByName = history.RecordedByName
+        };
     }
 
     public async Task<WeighingTransaction> UpdateQualityDeductionAsync(
@@ -525,8 +603,55 @@ public class CommercialWeighingService : ICommercialWeighingService
             throw new InvalidOperationException("Net weight must be calculated before applying quality deductions.");
         }
 
-        transaction.QualityDeductionKg = request.QualityDeductionKg;
-        transaction.AdjustedNetWeightKg = transaction.NetWeightKg.Value - request.QualityDeductionKg;
+        // Load the cargo type's quality-deduction rules (moisture target / foreign matter limit),
+        // if any. Cargo types with neither configured keep the flat-kg entry path working exactly
+        // as before.
+        CargoTypes? cargoType = null;
+        if (transaction.CargoId.HasValue)
+        {
+            cargoType = await _dbContext.CargoTypes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == transaction.CargoId.Value);
+        }
+
+        var hasQualityRules = cargoType != null &&
+            (cargoType.MoistureTargetPercent.HasValue || cargoType.ForeignMatterLimitPercent.HasValue);
+        var hasActualMeasurements = request.ActualMoisturePercent.HasValue || request.ActualForeignMatterPercent.HasValue;
+
+        int qualityDeductionKg;
+        decimal? moistureDeductionKg = null;
+        decimal? foreignMatterDeductionKg = null;
+
+        if (hasQualityRules && hasActualMeasurements)
+        {
+            // setup.md documented formulas — authoritative over any caller-supplied flat kg once
+            // actual measurements are supplied against a cargo type with quality rules configured.
+            var netWeightKg = transaction.NetWeightKg.Value;
+
+            if (request.ActualMoisturePercent.HasValue && cargoType!.MoistureTargetPercent.HasValue &&
+                request.ActualMoisturePercent.Value > cargoType.MoistureTargetPercent.Value)
+            {
+                moistureDeductionKg = netWeightKg * (request.ActualMoisturePercent.Value - cargoType.MoistureTargetPercent.Value) / 100m;
+            }
+
+            if (request.ActualForeignMatterPercent.HasValue && cargoType!.ForeignMatterLimitPercent.HasValue &&
+                request.ActualForeignMatterPercent.Value > cargoType.ForeignMatterLimitPercent.Value)
+            {
+                foreignMatterDeductionKg = netWeightKg * request.ActualForeignMatterPercent.Value / 100m;
+            }
+
+            var computedDeductionKg = (moistureDeductionKg ?? 0) + (foreignMatterDeductionKg ?? 0);
+            qualityDeductionKg = (int)Math.Round(computedDeductionKg, MidpointRounding.AwayFromZero);
+        }
+        else
+        {
+            // Fallback: no quality-deduction rules configured for this cargo type, or no actual
+            // measurements supplied — use the caller-supplied flat kg value as before.
+            qualityDeductionKg = request.QualityDeductionKg;
+        }
+
+        transaction.QualityDeductionKg = qualityDeductionKg;
+        transaction.AdjustedNetWeightKg = transaction.NetWeightKg.Value - qualityDeductionKg;
         transaction.UpdatedAt = DateTime.UtcNow;
 
         if (!string.IsNullOrWhiteSpace(request.Reason))
@@ -536,13 +661,32 @@ public class CommercialWeighingService : ICommercialWeighingService
                 : $"{transaction.Remarks}; Quality deduction: {request.Reason}";
         }
 
+        // Persist the actual measured percentages (and per-type breakdown) into the existing
+        // IndustryMetadata JSON column - no new dedicated columns - so a later ticket view/report
+        // can show which measurement drove the deduction. Which type(s) applied is derived from
+        // these stored values (moisture/foreignMatter when their *DeductionKg is non-null and > 0,
+        // "manual" otherwise) rather than stored as a separate enum.
+        if (hasActualMeasurements)
+        {
+            transaction.IndustryMetadata = MergeIndustryMetadata(transaction.IndustryMetadata, new
+            {
+                qualityDeduction = new
+                {
+                    actualMoisturePercent = request.ActualMoisturePercent,
+                    actualForeignMatterPercent = request.ActualForeignMatterPercent,
+                    moistureDeductionKg,
+                    foreignMatterDeductionKg
+                }
+            });
+        }
+
         await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation(
-            "Quality deduction updated for {TransactionId}: {DeductionKg}kg, adjusted net={AdjustedKg}kg",
-            transactionId, request.QualityDeductionKg, transaction.AdjustedNetWeightKg);
+            "Quality deduction updated for {TransactionId}: {DeductionKg}kg (moisture={MoistureKg}, fm={FmKg}), adjusted net={AdjustedKg}kg",
+            transactionId, qualityDeductionKg, moistureDeductionKg, foreignMatterDeductionKg, transaction.AdjustedNetWeightKg);
 
-        _ = SendQualityDeductionNotificationAsync(transaction, request.QualityDeductionKg, request.Reason);
+        _ = SendQualityDeductionNotificationAsync(transaction, qualityDeductionKg, request.Reason);
 
         return transaction;
     }
@@ -607,7 +751,9 @@ public class CommercialWeighingService : ICommercialWeighingService
             StationId = h.StationId,
             StationName = h.Station?.Name,
             Source = h.Source,
-            Notes = h.Notes
+            Notes = h.Notes,
+            RecordedByUserId = h.RecordedByUserId,
+            RecordedByName = h.RecordedByName
         }).ToList();
     }
 
@@ -743,10 +889,12 @@ public class CommercialWeighingService : ICommercialWeighingService
         return transactions.Select(MapToCommercialResultDto).ToList();
     }
 
-    public async Task<List<CommercialWeighingResultDto>> GetPendingByPlateAsync(string vehicleRegNo, int thresholdHours = 8)
+    public async Task<List<CommercialWeighingResultDto>> GetPendingByPlateAsync(string vehicleRegNo, int? thresholdHours = null)
     {
         var orgId = _tenantContext.OrganizationId;
-        var cutoff = DateTime.UtcNow.AddHours(-thresholdHours);
+        var effectiveThresholdHours = thresholdHours ?? await _settingsService.GetSettingValueAsync(
+            SettingKeys.CommercialPendingWeighingThresholdHours, DefaultPendingWeighingThresholdHours);
+        var cutoff = DateTime.UtcNow.AddHours(-effectiveThresholdHours);
         var regNo = vehicleRegNo.Trim().ToUpperInvariant();
 
         var transactions = await _dbContext.WeighingTransactions
@@ -876,6 +1024,21 @@ public class CommercialWeighingService : ICommercialWeighingService
         {
             throw new InvalidOperationException(
                 $"Transaction {transaction.Id} is not a commercial weighing (mode: {transaction.WeighingMode}).");
+        }
+    }
+
+    /// <summary>
+    /// Enforces the "Preset Tare" justification rule (tare-management.md): a manually punched-in
+    /// tare weight - not read off the scale - requires a recorded justification for audit purposes.
+    /// Shared by UseStoredTareAsync (OverrideTareWeightKg) and RecordTareWeightAsync/the tare-history
+    /// endpoint (Source == "manual") rather than duplicating the check in each caller.
+    /// </summary>
+    private static void EnsureJustificationForPresetTare(string? justification)
+    {
+        if (string.IsNullOrWhiteSpace(justification))
+        {
+            throw new InvalidOperationException(
+                "Justification is required when providing a manual override (preset) tare weight.");
         }
     }
 
@@ -1073,8 +1236,50 @@ public class CommercialWeighingService : ICommercialWeighingService
         catch { return new(); }
     }
 
+    /// <summary>
+    /// Reads back the "qualityDeduction" sub-object UpdateQualityDeductionAsync writes into
+    /// IndustryMetadata, and derives which deduction type(s) applied from the stored values
+    /// (rather than a separate enum column - see UpdateQualityDeductionAsync).
+    /// </summary>
+    private static (decimal? ActualMoisturePercent, decimal? ActualForeignMatterPercent,
+        decimal? MoistureDeductionKg, decimal? ForeignMatterDeductionKg, List<string> AppliedTypes)
+        ParseQualityDeductionMetadata(string? industryMetadata, int? qualityDeductionKg)
+    {
+        decimal? actualMoisturePercent = null, actualForeignMatterPercent = null;
+        decimal? moistureDeductionKg = null, foreignMatterDeductionKg = null;
+
+        if (!string.IsNullOrEmpty(industryMetadata))
+        {
+            try
+            {
+                var doc = STJson.JsonDocument.Parse(industryMetadata);
+                if (doc.RootElement.TryGetProperty("qualityDeduction", out var qd))
+                {
+                    if (qd.TryGetProperty("actualMoisturePercent", out var amp) && amp.ValueKind == STJson.JsonValueKind.Number)
+                        actualMoisturePercent = amp.GetDecimal();
+                    if (qd.TryGetProperty("actualForeignMatterPercent", out var afmp) && afmp.ValueKind == STJson.JsonValueKind.Number)
+                        actualForeignMatterPercent = afmp.GetDecimal();
+                    if (qd.TryGetProperty("moistureDeductionKg", out var mdk) && mdk.ValueKind == STJson.JsonValueKind.Number)
+                        moistureDeductionKg = mdk.GetDecimal();
+                    if (qd.TryGetProperty("foreignMatterDeductionKg", out var fmdk) && fmdk.ValueKind == STJson.JsonValueKind.Number)
+                        foreignMatterDeductionKg = fmdk.GetDecimal();
+                }
+            }
+            catch { /* malformed/legacy metadata - fall through with nulls */ }
+        }
+
+        var appliedTypes = new List<string>();
+        if (moistureDeductionKg is > 0) appliedTypes.Add("moisture");
+        if (foreignMatterDeductionKg is > 0) appliedTypes.Add("foreignMatter");
+        if (appliedTypes.Count == 0 && qualityDeductionKg is > 0) appliedTypes.Add("manual");
+
+        return (actualMoisturePercent, actualForeignMatterPercent, moistureDeductionKg, foreignMatterDeductionKg, appliedTypes);
+    }
+
     private static CommercialWeighingResultDto MapToCommercialResultDto(WeighingTransaction transaction)
     {
+        var qualityDeduction = ParseQualityDeductionMetadata(transaction.IndustryMetadata, transaction.QualityDeductionKg);
+
         return new CommercialWeighingResultDto
         {
             Id = transaction.Id,
@@ -1112,6 +1317,11 @@ public class CommercialWeighingService : ICommercialWeighingService
 
             QualityDeductionKg = transaction.QualityDeductionKg,
             AdjustedNetWeightKg = transaction.AdjustedNetWeightKg,
+            ActualMoisturePercent = qualityDeduction.ActualMoisturePercent,
+            ActualForeignMatterPercent = qualityDeduction.ActualForeignMatterPercent,
+            MoistureDeductionKg = qualityDeduction.MoistureDeductionKg,
+            ForeignMatterDeductionKg = qualityDeduction.ForeignMatterDeductionKg,
+            QualityDeductionTypesApplied = qualityDeduction.AppliedTypes,
 
             ConsignmentNo = transaction.ConsignmentNo,
             OrderReference = transaction.OrderReference,

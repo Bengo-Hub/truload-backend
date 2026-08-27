@@ -396,14 +396,15 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
         };
     }
 
-    protected ReportDefinitionDto Def(string id, string name, string description, string[]? formats = null)
+    protected ReportDefinitionDto Def(string id, string name, string description, string[]? formats = null, string[]? allowedRoles = null)
         => new()
         {
             Id = id,
             Name = name,
             Description = description,
             Module = Module,
-            SupportedFormats = formats ?? ["pdf", "csv", "xlsx"]
+            SupportedFormats = formats ?? ["pdf", "csv", "xlsx"],
+            AllowedRoles = allowedRoles
         };
 
     /// <summary>
@@ -413,9 +414,9 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
     protected ReportDefinitionDto Def(
         string id, string name, string description,
         List<ReportColumnDefinition> columns, List<ReportChartOption>? chartOptions = null,
-        string[]? formats = null)
+        string[]? formats = null, string[]? allowedRoles = null)
     {
-        var def = Def(id, name, description, formats);
+        var def = Def(id, name, description, formats, allowedRoles);
         def.Columns = columns;
         def.ChartOptions = chartOptions;
         return def;
@@ -429,9 +430,9 @@ public abstract class BaseReportGenerator : IModuleReportGenerator
     protected ReportDefinitionDto Def(
         string id, string name, string description,
         List<ReportColumnDefinition>? columns, List<ReportFilterDefinition> filters,
-        List<ReportChartOption>? chartOptions = null, string[]? formats = null)
+        List<ReportChartOption>? chartOptions = null, string[]? formats = null, string[]? allowedRoles = null)
     {
-        var def = Def(id, name, description, formats);
+        var def = Def(id, name, description, formats, allowedRoles);
         def.Columns = columns;
         def.ChartOptions = chartOptions;
         def.Filters = filters;

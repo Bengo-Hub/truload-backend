@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using TruLoad.Backend.Models.Common;
+using TruLoad.Backend.Models.Identity;
 using TruLoad.Backend.Models.Infrastructure;
 
 namespace TruLoad.Backend.Models.Weighing;
@@ -58,6 +59,22 @@ public class VehicleTareHistory : BaseEntity
     [Column("notes")]
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// User who recorded this tare measurement (nullable — some historical rows and
+    /// system-generated entries have no operator attached).
+    /// </summary>
+    [Column("recorded_by_user_id")]
+    public Guid? RecordedByUserId { get; set; }
+
+    /// <summary>
+    /// Denormalized display name of the user who recorded this measurement, captured at
+    /// write time so history entries remain readable without a join even if the user
+    /// is later deactivated/renamed.
+    /// </summary>
+    [MaxLength(255)]
+    [Column("recorded_by_name")]
+    public string? RecordedByName { get; set; }
+
     // Navigation properties
     [ForeignKey("VehicleId")]
     public virtual Vehicle? Vehicle { get; set; }
@@ -67,4 +84,7 @@ public class VehicleTareHistory : BaseEntity
 
     [ForeignKey("OrganizationId")]
     public virtual Organization? Organization { get; set; }
+
+    [ForeignKey("RecordedByUserId")]
+    public virtual ApplicationUser? RecordedByUser { get; set; }
 }

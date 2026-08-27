@@ -637,6 +637,24 @@ public static class UserManagementModuleDbContextConfiguration
             entity.Property(e => e.IsActive)
                 .HasColumnName("is_active");
 
+            entity.Property(e => e.OperatingHoursStart)
+                .HasColumnName("operating_hours_start");
+
+            entity.Property(e => e.OperatingHoursEnd)
+                .HasColumnName("operating_hours_end");
+
+            entity.Property(e => e.PrinterConfiguration)
+                .HasColumnName("printer_configuration")
+                .HasColumnType("jsonb");
+
+            entity.Property(e => e.TicketTemplate)
+                .HasColumnName("ticket_template")
+                .HasMaxLength(100);
+
+            entity.Property(e => e.DefaultWeighingMode)
+                .HasColumnName("default_weighing_mode")
+                .HasMaxLength(20);
+
             entity.Property(e => e.CreatedAt)
                 .HasColumnName("created_at");
 

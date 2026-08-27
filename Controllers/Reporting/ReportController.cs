@@ -135,6 +135,25 @@ public class ReportController : ControllerBase
     }
 
     /// <summary>
+    /// Per-report-type role gating (5a) - on top of the flat "analytics.read" permission both
+    /// GetCatalog and GenerateReport already require. A report definition with a null/empty
+    /// AllowedRoles list has no additional restriction (every report type had this behaviour before
+    /// AllowedRoles existed). Checked via ClaimsPrincipal.IsInRole against the caller's role claims,
+    /// same convention as the rest of this app's role checks (e.g. User.IsInRole("Superuser"));
+    /// Superuser/System Admin always bypass, matching the existing platform-owner-bypass convention.
+    /// </summary>
+    private bool CallerCanSeeReport(ReportDefinitionDto def)
+    {
+        if (def.AllowedRoles == null || def.AllowedRoles.Length == 0)
+            return true;
+
+        if (User.IsInRole("Superuser") || User.IsInRole("System Admin"))
+            return true;
+
+        return def.AllowedRoles.Any(role => User.IsInRole(role));
+    }
+
+    /// <summary>
     /// Get the report catalog (available reports per module).
     /// Optionally filter by module name.
     /// </summary>
@@ -151,7 +170,13 @@ public class ReportController : ControllerBase
             var cached = await _cache.GetStringAsync(cacheKey);
             if (!string.IsNullOrEmpty(cached))
             {
-                return Ok(JsonSerializer.Deserialize<ReportCatalogResponse>(cached));
+                var cachedCatalog = JsonSerializer.Deserialize<ReportCatalogResponse>(cached);
+                // 5a role-gating is applied here (not baked into the cached payload) because the
+                // cache key is per-org, not per-caller-role - two users in the same org with
+                // different roles must see different report lists from the SAME cached entry.
+                if (cachedCatalog != null)
+                    ApplyReportRoleGating(cachedCatalog);
+                return Ok(cachedCatalog);
             }
         }
         catch (Exception ex)
@@ -217,7 +242,27 @@ public class ReportController : ControllerBase
             _logger.LogWarning(ex, "Failed to cache report catalog");
         }
 
+        // 5a: applied AFTER caching the tenant/module-filtered catalog above, so the cached entry
+        // (shared by every caller in this org) stays role-agnostic and each caller's role gating is
+        // computed fresh from their own claims on every request/cache-hit.
+        ApplyReportRoleGating(catalog);
+
         return Ok(catalog);
+    }
+
+    /// <summary>
+    /// Filters each module's report list down to the caller's role-visible reports (5a) - e.g. a
+    /// Commercial Weighing Operator shouldn't even see "Transaction Audit Log" in the catalog.
+    /// Mutates the given catalog in place.
+    /// </summary>
+    private void ApplyReportRoleGating(ReportCatalogResponse catalog)
+    {
+        foreach (var moduleCatalog in catalog.Modules)
+        {
+            moduleCatalog.Reports = moduleCatalog.Reports
+                .Where(CallerCanSeeReport)
+                .ToList();
+        }
     }
 
     /// <summary>
@@ -260,6 +305,20 @@ public class ReportController : ControllerBase
         if (!await IsReportModuleAllowedAsync(module))
         {
             _logger.LogWarning("Report module access denied for tenant {OrgId}: {Module}", _tenantContext.OrganizationId, module);
+            return Forbid();
+        }
+
+        // 5a: verify the caller's role can see this specific report type (not just the flat
+        // analytics.read permission gating the whole endpoint). Looked up directly from the
+        // in-memory Def() catalog (bypassing the /catalog cache entirely) - cheap, same as the
+        // catalog endpoint's own "no real cost to caching it less aggressively" reasoning.
+        var reportDef = _reportService.GetCatalog(module).Modules
+            .SelectMany(m => m.Reports)
+            .FirstOrDefault(r => string.Equals(r.Id, reportType, StringComparison.OrdinalIgnoreCase));
+
+        if (reportDef != null && !CallerCanSeeReport(reportDef))
+        {
+            _logger.LogWarning("Report type access denied for caller: {Module}/{ReportType}", module, reportType);
             return Forbid();
         }
 
