@@ -1,3 +1,4 @@
+using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Models.Weighing;
 
@@ -137,4 +138,42 @@ public interface ICommercialWeighingService
     /// commercial.pending_weighing_threshold_hours setting (same setting used by StaleWeighingNotificationJob).
     /// </summary>
     Task<List<CommercialWeighingResultDto>> GetPendingByPlateAsync(string vehicleRegNo, int? thresholdHours = null);
+
+    // ============================================================================
+    // Tare Anomaly Detection (Phase 7 MVP - drift vs. stored tare only)
+    // ============================================================================
+
+    /// <summary>
+    /// Approves a flagged tare anomaly as-is: stamps resolver/timestamp/resolution ("Approved") and
+    /// removes it from the unresolved review queue. TareAnomalyFlaggedAt/Reason are left untouched
+    /// (permanent audit trail), mirroring ToleranceExceeded/ToleranceExceptionApproved on the same
+    /// entity. Requires weighing.override permission (same policy as ApproveToleranceExceptionAsync).
+    /// </summary>
+    Task<CommercialWeighingResultDto> ApproveTareAnomalyAsync(Guid transactionId, Guid approvedByUserId);
+
+    /// <summary>
+    /// Rejects a flagged tare anomaly: stamps resolver/timestamp/resolution ("Rejected[: reason]")
+    /// and removes it from the unresolved review queue. Does NOT retroactively change the already-
+    /// recorded tare value on this transaction (a data-integrity call - see Stage C report) - the
+    /// expectation is the vehicle's tare is re-verified on its next visit. Requires weighing.override
+    /// permission (same policy as Approve).
+    /// </summary>
+    Task<CommercialWeighingResultDto> RejectTareAnomalyAsync(Guid transactionId, string? reason, Guid rejectedByUserId);
+
+    /// <summary>
+    /// Overrides a flagged tare anomaly with a supervisor-corrected tare value (required
+    /// justification, same pattern as UseStoredTareAsync's preset-tare override). Updates the
+    /// vehicle's stored tare going forward (via RecordTareWeightAsync, which also logs a
+    /// VehicleTareHistory audit entry) but does NOT retroactively rewrite this transaction's already-
+    /// recorded TareWeightKg/NetWeightKg/fees (see Stage C report). Requires weighing.override
+    /// permission.
+    /// </summary>
+    Task<CommercialWeighingResultDto> OverrideTareAnomalyAsync(Guid transactionId, OverrideTareAnomalyRequest request, Guid overriddenByUserId);
+
+    /// <summary>
+    /// Lists flagged, unresolved tare anomalies for the current organization (Tare Register "Pending
+    /// Review" queue) - combines both anchor types (WeighingTransaction and VehicleTareHistory, see
+    /// TareAnomalyDto), newest-flagged first, optionally filtered to a station.
+    /// </summary>
+    Task<PagedResponse<TareAnomalyDto>> GetFlaggedTareAnomaliesAsync(Guid? stationId, int pageNumber, int pageSize);
 }

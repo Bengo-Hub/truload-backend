@@ -608,6 +608,21 @@ public class SystemConfigurationSeeder
             new ApplicationSettings
             {
                 Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.CommercialTareDriftAnomalyThresholdPercent,
+                SettingValue = "5",
+                SettingType = "Decimal",
+                Category = SettingKeys.CategoryWeighing,
+                DisplayName = "Tare Drift Anomaly Threshold (%)",
+                Description = "Percentage drift between a newly measured/asserted tare and a vehicle's prior stored tare before it is flagged as a tare anomaly for supervisor review",
+                DefaultValue = "5",
+                IsEditable = true,
+                SortOrder = 5,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
                 SettingKey = SettingKeys.WeighingCaseCaptureMode,
                 SettingValue = "beyond_tolerance",
                 SettingType = "String",

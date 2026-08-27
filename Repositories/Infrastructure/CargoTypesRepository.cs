@@ -1,30 +1,43 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Data;
+using TruLoad.Backend.Middleware;
 
 namespace TruLoad.Backend.Repositories.Infrastructure;
 
 public class CargoTypesRepository : ICargoTypesRepository
 {
     private readonly TruLoadDbContext _context;
+    private readonly ITenantContext _tenantContext;
 
-    public CargoTypesRepository(TruLoadDbContext context)
+    public CargoTypesRepository(TruLoadDbContext context, ITenantContext tenantContext)
     {
         _context = context;
+        _tenantContext = tenantContext;
     }
 
+    /// <summary>
+    /// List/search queries return rows that are either shared/global (OrganizationId == null) or
+    /// belong to the caller's current tenant - same NULL=shared convention and filter shape already
+    /// used by DriverRepository.SearchAsync for Driver.OrganizationId.
+    /// </summary>
     public async Task<List<CargoTypes>> GetAllActiveAsync(CancellationToken cancellationToken = default)
     {
+        var orgId = _tenantContext.OrganizationId;
         return await _context.CargoTypes
             .Where(c => c.IsActive && c.DeletedAt == null)
+            .Where(c => c.OrganizationId == null || c.OrganizationId == orgId)
             .OrderBy(c => c.Name)
             .ToListAsync(cancellationToken);
     }
 
     public async Task<List<CargoTypes>> GetAllAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
     {
-        var query = _context.CargoTypes.Where(c => c.DeletedAt == null);
-        
+        var orgId = _tenantContext.OrganizationId;
+        var query = _context.CargoTypes
+            .Where(c => c.DeletedAt == null)
+            .Where(c => c.OrganizationId == null || c.OrganizationId == orgId);
+
         if (!includeInactive)
             query = query.Where(c => c.IsActive);
 
@@ -45,8 +58,10 @@ public class CargoTypesRepository : ICargoTypesRepository
 
     public async Task<List<CargoTypes>> GetByCategoryAsync(string category, CancellationToken cancellationToken = default)
     {
+        var orgId = _tenantContext.OrganizationId;
         return await _context.CargoTypes
             .Where(c => c.Category == category && c.IsActive && c.DeletedAt == null)
+            .Where(c => c.OrganizationId == null || c.OrganizationId == orgId)
             .OrderBy(c => c.Name)
             .ToListAsync(cancellationToken);
     }

@@ -135,10 +135,19 @@ namespace TruLoad.Backend.Data.Configurations.Infrastructure
                 entity.Property(e => e.DeletedAt)
                     .HasColumnName("deleted_at");
 
+                entity.Property(e => e.OrganizationId)
+                    .HasColumnName("organization_id");
+
+                entity.HasOne(e => e.Organization)
+                    .WithMany()
+                    .HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
                 // Indexes
                 entity.HasIndex(e => e.Code).IsUnique();
                 entity.HasIndex(e => e.Name);
                 entity.HasIndex(e => e.IsActive);
+                entity.HasIndex(e => e.OrganizationId);
             });
 
             // OriginsDestinations entity configuration
@@ -188,11 +197,20 @@ namespace TruLoad.Backend.Data.Configurations.Infrastructure
                 entity.Property(e => e.DeletedAt)
                     .HasColumnName("deleted_at");
 
+                entity.Property(e => e.OrganizationId)
+                    .HasColumnName("organization_id");
+
+                entity.HasOne(e => e.Organization)
+                    .WithMany()
+                    .HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
                 // Indexes
                 entity.HasIndex(e => e.Code).IsUnique();
                 entity.HasIndex(e => e.Name);
                 entity.HasIndex(e => e.Country);
                 entity.HasIndex(e => e.IsActive);
+                entity.HasIndex(e => e.OrganizationId);
             });
 
             // Roads entity configuration

@@ -94,6 +94,15 @@ namespace TruLoad.Backend.Models.Weighing
         [Column("tare_expiry_days")]
         public int? TareExpiryDays { get; set; }
 
+        /// <summary>
+        /// Rated payload capacity for this vehicle (kg) — the manufacturer/registration-rated maximum
+        /// cargo weight, distinct from DefaultTareWeightKg (the empty-vehicle weight). Used by the
+        /// Vehicle Utilization report to compute payload efficiency (actual net weight vs. capacity).
+        /// Null when not configured — the efficiency figure is omitted (not estimated) in that case.
+        /// </summary>
+        [Column("rated_capacity_kg")]
+        public decimal? RatedCapacityKg { get; set; }
+
         // Navigation properties
         [ForeignKey("OwnerId")]
         public virtual VehicleOwner? Owner { get; set; }

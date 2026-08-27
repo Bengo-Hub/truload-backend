@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using TruLoad.Backend.Data;
+using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Services.Interfaces.Authorization;
@@ -484,6 +485,154 @@ public class CommercialWeighingController : ControllerBase
         {
             _logger.LogError(ex, "Error rejecting tolerance exception for transaction {TransactionId}", id);
             return StatusCode(500, "An error occurred while rejecting the tolerance exception.");
+        }
+    }
+
+    // ============================================================================
+    // Tare Anomaly Detection - Supervisor Resolution (Phase 7 MVP)
+    // ============================================================================
+
+    /// <summary>
+    /// Approves a flagged tare anomaly as-is. Requires weighing.override permission
+    /// (same policy as approve/reject-tolerance-exception).
+    /// </summary>
+    [HttpPost("{id}/approve-tare-anomaly")]
+    [Authorize(Policy = "Permission:weighing.override")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(CommercialWeighingResultDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> ApproveTareAnomaly(Guid id)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userGuid))
+            return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var result = await _commercialWeighingService.ApproveTareAnomalyAsync(id, userGuid);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound($"Weighing transaction {id} not found");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error approving tare anomaly for transaction {TransactionId}", id);
+            return StatusCode(500, "An error occurred while approving the tare anomaly.");
+        }
+    }
+
+    /// <summary>
+    /// Rejects a flagged tare anomaly. Does not change the already-recorded tare value - see
+    /// ICommercialWeighingService.RejectTareAnomalyAsync. Requires weighing.override permission.
+    /// </summary>
+    [HttpPost("{id}/reject-tare-anomaly")]
+    [Authorize(Policy = "Permission:weighing.override")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(CommercialWeighingResultDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> RejectTareAnomaly(Guid id, [FromBody] ResolveTareAnomalyRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userGuid))
+            return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var result = await _commercialWeighingService.RejectTareAnomalyAsync(id, request.Reason, userGuid);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound($"Weighing transaction {id} not found");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error rejecting tare anomaly for transaction {TransactionId}", id);
+            return StatusCode(500, "An error occurred while rejecting the tare anomaly.");
+        }
+    }
+
+    /// <summary>
+    /// Overrides a flagged tare anomaly with a supervisor-corrected tare value (required
+    /// justification). Updates the vehicle's stored tare going forward. Requires weighing.override
+    /// permission.
+    /// </summary>
+    [HttpPost("{id}/override-tare-anomaly")]
+    [Authorize(Policy = "Permission:weighing.override")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(CommercialWeighingResultDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> OverrideTareAnomaly(Guid id, [FromBody] OverrideTareAnomalyRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userGuid))
+            return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var result = await _commercialWeighingService.OverrideTareAnomalyAsync(id, request, userGuid);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound($"Weighing transaction {id} not found");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error overriding tare anomaly for transaction {TransactionId}", id);
+            return StatusCode(500, "An error occurred while overriding the tare anomaly.");
+        }
+    }
+
+    /// <summary>
+    /// Lists flagged, unresolved tare anomalies for the current organization (Tare Register
+    /// "Pending Review" queue). Combines both WeighingTransaction- and VehicleTareHistory-anchored
+    /// anomalies - see TareAnomalyDto.
+    /// </summary>
+    [HttpGet("tare-anomalies")]
+    [Authorize(Policy = "Permission:weighing.read")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(PagedResponse<TareAnomalyDto>), 200)]
+    public async Task<IActionResult> GetFlaggedTareAnomalies(
+        [FromQuery] Guid? stationId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1 || pageSize > 200) pageSize = 20;
+
+        try
+        {
+            var result = await _commercialWeighingService.GetFlaggedTareAnomaliesAsync(stationId, page, pageSize);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching flagged tare anomalies");
+            return StatusCode(500, "An error occurred while fetching flagged tare anomalies.");
         }
     }
 

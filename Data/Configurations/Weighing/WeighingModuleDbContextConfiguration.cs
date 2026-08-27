@@ -256,6 +256,11 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.Property(e => e.LastTareWeighedAt).HasColumnName("last_tare_weighed_at");
                 entity.Property(e => e.TareExpiryDays).HasColumnName("tare_expiry_days");
 
+                // ── Commercial Weighing: Vehicle Capacity (Stage C / Phase 6b) ──
+                entity.Property(e => e.RatedCapacityKg)
+                    .HasColumnName("rated_capacity_kg")
+                    .HasColumnType("decimal(10,2)");
+
                 entity.HasMany(e => e.TareHistory)
                     .WithOne(th => th.Vehicle)
                     .HasForeignKey(th => th.VehicleId)
@@ -515,6 +520,13 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.Property(e => e.ToleranceExceptionApprovedBy).HasColumnName("tolerance_exception_approved_by");
                 entity.Property(e => e.ToleranceExceptionApprovedAt).HasColumnName("tolerance_exception_approved_at");
 
+                // ── Tare Anomaly Detection (Stage C / Phase 7 MVP) ──
+                entity.Property(e => e.TareAnomalyFlaggedAt).HasColumnName("tare_anomaly_flagged_at");
+                entity.Property(e => e.TareAnomalyReason).HasColumnName("tare_anomaly_reason").HasMaxLength(500);
+                entity.Property(e => e.TareAnomalyResolvedByUserId).HasColumnName("tare_anomaly_resolved_by_user_id");
+                entity.Property(e => e.TareAnomalyResolvedAt).HasColumnName("tare_anomaly_resolved_at");
+                entity.Property(e => e.TareAnomalyResolution).HasColumnName("tare_anomaly_resolution").HasMaxLength(1000);
+
                 // Commercial indexes
                 entity.HasIndex(e => e.WeighingMode)
                     .HasDatabaseName("IX_weighing_transactions_weighing_mode");
@@ -523,6 +535,10 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                     .HasFilter("consignment_no IS NOT NULL");
                 entity.HasIndex(e => new { e.TransporterId, e.WeighedAt })
                     .HasDatabaseName("IX_weighing_transactions_transporter_date");
+                // Filtered index for the "flagged and unresolved" tare-anomaly review queue.
+                entity.HasIndex(e => e.TareAnomalyFlaggedAt)
+                    .HasDatabaseName("IX_weighing_transactions_tare_anomaly_pending")
+                    .HasFilter("tare_anomaly_flagged_at IS NOT NULL AND tare_anomaly_resolved_at IS NULL");
             });
 
             // WeighingAxle entity configuration
@@ -845,10 +861,23 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                     .HasColumnName("updated_at")
                     .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                // ── Tare Anomaly Detection (Stage C / Phase 7 MVP) ──
+                // Fallback anchor for anomalies flagged via RecordTareHistoryEntryAsync, which isn't
+                // tied to a live WeighingTransaction (see that entity's own TareAnomaly* fields for
+                // the primary two-pass-capture anchor).
+                entity.Property(e => e.TareAnomalyFlaggedAt).HasColumnName("tare_anomaly_flagged_at");
+                entity.Property(e => e.TareAnomalyReason).HasColumnName("tare_anomaly_reason").HasMaxLength(500);
+                entity.Property(e => e.TareAnomalyResolvedByUserId).HasColumnName("tare_anomaly_resolved_by_user_id");
+                entity.Property(e => e.TareAnomalyResolvedAt).HasColumnName("tare_anomaly_resolved_at");
+                entity.Property(e => e.TareAnomalyResolution).HasColumnName("tare_anomaly_resolution").HasMaxLength(1000);
+
                 entity.HasIndex(e => e.VehicleId);
                 entity.HasIndex(e => e.OrganizationId);
                 entity.HasIndex(e => new { e.VehicleId, e.WeighedAt })
                     .HasDatabaseName("IX_vehicle_tare_history_vehicle_date");
+                entity.HasIndex(e => e.TareAnomalyFlaggedAt)
+                    .HasDatabaseName("IX_vehicle_tare_history_tare_anomaly_pending")
+                    .HasFilter("tare_anomaly_flagged_at IS NOT NULL AND tare_anomaly_resolved_at IS NULL");
 
                 entity.HasCheckConstraint("chk_tare_source",
                     "source IN ('measured', 'manual')");

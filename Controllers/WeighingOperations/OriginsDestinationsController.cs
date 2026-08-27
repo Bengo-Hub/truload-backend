@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Repositories.Infrastructure;
+using TruLoad.Backend.Middleware;
+using TruLoad.Backend.DTOs.Infrastructure;
 
 namespace TruLoad.Backend.Controllers.WeighingOperations;
 
@@ -11,10 +13,12 @@ namespace TruLoad.Backend.Controllers.WeighingOperations;
 public class OriginsDestinationsController : ControllerBase
 {
     private readonly IOriginsDestinationsRepository _repository;
+    private readonly ITenantContext _tenantContext;
 
-    public OriginsDestinationsController(IOriginsDestinationsRepository repository)
+    public OriginsDestinationsController(IOriginsDestinationsRepository repository, ITenantContext tenantContext)
     {
         _repository = repository;
+        _tenantContext = tenantContext;
     }
 
     [HttpGet]
@@ -78,14 +82,32 @@ public class OriginsDestinationsController : ControllerBase
     [ProducesResponseType(typeof(OriginsDestinations), 201)]
     [ProducesResponseType(400)]
     [ProducesResponseType(409)]
-    public async Task<IActionResult> Create([FromBody] OriginsDestinations location)
+    public async Task<IActionResult> Create([FromBody] CreateOriginDestinationRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var existing = await _repository.GetByCodeAsync(location.Code);
+        var existing = await _repository.GetByCodeAsync(request.Code);
         if (existing != null)
-            return Conflict(new { Message = $"Location with code {location.Code} already exists" });
+            return Conflict(new { Message = $"Location with code {request.Code} already exists" });
+
+        // Auto-stamp the caller's org unless a Superuser explicitly asked for a shared/global entry
+        // (MakeGlobal), or the caller is a Superuser with no resolvable tenant context at all (e.g.
+        // cross-tenant mode - see TenantContext memory) - there is nothing to stamp in that case
+        // either, so the row is created as shared/global by necessity.
+        var isSuperuser = User.IsInRole("Superuser");
+        Guid? organizationId = isSuperuser && request.MakeGlobal
+            ? null
+            : (_tenantContext.OrganizationId != Guid.Empty ? _tenantContext.OrganizationId : null);
+
+        var location = new OriginsDestinations
+        {
+            Code = request.Code,
+            Name = request.Name,
+            LocationType = request.LocationType,
+            Country = request.Country,
+            OrganizationId = organizationId
+        };
 
         var created = await _repository.CreateAsync(location);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
@@ -111,6 +133,12 @@ public class OriginsDestinationsController : ControllerBase
         var duplicate = await _repository.GetByCodeAsync(location.Code);
         if (duplicate != null && duplicate.Id != id)
             return Conflict(new { Message = $"Location with code {location.Code} already exists" });
+
+        // Preserve the existing OrganizationId unless the caller is a Superuser explicitly changing
+        // it - a regular tenant admin with config.manage_taxonomy should not be able to move/re-scope
+        // a row to another org or make it shared/global just by round-tripping the entity on Update
+        // (same superuser-only bypass rule Create enforces above).
+        location.OrganizationId = User.IsInRole("Superuser") ? location.OrganizationId : existing.OrganizationId;
 
         var updated = await _repository.UpdateAsync(location);
         return Ok(updated);

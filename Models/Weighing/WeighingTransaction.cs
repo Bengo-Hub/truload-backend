@@ -424,6 +424,46 @@ public class WeighingTransaction : TenantAwareEntity
     /// </summary>
     public DateTime? ToleranceExceptionApprovedAt { get; set; }
 
+    // ── Tare Anomaly Detection (Phase 7 MVP - drift vs. stored tare only) ──
+
+    /// <summary>
+    /// Timestamp when a tare drift anomaly was flagged for this transaction (measured/preset tare
+    /// differed from the vehicle's prior stored tare by more than the configured threshold —
+    /// commercial.tare_drift_anomaly_threshold_percent). Null when no anomaly was flagged.
+    /// Unlike ToleranceExceeded, this is an informational review flag only — it does NOT block the
+    /// transaction from completing or the final ticket from printing.
+    /// </summary>
+    public DateTime? TareAnomalyFlaggedAt { get; set; }
+
+    /// <summary>
+    /// Human-readable reason the anomaly was flagged, e.g. "Measured tare differs from stored tare
+    /// by 8.2% (threshold 5%)".
+    /// </summary>
+    [MaxLength(500)]
+    public string? TareAnomalyReason { get; set; }
+
+    /// <summary>
+    /// User ID of the supervisor who resolved (approved/rejected/overrode) the tare anomaly.
+    /// </summary>
+    public Guid? TareAnomalyResolvedByUserId { get; set; }
+
+    /// <summary>
+    /// Timestamp when the tare anomaly was resolved. Null while still pending review.
+    /// TareAnomalyFlaggedAt/TareAnomalyReason are left untouched on resolution (permanent audit
+    /// trail) - same convention as ToleranceExceeded/ToleranceExceptionApproved above, where the
+    /// original flag persists and a separate resolved-at timestamp indicates the outcome.
+    /// </summary>
+    public DateTime? TareAnomalyResolvedAt { get; set; }
+
+    /// <summary>
+    /// Resolution outcome: "Approved", "Rejected: {reason}", or "Overridden: corrected tare {kg}kg —
+    /// {justification}". A single combined string (value + note) rather than separate columns -
+    /// mirrors how this entity already records justification/reason text elsewhere (preset-tare and
+    /// quality-deduction notes are appended into Remarks rather than given dedicated columns).
+    /// </summary>
+    [MaxLength(1000)]
+    public string? TareAnomalyResolution { get; set; }
+
     // ── Scale Type ──
     /// <summary>
     /// Scale type for commercial weighing: "multideck" (platform scale) or "mobile" (axle-by-axle).

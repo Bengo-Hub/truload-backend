@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using TruLoad.Backend.DTOs.Shared;
 
 namespace TruLoad.Backend.DTOs.Weighing;
 
@@ -279,6 +280,61 @@ public class RecordTareHistoryRequest
     public bool SetAsDefault { get; set; } = true;
 }
 
+/// <summary>
+/// Request to reject a flagged tare anomaly (Phase 7 MVP). Reason is optional - rejection does not
+/// change the already-recorded tare value (see CommercialWeighingService.RejectTareAnomalyAsync);
+/// it simply records that a supervisor reviewed and dismissed the flag, expecting the vehicle's tare
+/// to be re-verified on its next visit.
+/// </summary>
+public class ResolveTareAnomalyRequest
+{
+    [MaxLength(500)]
+    public string? Reason { get; set; }
+}
+
+/// <summary>
+/// Request to override a flagged tare anomaly with a supervisor-corrected tare value (Phase 7 MVP).
+/// Mirrors <see cref="UseStoredTareRequest"/>'s required-justification pattern for preset tare
+/// overrides. Updates the vehicle's stored tare going forward via the existing
+/// CommercialWeighingService.RecordTareWeightAsync helper (which also logs a VehicleTareHistory
+/// audit entry) - does NOT retroactively rewrite the flagged transaction's already-recorded
+/// TareWeightKg/NetWeightKg (see CommercialWeighingService.OverrideTareAnomalyAsync for reasoning).
+/// </summary>
+public class OverrideTareAnomalyRequest
+{
+    [Required]
+    [Range(1, 100000)]
+    public int CorrectedTareWeightKg { get; set; }
+
+    [Required]
+    [MaxLength(500)]
+    public string Justification { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// A single flagged, unresolved tare anomaly for the Tare Register "Pending Review" queue.
+/// <see cref="AnchorType"/> distinguishes the two places an anomaly can be flagged (Phase 7 MVP):
+/// "WeighingTransaction" for the two-pass capture / stored-tare-override paths (resolvable via the
+/// Approve/Reject/Override endpoints below, TicketNumber populated), or "VehicleTareHistory" for the
+/// standalone Tare Register "Record Tare" dialog (RecordTareHistoryEntryAsync), which isn't tied to
+/// any live transaction - see CommercialWeighingService for why this entity was chosen as the
+/// fallback anchor. Both anchor types are listed here for visibility, but only WeighingTransaction-
+/// anchored anomalies currently have dedicated resolve endpoints (see Stage C report for reasoning).
+/// </summary>
+public class TareAnomalyDto
+{
+    public string AnchorType { get; set; } = "WeighingTransaction";
+    public Guid Id { get; set; }
+    public Guid VehicleId { get; set; }
+    public string? VehicleRegNo { get; set; }
+    public string? TicketNumber { get; set; }
+    public DateTime? FlaggedAt { get; set; }
+    public string? Reason { get; set; }
+    public int? TareWeightKg { get; set; }
+    public Guid? StationId { get; set; }
+    public string? StationName { get; set; }
+}
+
 // ── Response DTOs ──
 
 /// <summary>
@@ -370,6 +426,13 @@ public class CommercialWeighingResultDto
     public Guid? ToleranceExceptionApprovedBy { get; set; }
     public DateTime? ToleranceExceptionApprovedAt { get; set; }
 
+    // Tare anomaly (Phase 7 MVP - drift vs. stored tare only)
+    public DateTime? TareAnomalyFlaggedAt { get; set; }
+    public string? TareAnomalyReason { get; set; }
+    public Guid? TareAnomalyResolvedByUserId { get; set; }
+    public DateTime? TareAnomalyResolvedAt { get; set; }
+    public string? TareAnomalyResolution { get; set; }
+
     // Axle / deck weights (stored per-pass in weighing_axles)
     public List<CommercialAxleWeightDto> FirstPassAxles { get; set; } = new();
     public List<CommercialAxleWeightDto> SecondPassAxles { get; set; } = new();
@@ -460,4 +523,9 @@ public class VehicleTareHistoryDto
     public string? Notes { get; set; }
     public Guid? RecordedByUserId { get; set; }
     public string? RecordedByName { get; set; }
+
+    // Tare anomaly (Phase 7 MVP) - set when this entry was flagged via RecordTareHistoryEntryAsync
+    // (the standalone "Record Tare" dialog isn't tied to a WeighingTransaction, so it's flagged here).
+    public DateTime? TareAnomalyFlaggedAt { get; set; }
+    public string? TareAnomalyReason { get; set; }
 }

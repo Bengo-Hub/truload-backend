@@ -5,6 +5,7 @@ using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Reporting;
 using TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments.Reports;
+using TruLoad.Backend.Services.Implementations.Weighing;
 
 namespace TruLoad.Backend.Services.Implementations.Reporting.Modules;
 
@@ -117,7 +118,8 @@ public class CommercialReportGenerator : BaseReportGenerator
         new() { Key = "Min Payload (kg)", Label = "Minimum Payload (kg)" },
         new() { Key = "Max Payload (kg)", Label = "Maximum Payload (kg)" },
         new() { Key = "Avg Gross (kg)", Label = "Average Gross Weight (kg)" },
-        new() { Key = "Avg Tare (kg)", Label = "Average Tare Weight (kg)" }
+        new() { Key = "Avg Tare (kg)", Label = "Average Tare Weight (kg)" },
+        new() { Key = "Payload Efficiency (%)", Label = "Payload Efficiency (%)" }
     ];
 
     private static readonly List<ReportColumnDefinition> DriverProductivityColumns =
@@ -1206,7 +1208,7 @@ public class CommercialReportGenerator : BaseReportGenerator
             {
                 var entry = entries[i];
                 var previousTare = i > 0 ? entries[i - 1].TareWeightKg : (entry.DefaultTare ?? entry.TareWeightKg);
-                var driftPct = ComputeTareDriftPercent(entry.TareWeightKg, previousTare);
+                var driftPct = TareDriftHelper.ComputeTareDriftPercent(entry.TareWeightKg, previousTare);
                 var isAnomaly = driftPct > 5;
                 if (isAnomaly) anomalyCount++;
 
@@ -1293,22 +1295,11 @@ public class CommercialReportGenerator : BaseReportGenerator
         return PdfResult(doc, filters, "tare_weight_audit", from, to);
     }
 
-    /// <summary>
-    /// Shared >5% drift check - the anomaly rule Tare Weight Audit already applies to every
-    /// consecutive tare-history transition. Extracted so Tare Verification (5c) can reuse it for
-    /// its per-vehicle drift-alert flag instead of reimplementing the calculation.
-    /// </summary>
-    private static decimal ComputeTareDriftPercent(int currentTareKg, int previousTareKg)
-    {
-        return previousTareKg > 0
-            ? Math.Abs((decimal)(currentTareKg - previousTareKg) / previousTareKg * 100)
-            : 0m;
-    }
-
     // =====================================================================
     // Tare Verification Report (5c) - separate from Tare Weight Audit's drift log. Buckets the
     // fleet by stored-tare status (valid / expiring within 14 days / expired / no tare) and flags
-    // vehicles whose latest tare measurement drifted >5% (reusing ComputeTareDriftPercent above).
+    // vehicles whose latest tare measurement drifted >5% (reusing TareDriftHelper.ComputeTareDriftPercent,
+    // shared - Stage C - with CommercialWeighingService's live tare-anomaly detection).
     // =====================================================================
 
     private async Task<ReportResult> GenerateTareVerificationAsync(
@@ -1376,7 +1367,7 @@ public class CommercialReportGenerator : BaseReportGenerator
             {
                 var last = history[^1];
                 var previous = history[^2];
-                driftAlert = ComputeTareDriftPercent(last.TareWeightKg, previous.TareWeightKg) > 5;
+                driftAlert = TareDriftHelper.ComputeTareDriftPercent(last.TareWeightKg, previous.TareWeightKg) > 5;
             }
             if (driftAlert) driftAlertCount++;
 
@@ -1476,12 +1467,13 @@ public class CommercialReportGenerator : BaseReportGenerator
                 w.VehicleId,
                 VehicleReg = w.VehicleRegNumber,
                 TransporterName = w.Transporter != null ? w.Transporter.Name : "-",
-                MaxPayload = w.Vehicle != null ? w.Vehicle.DefaultTareWeightKg : null
+                RatedCapacityKg = w.Vehicle != null ? w.Vehicle.RatedCapacityKg : null
             })
             .Select(g => new
             {
                 VehicleReg = g.Key.VehicleReg,
                 TransporterName = g.Key.TransporterName,
+                RatedCapacityKg = g.Key.RatedCapacityKg,
                 TripCount = g.Count(),
                 TotalNetWeightKg = g.Sum(x => (long)(x.NetWeightKg ?? 0)),
                 AvgPayloadKg = (int)g.Average(x => x.NetWeightKg ?? 0),
@@ -1493,11 +1485,22 @@ public class CommercialReportGenerator : BaseReportGenerator
             .OrderByDescending(v => v.TotalNetWeightKg)
             .ToListAsync(ct);
 
+        // PayloadEfficiencyPercent = avg actual payload / rated capacity, computed here (not in the
+        // SQL projection above) since it depends on AvgPayloadKg, itself an aggregate of the same
+        // group. Null/omitted (not estimated) when the vehicle has no RatedCapacityKg configured -
+        // replaces the old MaxPayload = Vehicle.DefaultTareWeightKg artifact, which used the empty-
+        // vehicle tare weight as a stand-in for capacity (a bug: tare weight is not payload capacity).
+        var efficiencyByVehicle = vehicleData.ToDictionary(
+            v => v.VehicleReg,
+            v => v.RatedCapacityKg.HasValue && v.RatedCapacityKg.Value > 0
+                ? Math.Round(v.AvgPayloadKg / v.RatedCapacityKg.Value * 100, 1)
+                : (decimal?)null);
+
         var headers = new[]
         {
             "Vehicle Reg", "Transporter", "Trip Count", "Total Net Weight (kg)",
             "Avg Payload (kg)", "Min Payload (kg)", "Max Payload (kg)",
-            "Avg Gross (kg)", "Avg Tare (kg)"
+            "Avg Gross (kg)", "Avg Tare (kg)", "Payload Efficiency (%)"
         };
 
         var csvRows = vehicleData.Select(v => new[]
@@ -1510,7 +1513,8 @@ public class CommercialReportGenerator : BaseReportGenerator
             FormatNumber(v.MinPayloadKg),
             FormatNumber(v.MaxPayloadKg),
             FormatNumber(v.AvgGrossKg),
-            FormatNumber(v.AvgTareKg)
+            FormatNumber(v.AvgTareKg),
+            efficiencyByVehicle[v.VehicleReg].HasValue ? $"{efficiencyByVehicle[v.VehicleReg]:F1}%" : "-"
         });
 
         // Structured custom-report builder: UseDefaults=true (the default) reproduces today's
@@ -1550,7 +1554,10 @@ public class CommercialReportGenerator : BaseReportGenerator
                 ("Total Net Weight", $"{FormatNumber(vehicleData.Sum(v => v.TotalNetWeightKg))} kg"),
                 ("Avg Payload", vehicleData.Count > 0
                     ? $"{FormatNumber((int)vehicleData.Average(v => v.AvgPayloadKg))} kg"
-                    : "N/A")
+                    : "N/A"),
+                ("Avg Payload Efficiency", efficiencyByVehicle.Values.Any(v => v.HasValue)
+                    ? $"{efficiencyByVehicle.Values.Where(v => v.HasValue).Average(v => v!.Value):F1}%"
+                    : "N/A (no vehicle capacities configured)")
             ]
         };
 

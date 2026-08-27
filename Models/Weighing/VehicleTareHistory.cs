@@ -75,6 +75,35 @@ public class VehicleTareHistory : BaseEntity
     [Column("recorded_by_name")]
     public string? RecordedByName { get; set; }
 
+    // ── Tare Anomaly Detection (Phase 7 MVP) ──
+    // Anchor for drift-anomaly flags raised via RecordTareHistoryEntryAsync (the standalone "Tare
+    // Register > Record Tare" dialog), which - unlike CaptureSecondWeightAsync/UseStoredTareAsync -
+    // isn't tied to any live WeighingTransaction. Same field shape as WeighingTransaction's
+    // TareAnomaly* fields for consistency; see CommercialWeighingService for the shared detection
+    // logic and the report for why this entity was chosen as the fallback anchor.
+
+    /// <summary>Timestamp when a tare drift anomaly was flagged for this history entry. Null when none.</summary>
+    [Column("tare_anomaly_flagged_at")]
+    public DateTime? TareAnomalyFlaggedAt { get; set; }
+
+    /// <summary>Human-readable reason the anomaly was flagged.</summary>
+    [MaxLength(500)]
+    [Column("tare_anomaly_reason")]
+    public string? TareAnomalyReason { get; set; }
+
+    /// <summary>User ID of the supervisor who resolved the flagged anomaly.</summary>
+    [Column("tare_anomaly_resolved_by_user_id")]
+    public Guid? TareAnomalyResolvedByUserId { get; set; }
+
+    /// <summary>Timestamp when the anomaly was resolved. Null while still pending review.</summary>
+    [Column("tare_anomaly_resolved_at")]
+    public DateTime? TareAnomalyResolvedAt { get; set; }
+
+    /// <summary>Resolution outcome text (see WeighingTransaction.TareAnomalyResolution for format).</summary>
+    [MaxLength(1000)]
+    [Column("tare_anomaly_resolution")]
+    public string? TareAnomalyResolution { get; set; }
+
     // Navigation properties
     [ForeignKey("VehicleId")]
     public virtual Vehicle? Vehicle { get; set; }

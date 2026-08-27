@@ -26,4 +26,17 @@ public class CargoTypes : BaseEntity
     /// Null means no foreign matter limit defined.
     /// </summary>
     public decimal? ForeignMatterLimitPercent { get; set; }
+
+    /// <summary>
+    /// Organization that owns this cargo type.
+    /// Null = shared/global (visible to every tenant, same as today). Non-null = tenant-specific
+    /// (only visible to that organization, in addition to the shared/global rows).
+    /// Mirrors the same NULL=shared convention already used by Driver.OrganizationId.
+    /// </summary>
+    public Guid? OrganizationId { get; set; }
+
+    /// <summary>
+    /// Navigation property to the owning Organization (null for shared/global rows).
+    /// </summary>
+    public virtual Organization? Organization { get; set; }
 }

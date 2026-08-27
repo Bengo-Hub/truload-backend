@@ -1,30 +1,43 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Data;
+using TruLoad.Backend.Middleware;
 
 namespace TruLoad.Backend.Repositories.Infrastructure;
 
 public class OriginsDestinationsRepository : IOriginsDestinationsRepository
 {
     private readonly TruLoadDbContext _context;
+    private readonly ITenantContext _tenantContext;
 
-    public OriginsDestinationsRepository(TruLoadDbContext context)
+    public OriginsDestinationsRepository(TruLoadDbContext context, ITenantContext tenantContext)
     {
         _context = context;
+        _tenantContext = tenantContext;
     }
 
+    /// <summary>
+    /// List/search queries return rows that are either shared/global (OrganizationId == null) or
+    /// belong to the caller's current tenant - same NULL=shared convention and filter shape already
+    /// used by DriverRepository.SearchAsync for Driver.OrganizationId.
+    /// </summary>
     public async Task<List<OriginsDestinations>> GetAllActiveAsync(CancellationToken cancellationToken = default)
     {
+        var orgId = _tenantContext.OrganizationId;
         return await _context.OriginsDestinations
             .Where(o => o.IsActive && o.DeletedAt == null)
+            .Where(o => o.OrganizationId == null || o.OrganizationId == orgId)
             .OrderBy(o => o.Name)
             .ToListAsync(cancellationToken);
     }
 
     public async Task<List<OriginsDestinations>> GetAllAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
     {
-        var query = _context.OriginsDestinations.Where(o => o.DeletedAt == null);
-        
+        var orgId = _tenantContext.OrganizationId;
+        var query = _context.OriginsDestinations
+            .Where(o => o.DeletedAt == null)
+            .Where(o => o.OrganizationId == null || o.OrganizationId == orgId);
+
         if (!includeInactive)
             query = query.Where(o => o.IsActive);
 
@@ -45,16 +58,20 @@ public class OriginsDestinationsRepository : IOriginsDestinationsRepository
 
     public async Task<List<OriginsDestinations>> GetByCountryAsync(string country, CancellationToken cancellationToken = default)
     {
+        var orgId = _tenantContext.OrganizationId;
         return await _context.OriginsDestinations
             .Where(o => o.Country == country && o.IsActive && o.DeletedAt == null)
+            .Where(o => o.OrganizationId == null || o.OrganizationId == orgId)
             .OrderBy(o => o.Name)
             .ToListAsync(cancellationToken);
     }
 
     public async Task<List<OriginsDestinations>> GetByLocationTypeAsync(string locationType, CancellationToken cancellationToken = default)
     {
+        var orgId = _tenantContext.OrganizationId;
         return await _context.OriginsDestinations
             .Where(o => o.LocationType == locationType && o.IsActive && o.DeletedAt == null)
+            .Where(o => o.OrganizationId == null || o.OrganizationId == orgId)
             .OrderBy(o => o.Name)
             .ToListAsync(cancellationToken);
     }

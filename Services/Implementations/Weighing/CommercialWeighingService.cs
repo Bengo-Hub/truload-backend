@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Data.Repositories.Weighing;
+using TruLoad.Backend.DTOs.Shared;
 using TruLoad.Backend.DTOs.Weighing;
 using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.Financial;
@@ -30,6 +31,7 @@ public class CommercialWeighingService : ICommercialWeighingService
     private readonly ILogger<CommercialWeighingService> _logger;
 
     private const int DefaultPendingWeighingThresholdHours = 8;
+    private const decimal DefaultTareDriftAnomalyThresholdPercent = 5m;
 
     public CommercialWeighingService(
         TruLoadDbContext dbContext,
@@ -252,6 +254,11 @@ public class CommercialWeighingService : ICommercialWeighingService
         transaction.TareSource = "measured";
         transaction.GvwMeasuredKg = grossWeightKg;
 
+        // Tare anomaly detection (Phase 7 MVP) - compare this session's newly measured tare against
+        // the vehicle's PRIOR stored tare before RecordTareWeightAsync overwrites it further below.
+        // Informational only - does not block completion (unlike ToleranceExceeded).
+        await FlagTareAnomalyIfDriftedAsync(transaction, tareWeightKg);
+
         ApplyManualEntryIfRequested(transaction, request.IsManualEntry, request.ManualEntryJustification);
 
         // Allow operator to provide/override expected net weight at capture time
@@ -401,6 +408,14 @@ public class CommercialWeighingService : ICommercialWeighingService
         transaction.NetWeightKg = grossWeightKg - tareWeightKg;
         transaction.TareSource = tareSource;
         transaction.GvwMeasuredKg = grossWeightKg;
+
+        // Tare anomaly detection (Phase 7 MVP) - only meaningful for "preset" (a supervisor
+        // asserting a NEW tare value via OverrideTareWeightKg). The "stored"/default-fallback
+        // branches above reuse an already-known vehicle tare with nothing new to compare.
+        if (tareSource == "preset")
+        {
+            await FlagTareAnomalyIfDriftedAsync(transaction, tareWeightKg);
+        }
 
         // Record the preset-tare justification for audit purposes. Reuses Remarks (no dedicated
         // column) - same pattern UpdateQualityDeductionAsync uses to append an audit note.
@@ -563,6 +578,13 @@ public class CommercialWeighingService : ICommercialWeighingService
             throw new KeyNotFoundException($"Vehicle {request.VehicleId} not found.");
         }
 
+        // Tare anomaly detection (Phase 7 MVP) - evaluated against the vehicle's PRIOR stored tare
+        // BEFORE RecordTareWeightAsync below overwrites it (when SetAsDefault is true, the default).
+        // This entry point isn't tied to any live WeighingTransaction (it's the standalone Tare
+        // Register "Record Tare" dialog), so the flag is anchored on the VehicleTareHistory row
+        // itself rather than a transaction - see Stage C report for this anchoring decision.
+        var (isTareAnomaly, tareAnomalyReason) = await EvaluateTareDriftAnomalyAsync(request.VehicleId, request.TareWeightKg);
+
         var history = await RecordTareWeightAsync(
             request.VehicleId,
             request.TareWeightKg,
@@ -571,6 +593,14 @@ public class CommercialWeighingService : ICommercialWeighingService
             notes: request.Notes,
             recordedByUserId: recordedByUserId,
             setAsDefault: request.SetAsDefault);
+
+        if (isTareAnomaly && history != null)
+        {
+            history.TareAnomalyFlaggedAt = DateTime.UtcNow;
+            history.TareAnomalyReason = tareAnomalyReason;
+            _logger.LogWarning("Tare anomaly flagged for vehicle tare history {HistoryId} (vehicle {VehicleId}): {Reason}",
+                history.Id, request.VehicleId, tareAnomalyReason);
+        }
 
         await _dbContext.SaveChangesAsync();
 
@@ -587,7 +617,9 @@ public class CommercialWeighingService : ICommercialWeighingService
             Source = history.Source,
             Notes = history.Notes,
             RecordedByUserId = history.RecordedByUserId,
-            RecordedByName = history.RecordedByName
+            RecordedByName = history.RecordedByName,
+            TareAnomalyFlaggedAt = history.TareAnomalyFlaggedAt,
+            TareAnomalyReason = history.TareAnomalyReason
         };
     }
 
@@ -753,7 +785,9 @@ public class CommercialWeighingService : ICommercialWeighingService
             Source = h.Source,
             Notes = h.Notes,
             RecordedByUserId = h.RecordedByUserId,
-            RecordedByName = h.RecordedByName
+            RecordedByName = h.RecordedByName,
+            TareAnomalyFlaggedAt = h.TareAnomalyFlaggedAt,
+            TareAnomalyReason = h.TareAnomalyReason
         }).ToList();
     }
 
@@ -1040,6 +1074,50 @@ public class CommercialWeighingService : ICommercialWeighingService
             throw new InvalidOperationException(
                 "Justification is required when providing a manual override (preset) tare weight.");
         }
+    }
+
+    /// <summary>
+    /// Tare anomaly detection (Phase 7 MVP, tare-management.md's "drift vs. stored tare" rule only -
+    /// vehicle-class range checks and rapid-change alerts are explicitly out of scope). Compares a
+    /// newly measured/asserted tare against the vehicle's CURRENT stored tare (vehicle.LastTareWeightKg)
+    /// using the shared TareDriftHelper.ComputeTareDriftPercent - the same calculation the Tare Weight
+    /// Audit / Tare Verification reports already use - against the configurable
+    /// commercial.tare_drift_anomaly_threshold_percent setting (default 5%).
+    /// Returns (false, null) when the vehicle has no prior stored tare to compare against (nothing to
+    /// detect drift from yet) or the drift is within threshold. Callers must invoke this BEFORE
+    /// RecordTareWeightAsync (which overwrites vehicle.LastTareWeightKg), so the comparison is always
+    /// against the prior value, not the one about to be recorded.
+    /// </summary>
+    private async Task<(bool IsAnomaly, string? Reason)> EvaluateTareDriftAnomalyAsync(Guid vehicleId, int newTareKg)
+    {
+        var vehicle = await _dbContext.Vehicles.AsNoTracking().FirstOrDefaultAsync(v => v.Id == vehicleId);
+        if (vehicle?.LastTareWeightKg == null || vehicle.LastTareWeightKg.Value <= 0)
+            return (false, null);
+
+        var thresholdPercent = await _settingsService.GetSettingValueAsync(
+            SettingKeys.CommercialTareDriftAnomalyThresholdPercent, DefaultTareDriftAnomalyThresholdPercent);
+
+        var driftPercent = TareDriftHelper.ComputeTareDriftPercent(newTareKg, vehicle.LastTareWeightKg.Value);
+        if (driftPercent <= thresholdPercent)
+            return (false, null);
+
+        var reason = $"Measured tare differs from stored tare by {driftPercent:F1}% (threshold {thresholdPercent:F0}%)";
+        return (true, reason);
+    }
+
+    /// <summary>
+    /// Evaluates <see cref="EvaluateTareDriftAnomalyAsync"/> and, if anomalous, stamps
+    /// TareAnomalyFlaggedAt/TareAnomalyReason on the transaction. Informational only - does not
+    /// change ControlStatus or block completion (unlike ToleranceExceeded).
+    /// </summary>
+    private async Task FlagTareAnomalyIfDriftedAsync(WeighingTransaction transaction, int newTareKg)
+    {
+        var (isAnomaly, reason) = await EvaluateTareDriftAnomalyAsync(transaction.VehicleId, newTareKg);
+        if (!isAnomaly) return;
+
+        transaction.TareAnomalyFlaggedAt = DateTime.UtcNow;
+        transaction.TareAnomalyReason = reason;
+        _logger.LogWarning("Tare anomaly flagged for transaction {TransactionId}: {Reason}", transaction.Id, reason);
     }
 
     /// <summary>
@@ -1343,6 +1421,12 @@ public class CommercialWeighingService : ICommercialWeighingService
             ToleranceExceptionApprovedBy = transaction.ToleranceExceptionApprovedBy,
             ToleranceExceptionApprovedAt = transaction.ToleranceExceptionApprovedAt,
 
+            TareAnomalyFlaggedAt = transaction.TareAnomalyFlaggedAt,
+            TareAnomalyReason = transaction.TareAnomalyReason,
+            TareAnomalyResolvedByUserId = transaction.TareAnomalyResolvedByUserId,
+            TareAnomalyResolvedAt = transaction.TareAnomalyResolvedAt,
+            TareAnomalyResolution = transaction.TareAnomalyResolution,
+
             FirstPassAxles = ParsePassWeights(transaction.IndustryMetadata, "firstPassWeights"),
             SecondPassAxles = ParsePassWeights(transaction.IndustryMetadata, "secondPassWeights"),
 
@@ -1422,5 +1506,171 @@ public class CommercialWeighingService : ICommercialWeighingService
             transactionId, rejectedByUserId, rejectionReason);
 
         return MapToCommercialResultDto(transaction);
+    }
+
+    // ============================================================================
+    // Tare Anomaly Detection - Supervisor Resolution (Phase 7 MVP)
+    // ============================================================================
+
+    public async Task<CommercialWeighingResultDto> ApproveTareAnomalyAsync(Guid transactionId, Guid approvedByUserId)
+    {
+        var transaction = await GetTransactionOrThrowAsync(transactionId);
+        EnsureCommercialMode(transaction);
+
+        if (!transaction.TareAnomalyFlaggedAt.HasValue)
+            throw new InvalidOperationException("This transaction has no flagged tare anomaly to approve.");
+        if (transaction.TareAnomalyResolvedAt.HasValue)
+            throw new InvalidOperationException("This tare anomaly has already been resolved.");
+
+        // TareAnomalyFlaggedAt/Reason are left untouched (permanent audit trail) - mirrors
+        // ToleranceExceeded/ToleranceExceptionApproved above, where the original flag persists and a
+        // separate resolved-at timestamp/outcome field indicates how it was resolved.
+        transaction.TareAnomalyResolvedByUserId = approvedByUserId;
+        transaction.TareAnomalyResolvedAt = DateTime.UtcNow;
+        transaction.TareAnomalyResolution = "Approved";
+        transaction.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+        _logger.LogInformation("Tare anomaly approved for transaction {TransactionId} by user {UserId}", transactionId, approvedByUserId);
+
+        return MapToCommercialResultDto(transaction);
+    }
+
+    public async Task<CommercialWeighingResultDto> RejectTareAnomalyAsync(Guid transactionId, string? reason, Guid rejectedByUserId)
+    {
+        var transaction = await GetTransactionOrThrowAsync(transactionId);
+        EnsureCommercialMode(transaction);
+
+        if (!transaction.TareAnomalyFlaggedAt.HasValue)
+            throw new InvalidOperationException("This transaction has no flagged tare anomaly to reject.");
+        if (transaction.TareAnomalyResolvedAt.HasValue)
+            throw new InvalidOperationException("This tare anomaly has already been resolved.");
+
+        // Deliberately does NOT reopen/unwind the transaction's capture state or change the already-
+        // recorded TareWeightKg/NetWeightKg (which would also ripple into fees/invoice already
+        // generated) - see Stage C report for this data-integrity judgment call. Rejecting simply
+        // records that a supervisor reviewed and dismissed the flag; the expectation per
+        // tare-management.md is the vehicle's tare gets re-verified on its next visit.
+        transaction.TareAnomalyResolvedByUserId = rejectedByUserId;
+        transaction.TareAnomalyResolvedAt = DateTime.UtcNow;
+        transaction.TareAnomalyResolution = string.IsNullOrWhiteSpace(reason) ? "Rejected" : $"Rejected: {reason}";
+        transaction.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+        _logger.LogInformation("Tare anomaly rejected for transaction {TransactionId} by user {UserId}", transactionId, rejectedByUserId);
+
+        return MapToCommercialResultDto(transaction);
+    }
+
+    public async Task<CommercialWeighingResultDto> OverrideTareAnomalyAsync(Guid transactionId, OverrideTareAnomalyRequest request, Guid overriddenByUserId)
+    {
+        var transaction = await GetTransactionOrThrowAsync(transactionId);
+        EnsureCommercialMode(transaction);
+
+        if (!transaction.TareAnomalyFlaggedAt.HasValue)
+            throw new InvalidOperationException("This transaction has no flagged tare anomaly to override.");
+        if (transaction.TareAnomalyResolvedAt.HasValue)
+            throw new InvalidOperationException("This tare anomaly has already been resolved.");
+
+        // Reuses the same required-justification rule UseStoredTareAsync enforces for preset tare.
+        EnsureJustificationForPresetTare(request.Justification);
+
+        // Corrects the vehicle's stored tare going forward (and logs a VehicleTareHistory audit
+        // entry via the shared helper). Deliberately does NOT retroactively rewrite this
+        // transaction's already-recorded TareWeightKg/NetWeightKg/fees/invoice - same data-integrity
+        // reasoning as Reject above (see Stage C report).
+        await RecordTareWeightAsync(
+            transaction.VehicleId,
+            request.CorrectedTareWeightKg,
+            transaction.StationId,
+            source: "manual",
+            notes: $"Tare anomaly override for ticket {transaction.TicketNumber}: {request.Justification}",
+            recordedByUserId: overriddenByUserId,
+            setAsDefault: true);
+
+        transaction.TareAnomalyResolvedByUserId = overriddenByUserId;
+        transaction.TareAnomalyResolvedAt = DateTime.UtcNow;
+        transaction.TareAnomalyResolution = $"Overridden: corrected tare {request.CorrectedTareWeightKg}kg — {request.Justification}";
+        transaction.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+        _logger.LogInformation(
+            "Tare anomaly overridden for transaction {TransactionId} by user {UserId}: corrected tare {TareKg}kg",
+            transactionId, overriddenByUserId, request.CorrectedTareWeightKg);
+
+        return MapToCommercialResultDto(transaction);
+    }
+
+    public async Task<PagedResponse<TareAnomalyDto>> GetFlaggedTareAnomaliesAsync(Guid? stationId, int pageNumber, int pageSize)
+    {
+        var orgId = _tenantContext.OrganizationId;
+
+        var txQuery = _dbContext.WeighingTransactions
+            .AsNoTracking()
+            .Include(t => t.Station)
+            .Where(t =>
+                t.OrganizationId == orgId &&
+                t.WeighingMode == "commercial" &&
+                t.VoidedAt == null &&
+                t.TareAnomalyFlaggedAt != null &&
+                t.TareAnomalyResolvedAt == null);
+        if (stationId.HasValue)
+            txQuery = txQuery.Where(t => t.StationId == stationId.Value);
+
+        var txAnomalies = await txQuery
+            .OrderByDescending(t => t.TareAnomalyFlaggedAt)
+            .Take(500)
+            .Select(t => new TareAnomalyDto
+            {
+                AnchorType = "WeighingTransaction",
+                Id = t.Id,
+                VehicleId = t.VehicleId,
+                VehicleRegNo = t.VehicleRegNumber,
+                TicketNumber = t.TicketNumber,
+                FlaggedAt = t.TareAnomalyFlaggedAt,
+                Reason = t.TareAnomalyReason,
+                TareWeightKg = t.TareWeightKg,
+                StationId = t.StationId,
+                StationName = t.Station != null ? t.Station.Name : null
+            })
+            .ToListAsync();
+
+        var historyQuery = _dbContext.VehicleTareHistory
+            .AsNoTracking()
+            .Include(h => h.Vehicle)
+            .Include(h => h.Station)
+            .Where(h =>
+                h.OrganizationId == orgId &&
+                h.TareAnomalyFlaggedAt != null &&
+                h.TareAnomalyResolvedAt == null);
+        if (stationId.HasValue)
+            historyQuery = historyQuery.Where(h => h.StationId == stationId.Value);
+
+        var historyAnomalies = await historyQuery
+            .OrderByDescending(h => h.TareAnomalyFlaggedAt)
+            .Take(500)
+            .Select(h => new TareAnomalyDto
+            {
+                AnchorType = "VehicleTareHistory",
+                Id = h.Id,
+                VehicleId = h.VehicleId,
+                VehicleRegNo = h.Vehicle != null ? h.Vehicle.RegNo : null,
+                TicketNumber = null,
+                FlaggedAt = h.TareAnomalyFlaggedAt,
+                Reason = h.TareAnomalyReason,
+                TareWeightKg = h.TareWeightKg,
+                StationId = h.StationId,
+                StationName = h.Station != null ? h.Station.Name : null
+            })
+            .ToListAsync();
+
+        var combined = txAnomalies.Concat(historyAnomalies)
+            .OrderByDescending(a => a.FlaggedAt)
+            .ToList();
+
+        var total = combined.Count;
+        var page = combined.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+
+        return PagedResponse<TareAnomalyDto>.Create(page, total, pageNumber, pageSize);
     }
 }
