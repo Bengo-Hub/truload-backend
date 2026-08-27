@@ -137,6 +137,10 @@ public class ReportFilterParams
     public string? WeighingType { get; set; }
     /// <summary>Control status filter (e.g. LEGAL, OVERLOAD, WARNING) for weighing reports.</summary>
     public string? ControlStatus { get; set; }
+    /// <summary>User ID filter (Guid string) - e.g. the Transaction Event Log report's "filtered by user" requirement.</summary>
+    public string? UserId { get; set; }
+    /// <summary>Ticket/transaction-reference substring filter - e.g. the Transaction Event Log report's "filtered by ... transaction reference" requirement.</summary>
+    public string? TicketNumber { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 1000;
 

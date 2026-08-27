@@ -22,6 +22,7 @@ public class CommercialWeighingController : ControllerBase
 {
     private readonly ICommercialWeighingService _commercialWeighingService;
     private readonly IPdfService _pdfService;
+    private readonly IEscPosTicketService _escPosTicketService;
     private readonly ISubscriptionService _subscriptionService;
     private readonly ITenantContext _tenantContext;
     private readonly TruLoadDbContext _db;
@@ -31,6 +32,7 @@ public class CommercialWeighingController : ControllerBase
     public CommercialWeighingController(
         ICommercialWeighingService commercialWeighingService,
         IPdfService pdfService,
+        IEscPosTicketService escPosTicketService,
         ISubscriptionService subscriptionService,
         ITenantContext tenantContext,
         TruLoadDbContext db,
@@ -39,6 +41,7 @@ public class CommercialWeighingController : ControllerBase
     {
         _commercialWeighingService = commercialWeighingService;
         _pdfService = pdfService;
+        _escPosTicketService = escPosTicketService;
         _subscriptionService = subscriptionService;
         _tenantContext = tenantContext;
         _db = db;
@@ -150,9 +153,13 @@ public class CommercialWeighingController : ControllerBase
         if (request.IsManualEntry && !await HasManualWeightOverridePermissionAsync())
             return Forbid();
 
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userGuid))
+            return Unauthorized("User ID not found in claims");
+
         try
         {
-            await _commercialWeighingService.CaptureFirstWeightAsync(id, request);
+            await _commercialWeighingService.CaptureFirstWeightAsync(id, request, userGuid);
             var result = await _commercialWeighingService.GetCommercialResultAsync(id);
             return Ok(result);
         }
@@ -190,9 +197,13 @@ public class CommercialWeighingController : ControllerBase
         if (request.IsManualEntry && !await HasManualWeightOverridePermissionAsync())
             return Forbid();
 
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userGuid))
+            return Unauthorized("User ID not found in claims");
+
         try
         {
-            await _commercialWeighingService.CaptureSecondWeightAsync(id, request);
+            await _commercialWeighingService.CaptureSecondWeightAsync(id, request, userGuid);
             var result = await _commercialWeighingService.GetCommercialResultAsync(id);
             return Ok(result);
         }
@@ -225,9 +236,13 @@ public class CommercialWeighingController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userGuid))
+            return Unauthorized("User ID not found in claims");
+
         try
         {
-            await _commercialWeighingService.UseStoredTareAsync(id, request);
+            await _commercialWeighingService.UseStoredTareAsync(id, request, userGuid);
             var result = await _commercialWeighingService.GetCommercialResultAsync(id);
             return Ok(result);
         }
@@ -260,9 +275,13 @@ public class CommercialWeighingController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userGuid))
+            return Unauthorized("User ID not found in claims");
+
         try
         {
-            await _commercialWeighingService.UpdateQualityDeductionAsync(id, request);
+            await _commercialWeighingService.UpdateQualityDeductionAsync(id, request, userGuid);
             var result = await _commercialWeighingService.GetCommercialResultAsync(id);
             return Ok(result);
         }
@@ -413,6 +432,54 @@ public class CommercialWeighingController : ControllerBase
         {
             _logger.LogError(ex, "Error generating interim ticket PDF for transaction {TransactionId}", id);
             return StatusCode(500, "An error occurred while generating the interim ticket PDF.");
+        }
+    }
+
+    /// <summary>
+    /// Generates a raw ESC/POS byte stream formatted for an 80mm thermal receipt printer.
+    /// Covers both the interim ticket (first pass only) and the final ticket from the same
+    /// route, the same way GetWeightTicketPdf/GetInterimTicketPdf split by data completeness
+    /// rather than a separate status flag - GetCommercialResultAsync's own FirstWeightKg/
+    /// SecondWeightKg values decide which one renders. TruLoad does not push these bytes to
+    /// any specific printer; the client is expected to hand them to the operator's own
+    /// OS-level raw/generic printer driver. See docs/commercial/weight-tickets.md.
+    /// </summary>
+    [HttpGet("{id}/thermal-ticket")]
+    [Authorize(Policy = "Permission:weighing.read")]
+    [Produces("application/octet-stream")]
+    [ProducesResponseType(typeof(FileContentResult), 200)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    public async Task<IActionResult> GetThermalTicket(Guid id)
+    {
+        try
+        {
+            var result = await _commercialWeighingService.GetCommercialResultAsync(id);
+
+            // Same tolerance-exception gate as the final PDF ticket. An interim ticket (no
+            // second weight captured yet) never has ToleranceExceeded set, since tolerance is
+            // only evaluated after the second weight, so this never blocks the interim case.
+            if (result.ToleranceExceeded && !result.ToleranceExceptionApproved)
+            {
+                return StatusCode(409, new
+                {
+                    code = "tolerance_exception_pending_approval",
+                    message = "This transaction exceeded the configured weight tolerance and has not yet been approved by a supervisor. " +
+                        "Approve or reject the tolerance exception before printing the final ticket, or use the interim ticket in the meantime."
+                });
+            }
+
+            var ticketBytes = await _escPosTicketService.GenerateCommercialThermalTicketAsync(result, result.StationId);
+            return File(ticketBytes, "application/octet-stream", $"thermal-ticket-{result.TicketNumber}.bin");
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound($"Weighing transaction {id} not found");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating thermal ticket for transaction {TransactionId}", id);
+            return StatusCode(500, "An error occurred while generating the thermal ticket.");
         }
     }
 

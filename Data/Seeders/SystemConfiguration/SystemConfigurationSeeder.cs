@@ -623,6 +623,36 @@ public class SystemConfigurationSeeder
             new ApplicationSettings
             {
                 Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.CommercialRapidTareChangeWindowHours,
+                SettingValue = "24",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryWeighing,
+                DisplayName = "Rapid Tare Change Window (hours)",
+                Description = "Trailing window (hours) used by the rapid-tare-change anomaly rule: a vehicle with 'Rapid Tare Change Max Count' or more tare updates within this window is flagged for supervisor review",
+                DefaultValue = "24",
+                IsEditable = true,
+                SortOrder = 6,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.CommercialRapidTareChangeMaxCount,
+                SettingValue = "3",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryWeighing,
+                DisplayName = "Rapid Tare Change Max Count",
+                Description = "Number of tare updates (including the one just recorded) within the 'Rapid Tare Change Window' that triggers a tare anomaly flag for supervisor review",
+                DefaultValue = "3",
+                IsEditable = true,
+                SortOrder = 7,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
                 SettingKey = SettingKeys.WeighingCaseCaptureMode,
                 SettingValue = "beyond_tolerance",
                 SettingType = "String",

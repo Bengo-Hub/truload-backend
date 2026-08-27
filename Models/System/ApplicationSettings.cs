@@ -138,6 +138,13 @@ public static class SettingKeys
     /// <summary>Drift threshold (%) between a newly measured/asserted tare and a vehicle's prior
     /// stored tare before it's flagged as a tare anomaly for supervisor review (Phase 7 MVP).</summary>
     public const string CommercialTareDriftAnomalyThresholdPercent = "commercial.tare_drift_anomaly_threshold_percent";
+    /// <summary>Window size (hours) for the "rapid tare changes" anomaly rule (Phase 9): a vehicle
+    /// with CommercialRapidTareChangeMaxCount or more tare updates within this trailing window gets
+    /// flagged for supervisor review.</summary>
+    public const string CommercialRapidTareChangeWindowHours = "commercial.rapid_tare_change_window_hours";
+    /// <summary>Update-count threshold for the "rapid tare changes" anomaly rule (Phase 9) - see
+    /// CommercialRapidTareChangeWindowHours.</summary>
+    public const string CommercialRapidTareChangeMaxCount = "commercial.rapid_tare_change_max_count";
 
     // Financial
     public const string FinancialDefaultForexRate = "financial.default_forex_rate";

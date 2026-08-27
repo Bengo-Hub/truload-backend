@@ -441,6 +441,7 @@ builder.Services.AddScoped<IVehicleMakesRepository, VehicleMakesRepository>();
 
 // Infrastructure services (File Storage with SHA-256 checksums)
 builder.Services.AddScoped<IPdfService, QuestPdfService>();
+builder.Services.AddScoped<IEscPosTicketService, EscPosTicketService>();
 builder.Services.AddScoped<IBlobStorageService, LocalBlobStorageService>();
 
 // Notification Service Configuration

@@ -4,6 +4,7 @@ using QuestPDF.Infrastructure;
 using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Reporting;
+using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Services.Implementations.Infrastructure.PdfDocuments.Reports;
 using TruLoad.Backend.Services.Implementations.Weighing;
 
@@ -16,6 +17,7 @@ namespace TruLoad.Backend.Services.Implementations.Reporting.Modules;
 public class CommercialReportGenerator : BaseReportGenerator
 {
     private readonly TruLoadDbContext _context;
+    private readonly ITenantContext _tenantContext;
 
     // =====================================================================
     // Structured custom-report-builder column catalogs. Each Key MUST match the literal header
@@ -174,6 +176,27 @@ public class CommercialReportGenerator : BaseReportGenerator
         new() { Key = "Created At", Label = "Created At" }
     ];
 
+    // Phase 8: true per-event audit trail (see WriteAuditLogAsync in CommercialWeighingService),
+    // distinct from TransactionAuditLogColumns above (which is a per-transaction snapshot including
+    // voided ones, not a per-action event log).
+    private static readonly List<ReportColumnDefinition> TransactionEventLogColumns =
+    [
+        new() { Key = "Timestamp", Label = "Timestamp" },
+        new() { Key = "Action", Label = "Action" },
+        new() { Key = "Resource Type", Label = "Resource Type" },
+        new() { Key = "Ticket #", Label = "Ticket Number" },
+        new() { Key = "Vehicle Reg", Label = "Vehicle Registration" },
+        new() { Key = "User", Label = "User" },
+        new() { Key = "Old Values", Label = "Old Values" },
+        new() { Key = "New Values", Label = "New Values" }
+    ];
+
+    private static readonly List<ReportFilterDefinition> TransactionEventLogFilters =
+    [
+        new() { Key = "userId", Label = "User", Kind = "text" },
+        new() { Key = "ticketNumber", Label = "Ticket / Transaction Reference", Kind = "text" }
+    ];
+
     private static readonly List<ReportColumnDefinition> PendingTransactionsColumns =
     [
         new() { Key = "Ticket #", Label = "Ticket Number" },
@@ -259,9 +282,10 @@ public class CommercialReportGenerator : BaseReportGenerator
         public const string Auditor = "Commercial Auditor";
     }
 
-    public CommercialReportGenerator(TruLoadDbContext context)
+    public CommercialReportGenerator(TruLoadDbContext context, ITenantContext tenantContext)
     {
         _context = context;
+        _tenantContext = tenantContext;
     }
 
     public override string Module => ReportModules.Commercial;
@@ -328,10 +352,18 @@ public class CommercialReportGenerator : BaseReportGenerator
             "Group by shift: total transactions, total net weight (kg), average cycle time (minutes), overloads and tolerance exceptions. Date range + station filter.",
             columns: ShiftPerformanceColumns, filters: CommercialGeoFilters,
             allowedRoles: [Roles.Supervisor, Roles.Admin, Roles.Auditor]),
-        // reports.md: "Transaction Audit Log" - Admin only.
+        // reports.md: "Transaction Audit Log" - Admin only. Per-transaction snapshot (see 8: this is
+        // NOT the true per-event log - that's "transaction-event-log" immediately below).
         Def("transaction-audit-log", "Transaction Audit Log",
             "All commercial transactions including voided ones: ticket, vehicle, weights, quality deductions, status, void info, created by. Date range filter.",
             columns: TransactionAuditLogColumns, filters: CommercialGeoFilters,
+            allowedRoles: [Roles.Admin, Roles.Auditor]),
+        // Phase 8: true per-event action log (void, tolerance/tare-anomaly approve/reject/override,
+        // first/second weight capture, stored-tare use, quality deduction) sourced from AuditLog rows
+        // CommercialWeighingService writes explicitly - same Admin-only tier as transaction-audit-log.
+        Def("transaction-event-log", "Transaction Event Log",
+            "True per-event audit trail of actions taken on weighing transactions and tare records (captures, voids, approvals, overrides) with before/after values. Filtered by user, date range, or transaction reference.",
+            columns: TransactionEventLogColumns, filters: TransactionEventLogFilters,
             allowedRoles: [Roles.Admin, Roles.Auditor]),
         // reports.md: "Pending Transactions" - Operator, Supervisor, Admin (not Finance).
         Def("pending-transactions", "Pending Transactions Report",
@@ -374,6 +406,7 @@ public class CommercialReportGenerator : BaseReportGenerator
             "quality-commodity" => await GenerateQualityCommodityAsync(filters, format, ct),
             "shift-performance" => await GenerateShiftPerformanceAsync(filters, format, ct),
             "transaction-audit-log" => await GenerateTransactionAuditLogAsync(filters, format, ct),
+            "transaction-event-log" => await GenerateTransactionEventLogAsync(filters, format, ct),
             "pending-transactions" => await GeneratePendingTransactionsAsync(filters, format, ct),
             "monthly-reconciliation" => await GenerateMonthlyReconciliationAsync(filters, format, ct),
             "tonnage-by-route" => await GenerateTonnageByRouteAsync(filters, format, ct),
@@ -2067,6 +2100,149 @@ public class CommercialReportGenerator : BaseReportGenerator
         };
 
         return PdfResult(doc, filters, "transaction_audit_log", from, to);
+    }
+
+    // =====================================================================
+    // Transaction Event Log (Phase 8: true per-event audit trail)
+    // =====================================================================
+
+    /// <summary>
+    /// True per-event log, sourced from AuditLog rows CommercialWeighingService's mutating methods
+    /// write explicitly (see WriteAuditLogAsync there) - distinct from GenerateTransactionAuditLogAsync
+    /// above, which is a per-transaction snapshot. Scoped to WeighingTransaction/VehicleTareHistory
+    /// resource types and the current organization (AuditLog is not a globally query-filtered entity -
+    /// same manual org-scoping convention CommercialWeighingService itself uses for VehicleTareHistory).
+    /// Filterable by date range (shared DateFrom/DateTo), user (UserId), and transaction reference
+    /// (TicketNumber, matched against the resolved WeighingTransaction's ticket number) per
+    /// reports.md's "Filtered by user, date, or transaction reference" requirement.
+    /// </summary>
+    private async Task<ReportResult> GenerateTransactionEventLogAsync(
+        ReportFilterParams filters, string format, CancellationToken ct)
+    {
+        var (from, to) = GetDateRange(filters);
+        var orgId = _tenantContext.OrganizationId;
+
+        var resourceTypes = new[] { "WeighingTransaction", "VehicleTareHistory" };
+
+        // Resolve the ticket-number/transaction-reference filter to a set of WeighingTransaction ids
+        // up front so it can be applied at the AuditLog query level (before paging), rather than
+        // filtering the already-paged in-memory result.
+        List<Guid>? ticketFilterTxIds = null;
+        if (!string.IsNullOrWhiteSpace(filters.TicketNumber))
+        {
+            var refFilter = filters.TicketNumber.Trim();
+            ticketFilterTxIds = await _context.WeighingTransactions
+                .AsNoTracking()
+                .Where(t => t.WeighingMode == "commercial" && t.TicketNumber != null && t.TicketNumber.Contains(refFilter))
+                .Select(t => t.Id)
+                .ToListAsync(ct);
+        }
+
+        var query = _context.AuditLogs
+            .AsNoTracking()
+            .Include(a => a.User)
+            .Where(a => resourceTypes.Contains(a.ResourceType))
+            .Where(a => a.CreatedAt >= from && a.CreatedAt <= to)
+            .Where(a => orgId == Guid.Empty || a.OrganizationId == orgId);
+
+        if (!string.IsNullOrWhiteSpace(filters.UserId) && Guid.TryParse(filters.UserId, out var userIdFilter))
+            query = query.Where(a => a.UserId == userIdFilter);
+
+        if (ticketFilterTxIds != null)
+            query = query.Where(a => a.ResourceType == "WeighingTransaction" && a.ResourceId.HasValue && ticketFilterTxIds.Contains(a.ResourceId.Value));
+
+        var logs = await query
+            .OrderByDescending(a => a.CreatedAt)
+            .Take(filters.PageSize)
+            .ToListAsync(ct);
+
+        // Batch-resolve ticket numbers / vehicle registrations for the referenced resources (2 lookup
+        // queries total, regardless of row count) rather than a per-row query.
+        var txIds = logs.Where(l => l.ResourceType == "WeighingTransaction" && l.ResourceId.HasValue)
+            .Select(l => l.ResourceId!.Value).Distinct().ToList();
+        var historyIds = logs.Where(l => l.ResourceType == "VehicleTareHistory" && l.ResourceId.HasValue)
+            .Select(l => l.ResourceId!.Value).Distinct().ToList();
+
+        var txLookup = await _context.WeighingTransactions
+            .AsNoTracking()
+            .Where(t => txIds.Contains(t.Id))
+            .Select(t => new { t.Id, t.TicketNumber, t.VehicleRegNumber })
+            .ToDictionaryAsync(t => t.Id, ct);
+
+        var historyLookup = await _context.VehicleTareHistory
+            .AsNoTracking()
+            .Where(h => historyIds.Contains(h.Id))
+            .Select(h => new { h.Id, VehicleReg = h.Vehicle != null ? h.Vehicle.RegNo : null })
+            .ToDictionaryAsync(h => h.Id, ct);
+
+        var csvRows = logs.Select(l =>
+        {
+            string? ticketNumber = null;
+            string? vehicleReg = null;
+
+            if (l.ResourceType == "WeighingTransaction" && l.ResourceId.HasValue && txLookup.TryGetValue(l.ResourceId.Value, out var tx))
+            {
+                ticketNumber = tx.TicketNumber;
+                vehicleReg = tx.VehicleRegNumber;
+            }
+            else if (l.ResourceType == "VehicleTareHistory" && l.ResourceId.HasValue && historyLookup.TryGetValue(l.ResourceId.Value, out var h))
+            {
+                vehicleReg = h.VehicleReg;
+            }
+
+            return new[]
+            {
+                l.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss"),
+                l.Action,
+                l.ResourceType,
+                ticketNumber ?? "-",
+                vehicleReg ?? "-",
+                l.User?.FullName ?? "-",
+                l.OldValues ?? "-",
+                l.NewValues ?? "-"
+            };
+        }).ToList();
+
+        var headers = new[] { "Timestamp", "Action", "Resource Type", "Ticket #", "Vehicle Reg", "User", "Old Values", "New Values" };
+
+        var outputHeaders = headers;
+        var outputRows = csvRows;
+
+        if (!filters.UseDefaults)
+        {
+            var (selectedHeaders, selectedRows) = ApplyColumnSelection(headers, csvRows, filters.Columns);
+            outputHeaders = selectedHeaders;
+            outputRows = selectedRows;
+        }
+
+        if (format == "csv")
+            return CsvResult(GenerateCsv(outputHeaders, outputRows), "transaction_event_log", from, to);
+        if (format == "xlsx")
+        {
+            return ExcelResult(GenerateExcel(new ExcelReportRequest
+            {
+                ReportTitle = "Transaction Event Log", Headers = outputHeaders, Rows = outputRows, DateFrom = from, DateTo = to,
+                OrgName = filters.OrganizationName, OrgLogoFile = filters.OrgLogoFile
+            }), "transaction_event_log", from, to);
+        }
+
+        var doc = new CommercialReportDocumentBase
+        {
+            ReportTitle = "Transaction Event Log",
+            ReportSubtitle = "Per-event action log for weighing transactions and tare records (captures, voids, approvals, overrides)",
+            DateFrom = from,
+            DateTo = to,
+            Headers = outputHeaders,
+            Rows = outputRows.ToArray(),
+            SummaryItems =
+            [
+                ("Total Events", FormatNumber(logs.Count)),
+                ("Unique Users", FormatNumber(logs.Select(l => l.UserId).Distinct().Count())),
+                ("Distinct Actions", FormatNumber(logs.Select(l => l.Action).Distinct().Count()))
+            ]
+        };
+
+        return PdfResult(doc, filters, "transaction_event_log", from, to);
     }
 
     // =====================================================================

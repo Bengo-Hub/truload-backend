@@ -296,6 +296,8 @@ public class ReportController : ControllerBase
         [FromQuery] string? status = null,
         [FromQuery] string? weighingType = null,
         [FromQuery] string? controlStatus = null,
+        [FromQuery] string? userId = null,
+        [FromQuery] string? ticketNumber = null,
         [FromQuery] string? columns = null,
         [FromQuery] string? chartType = null,
         [FromQuery] bool useDefaults = true,
@@ -358,6 +360,8 @@ public class ReportController : ControllerBase
                 Status = status,
                 WeighingType = weighingType,
                 ControlStatus = controlStatus,
+                UserId = userId,
+                TicketNumber = ticketNumber,
                 Columns = string.IsNullOrWhiteSpace(columns)
                     ? null
                     : columns.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),

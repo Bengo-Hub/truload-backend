@@ -25,7 +25,8 @@ public interface ICommercialWeighingService
     /// </summary>
     Task<WeighingTransaction> CaptureFirstWeightAsync(
         Guid transactionId,
-        CaptureFirstWeightRequest request);
+        CaptureFirstWeightRequest request,
+        Guid userId);
 
     /// <summary>
     /// Captures the second weight (second pass on the scale).
@@ -35,7 +36,8 @@ public interface ICommercialWeighingService
     /// </summary>
     Task<WeighingTransaction> CaptureSecondWeightAsync(
         Guid transactionId,
-        CaptureSecondWeightRequest request);
+        CaptureSecondWeightRequest request,
+        Guid userId);
 
     /// <summary>
     /// Uses the vehicle's stored or preset tare weight to calculate net weight.
@@ -43,7 +45,8 @@ public interface ICommercialWeighingService
     /// </summary>
     Task<WeighingTransaction> UseStoredTareAsync(
         Guid transactionId,
-        UseStoredTareRequest request);
+        UseStoredTareRequest request,
+        Guid userId);
 
     /// <summary>
     /// Gets the full commercial weighing result for a transaction.
@@ -80,7 +83,8 @@ public interface ICommercialWeighingService
     /// </summary>
     Task<WeighingTransaction> UpdateQualityDeductionAsync(
         Guid transactionId,
-        UpdateQualityDeductionRequest request);
+        UpdateQualityDeductionRequest request,
+        Guid userId);
 
     /// <summary>
     /// Gets tare weight history for a vehicle.

@@ -9,6 +9,7 @@ using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.System;
 using TruLoad.Backend.Models.Infrastructure;
+using TruLoad.Backend.Repositories.Audit.Interfaces;
 using TruLoad.Backend.Services.Interfaces.Financial;
 using TruLoad.Backend.Services.Interfaces.Shared;
 using TruLoad.Backend.Services.Interfaces.Weighing;
@@ -28,10 +29,25 @@ public class CommercialWeighingService : ICommercialWeighingService
     private readonly INotificationService _notificationService;
     private readonly ISettingsService _settingsService;
     private readonly IConfiguration _configuration;
+    private readonly IAuditLogRepository _auditLogRepository;
     private readonly ILogger<CommercialWeighingService> _logger;
 
     private const int DefaultPendingWeighingThresholdHours = 8;
     private const decimal DefaultTareDriftAnomalyThresholdPercent = 5m;
+
+    // Phase 9: rapid tare-change detection defaults (configurable via ISettingsService, see
+    // SettingKeys.CommercialRapidTareChangeWindowHours/MaxCount). 24h/3 updates: within a single
+    // operating day, 3+ tare re-measurements for the same vehicle is unusual outside of active
+    // calibration/maintenance and warrants a supervisor look.
+    private const int DefaultRapidTareChangeWindowHours = 24;
+    private const int DefaultRapidTareChangeMaxCount = 3;
+
+    // Phase 9: vehicle-class-range detection. Not a runtime setting (unlike the two above) - this is
+    // a statistical-validity guard, not a business policy - 10 historical tare readings for a given
+    // AxleConfiguration is a reasonable minimum before a mean/stddev band is trustworthy enough to
+    // flag deviations against; below that the sample is too thin and the check is skipped entirely
+    // rather than risk flagging everything as anomalous.
+    private const int MinSampleSizeForVehicleClassRangeCheck = 10;
 
     public CommercialWeighingService(
         TruLoadDbContext dbContext,
@@ -42,6 +58,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         INotificationService notificationService,
         ISettingsService settingsService,
         IConfiguration configuration,
+        IAuditLogRepository auditLogRepository,
         ILogger<CommercialWeighingService> logger)
     {
         _dbContext = dbContext;
@@ -52,6 +69,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         _notificationService = notificationService;
         _settingsService = settingsService;
         _configuration = configuration;
+        _auditLogRepository = auditLogRepository;
         _logger = logger;
     }
 
@@ -177,7 +195,8 @@ public class CommercialWeighingService : ICommercialWeighingService
 
     public async Task<WeighingTransaction> CaptureFirstWeightAsync(
         Guid transactionId,
-        CaptureFirstWeightRequest request)
+        CaptureFirstWeightRequest request,
+        Guid userId)
     {
         var transaction = await GetTransactionOrThrowAsync(transactionId);
         EnsureCommercialMode(transaction);
@@ -208,12 +227,18 @@ public class CommercialWeighingService : ICommercialWeighingService
             "First weight captured for {TransactionId}: {WeightKg}kg ({WeightType})",
             transactionId, request.WeightKg, request.WeightType);
 
+        await WriteAuditLogAsync(
+            "FIRST_WEIGHT_CAPTURED", "WeighingTransaction", transaction.Id, userId, transaction.OrganizationId,
+            oldValues: new { firstWeightKg = (int?)null },
+            newValues: new { firstWeightKg = request.WeightKg, weightType = request.WeightType, captureSource = transaction.CaptureSource });
+
         return transaction;
     }
 
     public async Task<WeighingTransaction> CaptureSecondWeightAsync(
         Guid transactionId,
-        CaptureSecondWeightRequest request)
+        CaptureSecondWeightRequest request,
+        Guid userId)
     {
         var transaction = await GetTransactionOrThrowAsync(transactionId);
         EnsureCommercialMode(transaction);
@@ -254,10 +279,11 @@ public class CommercialWeighingService : ICommercialWeighingService
         transaction.TareSource = "measured";
         transaction.GvwMeasuredKg = grossWeightKg;
 
-        // Tare anomaly detection (Phase 7 MVP) - compare this session's newly measured tare against
-        // the vehicle's PRIOR stored tare before RecordTareWeightAsync overwrites it further below.
-        // Informational only - does not block completion (unlike ToleranceExceeded).
-        await FlagTareAnomalyIfDriftedAsync(transaction, tareWeightKg);
+        // Tare anomaly detection (Phase 7 drift + Phase 9 vehicle-class-range/rapid-change) - runs
+        // all three rules against this session's newly measured tare before RecordTareWeightAsync
+        // overwrites the vehicle's prior stored tare further below. Informational only - does not
+        // block completion (unlike ToleranceExceeded).
+        await FlagTareAnomalyIfDetectedAsync(transaction, tareWeightKg);
 
         ApplyManualEntryIfRequested(transaction, request.IsManualEntry, request.ManualEntryJustification);
 
@@ -304,6 +330,19 @@ public class CommercialWeighingService : ICommercialWeighingService
             "Second weight captured for {TransactionId}: {WeightKg}kg ({WeightType}). Net={NetKg}kg",
             transactionId, request.WeightKg, secondWeightType, transaction.NetWeightKg);
 
+        await WriteAuditLogAsync(
+            "SECOND_WEIGHT_CAPTURED", "WeighingTransaction", transaction.Id, userId, transaction.OrganizationId,
+            oldValues: new { secondWeightKg = (int?)null, status = "first_weight_captured" },
+            newValues: new
+            {
+                secondWeightKg = request.WeightKg,
+                secondWeightType,
+                tareWeightKg = transaction.TareWeightKg,
+                grossWeightKg = transaction.GrossWeightKg,
+                netWeightKg = transaction.NetWeightKg,
+                controlStatus = transaction.ControlStatus
+            });
+
         _ = SendCompletionNotificationsAsync(transaction);
 
         return transaction;
@@ -311,7 +350,8 @@ public class CommercialWeighingService : ICommercialWeighingService
 
     public async Task<WeighingTransaction> UseStoredTareAsync(
         Guid transactionId,
-        UseStoredTareRequest request)
+        UseStoredTareRequest request,
+        Guid userId)
     {
         var transaction = await GetTransactionOrThrowAsync(transactionId);
         EnsureCommercialMode(transaction);
@@ -414,7 +454,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         // branches above reuse an already-known vehicle tare with nothing new to compare.
         if (tareSource == "preset")
         {
-            await FlagTareAnomalyIfDriftedAsync(transaction, tareWeightKg);
+            await FlagTareAnomalyIfDetectedAsync(transaction, tareWeightKg);
         }
 
         // Record the preset-tare justification for audit purposes. Reuses Remarks (no dedicated
@@ -448,6 +488,19 @@ public class CommercialWeighingService : ICommercialWeighingService
         _logger.LogInformation(
             "Stored tare used for {TransactionId}: tare={TareKg}kg ({Source}). Net={NetKg}kg",
             transactionId, tareWeightKg, tareSource, transaction.NetWeightKg);
+
+        await WriteAuditLogAsync(
+            "STORED_TARE_APPLIED", "WeighingTransaction", transaction.Id, userId, transaction.OrganizationId,
+            oldValues: new { secondWeightKg = (int?)null, status = "first_weight_captured" },
+            newValues: new
+            {
+                tareWeightKg,
+                tareSource,
+                grossWeightKg,
+                netWeightKg = transaction.NetWeightKg,
+                controlStatus = transaction.ControlStatus,
+                justification = tareSource == "preset" ? request.Justification : null
+            });
 
         _ = SendCompletionNotificationsAsync(transaction);
 
@@ -583,7 +636,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         // This entry point isn't tied to any live WeighingTransaction (it's the standalone Tare
         // Register "Record Tare" dialog), so the flag is anchored on the VehicleTareHistory row
         // itself rather than a transaction - see Stage C report for this anchoring decision.
-        var (isTareAnomaly, tareAnomalyReason) = await EvaluateTareDriftAnomalyAsync(request.VehicleId, request.TareWeightKg);
+        var (isTareAnomaly, tareAnomalyReason) = await EvaluateAllTareAnomaliesAsync(request.VehicleId, request.TareWeightKg);
 
         var history = await RecordTareWeightAsync(
             request.VehicleId,
@@ -614,7 +667,8 @@ public class CommercialWeighingService : ICommercialWeighingService
 
     public async Task<WeighingTransaction> UpdateQualityDeductionAsync(
         Guid transactionId,
-        UpdateQualityDeductionRequest request)
+        UpdateQualityDeductionRequest request,
+        Guid userId)
     {
         var transaction = await GetTransactionOrThrowAsync(transactionId);
         EnsureCommercialMode(transaction);
@@ -623,6 +677,9 @@ public class CommercialWeighingService : ICommercialWeighingService
         {
             throw new InvalidOperationException("Net weight must be calculated before applying quality deductions.");
         }
+
+        var oldQualityDeductionKg = transaction.QualityDeductionKg;
+        var oldAdjustedNetWeightKg = transaction.AdjustedNetWeightKg;
 
         // Load the cargo type's quality-deduction rules (moisture target / foreign matter limit),
         // if any. Cargo types with neither configured keep the flat-kg entry path working exactly
@@ -706,6 +763,18 @@ public class CommercialWeighingService : ICommercialWeighingService
         _logger.LogInformation(
             "Quality deduction updated for {TransactionId}: {DeductionKg}kg (moisture={MoistureKg}, fm={FmKg}), adjusted net={AdjustedKg}kg",
             transactionId, qualityDeductionKg, moistureDeductionKg, foreignMatterDeductionKg, transaction.AdjustedNetWeightKg);
+
+        await WriteAuditLogAsync(
+            "QUALITY_DEDUCTION_APPLIED", "WeighingTransaction", transaction.Id, userId, transaction.OrganizationId,
+            oldValues: new { qualityDeductionKg = oldQualityDeductionKg, adjustedNetWeightKg = oldAdjustedNetWeightKg },
+            newValues: new
+            {
+                qualityDeductionKg,
+                adjustedNetWeightKg = transaction.AdjustedNetWeightKg,
+                moistureDeductionKg,
+                foreignMatterDeductionKg,
+                reason = request.Reason
+            });
 
         _ = SendQualityDeductionNotificationAsync(transaction, qualityDeductionKg, request.Reason);
 
@@ -856,6 +925,8 @@ public class CommercialWeighingService : ICommercialWeighingService
         if (transaction.ControlStatus == "Complete" && transaction.SecondWeightKg.HasValue)
             throw new InvalidOperationException("Cannot void a completed weighing. Contact a supervisor for corrections.");
 
+        var oldStatus = transaction.ControlStatus;
+
         transaction.VoidedAt = DateTime.UtcNow;
         transaction.VoidReason = request.Reason;
         transaction.VoidedByUserId = voidedByUserId;
@@ -868,6 +939,11 @@ public class CommercialWeighingService : ICommercialWeighingService
         _logger.LogInformation(
             "Commercial weighing {TransactionId} voided by {UserId}: {Reason}",
             transactionId, voidedByUserId, request.Reason);
+
+        await WriteAuditLogAsync(
+            "WEIGHING_VOIDED", "WeighingTransaction", transaction.Id, voidedByUserId, transaction.OrganizationId,
+            oldValues: new { status = oldStatus },
+            newValues: new { status = "Voided", reason = request.Reason });
 
         return await GetCommercialResultAsync(transactionId);
     }
@@ -932,8 +1008,15 @@ public class CommercialWeighingService : ICommercialWeighingService
     // ============================================================================
 
     /// <summary>
-    /// Creates a flat-fee commercial weighing invoice when weighing completes.
-    /// Idempotent — silently skips if invoice already exists.
+    /// Creates a commercial weighing invoice when weighing completes: resolves the fee via
+    /// CommercialTariffRule (falling back to Organization.CommercialWeighingFeeKes when no rule
+    /// matches), then — for treasury-gated orgs — creates a REAL treasury Invoice stamped with
+    /// the transporter's identity (so treasury can build a running AR statement per transporter,
+    /// not just an anonymous cash entry) and sends it (posts Dr AR / Cr Revenue). Pay-now
+    /// transporters additionally get a payment intent (reference_type="invoice" so treasury's
+    /// GLSubscriber correctly skips re-posting revenue); on-account transporters are left to
+    /// settle the outstanding invoice later. Idempotent — silently skips if an invoice already
+    /// exists for this weighing.
     /// </summary>
     private async Task CreateCommercialInvoiceAsync(WeighingTransaction transaction)
     {
@@ -951,10 +1034,26 @@ public class CommercialWeighingService : ICommercialWeighingService
             if (org == null) return;
 
             // Facility-owned scales do not charge per-transaction fees
-            if (org.WeighingBusinessModel == "FacilityOwnedScale" || org.CommercialWeighingFeeKes <= 0)
+            if (org.WeighingBusinessModel == "FacilityOwnedScale")
             {
                 _logger.LogInformation(
-                    "Skipping invoice creation for transaction {TransactionId} — FacilityOwnedScale or zero fee",
+                    "Skipping invoice creation for transaction {TransactionId} — FacilityOwnedScale",
+                    transaction.Id);
+                return;
+            }
+
+            var transporter = transaction.TransporterId.HasValue
+                ? await _dbContext.Transporters
+                    .AsNoTracking()
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(t => t.Id == transaction.TransporterId.Value)
+                : null;
+
+            var feeKes = await ResolveCommercialFeeAsync(transaction, org, transporter);
+            if (feeKes <= 0)
+            {
+                _logger.LogInformation(
+                    "Skipping invoice creation for transaction {TransactionId} — resolved fee is zero",
                     transaction.Id);
                 return;
             }
@@ -968,7 +1067,7 @@ public class CommercialWeighingService : ICommercialWeighingService
             {
                 InvoiceNo = invoiceNo,
                 WeighingId = transaction.Id,
-                AmountDue = org.CommercialWeighingFeeKes,
+                AmountDue = feeKes,
                 Currency = "KES",
                 Status = "pending",
                 InvoiceType = "commercial_weighing_fee",
@@ -984,27 +1083,66 @@ public class CommercialWeighingService : ICommercialWeighingService
             {
                 try
                 {
-                    var intent = await _treasuryService.CreatePaymentIntentAsync(
-                        org.SsoTenantSlug,
-                        org.CommercialWeighingFeeKes,
-                        invoice.Id.ToString(),
-                        $"Weighing fee — ticket {transaction.TicketNumber}");
+                    var onAccount = transporter?.OnAccountBilling == true;
+                    var dueDate = onAccount ? DateTime.UtcNow.AddDays(7) : DateTime.UtcNow;
 
-                    invoice.TreasuryIntentId = intent.IntentId;
-                    invoice.TreasuryIntentStatus = intent.Status;
+                    var treasuryInvoice = await _treasuryService.CreateInvoiceAsync(
+                        org.SsoTenantSlug,
+                        new TreasuryInvoiceRequest(
+                            InvoiceType: "commercial_weighing_fee",
+                            Description: $"Weighing fee — ticket {transaction.TicketNumber}",
+                            AmountKes: feeKes,
+                            ReferenceId: invoice.Id.ToString(),
+                            ReferenceType: "weighing",
+                            DueDate: dueDate,
+                            CustomerId: transporter?.CrmContactId?.ToString(),
+                            CustomerName: transporter?.Name,
+                            CustomerEmail: transporter?.Email,
+                            CustomerPhone: transporter?.Phone));
+
+                    invoice.TreasuryInvoiceId = treasuryInvoice.InvoiceId;
                     await _dbContext.SaveChangesAsync();
+
+                    // Send: posts the AR journal (Dr AR / Cr Revenue) and projects the customer
+                    // statement. This is what makes a transporter's repeat weighing sessions
+                    // accumulate into a real running balance instead of anonymous cash entries.
+                    await _treasuryService.SendInvoiceAsync(org.SsoTenantSlug, treasuryInvoice.InvoiceId);
+
+                    if (!onAccount)
+                    {
+                        // Pay-now: collect immediately via a payment intent linked to the treasury
+                        // Invoice (reference_type="invoice" — GLSubscriber skips it, since Send
+                        // already posted the AR/revenue leg; the payment leg closes AR when the
+                        // webhook confirms success, see TreasuryWebhookController).
+                        var intent = await _treasuryService.CreatePaymentIntentAsync(
+                            org.SsoTenantSlug,
+                            feeKes,
+                            treasuryInvoice.InvoiceId,
+                            $"Weighing fee — ticket {transaction.TicketNumber}",
+                            referenceType: "invoice");
+
+                        invoice.TreasuryIntentId = intent.IntentId;
+                        invoice.TreasuryIntentStatus = intent.Status;
+                        await _dbContext.SaveChangesAsync();
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "Commercial invoice {InvoiceNo} left on-account for transporter {TransporterId} — no payment intent created",
+                            invoiceNo, transporter?.Id);
+                    }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex,
-                        "Failed to create treasury payment intent for invoice {InvoiceNo}. Invoice saved as pending.",
+                        "Failed to create/send treasury invoice for {InvoiceNo}. Local invoice saved as pending.",
                         invoiceNo);
                 }
             }
 
             _logger.LogInformation(
                 "Created commercial invoice {InvoiceNo} ({Amount} KES) for weighing {TransactionId}",
-                invoiceNo, org.CommercialWeighingFeeKes, transaction.Id);
+                invoiceNo, feeKes, transaction.Id);
         }
         catch (Exception ex)
         {
@@ -1012,6 +1150,58 @@ public class CommercialWeighingService : ICommercialWeighingService
                 "Failed to create commercial invoice for transaction {TransactionId}. Manual intervention required.",
                 transaction.Id);
         }
+    }
+
+    /// <summary>
+    /// Resolves the fee for a completed commercial weighing session: most-specific matching
+    /// active CommercialTariffRule wins (transporter-specific contract rule > vehicle/axle/weight
+    /// bracket rule > org-wide default), falling back to Organization.CommercialWeighingFeeKes
+    /// when no rule matches at all — so an org with zero tariff rules configured keeps working
+    /// exactly as before.
+    /// </summary>
+    private async Task<decimal> ResolveCommercialFeeAsync(WeighingTransaction transaction, Organization org, Transporter? transporter)
+    {
+        var now = DateTime.UtcNow;
+        var rules = await _dbContext.CommercialTariffRules
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(r => r.OrganizationId == org.Id && r.IsActive
+                && r.EffectiveFrom <= now
+                && (r.EffectiveTo == null || r.EffectiveTo >= now))
+            .ToListAsync();
+
+        if (rules.Count == 0) return org.CommercialWeighingFeeKes;
+
+        // 1. Transporter-specific contract rule takes priority over any bracket rule.
+        if (transporter != null)
+        {
+            var contractRule = rules.FirstOrDefault(r => r.TransporterId == transporter.Id);
+            if (contractRule != null) return contractRule.FeeKes;
+        }
+
+        // 2. Org-wide bracket rule matching vehicle type / axle count / gross weight.
+        var vehicleType = transaction.Vehicle?.VehicleType;
+        var grossWeightKg = transaction.GrossWeightKg;
+        var axleCount = await _dbContext.WeighingAxles
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .CountAsync(a => a.WeighingId == transaction.Id);
+
+        var bracketRule = rules
+            .Where(r => r.TransporterId == null)
+            .Where(r => r.VehicleType == null || string.Equals(r.VehicleType, vehicleType, StringComparison.OrdinalIgnoreCase))
+            .Where(r => r.AxleCountMin == null || axleCount >= r.AxleCountMin)
+            .Where(r => r.AxleCountMax == null || axleCount <= r.AxleCountMax)
+            .Where(r => r.WeightBracketMinKg == null || (grossWeightKg.HasValue && grossWeightKg >= r.WeightBracketMinKg))
+            .Where(r => r.WeightBracketMaxKg == null || (grossWeightKg.HasValue && grossWeightKg <= r.WeightBracketMaxKg))
+            // Prefer the rule matching on the most criteria (most specific wins over a wildcard).
+            .OrderByDescending(r =>
+                (r.VehicleType != null ? 1 : 0) +
+                (r.AxleCountMin != null || r.AxleCountMax != null ? 1 : 0) +
+                (r.WeightBracketMinKg != null || r.WeightBracketMaxKg != null ? 1 : 0))
+            .FirstOrDefault();
+
+        return bracketRule?.FeeKes ?? org.CommercialWeighingFeeKes;
     }
 
     private async Task<WeighingTransaction> GetTransactionOrThrowAsync(Guid transactionId)
@@ -1096,9 +1286,8 @@ public class CommercialWeighingService : ICommercialWeighingService
     }
 
     /// <summary>
-    /// Tare anomaly detection (Phase 7 MVP, tare-management.md's "drift vs. stored tare" rule only -
-    /// vehicle-class range checks and rapid-change alerts are explicitly out of scope). Compares a
-    /// newly measured/asserted tare against the vehicle's CURRENT stored tare (vehicle.LastTareWeightKg)
+    /// Tare anomaly detection rule 1/3 (Phase 7 MVP): "drift vs. stored tare". Compares a newly
+    /// measured/asserted tare against the vehicle's CURRENT stored tare (vehicle.LastTareWeightKg)
     /// using the shared TareDriftHelper.ComputeTareDriftPercent - the same calculation the Tare Weight
     /// Audit / Tare Verification reports already use - against the configurable
     /// commercial.tare_drift_anomaly_threshold_percent setting (default 5%).
@@ -1125,13 +1314,122 @@ public class CommercialWeighingService : ICommercialWeighingService
     }
 
     /// <summary>
-    /// Evaluates <see cref="EvaluateTareDriftAnomalyAsync"/> and, if anomalous, stamps
-    /// TareAnomalyFlaggedAt/TareAnomalyReason on the transaction. Informational only - does not
-    /// change ControlStatus or block completion (unlike ToleranceExceeded).
+    /// Tare anomaly detection rule 2/3 (Phase 9): "vehicle-class range". This codebase has no named
+    /// vehicle-classification taxonomy, but Vehicle.AxleConfigurationId -&gt; AxleConfiguration (AxleCode/
+    /// AxleNumber/GvwPermissibleKg) is the real, already-populated proxy the enforcement compliance
+    /// engine already groups vehicles by - reused here as the "vehicle class" grouping key. Computes a
+    /// mean +/- 2 standard-deviation band from historical VehicleTareHistory rows for every vehicle
+    /// sharing the same AxleConfigurationId (current organization only - VehicleTareHistory is not a
+    /// globally query-filtered entity, see the manual org filters used throughout this class), and
+    /// flags when the new tare falls outside it. Skipped entirely (returns false, null) when the
+    /// vehicle has no AxleConfigurationId set, or when fewer than
+    /// <see cref="MinSampleSizeForVehicleClassRangeCheck"/> historical readings exist for that
+    /// configuration - a thin sample produces a meaningless (or wildly wide) band, so this deliberately
+    /// declines to flag rather than guess. Same BEFORE-recording timing contract as
+    /// <see cref="EvaluateTareDriftAnomalyAsync"/>.
     /// </summary>
-    private async Task FlagTareAnomalyIfDriftedAsync(WeighingTransaction transaction, int newTareKg)
+    private async Task<(bool IsAnomaly, string? Reason)> EvaluateVehicleClassRangeAnomalyAsync(Guid vehicleId, int newTareKg)
     {
-        var (isAnomaly, reason) = await EvaluateTareDriftAnomalyAsync(transaction.VehicleId, newTareKg);
+        var vehicle = await _dbContext.Vehicles.AsNoTracking().FirstOrDefaultAsync(v => v.Id == vehicleId);
+        if (vehicle?.AxleConfigurationId == null)
+            return (false, null);
+
+        var orgId = _tenantContext.OrganizationId;
+        var axleConfigurationId = vehicle.AxleConfigurationId.Value;
+
+        var historicalTaresKg = await _dbContext.VehicleTareHistory
+            .AsNoTracking()
+            .Where(h => orgId == Guid.Empty || h.OrganizationId == orgId)
+            .Where(h => h.Vehicle != null && h.Vehicle.AxleConfigurationId == axleConfigurationId)
+            .Select(h => h.TareWeightKg)
+            .ToListAsync();
+
+        if (historicalTaresKg.Count < MinSampleSizeForVehicleClassRangeCheck)
+            return (false, null);
+
+        var mean = historicalTaresKg.Average(t => (double)t);
+        var variance = historicalTaresKg.Average(t => Math.Pow((double)t - mean, 2));
+        var stdDev = Math.Sqrt(variance);
+
+        // Tare weight can never be negative - clamp the lower bound so a small mean with a wide
+        // spread doesn't produce a nonsensical negative-kg "typical range" in the flagged reason.
+        var lowerBoundKg = Math.Max(0, mean - 2 * stdDev);
+        var upperBoundKg = mean + 2 * stdDev;
+
+        if (newTareKg >= lowerBoundKg && newTareKg <= upperBoundKg)
+            return (false, null);
+
+        var direction = newTareKg > upperBoundKg ? "high" : "low";
+        var reason = $"Tare {newTareKg}kg is unusually {direction} for this vehicle's axle configuration " +
+            $"(typical range {(int)Math.Round(lowerBoundKg)}-{(int)Math.Round(upperBoundKg)}kg)";
+        return (true, reason);
+    }
+
+    /// <summary>
+    /// Tare anomaly detection rule 3/3 (Phase 9): "rapid tare changes". Flags when a vehicle has
+    /// accumulated <see cref="SettingKeys.CommercialRapidTareChangeMaxCount"/> or more
+    /// VehicleTareHistory entries (including the one about to be recorded) within the trailing
+    /// <see cref="SettingKeys.CommercialRapidTareChangeWindowHours"/> hours - repeated tare
+    /// re-measurements for the same vehicle in a short window, outside active calibration/maintenance,
+    /// suggests either a scale/process problem or an attempt to game the recorded tare. Same
+    /// BEFORE-recording timing contract as the other two rules (counts prior entries only, then adds 1
+    /// for the entry this call is evaluating on behalf of).
+    /// </summary>
+    private async Task<(bool IsAnomaly, string? Reason)> EvaluateRapidTareChangeAnomalyAsync(Guid vehicleId)
+    {
+        var windowHours = await _settingsService.GetSettingValueAsync(
+            SettingKeys.CommercialRapidTareChangeWindowHours, DefaultRapidTareChangeWindowHours);
+        var maxCount = await _settingsService.GetSettingValueAsync(
+            SettingKeys.CommercialRapidTareChangeMaxCount, DefaultRapidTareChangeMaxCount);
+
+        var orgId = _tenantContext.OrganizationId;
+        var cutoff = DateTime.UtcNow.AddHours(-windowHours);
+
+        var priorCount = await _dbContext.VehicleTareHistory
+            .Where(h => h.VehicleId == vehicleId)
+            .Where(h => orgId == Guid.Empty || h.OrganizationId == orgId)
+            .Where(h => h.WeighedAt >= cutoff)
+            .CountAsync();
+
+        var totalIncludingThisOne = priorCount + 1;
+        if (totalIncludingThisOne < maxCount)
+            return (false, null);
+
+        var reason = $"Vehicle has had {totalIncludingThisOne} tare updates within the last {windowHours}h (threshold: {maxCount})";
+        return (true, reason);
+    }
+
+    /// <summary>
+    /// Combines all three tare anomaly detection rules (Phase 7 drift, Phase 9 vehicle-class-range,
+    /// Phase 9 rapid-change) into the single flag/reason the rest of this class already knows how to
+    /// stamp/report on. Every rule that fires contributes its own sentence to the combined reason
+    /// (joined with " | ") rather than one silently winning over another, so a transaction/history
+    /// entry that trips more than one rule doesn't lose information about which ones fired.
+    /// </summary>
+    private async Task<(bool IsAnomaly, string? Reason)> EvaluateAllTareAnomaliesAsync(Guid vehicleId, int newTareKg)
+    {
+        var reasons = new List<string>();
+
+        var (isDrift, driftReason) = await EvaluateTareDriftAnomalyAsync(vehicleId, newTareKg);
+        if (isDrift && driftReason != null) reasons.Add(driftReason);
+
+        var (isClassRange, classRangeReason) = await EvaluateVehicleClassRangeAnomalyAsync(vehicleId, newTareKg);
+        if (isClassRange && classRangeReason != null) reasons.Add(classRangeReason);
+
+        var (isRapidChange, rapidChangeReason) = await EvaluateRapidTareChangeAnomalyAsync(vehicleId);
+        if (isRapidChange && rapidChangeReason != null) reasons.Add(rapidChangeReason);
+
+        return reasons.Count > 0 ? (true, string.Join(" | ", reasons)) : (false, null);
+    }
+
+    /// <summary>
+    /// Evaluates <see cref="EvaluateAllTareAnomaliesAsync"/> (all three Phase 7/9 detection rules) and,
+    /// if any fired, stamps TareAnomalyFlaggedAt/TareAnomalyReason on the transaction. Informational
+    /// only - does not change ControlStatus or block completion (unlike ToleranceExceeded).
+    /// </summary>
+    private async Task FlagTareAnomalyIfDetectedAsync(WeighingTransaction transaction, int newTareKg)
+    {
+        var (isAnomaly, reason) = await EvaluateAllTareAnomaliesAsync(transaction.VehicleId, newTareKg);
         if (!isAnomaly) return;
 
         transaction.TareAnomalyFlaggedAt = DateTime.UtcNow;
@@ -1479,6 +1777,8 @@ public class CommercialWeighingService : ICommercialWeighingService
         var transaction = await GetTransactionOrThrowAsync(transactionId);
         EnsureCommercialMode(transaction);
 
+        var oldStatus = transaction.ControlStatus;
+
         transaction.ToleranceExceptionApproved = true;
         transaction.ToleranceExceptionApprovedBy = approvedByUserId;
         transaction.ToleranceExceptionApprovedAt = DateTime.UtcNow;
@@ -1486,6 +1786,11 @@ public class CommercialWeighingService : ICommercialWeighingService
 
         await _dbContext.SaveChangesAsync();
         _logger.LogInformation("Tolerance exception approved for transaction {TransactionId} by user {UserId}", transactionId, approvedByUserId);
+
+        await WriteAuditLogAsync(
+            "TOLERANCE_EXCEPTION_APPROVED", "WeighingTransaction", transaction.Id, approvedByUserId, transaction.OrganizationId,
+            oldValues: new { toleranceExceptionApproved = false, status = oldStatus },
+            newValues: new { toleranceExceptionApproved = true, status = "Complete" });
 
         return MapToCommercialResultDto(transaction);
     }
@@ -1511,6 +1816,8 @@ public class CommercialWeighingService : ICommercialWeighingService
             ? "Tolerance exception rejected by supervisor."
             : $"Tolerance exception rejected: {reason}";
 
+        var oldStatus = transaction.ControlStatus;
+
         transaction.VoidedAt = DateTime.UtcNow;
         transaction.VoidReason = rejectionReason;
         transaction.VoidedByUserId = rejectedByUserId;
@@ -1523,6 +1830,11 @@ public class CommercialWeighingService : ICommercialWeighingService
         _logger.LogInformation(
             "Tolerance exception rejected for transaction {TransactionId} by user {UserId}: {Reason}",
             transactionId, rejectedByUserId, rejectionReason);
+
+        await WriteAuditLogAsync(
+            "TOLERANCE_EXCEPTION_REJECTED", "WeighingTransaction", transaction.Id, rejectedByUserId, transaction.OrganizationId,
+            oldValues: new { status = oldStatus },
+            newValues: new { status = "Voided", reason = rejectionReason });
 
         return MapToCommercialResultDto(transaction);
     }
@@ -1552,6 +1864,11 @@ public class CommercialWeighingService : ICommercialWeighingService
         await _dbContext.SaveChangesAsync();
         _logger.LogInformation("Tare anomaly approved for transaction {TransactionId} by user {UserId}", transactionId, approvedByUserId);
 
+        await WriteAuditLogAsync(
+            "TARE_ANOMALY_APPROVED", "WeighingTransaction", transaction.Id, approvedByUserId, transaction.OrganizationId,
+            oldValues: new { resolution = (string?)null, reason = transaction.TareAnomalyReason },
+            newValues: new { resolution = "Approved" });
+
         return MapToCommercialResultDto(transaction);
     }
 
@@ -1578,6 +1895,11 @@ public class CommercialWeighingService : ICommercialWeighingService
         await _dbContext.SaveChangesAsync();
         _logger.LogInformation("Tare anomaly rejected for transaction {TransactionId} by user {UserId}", transactionId, rejectedByUserId);
 
+        await WriteAuditLogAsync(
+            "TARE_ANOMALY_REJECTED", "WeighingTransaction", transaction.Id, rejectedByUserId, transaction.OrganizationId,
+            oldValues: new { resolution = (string?)null, reason = transaction.TareAnomalyReason },
+            newValues: new { resolution = transaction.TareAnomalyResolution });
+
         return MapToCommercialResultDto(transaction);
     }
 
@@ -1593,6 +1915,8 @@ public class CommercialWeighingService : ICommercialWeighingService
 
         // Reuses the same required-justification rule UseStoredTareAsync enforces for preset tare.
         EnsureJustificationForPresetTare(request.Justification);
+
+        var oldTareWeightKg = transaction.TareWeightKg;
 
         // Corrects the vehicle's stored tare going forward (and logs a VehicleTareHistory audit
         // entry via the shared helper). Deliberately does NOT retroactively rewrite this
@@ -1616,6 +1940,11 @@ public class CommercialWeighingService : ICommercialWeighingService
         _logger.LogInformation(
             "Tare anomaly overridden for transaction {TransactionId} by user {UserId}: corrected tare {TareKg}kg",
             transactionId, overriddenByUserId, request.CorrectedTareWeightKg);
+
+        await WriteAuditLogAsync(
+            "TARE_ANOMALY_OVERRIDDEN", "WeighingTransaction", transaction.Id, overriddenByUserId, transaction.OrganizationId,
+            oldValues: new { tareWeightKg = oldTareWeightKg },
+            newValues: new { correctedTareWeightKg = request.CorrectedTareWeightKg, justification = request.Justification });
 
         return MapToCommercialResultDto(transaction);
     }
@@ -1719,6 +2048,11 @@ public class CommercialWeighingService : ICommercialWeighingService
         await _dbContext.SaveChangesAsync();
         _logger.LogInformation("Tare anomaly approved for tare history {HistoryId} by user {UserId}", historyId, approvedByUserId);
 
+        await WriteAuditLogAsync(
+            "TARE_ANOMALY_APPROVED", "VehicleTareHistory", history.Id, approvedByUserId, history.OrganizationId,
+            oldValues: new { resolution = (string?)null, reason = history.TareAnomalyReason },
+            newValues: new { resolution = "Approved" });
+
         return MapToTareHistoryDto(history);
     }
 
@@ -1744,6 +2078,11 @@ public class CommercialWeighingService : ICommercialWeighingService
         await _dbContext.SaveChangesAsync();
         _logger.LogInformation("Tare anomaly rejected for tare history {HistoryId} by user {UserId}", historyId, rejectedByUserId);
 
+        await WriteAuditLogAsync(
+            "TARE_ANOMALY_REJECTED", "VehicleTareHistory", history.Id, rejectedByUserId, history.OrganizationId,
+            oldValues: new { resolution = (string?)null, reason = history.TareAnomalyReason },
+            newValues: new { resolution = history.TareAnomalyResolution });
+
         return MapToTareHistoryDto(history);
     }
 
@@ -1759,6 +2098,8 @@ public class CommercialWeighingService : ICommercialWeighingService
         // Reuses the same required-justification rule UseStoredTareAsync/OverrideTareAnomalyAsync
         // enforce for preset tare.
         EnsureJustificationForPresetTare(request.Justification);
+
+        var oldTareWeightKg = history.TareWeightKg;
 
         // Corrects the vehicle's stored tare going forward (and logs a NEW VehicleTareHistory audit
         // entry via the shared helper). Deliberately does NOT retroactively rewrite this entry's own
@@ -1782,6 +2123,55 @@ public class CommercialWeighingService : ICommercialWeighingService
             "Tare anomaly overridden for tare history {HistoryId} by user {UserId}: corrected tare {TareKg}kg",
             historyId, overriddenByUserId, request.CorrectedTareWeightKg);
 
+        await WriteAuditLogAsync(
+            "TARE_ANOMALY_OVERRIDDEN", "VehicleTareHistory", history.Id, overriddenByUserId, history.OrganizationId,
+            oldValues: new { tareWeightKg = oldTareWeightKg },
+            newValues: new { correctedTareWeightKg = request.CorrectedTareWeightKg, justification = request.Justification });
+
         return MapToTareHistoryDto(history);
+    }
+
+    /// <summary>
+    /// Writes an explicit, descriptive per-event audit log entry (Phase 8) via IAuditLogRepository,
+    /// ADDITIVE alongside (not replacing) whatever the global AuditMiddleware already records for the
+    /// same HTTP request - see CommercialWeighingService's mutating methods above for call sites.
+    /// Deliberately swallows its own failures (logged as a warning) so a transient audit-log write
+    /// issue never blocks the underlying business transaction, matching this file's existing
+    /// resiliency pattern for non-critical side effects (e.g. CreateCommercialInvoiceAsync,
+    /// SendCompletionNotificationsAsync).
+    /// </summary>
+    private async Task WriteAuditLogAsync(
+        string action,
+        string resourceType,
+        Guid resourceId,
+        Guid userId,
+        Guid? organizationId,
+        object? oldValues,
+        object? newValues)
+    {
+        try
+        {
+            var auditLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Action = action,
+                ResourceType = resourceType,
+                ResourceId = resourceId,
+                Success = true,
+                OrganizationId = organizationId,
+                OldValues = oldValues != null ? STJson.JsonSerializer.Serialize(oldValues) : null,
+                NewValues = newValues != null ? STJson.JsonSerializer.Serialize(newValues) : null,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _auditLogRepository.SaveAsync(auditLog);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "[CommercialWeighing] Failed to write audit log entry: {Action} {ResourceType}/{ResourceId}",
+                action, resourceType, resourceId);
+        }
     }
 }
