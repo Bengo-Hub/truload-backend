@@ -8,6 +8,14 @@ public class OrganizationDto
     public string? OrgType { get; set; }
     public string? TenantType { get; set; }
     public List<string>? EnabledModules { get; set; }
+
+    /// <summary>
+    /// Commercial vertical/sub-use-case classification (e.g. "waste_management", "quarry" - see
+    /// Constants.CommercialVerticals), read from MetadataJson's "vertical" key. Null for
+    /// unclassified orgs (every org before this feature existed, and any commercial org that
+    /// hasn't picked one since) and for non-commercial (AxleLoadEnforcement) orgs.
+    /// </summary>
+    public string? Vertical { get; set; }
     public string? ContactEmail { get; set; }
     public string? ContactPhone { get; set; }
     public string? Website { get; set; }
@@ -40,6 +48,14 @@ public class CreateOrganizationRequest
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? OrgType { get; set; }
+
+    /// <summary>
+    /// Optional commercial vertical/sub-use-case (e.g. "waste_management", "quarry" - see
+    /// Constants.CommercialVerticals). Applied server-side at creation: an unrecognised value is
+    /// silently ignored rather than rejected. Meaningful for CommercialWeighing tenants; harmless
+    /// (ignored on read) if set on an AxleLoadEnforcement org.
+    /// </summary>
+    public string? Vertical { get; set; }
     public string? ContactEmail { get; set; }
     public string? ContactPhone { get; set; }
     public string? Website { get; set; }

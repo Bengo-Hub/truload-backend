@@ -292,6 +292,11 @@ public class CommercialReportGenerator : BaseReportGenerator
 
     public override List<ReportDefinitionDto> GetDefinitions() =>
     [
+        // Def(...) also accepts an `allowedVerticals:` param (ReportDefinitionDto.AllowedVerticals) -
+        // deliberately unset on every report below, same as several already leave `allowedRoles`
+        // unset. No commercial report is vertical-specific yet; a future report that genuinely is
+        // (e.g. a quarry-only blast-face tonnage report) opts in the same way reports already opt
+        // into allowedRoles, without touching ReportController's gating.
         // reports.md: "Daily Weighing Summary" - Operator, Supervisor, Finance, Admin all checked -
         // no restriction beyond the flat analytics.read permission.
         Def("commercial-daily-summary", "Commercial Daily Summary",

@@ -25,7 +25,22 @@ public class Organization
     /// When null or empty, all modules are enabled for AxleLoadEnforcement; for CommercialWeighing a default set is used.
     /// </summary>
     public string? EnabledModulesJson { get; set; }
-    
+
+    /// <summary>
+    /// Generic tenant-attribute JSON bag - the same "small bag of loosely-typed extras" pattern
+    /// already proven by <see cref="TruLoad.Backend.Models.Weighing.WeighingTransaction.IndustryMetadata"/>,
+    /// applied here at the Organization level. Reach for a new key under this column (documented in
+    /// <see cref="TruLoad.Backend.Common.OrganizationMetadataHelper"/>) instead of a new dedicated
+    /// column whenever a future tenant attribute is small and read in one place - a real binary
+    /// switch queried at many call sites (like <see cref="TenantType"/>/<see cref="WeighingBusinessModel"/>)
+    /// still earns its own column. First consumer: the commercial vertical/sub-use-case
+    /// classification under the "vertical" key (see <see cref="TruLoad.Backend.Constants.CommercialVerticals"/>).
+    /// Null for every organisation created before this column existed and for any org that hasn't
+    /// set any metadata key since - every resolution path treats a missing key exactly like today's
+    /// pre-metadata behaviour.
+    /// </summary>
+    public string? MetadataJson { get; set; }
+
     /// <summary>
     /// Indicates if this is the default organization for the system
     /// </summary>

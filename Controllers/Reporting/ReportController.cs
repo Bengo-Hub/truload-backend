@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.DTOs.Reporting;
 using TruLoad.Backend.Services.Interfaces.Reporting;
 using TruLoad.Backend.Authorization.Attributes;
+using TruLoad.Backend.Common;
 using TruLoad.Backend.Constants;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.Middleware;
@@ -74,24 +75,30 @@ public class ReportController : ControllerBase
     }
 
     /// <summary>
-    /// Resolves enabled tenant modules for the current organization, matching the pattern in AuthController.
+    /// Resolves enabled tenant modules for the current organization, matching the pattern in
+    /// AuthController. Also returns the org's live vertical classification (see
+    /// OrganizationMetadataHelper/CommercialVerticals) in the same query, so callers needing fresh
+    /// per-request vertical gating (see ApplyReportVerticalGating below) don't need a second
+    /// round-trip - vertical is null for every org with no "vertical" MetadataJson key, which is
+    /// every org today.
     /// </summary>
-    private async Task<(List<string> enabledModules, bool isEnforcement)> ResolveOrgModulesAsync()
+    private async Task<(List<string> enabledModules, bool isEnforcement, string? vertical)> ResolveOrgModulesAsync()
     {
         var orgId = _tenantContext.OrganizationId;
         if (orgId == Guid.Empty)
-            return (TenantModules.AllModules.ToList(), true);
+            return (TenantModules.AllModules.ToList(), true, null);
 
         var org = await _dbContext.Organizations
             .AsNoTracking()
             .Where(o => o.Id == orgId)
-            .Select(o => new { o.TenantType, o.EnabledModulesJson })
+            .Select(o => new { o.TenantType, o.EnabledModulesJson, o.MetadataJson })
             .FirstOrDefaultAsync();
 
         if (org == null)
-            return (TenantModules.AllModules.ToList(), true);
+            return (TenantModules.AllModules.ToList(), true, null);
 
         var isEnforcement = !string.Equals(org.TenantType, TenantModules.TenantTypeCommercialWeighing, StringComparison.OrdinalIgnoreCase);
+        var vertical = OrganizationMetadataHelper.GetVertical(org.MetadataJson);
 
         if (!string.IsNullOrWhiteSpace(org.EnabledModulesJson))
         {
@@ -99,15 +106,15 @@ public class ReportController : ControllerBase
             {
                 var list = JsonSerializer.Deserialize<List<string>>(org.EnabledModulesJson);
                 if (list != null && list.Count > 0)
-                    return (list, isEnforcement);
+                    return (list, isEnforcement, vertical);
             }
             catch { /* use defaults */ }
         }
 
         if (!isEnforcement)
-            return (TenantModules.DefaultCommercialWeighingModules.ToList(), false);
+            return (TenantModules.DefaultCommercialWeighingModules.ToList(), false, vertical);
 
-        return (TenantModules.AllModules.ToList(), true);
+        return (TenantModules.AllModules.ToList(), true, vertical);
     }
 
     /// <summary>
@@ -115,7 +122,7 @@ public class ReportController : ControllerBase
     /// </summary>
     private async Task<bool> IsReportModuleAllowedAsync(string reportModule)
     {
-        var (enabledModules, isEnforcement) = await ResolveOrgModulesAsync();
+        var (enabledModules, isEnforcement, _) = await ResolveOrgModulesAsync();
 
         // Yard and security are enforcement-only (no specific tenant module mapping)
         if (string.Equals(reportModule, ReportModules.Yard, StringComparison.OrdinalIgnoreCase) ||
@@ -154,6 +161,29 @@ public class ReportController : ControllerBase
     }
 
     /// <summary>
+    /// Per-report-type vertical gating - sibling to <see cref="CallerCanSeeReport"/>'s 5a role check,
+    /// on top of the same flat "analytics.read" permission. A report definition with a null/empty
+    /// AllowedVerticals list is unrestricted (every report today). An org with no vertical
+    /// classification set (every org before this feature, and any org that hasn't picked one since)
+    /// is never restricted - there is nothing to gate against, so behaviour is byte-identical to
+    /// before this field existed. Superuser/System Admin always bypasses, same convention as
+    /// CallerCanSeeReport.
+    /// </summary>
+    private bool CallerCanSeeReportForVertical(ReportDefinitionDto def, string? orgVertical)
+    {
+        if (def.AllowedVerticals == null || def.AllowedVerticals.Length == 0)
+            return true;
+
+        if (User.IsInRole("Superuser") || User.IsInRole("System Admin"))
+            return true;
+
+        if (string.IsNullOrWhiteSpace(orgVertical))
+            return true;
+
+        return def.AllowedVerticals.Contains(orgVertical, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// Get the report catalog (available reports per module).
     /// Optionally filter by module name.
     /// </summary>
@@ -165,6 +195,13 @@ public class ReportController : ControllerBase
         var orgId = _tenantContext.OrganizationId;
         var cacheKey = $"report_catalog_{orgId}_{module ?? "all"}";
 
+        // Resolved fresh on every request, cache hit or miss - both the 5a role gating below and
+        // vertical gating (see ApplyReportVerticalGating) need a live, per-caller-safe view; a
+        // Superuser/System Admin must bypass both even when reading a cache entry populated for a
+        // different (non-superuser) caller in the same org. See ApplyReportRoleGating's comment
+        // below for the cache-leak bug this discipline avoids reintroducing.
+        var (enabledModules, isEnforcement, orgVertical) = await ResolveOrgModulesAsync();
+
         try
         {
             var cached = await _cache.GetStringAsync(cacheKey);
@@ -175,7 +212,10 @@ public class ReportController : ControllerBase
                 // cache key is per-org, not per-caller-role - two users in the same org with
                 // different roles must see different report lists from the SAME cached entry.
                 if (cachedCatalog != null)
+                {
                     ApplyReportRoleGating(cachedCatalog);
+                    ApplyReportVerticalGating(cachedCatalog, orgVertical);
+                }
                 return Ok(cachedCatalog);
             }
         }
@@ -187,7 +227,6 @@ public class ReportController : ControllerBase
         var catalog = _reportService.GetCatalog(module);
 
         // Filter catalog modules by the tenant's enabled modules
-        var (enabledModules, isEnforcement) = await ResolveOrgModulesAsync();
         var allowedReportModules = GetAllowedReportModules(enabledModules);
 
         // Enforcement tenants also get yard and security reports
@@ -246,6 +285,7 @@ public class ReportController : ControllerBase
         // (shared by every caller in this org) stays role-agnostic and each caller's role gating is
         // computed fresh from their own claims on every request/cache-hit.
         ApplyReportRoleGating(catalog);
+        ApplyReportVerticalGating(catalog, orgVertical);
 
         return Ok(catalog);
     }
@@ -261,6 +301,24 @@ public class ReportController : ControllerBase
         {
             moduleCatalog.Reports = moduleCatalog.Reports
                 .Where(CallerCanSeeReport)
+                .ToList();
+        }
+    }
+
+    /// <summary>
+    /// Filters each module's report list down to the reports visible for the org's live vertical
+    /// classification - sibling to <see cref="ApplyReportRoleGating"/>, same "computed fresh, never
+    /// baked into the shared per-org cache" discipline (see the cache-key comment above): an org's
+    /// vertical is fixed per org, but a Superuser/System Admin bypass still needs the same
+    /// after-cache-read treatment as role gating, since one cached catalog entry is read by every
+    /// caller in that org regardless of role. Mutates the given catalog in place.
+    /// </summary>
+    private void ApplyReportVerticalGating(ReportCatalogResponse catalog, string? orgVertical)
+    {
+        foreach (var moduleCatalog in catalog.Modules)
+        {
+            moduleCatalog.Reports = moduleCatalog.Reports
+                .Where(r => CallerCanSeeReportForVertical(r, orgVertical))
                 .ToList();
         }
     }
@@ -337,7 +395,7 @@ public class ReportController : ControllerBase
                 var org = await _dbContext.Organizations
                     .AsNoTracking()
                     .Where(o => o.Id == orgId)
-                    .Select(o => new { o.Name, o.TenantType, o.LogoUrl })
+                    .Select(o => new { o.Name, o.TenantType, o.MetadataJson, o.LogoUrl })
                     .FirstOrDefaultAsync(ct);
 
                 if (org != null)
@@ -346,6 +404,15 @@ public class ReportController : ControllerBase
                     orgLogoFile = !string.IsNullOrEmpty(org.LogoUrl) ? Path.GetFileName(org.LogoUrl) : null;
                     isEnforcement = !string.Equals(org.TenantType,
                         TenantModules.TenantTypeCommercialWeighing, StringComparison.OrdinalIgnoreCase);
+
+                    // Vertical gating - sibling to the 5a role check above, same "computed fresh"
+                    // rationale (see ApplyReportVerticalGating) - blocks direct generation of a
+                    // vertical-restricted report type, not just hiding it from the catalog list.
+                    if (reportDef != null && !CallerCanSeeReportForVertical(reportDef, OrganizationMetadataHelper.GetVertical(org.MetadataJson)))
+                    {
+                        _logger.LogWarning("Report type access denied by vertical gating: {Module}/{ReportType}", module, reportType);
+                        return Forbid();
+                    }
                 }
             }
 

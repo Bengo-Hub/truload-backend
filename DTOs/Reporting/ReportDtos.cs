@@ -56,6 +56,20 @@ public class ReportDefinitionDto
     /// Superuser/System Admin caller always bypasses this, same convention as the rest of the app.
     /// </summary>
     public string[]? AllowedRoles { get; set; }
+
+    /// <summary>
+    /// Optional vertical allowlist restricting which classified commercial tenants may see/generate
+    /// this specific report type, on top of <see cref="AllowedRoles"/> and the flat "analytics.read"
+    /// permission - same null/empty-means-unrestricted convention as AllowedRoles. Checked against
+    /// the org's Organization.MetadataJson "vertical" value (see
+    /// TruLoad.Backend.Constants.CommercialVerticals); an org with no vertical classification set
+    /// (every org before this field existed, and any org that hasn't picked one since) is never
+    /// restricted by this field. No report currently sets this - the mechanism exists for a future
+    /// vertical-specific report (e.g. a quarry-only blast-face tonnage report) to opt into, the same
+    /// way individual reports already opt into AllowedRoles. A Superuser/System Admin caller always
+    /// bypasses this, same convention as AllowedRoles.
+    /// </summary>
+    public string[]? AllowedVerticals { get; set; }
 }
 
 /// <summary>

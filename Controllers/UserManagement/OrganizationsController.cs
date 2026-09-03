@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.Authorization.Attributes;
+using TruLoad.Backend.Common;
 using TruLoad.Backend.Common.Constants;
 using TruLoad.Backend.Constants;
 using TruLoad.Backend.DTOs.User;
@@ -110,6 +111,16 @@ public class OrganizationsController : ControllerBase
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+
+        // Commercial vertical/sub-use-case classification - stored under MetadataJson's "vertical"
+        // key (see OrganizationMetadataHelper), not a dedicated column (see CommercialVerticals).
+        // Unrecognised values are silently ignored rather than rejected, matching this controller's
+        // existing lenient-normalization convention (see NormalizeTenantType below).
+        var verticalPreset = CommercialVerticals.Resolve(request.Vertical);
+        if (verticalPreset != null)
+        {
+            org.MetadataJson = OrganizationMetadataHelper.MergeVertical(org.MetadataJson, verticalPreset.Key);
+        }
 
         var created = await _organizationRepository.CreateAsync(org, cancellationToken);
         _logger.LogInformation("Organization created: {OrgId}, Code: {Code}", created.Id, created.Code);
@@ -306,6 +317,7 @@ public class OrganizationsController : ControllerBase
             OrgType = org.OrgType,
             TenantType = org.TenantType,
             EnabledModules = enabledModules,
+            Vertical = OrganizationMetadataHelper.GetVertical(org.MetadataJson),
             ContactEmail = org.ContactEmail,
             ContactPhone = org.ContactPhone,
             Website = org.Website,
@@ -344,6 +356,16 @@ public class OrganizationsController : ControllerBase
             }
             catch { /* use defaults */ }
         }
+
+        // A classified vertical's preset takes precedence over the generic TenantType default, but
+        // still only when no explicit EnabledModulesJson override exists above - an org with no
+        // "vertical" key in MetadataJson (every org before this feature, and any org that hasn't
+        // been classified since) resolves to null here and falls straight through to the exact
+        // TenantType-based defaults below, unchanged.
+        var verticalPreset = CommercialVerticals.Resolve(OrganizationMetadataHelper.GetVertical(org.MetadataJson));
+        if (verticalPreset != null)
+            return verticalPreset.DefaultEnabledModules.ToList();
+
         if (string.Equals(org.TenantType, TenantModules.TenantTypeCommercialWeighing, StringComparison.OrdinalIgnoreCase))
             return TenantModules.DefaultCommercialWeighingModules.ToList();
         return TenantModules.AllModules.ToList();

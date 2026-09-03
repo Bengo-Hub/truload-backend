@@ -193,6 +193,10 @@ public static class UserManagementModuleDbContextConfiguration
             entity.Property(e => e.EnabledModulesJson)
                 .HasColumnName("enabled_modules_json");
 
+            entity.Property(e => e.MetadataJson)
+                .HasColumnName("metadata_json")
+                .HasColumnType("jsonb");
+
             entity.Property(e => e.ContactEmail)
                 .HasColumnName("contact_email")
                 .HasMaxLength(255);
