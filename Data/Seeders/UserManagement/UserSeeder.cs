@@ -47,6 +47,7 @@ public class UserSeeder
         await SeedPlatformOwnerAsync();
         await SeedSuperUserAsync();
         await SeedMiddlewareServiceUserAsync();
+        await SeedMiddlewareDemoServiceUserAsync();
         await SeedCommercialDemoTenantAdminAsync();
         await SeedCommercialDemoStaffAsync();
     }
@@ -302,6 +303,100 @@ public class UserSeeder
             else
             {
                 Console.WriteLine($"✓ Middleware service user {middlewareEmail} already exists, skipping seed");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Seeds the dedicated TruConnect demo/training service account
+    /// (middleware-demo@truconnect.local), linked to TRULOAD-DEMO org / DEMO-WB-01 station.
+    /// Deliberately a SEPARATE account from SeedMiddlewareServiceUserAsync's
+    /// middleware@truconnect.local (which stays linked to the live KURA org) — so a single
+    /// TruConnect device can never be simultaneously "live" and "demo": Settings' Demo/Training
+    /// Mode toggle points at this account, never the live one. See AuthDemoSyncService.cs for the
+    /// codevertex-demo auth-api personas this pairs with.
+    /// </summary>
+    private async Task SeedMiddlewareDemoServiceUserAsync()
+    {
+        var middlewareRole = await _roleManager.FindByNameAsync("Middleware Service");
+        if (middlewareRole == null)
+        {
+            Console.WriteLine("⚠ MIDDLEWARE_SERVICE role not found, skipping middleware demo user seed");
+            return;
+        }
+
+        var truloadDemoOrg = await _context.Organizations
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(o => o.Code == "TRULOAD-DEMO");
+
+        if (truloadDemoOrg == null)
+        {
+            Console.WriteLine("⚠ TRULOAD-DEMO organization not found, skipping middleware demo user seed");
+            return;
+        }
+
+        var demoStation = await _context.Stations
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(s => s.Code == "DEMO-WB-01");
+
+        const string middlewareDemoEmail = "middleware-demo@truconnect.local";
+        var existingUser = await _userManager.FindByEmailAsync(middlewareDemoEmail);
+
+        if (existingUser == null)
+        {
+            var middlewareDemoUser = new ApplicationUser
+            {
+                Email = middlewareDemoEmail,
+                NormalizedEmail = middlewareDemoEmail.ToUpper(),
+                UserName = middlewareDemoEmail,
+                NormalizedUserName = middlewareDemoEmail.ToUpper(),
+                FullName = "TruConnect Demo/Training Middleware",
+                OrganizationId = truloadDemoOrg.Id,
+                StationId = demoStation?.Id,
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true,
+                TwoFactorEnabled = false,
+                LockoutEnabled = false
+            };
+
+            var result = await _userManager.CreateAsync(middlewareDemoUser, DefaultPassword);
+            if (!result.Succeeded)
+            {
+                Console.WriteLine($"⚠ Failed to create middleware demo user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                return;
+            }
+
+            var roleResult = await _userManager.AddToRoleAsync(middlewareDemoUser, "Middleware Service");
+            if (!roleResult.Succeeded)
+            {
+                Console.WriteLine($"⚠ Failed to assign role to middleware demo user: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
+                return;
+            }
+
+            Console.WriteLine($"✓ Seeded middleware demo service user: {middlewareDemoEmail} → TRULOAD-DEMO org with MIDDLEWARE_SERVICE role");
+            Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY - change in production!)");
+        }
+        else
+        {
+            var updated = false;
+            if (existingUser.OrganizationId != truloadDemoOrg.Id)
+            {
+                existingUser.OrganizationId = truloadDemoOrg.Id;
+                updated = true;
+            }
+            if (existingUser.StationId == null && demoStation != null)
+            {
+                existingUser.StationId = demoStation.Id;
+                updated = true;
+            }
+            if (updated)
+            {
+                await _userManager.UpdateAsync(existingUser);
+                Console.WriteLine($"✓ Updated middleware demo user {middlewareDemoEmail}: linked to TRULOAD-DEMO org/station");
+            }
+            else
+            {
+                Console.WriteLine($"✓ Middleware demo service user {middlewareDemoEmail} already exists, skipping seed");
             }
         }
     }
