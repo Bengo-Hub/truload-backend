@@ -19,6 +19,37 @@ public static class WeighingQueryHelpers
     private static readonly TimeSpan EatOffset = TimeSpan.FromHours(3);
 
     /// <summary>
+    /// Converts a true-UTC <c>WeighedAt</c> instant to its EAT-local bucket start for a tonnage
+    /// trend/report, per <paramref name="granularity"/>. Week buckets start Monday (ISO-8601, this
+    /// codebase's existing convention for weekly reporting elsewhere). Callers must materialize rows
+    /// before calling this (it's plain C#, not translatable to SQL) - the existing daily-only trend
+    /// endpoints instead group via a SQL-translatable <c>.AddHours(3).Date</c> LINQ GroupBy, which
+    /// can't express week/month buckets safely, hence this separate in-memory helper.
+    /// </summary>
+    public static DateTime BucketEatStart(DateTime weighedAtUtc, TonnageTrendGranularity granularity)
+    {
+        var eatLocal = weighedAtUtc.Add(EatOffset);
+        return granularity switch
+        {
+            TonnageTrendGranularity.Hour => new DateTime(eatLocal.Year, eatLocal.Month, eatLocal.Day, eatLocal.Hour, 0, 0, DateTimeKind.Unspecified),
+            TonnageTrendGranularity.Day => eatLocal.Date,
+            TonnageTrendGranularity.Week => eatLocal.Date.AddDays(-(((int)eatLocal.DayOfWeek + 6) % 7)), // Monday of that ISO week
+            TonnageTrendGranularity.Month => new DateTime(eatLocal.Year, eatLocal.Month, 1, 0, 0, 0, DateTimeKind.Unspecified),
+            _ => eatLocal.Date,
+        };
+    }
+
+    /// <summary>Display label for a <see cref="BucketEatStart"/> result, per granularity.</summary>
+    public static string FormatBucketLabel(DateTime bucketStart, TonnageTrendGranularity granularity) => granularity switch
+    {
+        TonnageTrendGranularity.Hour => bucketStart.ToString("MMM dd HH:00"),
+        TonnageTrendGranularity.Day => bucketStart.ToString("MMM dd"),
+        TonnageTrendGranularity.Week => $"Wk of {bucketStart:MMM dd}",
+        TonnageTrendGranularity.Month => bucketStart.ToString("MMM yyyy"),
+        _ => bucketStart.ToString("MMM dd"),
+    };
+
+    /// <summary>
     /// Resolves a `[fromUtc, toUtcExclusive)` instant range from date-only (or full) inputs,
     /// treating them as Nairobi-local (EAT) calendar days - "12 Aug" means the real EAT day, not a
     /// UTC day wearing an EAT label. Previously every call site did
@@ -109,4 +140,17 @@ public static class WeighingQueryHelpers
 
         return query.Where(w => aliases.Contains(w.ControlStatus));
     }
+}
+
+/// <summary>
+/// Time-bucket grain for a tonnage trend/report - the "aggregated by hour, day, weeks, and months"
+/// need raised by commercial (quarry/waste-treatment) tenants who bill their own downstream client
+/// off periodic tonnage rollups.
+/// </summary>
+public enum TonnageTrendGranularity
+{
+    Hour,
+    Day,
+    Week,
+    Month,
 }

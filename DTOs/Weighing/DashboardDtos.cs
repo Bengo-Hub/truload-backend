@@ -29,6 +29,20 @@ public class ComplianceTrendDto
 }
 
 /// <summary>
+/// DTO for tonnage-trend data points (commercial weighing) - one bucket per hour/day/week/month,
+/// per <see cref="TruLoad.Backend.Common.TonnageTrendGranularity"/>. Built for the "aggregate tonnage
+/// by hour/day/week/month" reporting need (quarry/waste-treatment tenants billed on periodic
+/// tonnage), not just a UI chart - the same bucketed rows are reusable for a period-end statement.
+/// </summary>
+public class TonnageTrendDto
+{
+    public string Name { get; set; } = string.Empty;
+    public DateTime PeriodStart { get; set; }
+    public decimal TotalNetWeightKg { get; set; }
+    public int TransactionCount { get; set; }
+}
+
+/// <summary>
 /// DTO for overload distribution by severity band.
 /// </summary>
 public class OverloadDistributionDto

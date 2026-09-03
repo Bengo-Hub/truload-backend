@@ -1055,6 +1055,61 @@ public class WeighingController : ControllerBase
     }
 
     /// <summary>
+    /// Gets tonnage-trend data for commercial weighing charts/reports, bucketed by
+    /// hour/day/week/month (EAT-local) - built for tenants (e.g. quarry/waste-treatment) who bill
+    /// their own downstream client off periodic tonnage rollups, and for the equivalent Dashboard/
+    /// Reports "tonnage trend" chart. Unlike <see cref="GetComplianceTrend"/> (SQL-translatable daily
+    /// GroupBy), week/month buckets aren't expressible as a translatable LINQ GroupBy key, so rows
+    /// are materialized first and bucketed in memory via <see cref="WeighingQueryHelpers.BucketEatStart"/>.
+    /// </summary>
+    [HttpGet("tonnage-trend")]
+    [Authorize(Policy = "Permission:weighing.read")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(List<TonnageTrendDto>), 200)]
+    public async Task<IActionResult> GetTonnageTrend(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] Guid? stationId,
+        [FromQuery] Guid? transporterId,
+        [FromQuery] TonnageTrendGranularity granularity = TonnageTrendGranularity.Day,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+            var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
+            var (from, toExclusive) = WeighingQueryHelpers.ResolveEatDayRange(dateFrom, dateTo);
+
+            var rows = await _context.WeighingTransactions
+                .AsNoTracking()
+                .Where(wt => wt.WeighedAt >= from && wt.WeighedAt < toExclusive && wt.DeletedAt == null)
+                .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId)
+                .Where(wt => !transporterId.HasValue || wt.TransporterId == transporterId)
+                .Select(wt => new { wt.WeighedAt, wt.NetWeightKg })
+                .ToListAsync(ct);
+
+            var trend = rows
+                .GroupBy(r => WeighingQueryHelpers.BucketEatStart(r.WeighedAt, granularity))
+                .OrderBy(g => g.Key)
+                .Select(g => new TonnageTrendDto
+                {
+                    Name = WeighingQueryHelpers.FormatBucketLabel(g.Key, granularity),
+                    PeriodStart = g.Key,
+                    TotalNetWeightKg = g.Sum(r => r.NetWeightKg ?? 0),
+                    TransactionCount = g.Count(),
+                })
+                .ToList();
+
+            return Ok(trend);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting tonnage trend");
+            return StatusCode(500, "An error occurred while getting tonnage trend.");
+        }
+    }
+
+    /// <summary>
     /// Gets overload distribution by severity bands.
     /// </summary>
     [HttpGet("overload-distribution")]
