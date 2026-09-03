@@ -16,6 +16,7 @@ using TruLoad.Backend.Services.Interfaces.Weighing;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
 using TruLoad.Backend.Services.Interfaces.System;
 using STJson = System.Text.Json;
+using ISOWeek = System.Globalization.ISOWeek;
 
 namespace TruLoad.Backend.Services.Implementations.Weighing;
 
@@ -1049,7 +1050,7 @@ public class CommercialWeighingService : ICommercialWeighingService
                     .FirstOrDefaultAsync(t => t.Id == transaction.TransporterId.Value)
                 : null;
 
-            var feeKes = await ResolveCommercialFeeAsync(transaction, org, transporter);
+            var (feeKes, matchedRule) = await ResolveCommercialTariffAsync(transaction, org, transporter);
             if (feeKes <= 0)
             {
                 _logger.LogInformation(
@@ -1058,110 +1059,19 @@ public class CommercialWeighingService : ICommercialWeighingService
                 return;
             }
 
-            // Invoice numbers are org-wide (no station code in the convention → a per-station
-            // sequence could collide across stations on the same day).
-            var invoiceNo = await _documentNumberService.GenerateNumberAsync(
-                org.Id, null, DocumentTypes.Invoice);
-
-            var invoice = new Invoice
+            // A rule billed Daily/Weekly/Monthly doesn't invoice per-transaction at all — it accrues
+            // here, and CommercialPeriodicBillingJob rolls every accrual for the same org+transporter
+            // +period into ONE invoice once that period has fully elapsed.
+            if (matchedRule != null && matchedRule.BillingPeriod != BillingPeriodValues.Immediate)
             {
-                InvoiceNo = invoiceNo,
-                WeighingId = transaction.Id,
-                AmountDue = feeKes,
-                Currency = "KES",
-                Status = "pending",
-                InvoiceType = "commercial_weighing_fee",
-                GeneratedAt = DateTime.UtcNow,
-                OrganizationId = org.Id,
-                StationId = transaction.StationId
-            };
-
-            _dbContext.Invoices.Add(invoice);
-            await _dbContext.SaveChangesAsync();
-
-            if (org.PaymentGateway == "treasury" && !string.IsNullOrWhiteSpace(org.SsoTenantSlug))
-            {
-                try
-                {
-                    var onAccount = transporter?.OnAccountBilling == true;
-                    var dueDate = onAccount ? DateTime.UtcNow.AddDays(7) : DateTime.UtcNow;
-
-                    var treasuryInvoice = await _treasuryService.CreateInvoiceAsync(
-                        org.SsoTenantSlug,
-                        new TreasuryInvoiceRequest(
-                            InvoiceType: "commercial_weighing_fee",
-                            Description: $"Weighing fee — ticket {transaction.TicketNumber}",
-                            AmountKes: feeKes,
-                            ReferenceId: invoice.Id.ToString(),
-                            ReferenceType: "weighing",
-                            DueDate: dueDate,
-                            CustomerId: transporter?.CrmContactId?.ToString(),
-                            CustomerName: transporter?.Name,
-                            CustomerEmail: transporter?.Email,
-                            CustomerPhone: transporter?.Phone));
-
-                    invoice.TreasuryInvoiceId = treasuryInvoice.InvoiceId;
-                    await _dbContext.SaveChangesAsync();
-
-                    // Backfill the transporter's CrmContactId the first time treasury resolves/
-                    // creates one for us (when we didn't already have one to send as customer_id).
-                    // Without this, every subsequent invoice for this transporter would keep going
-                    // out customer-anonymous instead of accumulating onto one real AR statement.
-                    if (transporter != null && transporter.CrmContactId == null
-                        && !string.IsNullOrWhiteSpace(treasuryInvoice.CrmCustomerId)
-                        && Guid.TryParse(treasuryInvoice.CrmCustomerId, out var resolvedCrmId))
-                    {
-                        var trackedTransporter = await _dbContext.Transporters
-                            .IgnoreQueryFilters()
-                            .FirstOrDefaultAsync(t => t.Id == transporter.Id);
-                        if (trackedTransporter != null)
-                        {
-                            trackedTransporter.CrmContactId = resolvedCrmId;
-                            trackedTransporter.UpdatedAt = DateTime.UtcNow;
-                            await _dbContext.SaveChangesAsync();
-                        }
-                    }
-
-                    // Send: posts the AR journal (Dr AR / Cr Revenue) and projects the customer
-                    // statement. This is what makes a transporter's repeat weighing sessions
-                    // accumulate into a real running balance instead of anonymous cash entries.
-                    await _treasuryService.SendInvoiceAsync(org.SsoTenantSlug, treasuryInvoice.InvoiceId);
-
-                    if (!onAccount)
-                    {
-                        // Pay-now: collect immediately via a payment intent linked to the treasury
-                        // Invoice (reference_type="invoice" — GLSubscriber skips it, since Send
-                        // already posted the AR/revenue leg; the payment leg closes AR when the
-                        // webhook confirms success, see TreasuryWebhookController).
-                        var intent = await _treasuryService.CreatePaymentIntentAsync(
-                            org.SsoTenantSlug,
-                            feeKes,
-                            treasuryInvoice.InvoiceId,
-                            $"Weighing fee — ticket {transaction.TicketNumber}",
-                            referenceType: "invoice");
-
-                        invoice.TreasuryIntentId = intent.IntentId;
-                        invoice.TreasuryIntentStatus = intent.Status;
-                        await _dbContext.SaveChangesAsync();
-                    }
-                    else
-                    {
-                        _logger.LogInformation(
-                            "Commercial invoice {InvoiceNo} left on-account for transporter {TransporterId} — no payment intent created",
-                            invoiceNo, transporter?.Id);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex,
-                        "Failed to create/send treasury invoice for {InvoiceNo}. Local invoice saved as pending.",
-                        invoiceNo);
-                }
+                await AccrueForPeriodicBillingAsync(transaction, org, transporter, matchedRule, feeKes);
+                return;
             }
 
-            _logger.LogInformation(
-                "Created commercial invoice {InvoiceNo} ({Amount} KES) for weighing {TransactionId}",
-                invoiceNo, feeKes, transaction.Id);
+            var description = string.IsNullOrWhiteSpace(transaction.TicketNumber)
+                ? "Commercial weighing fee"
+                : $"Weighing fee — ticket {transaction.TicketNumber}";
+            await CreateAndSendCommercialInvoiceAsync(org, transporter, feeKes, transaction.Id, description, transaction.StationId);
         }
         catch (Exception ex)
         {
@@ -1172,13 +1082,279 @@ public class CommercialWeighingService : ICommercialWeighingService
     }
 
     /// <summary>
-    /// Resolves the fee for a completed commercial weighing session: most-specific matching
-    /// active CommercialTariffRule wins (transporter-specific contract rule > vehicle/axle/weight
-    /// bracket rule > org-wide default), falling back to Organization.CommercialWeighingFeeKes
-    /// when no rule matches at all — so an org with zero tariff rules configured keeps working
-    /// exactly as before.
+    /// Writes a pending <see cref="CommercialTariffAccrual"/> row for a weighing whose matched
+    /// tariff rule is billed Daily/Weekly/Monthly rather than Immediate. Idempotent on
+    /// <c>WeighingId</c> (the unique index also guards this, but checking first avoids a needless
+    /// constraint-violation exception on a retry/duplicate call).
     /// </summary>
-    private async Task<decimal> ResolveCommercialFeeAsync(WeighingTransaction transaction, Organization org, Transporter? transporter)
+    private async Task AccrueForPeriodicBillingAsync(
+        WeighingTransaction transaction, Organization org, Transporter? transporter,
+        CommercialTariffRule rule, decimal feeKes)
+    {
+        var existing = await _dbContext.CommercialTariffAccruals
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(a => a.WeighingId == transaction.Id);
+        if (existing != null) return;
+
+        var periodKey = ResolvePeriodKey(transaction.WeighedAt, rule.BillingPeriod);
+
+        _dbContext.CommercialTariffAccruals.Add(new CommercialTariffAccrual
+        {
+            OrganizationId = org.Id,
+            StationId = transaction.StationId,
+            WeighingId = transaction.Id,
+            TariffRuleId = rule.Id,
+            TransporterId = transporter?.Id,
+            BillingPeriod = rule.BillingPeriod,
+            PeriodKey = periodKey,
+            NetWeightKg = transaction.NetWeightKg,
+            ComputedAmountKes = feeKes,
+            Status = "pending"
+        });
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Accrued {Amount} KES for transaction {TransactionId} into {BillingPeriod} period {PeriodKey} (invoiced later by CommercialPeriodicBillingJob)",
+            feeKes, transaction.Id, rule.BillingPeriod, periodKey);
+    }
+
+    /// <summary>
+    /// EAT-calendar period key for accrual grouping: "yyyy-MM-dd" (Daily), "yyyy-'W'ww" (Weekly,
+    /// ISO week), or "yyyy-MM" (Monthly) — mirrors how the rest of this platform resolves EAT day
+    /// boundaries (<c>WeighingQueryHelpers.ResolveEatDayRange</c>) rather than using the server's
+    /// raw UTC calendar, so "today"/"this week" mean the same real-world window everywhere.
+    /// </summary>
+    public static string ResolvePeriodKey(DateTime weighedAtUtc, string billingPeriod)
+    {
+        var eatLocal = weighedAtUtc.Add(EatOffset);
+        return billingPeriod switch
+        {
+            BillingPeriodValues.Weekly => $"{eatLocal:yyyy}-W{ISOWeek.GetWeekOfYear(eatLocal):D2}",
+            BillingPeriodValues.Monthly => eatLocal.ToString("yyyy-MM"),
+            _ => eatLocal.ToString("yyyy-MM-dd"), // Daily (and any unrecognized value, fail-safe)
+        };
+    }
+
+    private static readonly TimeSpan EatOffset = TimeSpan.FromHours(3);
+
+    /// <inheritdoc />
+    public async Task<int> ProcessPendingPeriodicBillingAsync()
+    {
+        // "Closed" = this period's own key sorts strictly before the CURRENT period's key for the
+        // same BillingPeriod type. The three PeriodKey formats (yyyy-MM-dd / yyyy-Www / yyyy-MM) are
+        // all lexicographically sortable in chronological order, so a plain string comparison against
+        // "today"'s key for that type is enough — no date parsing needed.
+        var nowUtc = DateTime.UtcNow;
+        var currentKeyByPeriod = BillingPeriodValues.All
+            .Where(p => p != BillingPeriodValues.Immediate)
+            .ToDictionary(p => p, p => ResolvePeriodKey(nowUtc, p));
+
+        var pending = await _dbContext.CommercialTariffAccruals
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(a => a.Status == "pending")
+            .ToListAsync();
+
+        var closed = pending
+            .Where(a => currentKeyByPeriod.TryGetValue(a.BillingPeriod, out var currentKey)
+                && string.CompareOrdinal(a.PeriodKey, currentKey) < 0)
+            .ToList();
+
+        if (closed.Count == 0) return 0;
+
+        var invoicesCreated = 0;
+        var groups = closed.GroupBy(a => (a.OrganizationId, a.TransporterId, a.BillingPeriod, a.PeriodKey));
+
+        foreach (var group in groups)
+        {
+            try
+            {
+                var org = await _dbContext.Organizations
+                    .AsNoTracking().IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(o => o.Id == group.Key.OrganizationId);
+                if (org == null)
+                {
+                    _logger.LogWarning(
+                        "[CommercialPeriodicBilling] Organization {OrgId} not found for accrual group {Period}/{PeriodKey} — skipping",
+                        group.Key.OrganizationId, group.Key.BillingPeriod, group.Key.PeriodKey);
+                    continue;
+                }
+
+                var transporter = group.Key.TransporterId.HasValue
+                    ? await _dbContext.Transporters
+                        .AsNoTracking().IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(t => t.Id == group.Key.TransporterId.Value)
+                    : null;
+
+                var totalKes = group.Sum(a => a.ComputedAmountKes);
+                if (totalKes <= 0) continue;
+
+                var description =
+                    $"Commercial weighing fees — {group.Key.BillingPeriod} {group.Key.PeriodKey} " +
+                    $"({group.Count()} weighing{(group.Count() == 1 ? "" : "s")}" +
+                    (transporter != null ? $", {transporter.Name}" : "") + ")";
+
+                // No single WeighingId — this invoice covers every weighing in the accrual group.
+                var invoice = await CreateAndSendCommercialInvoiceAsync(org, transporter, totalKes, null, description, null);
+
+                var accrualIds = group.Select(a => a.Id).ToList();
+                var trackedAccruals = await _dbContext.CommercialTariffAccruals
+                    .IgnoreQueryFilters()
+                    .Where(a => accrualIds.Contains(a.Id))
+                    .ToListAsync();
+                foreach (var accrual in trackedAccruals)
+                {
+                    accrual.Status = "invoiced";
+                    accrual.InvoiceId = invoice.Id;
+                    accrual.UpdatedAt = DateTime.UtcNow;
+                }
+                await _dbContext.SaveChangesAsync();
+
+                invoicesCreated++;
+                _logger.LogInformation(
+                    "[CommercialPeriodicBilling] Created invoice {InvoiceNo} ({Amount} KES) for org {OrgId}, transporter {TransporterId}, {Period} {PeriodKey} ({Count} accruals)",
+                    invoice.InvoiceNo, totalKes, group.Key.OrganizationId, group.Key.TransporterId, group.Key.BillingPeriod, group.Key.PeriodKey, accrualIds.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "[CommercialPeriodicBilling] Failed to invoice accrual group org={OrgId} transporter={TransporterId} {Period}/{PeriodKey} — will retry next run",
+                    group.Key.OrganizationId, group.Key.TransporterId, group.Key.BillingPeriod, group.Key.PeriodKey);
+            }
+        }
+
+        return invoicesCreated;
+    }
+
+    /// <summary>
+    /// Creates (idempotently) and sends the actual Invoice — the treasury AR/CRM logic shared by
+    /// both the Immediate per-transaction path above and CommercialPeriodicBillingJob's rolled-up
+    /// periodic invoice, so this logic exists exactly once.
+    /// </summary>
+    private async Task<Invoice> CreateAndSendCommercialInvoiceAsync(
+        Organization org, Transporter? transporter, decimal feeKes,
+        Guid? weighingId, string description, Guid? stationId)
+    {
+        // Invoice numbers are org-wide (no station code in the convention → a per-station
+        // sequence could collide across stations on the same day).
+        var invoiceNo = await _documentNumberService.GenerateNumberAsync(
+            org.Id, null, DocumentTypes.Invoice);
+
+        var invoice = new Invoice
+        {
+            InvoiceNo = invoiceNo,
+            WeighingId = weighingId,
+            AmountDue = feeKes,
+            Currency = "KES",
+            Status = "pending",
+            InvoiceType = "commercial_weighing_fee",
+            GeneratedAt = DateTime.UtcNow,
+            OrganizationId = org.Id,
+            StationId = stationId
+        };
+
+        _dbContext.Invoices.Add(invoice);
+        await _dbContext.SaveChangesAsync();
+
+        if (org.PaymentGateway == "treasury" && !string.IsNullOrWhiteSpace(org.SsoTenantSlug))
+        {
+            try
+            {
+                var onAccount = transporter?.OnAccountBilling == true;
+                var dueDate = onAccount ? DateTime.UtcNow.AddDays(7) : DateTime.UtcNow;
+
+                var treasuryInvoice = await _treasuryService.CreateInvoiceAsync(
+                    org.SsoTenantSlug,
+                    new TreasuryInvoiceRequest(
+                        InvoiceType: "commercial_weighing_fee",
+                        Description: description,
+                        AmountKes: feeKes,
+                        ReferenceId: invoice.Id.ToString(),
+                        ReferenceType: "weighing",
+                        DueDate: dueDate,
+                        CustomerId: transporter?.CrmContactId?.ToString(),
+                        CustomerName: transporter?.Name,
+                        CustomerEmail: transporter?.Email,
+                        CustomerPhone: transporter?.Phone));
+
+                invoice.TreasuryInvoiceId = treasuryInvoice.InvoiceId;
+                await _dbContext.SaveChangesAsync();
+
+                // Backfill the transporter's CrmContactId the first time treasury resolves/
+                // creates one for us (when we didn't already have one to send as customer_id).
+                // Without this, every subsequent invoice for this transporter would keep going
+                // out customer-anonymous instead of accumulating onto one real AR statement.
+                if (transporter != null && transporter.CrmContactId == null
+                    && !string.IsNullOrWhiteSpace(treasuryInvoice.CrmCustomerId)
+                    && Guid.TryParse(treasuryInvoice.CrmCustomerId, out var resolvedCrmId))
+                {
+                    var trackedTransporter = await _dbContext.Transporters
+                        .IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(t => t.Id == transporter.Id);
+                    if (trackedTransporter != null)
+                    {
+                        trackedTransporter.CrmContactId = resolvedCrmId;
+                        trackedTransporter.UpdatedAt = DateTime.UtcNow;
+                        await _dbContext.SaveChangesAsync();
+                    }
+                }
+
+                // Send: posts the AR journal (Dr AR / Cr Revenue) and projects the customer
+                // statement. This is what makes a transporter's repeat weighing sessions
+                // accumulate into a real running balance instead of anonymous cash entries.
+                await _treasuryService.SendInvoiceAsync(org.SsoTenantSlug, treasuryInvoice.InvoiceId);
+
+                if (!onAccount)
+                {
+                    // Pay-now: collect immediately via a payment intent linked to the treasury
+                    // Invoice (reference_type="invoice" — GLSubscriber skips it, since Send
+                    // already posted the AR/revenue leg; the payment leg closes AR when the
+                    // webhook confirms success, see TreasuryWebhookController).
+                    var intent = await _treasuryService.CreatePaymentIntentAsync(
+                        org.SsoTenantSlug,
+                        feeKes,
+                        treasuryInvoice.InvoiceId,
+                        description,
+                        referenceType: "invoice");
+
+                    invoice.TreasuryIntentId = intent.IntentId;
+                    invoice.TreasuryIntentStatus = intent.Status;
+                    await _dbContext.SaveChangesAsync();
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "Commercial invoice {InvoiceNo} left on-account for transporter {TransporterId} — no payment intent created",
+                        invoiceNo, transporter?.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to create/send treasury invoice for {InvoiceNo}. Local invoice saved as pending.",
+                    invoiceNo);
+            }
+        }
+
+        _logger.LogInformation(
+            "Created commercial invoice {InvoiceNo} ({Amount} KES) for weighing {WeighingId}",
+            invoiceNo, feeKes, weighingId);
+
+        return invoice;
+    }
+
+    /// <summary>
+    /// Resolves the fee (and which rule, if any, matched) for a completed commercial weighing
+    /// session: most-specific matching active CommercialTariffRule wins (transporter-specific
+    /// contract rule > vehicle/axle/weight bracket rule > org-wide default), falling back to
+    /// Organization.CommercialWeighingFeeKes (a flat, Immediate-billed amount) when no rule matches
+    /// at all — so an org with zero tariff rules configured keeps working exactly as before. The
+    /// matched rule is returned alongside the fee so the caller can branch on its BillingPeriod
+    /// (Immediate vs accrue-for-periodic-billing).
+    /// </summary>
+    private async Task<(decimal FeeKes, CommercialTariffRule? MatchedRule)> ResolveCommercialTariffAsync(
+        WeighingTransaction transaction, Organization org, Transporter? transporter)
     {
         var now = DateTime.UtcNow;
         var rules = await _dbContext.CommercialTariffRules
@@ -1189,13 +1365,13 @@ public class CommercialWeighingService : ICommercialWeighingService
                 && (r.EffectiveTo == null || r.EffectiveTo >= now))
             .ToListAsync();
 
-        if (rules.Count == 0) return org.CommercialWeighingFeeKes;
+        if (rules.Count == 0) return (org.CommercialWeighingFeeKes, null);
 
         // 1. Transporter-specific contract rule takes priority over any bracket rule.
         if (transporter != null)
         {
             var contractRule = rules.FirstOrDefault(r => r.TransporterId == transporter.Id);
-            if (contractRule != null) return contractRule.FeeKes;
+            if (contractRule != null) return (ApplyRateBasis(contractRule, transaction.NetWeightKg), contractRule);
         }
 
         // 2. Org-wide bracket rule matching vehicle type / axle count / gross weight.
@@ -1220,7 +1396,28 @@ public class CommercialWeighingService : ICommercialWeighingService
                 (r.WeightBracketMinKg != null || r.WeightBracketMaxKg != null ? 1 : 0))
             .FirstOrDefault();
 
-        return bracketRule?.FeeKes ?? org.CommercialWeighingFeeKes;
+        return bracketRule != null
+            ? (ApplyRateBasis(bracketRule, transaction.NetWeightKg), bracketRule)
+            : (org.CommercialWeighingFeeKes, null);
+    }
+
+    /// <summary>
+    /// Applies a matched <see cref="CommercialTariffRule"/>'s RateBasis to its FeeKes: "Flat"
+    /// returns FeeKes unchanged (the original behavior, still the default for every existing rule);
+    /// "PerTonne"/"PerKg" multiply FeeKes by the transaction's net weight. Falls back to the rule's
+    /// flat FeeKes (rather than charging zero) when net weight isn't captured yet — a rate-basis
+    /// rule should never silently produce a KES 0 invoice.
+    /// </summary>
+    private static decimal ApplyRateBasis(CommercialTariffRule rule, int? netWeightKg)
+    {
+        if (!netWeightKg.HasValue || netWeightKg.Value <= 0) return rule.FeeKes;
+
+        return rule.RateBasis switch
+        {
+            RateBasisValues.PerTonne => Math.Round(rule.FeeKes * netWeightKg.Value / 1000m, 2),
+            RateBasisValues.PerKg => Math.Round(rule.FeeKes * netWeightKg.Value, 2),
+            _ => rule.FeeKes,
+        };
     }
 
     private async Task<WeighingTransaction> GetTransactionOrThrowAsync(Guid transactionId)

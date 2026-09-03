@@ -34,8 +34,34 @@ public class CommercialTariffRule : TenantAwareEntity
     /// <summary>Maximum gross weight in kg (inclusive). Null = no upper bound.</summary>
     public int? WeightBracketMaxKg { get; set; }
 
-    /// <summary>Fee charged (KES) when this rule matches a completed commercial weighing.</summary>
+    /// <summary>
+    /// Fee charged (KES) when this rule matches a completed commercial weighing. Interpreted
+    /// according to <see cref="RateBasis"/>: a flat amount, or a rate applied to the transaction's
+    /// net weight (per tonne / per kg) — e.g. a quarry charging transporters per tonne weighed, or
+    /// a facility invoicing its own client on aggregated tonnage at a negotiated per-tonne rate.
+    /// </summary>
     public decimal FeeKes { get; set; }
+
+    /// <summary>
+    /// How <see cref="FeeKes"/> is applied: "PerTonne" (FeeKes x net weight in tonnes — the
+    /// default, since most commercial weighing tenants bill by tonnage), "PerKg" (FeeKes x net
+    /// weight in kg), or "Flat" (a fixed amount per matching weighing — also what a rule with a
+    /// non-Immediate <see cref="BillingPeriod"/> effectively becomes "per transaction" under, since
+    /// the period rolls up FeeKes x transaction-count). Plain validated string, not a Postgres enum
+    /// type, matching the existing convention for small classification fields on this model
+    /// (<see cref="RateBasisValues"/> is the allow-list).
+    /// </summary>
+    public string RateBasis { get; set; } = RateBasisValues.PerTonne;
+
+    /// <summary>
+    /// How often a matching weighing's fee is actually invoiced: "Immediate" (the original/default
+    /// behavior — one invoice per weighing, right when it completes) or "Daily"/"Weekly"/"Monthly"
+    /// (the fee is accrued into a <see cref="CommercialTariffAccrual"/> row instead, and
+    /// <c>CommercialPeriodicBillingJob</c> rolls up every accrual for the same org+transporter+period
+    /// into ONE invoice once that period has fully elapsed — e.g. a client who pays a transporter
+    /// monthly based on aggregated tonnage). <see cref="BillingPeriodValues"/> is the allow-list.
+    /// </summary>
+    public string BillingPeriod { get; set; } = BillingPeriodValues.Immediate;
 
     /// <summary>Effective start date for this rule.</summary>
     public DateTime EffectiveFrom { get; set; } = DateTime.UtcNow;
@@ -48,4 +74,26 @@ public class CommercialTariffRule : TenantAwareEntity
 
     // Navigation property
     public virtual Transporter? Transporter { get; set; }
+}
+
+/// <summary>Allow-listed values for <see cref="CommercialTariffRule.RateBasis"/>.</summary>
+public static class RateBasisValues
+{
+    public const string Flat = "Flat";
+    public const string PerTonne = "PerTonne";
+    public const string PerKg = "PerKg";
+
+    public static readonly string[] All = [Flat, PerTonne, PerKg];
+}
+
+/// <summary>Allow-listed values for <see cref="CommercialTariffRule.BillingPeriod"/>.</summary>
+public static class BillingPeriodValues
+{
+    /// <summary>Invoice immediately when the weighing completes (original/default behavior).</summary>
+    public const string Immediate = "Immediate";
+    public const string Daily = "Daily";
+    public const string Weekly = "Weekly";
+    public const string Monthly = "Monthly";
+
+    public static readonly string[] All = [Immediate, Daily, Weekly, Monthly];
 }

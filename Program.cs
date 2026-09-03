@@ -1035,6 +1035,16 @@ Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.Portal
         QueueName = "default"
     });
 
+Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.CommercialPeriodicBillingJob>(
+    "commercial-periodic-billing",
+    job => job.ExecuteAsync(),
+    "30 4 * * *", // 04:30 UTC = 07:30 EAT, after portal-daily-summary
+    new Hangfire.RecurringJobOptions
+    {
+        TimeZone = TimeZoneInfo.Utc,
+        QueueName = "default"
+    });
+
 Hangfire.RecurringJob.AddOrUpdate<TruLoad.Backend.Services.BackgroundJobs.PortalAnomalyAlertJob>(
     "portal-anomaly-alert",
     job => job.ExecuteAsync(),

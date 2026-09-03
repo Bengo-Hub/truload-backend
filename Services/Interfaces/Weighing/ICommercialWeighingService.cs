@@ -216,4 +216,14 @@ public interface ICommercialWeighingService
     /// Requires weighing.override permission.
     /// </summary>
     Task<VehicleTareHistoryDto> OverrideTareHistoryAnomalyAsync(Guid historyId, OverrideTareAnomalyRequest request, Guid overriddenByUserId);
+
+    /// <summary>
+    /// Rolls up every "pending" <see cref="Models.Financial.CommercialTariffAccrual"/> whose billing
+    /// period (Daily/Weekly/Monthly) has fully elapsed into ONE invoice per (org, transporter,
+    /// period) group, via <c>CommercialPeriodicBillingJob</c>. Cross-org by design (a Hangfire job
+    /// has no tenant-context request, so this scans <see cref="Models.Financial.CommercialTariffAccrual"/>
+    /// across every organization with pending accruals whose period has closed). Returns the number
+    /// of invoices created, for the job's own logging.
+    /// </summary>
+    Task<int> ProcessPendingPeriodicBillingAsync();
 }

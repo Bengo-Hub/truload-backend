@@ -61,6 +61,8 @@ public class CommercialTariffService : ICommercialTariffService
             WeightBracketMinKg = request.WeightBracketMinKg,
             WeightBracketMaxKg = request.WeightBracketMaxKg,
             FeeKes = request.FeeKes,
+            RateBasis = string.IsNullOrWhiteSpace(request.RateBasis) ? RateBasisValues.PerTonne : request.RateBasis,
+            BillingPeriod = string.IsNullOrWhiteSpace(request.BillingPeriod) ? BillingPeriodValues.Immediate : request.BillingPeriod,
             EffectiveFrom = request.EffectiveFrom ?? DateTime.UtcNow,
             EffectiveTo = request.EffectiveTo,
             Label = request.Label
@@ -88,6 +90,8 @@ public class CommercialTariffService : ICommercialTariffService
         if (request.WeightBracketMinKg.HasValue) rule.WeightBracketMinKg = request.WeightBracketMinKg;
         if (request.WeightBracketMaxKg.HasValue) rule.WeightBracketMaxKg = request.WeightBracketMaxKg;
         if (request.FeeKes.HasValue) rule.FeeKes = request.FeeKes.Value;
+        if (!string.IsNullOrWhiteSpace(request.RateBasis)) rule.RateBasis = request.RateBasis;
+        if (!string.IsNullOrWhiteSpace(request.BillingPeriod)) rule.BillingPeriod = request.BillingPeriod;
         if (request.EffectiveFrom.HasValue) rule.EffectiveFrom = request.EffectiveFrom.Value;
         if (request.EffectiveTo.HasValue) rule.EffectiveTo = request.EffectiveTo;
         if (request.Label != null) rule.Label = request.Label;
@@ -122,6 +126,8 @@ public class CommercialTariffService : ICommercialTariffService
         WeightBracketMinKg = r.WeightBracketMinKg,
         WeightBracketMaxKg = r.WeightBracketMaxKg,
         FeeKes = r.FeeKes,
+        RateBasis = r.RateBasis,
+        BillingPeriod = r.BillingPeriod,
         EffectiveFrom = r.EffectiveFrom,
         EffectiveTo = r.EffectiveTo,
         Label = r.Label,

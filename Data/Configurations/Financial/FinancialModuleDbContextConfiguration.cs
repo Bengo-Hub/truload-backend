@@ -331,6 +331,18 @@ public static class FinancialModuleDbContextConfiguration
                 .HasColumnType("decimal(18,2)")
                 .IsRequired();
 
+            entity.Property(e => e.RateBasis)
+                .HasColumnName("rate_basis")
+                .HasMaxLength(20)
+                .HasDefaultValue(RateBasisValues.PerTonne)
+                .IsRequired();
+
+            entity.Property(e => e.BillingPeriod)
+                .HasColumnName("billing_period")
+                .HasMaxLength(20)
+                .HasDefaultValue(BillingPeriodValues.Immediate)
+                .IsRequired();
+
             entity.Property(e => e.EffectiveFrom)
                 .HasColumnName("effective_from")
                 .HasDefaultValueSql("NOW()");
@@ -376,6 +388,101 @@ public static class FinancialModuleDbContextConfiguration
 
             entity.HasCheckConstraint("chk_commercial_tariff_rule_fee",
                 "fee_kes >= 0");
+        });
+
+        // ===== CommercialTariffAccrual Entity Configuration =====
+        modelBuilder.Entity<CommercialTariffAccrual>(entity =>
+        {
+            entity.ToTable("commercial_tariff_accruals");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasColumnName("id")
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.WeighingId)
+                .HasColumnName("weighing_id")
+                .IsRequired();
+
+            entity.Property(e => e.TariffRuleId)
+                .HasColumnName("tariff_rule_id");
+
+            entity.Property(e => e.TransporterId)
+                .HasColumnName("transporter_id");
+
+            entity.Property(e => e.BillingPeriod)
+                .HasColumnName("billing_period")
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.PeriodKey)
+                .HasColumnName("period_key")
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.NetWeightKg)
+                .HasColumnName("net_weight_kg");
+
+            entity.Property(e => e.ComputedAmountKes)
+                .HasColumnName("computed_amount_kes")
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasMaxLength(20)
+                .HasDefaultValue("pending")
+                .IsRequired();
+
+            entity.Property(e => e.InvoiceId)
+                .HasColumnName("invoice_id");
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at")
+                .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.OrganizationId)
+                .HasColumnName("organization_id");
+
+            entity.Property(e => e.StationId)
+                .HasColumnName("station_id");
+
+            entity.Property(e => e.DeletedAt)
+                .HasColumnName("deleted_at");
+
+            // Every weighing accrues at most once — the periodic job's grouping query depends on
+            // this being exactly-once, and it also doubles as the idempotency guard against the
+            // completion flow somehow running twice for the same weighing.
+            entity.HasIndex(e => e.WeighingId)
+                .IsUnique()
+                .HasDatabaseName("uq_commercial_tariff_accruals_weighing_id");
+
+            // The periodic job's core query: "every pending accrual for this org, grouped by
+            // transporter+period" — composite index matches that access pattern directly.
+            entity.HasIndex(e => new { e.OrganizationId, e.Status, e.PeriodKey })
+                .HasDatabaseName("idx_commercial_tariff_accruals_org_status_period");
+
+            entity.HasOne(e => e.TariffRule)
+                .WithMany()
+                .HasForeignKey(e => e.TariffRuleId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Transporter)
+                .WithMany()
+                .HasForeignKey(e => e.TransporterId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Invoice)
+                .WithMany()
+                .HasForeignKey(e => e.InvoiceId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasCheckConstraint("chk_commercial_tariff_accrual_amount",
+                "computed_amount_kes >= 0");
         });
 
         return modelBuilder;
