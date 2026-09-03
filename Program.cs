@@ -525,6 +525,9 @@ builder.Services.AddHttpClient<ISubscriptionService, SubscriptionService>(c =>
 // NATS-driven subscription cache invalidation
 builder.Services.AddHostedService<TruLoad.Backend.Services.Background.SubscriptionCacheInvalidationService>();
 
+// NATS-driven codevertex-demo auth persona sync (commercial weighing operator/finance demo staff)
+builder.Services.AddHostedService<TruLoad.Backend.Services.Background.AuthDemoSyncService>();
+
 // KeNHA & NTSA integration services
 builder.Services.AddHttpClient<IKeNHAService, KeNHAService>(c =>
     c.Timeout = TimeSpan.FromSeconds(15));
