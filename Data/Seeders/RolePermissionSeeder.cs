@@ -200,7 +200,7 @@ public static class RolePermissionSeeder
             {
                 // Limited permissions for TruConnect middleware autoweigh operations
                 "weighing.create", "weighing.read", "weighing.update", "weighing.webhook",
-                "vehicle.read", "driver.read", "transporter.read"
+                "vehicle.read", "driver.read", "transporter.read", "station.read"
             }
         },
 
@@ -252,6 +252,8 @@ public static class RolePermissionSeeder
                 "driver.read", "driver.create", "driver.update",
                 // Config read-only (to understand tolerance/cargo rules, not change them)
                 "config.read",
+                // Station: read-only, needed for station filters/dropdowns
+                "station.read",
                 // Technical
                 "technical.read", "technical.scale_test",
                 // Analytics
@@ -268,12 +270,16 @@ public static class RolePermissionSeeder
             "COMMERCIAL_OPERATOR", new List<string>
             {
                 // Day-to-day commercial weighing: create weighings, record tare, manage vehicles/drivers
-                "weighing.create", "weighing.read_own", "weighing.export", "weighing.audit",
+                "weighing.create", "weighing.read", "weighing.read_own", "weighing.export", "weighing.audit",
                 "vehicle.create", "vehicle.read", "vehicle.update",
                 "transporter.read",
                 "driver.create", "driver.read", "driver.update",
                 // Technical: view calibration status and run scale tests
                 "technical.read", "technical.scale_test",
+                // Station: read-only, needed for station filters/dropdowns
+                "station.read",
+                // Analytics: view reports catalog + Custom Reports (needed to close out a weighing session)
+                "analytics.read",
                 // Financial: view own invoices/receipts
                 "invoice.read_own",
                 "receipt.read_own"
@@ -292,6 +298,8 @@ public static class RolePermissionSeeder
                 "vehicle.read",
                 "transporter.read",
                 "driver.read",
+                // Station: read-only, needed for station filters/dropdowns
+                "station.read",
                 // Analytics (for financial reports)
                 "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit",
                 // Billing: manage tariffs, full statement/reconciliation view
@@ -308,6 +316,8 @@ public static class RolePermissionSeeder
                 "transporter.read",
                 "driver.read",
                 "config.read", "config.audit",
+                // Station: read-only, needed for station filters/dropdowns
+                "station.read",
                 "technical.read", "technical.audit",
                 "analytics.read", "analytics.read_own", "analytics.export", "analytics.audit",
                 "invoice.read", "invoice.read_own",

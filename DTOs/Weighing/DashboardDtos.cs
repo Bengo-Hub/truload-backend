@@ -13,6 +13,8 @@ public class WeighingStatisticsDto
     public decimal TotalFeesKes { get; set; }
     public decimal TotalFeesUsd { get; set; }
     public decimal AvgOverloadKg { get; set; }
+    public long TotalNetWeightKg { get; set; }
+    public int UniqueTransporters { get; set; }
 }
 
 /// <summary>

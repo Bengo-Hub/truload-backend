@@ -867,6 +867,8 @@ public class WeighingController : ControllerBase
 
             int totalWeighings, legalCount, overloadedCount, warningCount;
             decimal totalFeesKes, totalFeesUsd, avgOverloadKg, complianceRate;
+            long totalNetWeightKg;
+            int uniqueTransporters;
 
             // MV has no WeighingType/ControlStatus columns to filter BY (it only has pre-aggregated
             // counts per status) — query live table directly whenever either filter is active.
@@ -887,9 +889,11 @@ public class WeighingController : ControllerBase
                 overloadedCount = await q.CountAsync(wt => wt.ControlStatus == "Overloaded", ct);
                 warningCount = await q.CountAsync(wt => wt.ControlStatus == "Warning", ct);
                 complianceRate = totalWeighings > 0 ? Math.Round((decimal)legalCount / totalWeighings * 100, 1) : 0;
-                var directRows = await q.Select(wt => new { wt.TotalFeeKes, wt.TotalFeeUsd, wt.OverloadKg }).ToListAsync(ct);
+                var directRows = await q.Select(wt => new { wt.TotalFeeKes, wt.TotalFeeUsd, wt.OverloadKg, wt.NetWeightKg }).ToListAsync(ct);
                 totalFeesKes = directRows.Sum(r => r.TotalFeeKes);
                 totalFeesUsd = directRows.Sum(r => r.TotalFeeUsd);
+                totalNetWeightKg = directRows.Sum(r => (long)(r.NetWeightKg ?? 0));
+                uniqueTransporters = await q.Where(wt => wt.TransporterId != null).Select(wt => wt.TransporterId).Distinct().CountAsync(ct);
                 var overloadedRows = directRows.Where(r => r.OverloadKg > 0).ToList();
                 avgOverloadKg = overloadedRows.Any()
                     ? Math.Round((decimal)overloadedRows.Average(r => (double)r.OverloadKg), 0)
@@ -911,6 +915,19 @@ public class WeighingController : ControllerBase
                     .Where(wt => wt.WeighedAt >= from && wt.WeighedAt < toExclusive && wt.DeletedAt == null)
                     .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId)
                     .SumAsync(wt => (decimal?)wt.TotalFeeUsd ?? 0, ct);
+
+                // MV has no net-weight or distinct-transporter columns; compute live for the full
+                // range (same "MV lacks column, sum live instead" pattern as totalFeesUsd above).
+                var liveRangeQuery = _context.WeighingTransactions
+                    .AsNoTracking()
+                    .Where(wt => wt.WeighedAt >= from && wt.WeighedAt < toExclusive && wt.DeletedAt == null)
+                    .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId);
+                totalNetWeightKg = await liveRangeQuery.SumAsync(wt => (long?)(wt.NetWeightKg ?? 0) ?? 0, ct);
+                uniqueTransporters = await liveRangeQuery
+                    .Where(wt => wt.TransporterId != null)
+                    .Select(wt => wt.TransporterId)
+                    .Distinct()
+                    .CountAsync(ct);
 
                 // Live fallback for today: MV may not be refreshed yet
                 int todayWeighings = 0, todayLegal = 0, todayOverloaded = 0, todayWarning = 0;
@@ -969,7 +986,9 @@ public class WeighingController : ControllerBase
                 ComplianceRate = complianceRate,
                 TotalFeesKes = totalFeesKes,
                 TotalFeesUsd = totalFeesUsd,
-                AvgOverloadKg = avgOverloadKg
+                AvgOverloadKg = avgOverloadKg,
+                TotalNetWeightKg = totalNetWeightKg,
+                UniqueTransporters = uniqueTransporters
             });
         }
         catch (Exception ex)
