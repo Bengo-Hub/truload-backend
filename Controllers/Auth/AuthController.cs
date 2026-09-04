@@ -920,13 +920,20 @@ public class AuthController : ControllerBase
         // login before they've picked an org).
         //
         // A non-platform-owner may ALSO supply TargetOrgCode, but only to pick among organisations
-        // that already share their OWN token's tenant_slug (e.g. codevertex-demo's admin picking
-        // between its 4 outlet organisations, 2026-09-05) — verified AFTER resolving org-by-code,
-        // below, never trusted from the request alone. This can never cross into a foreign tenant's
-        // organisation: the target must carry the exact same SsoTenantSlug the caller's own SSO
-        // token already asserts, which auth-api (not the caller) controls. Every other SSO user
-        // (a single-org tenant, or no TargetOrgCode supplied) is unaffected — falls straight through
-        // to the existing slug-based resolution below, byte-identical to before this change.
+        // that already share their OWN token's tenant_slug AND only if their LOCAL role actually
+        // spans the whole tenant ("System Admin" — today only codevertex-demo's tenant-wide
+        // admin@demo.codevertexafrica.com, see AuthDemoSyncService.DemoTenantAdminRoleName) — a
+        // tenant sharing its SsoTenantSlug across multiple TruLoad organisations does NOT mean every
+        // one of its users can switch into all of them; an outlet-scoped persona (Commercial
+        // Operator etc.) still only has local access to their own single outlet org. (2026-09-05:
+        // this originally checked only the tenant-slug match, letting ANY codevertex-demo user
+        // request ANY of its 4 outlet orgs regardless of actual membership — found via a live e2e
+        // failure where an outlet-scoped persona landed in an org with no stations assigned to
+        // them.) This can never cross into a foreign tenant's organisation either way: the target
+        // must carry the exact same SsoTenantSlug the caller's own SSO token already asserts, which
+        // auth-api (not the caller) controls. Every other SSO user (a single-org tenant, or no
+        // TargetOrgCode supplied) is unaffected — falls straight through to the existing slug-based
+        // resolution below.
         Organization? org = null;
         if (!string.IsNullOrWhiteSpace(request.TargetOrgCode) && (isPlatformOwner || !string.IsNullOrWhiteSpace(tenantSlug)))
         {
@@ -941,9 +948,26 @@ public class AuthController : ControllerBase
                 // Non-platform-owner: an unresolvable code falls through to normal slug resolution
                 // rather than erroring, since this parameter is optional/best-effort for them.
             }
-            else if (isPlatformOwner || string.Equals(candidateOrg.SsoTenantSlug, tenantSlug, StringComparison.OrdinalIgnoreCase))
+            else if (isPlatformOwner)
             {
                 org = candidateOrg;
+            }
+            else if (string.Equals(candidateOrg.SsoTenantSlug, tenantSlug, StringComparison.OrdinalIgnoreCase))
+            {
+                var callerUser = await _userManager.FindByEmailAsync(email);
+                var callerRoles = callerUser != null
+                    ? await _userManager.GetRolesAsync(callerUser)
+                    : new List<string>();
+                if (callerRoles.Contains("System Admin"))
+                {
+                    org = candidateOrg;
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "SSO user {Email} (tenant_slug={TenantSlug}) requested TargetOrgCode {Code} without tenant-wide local access — ignoring, falling back to slug resolution",
+                        email, tenantSlug, request.TargetOrgCode);
+                }
             }
             else
             {
@@ -1111,6 +1135,29 @@ public class AuthController : ControllerBase
 
         var tenantOrgs = await _organizationRepository.GetAllBySsoTenantSlugAsync(tenantSlug);
         if (tenantOrgs.Count < 2)
+            return Ok(Array.Empty<object>());
+
+        // A tenant sharing its SsoTenantSlug across multiple TruLoad organisations (e.g.
+        // codevertex-demo, synced outlet-by-outlet by AuthDemoSyncService) does NOT mean every one
+        // of its users can browse all of them — an outlet-scoped persona (Commercial Operator etc.)
+        // still only has local access to their own single outlet org. Restricted (2026-09-05 fix,
+        // after this originally checked only tenant-membership-count and offered the picker — and
+        // let SsoExchange honor TargetOrgCode — for EVERY codevertex-demo user regardless of actual
+        // entitlement) to the local "System Admin" role, which today only
+        // admin@demo.codevertexafrica.com carries (see AuthDemoSyncService.DemoTenantAdminRoleName).
+        // Everyone else falls straight through to SsoExchange's normal single-org resolution, which
+        // already correctly prefers the user's own persisted OrganizationId.
+        var email = ssoPrincipal.FindFirst(ClaimTypes.Email)?.Value
+                    ?? ssoPrincipal.FindFirst(JwtRegisteredClaimNames.Email)?.Value;
+        if (string.IsNullOrWhiteSpace(email))
+            return Ok(Array.Empty<object>());
+
+        var existingUser = await _userManager.FindByEmailAsync(email);
+        if (existingUser == null)
+            return Ok(Array.Empty<object>());
+
+        var localRoles = await _userManager.GetRolesAsync(existingUser);
+        if (!localRoles.Contains("System Admin"))
             return Ok(Array.Empty<object>());
 
         return Ok(tenantOrgs
