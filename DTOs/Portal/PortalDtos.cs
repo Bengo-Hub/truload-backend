@@ -257,6 +257,14 @@ public class PortalStatementDto
     public bool OnAccountBilling { get; set; }
     public decimal? CreditLimitKes { get; set; }
     public List<PortalStatementLineDto> Lines { get; set; } = new();
+
+    /// <summary>
+    /// Tonnage-based view of the SAME period, presented alongside (not instead of) the AR-ledger
+    /// view above — the actual artifact a quarry/waste-treatment tenant needs to invoice their own
+    /// downstream client off aggregated tonnage. Null when the statement isn't linked (no CrmContactId
+    /// yet), matching IsLinked's meaning for the AR fields above.
+    /// </summary>
+    public PortalTonnageSummaryDto? TonnageSummary { get; set; }
 }
 
 public class PortalStatementLineDto
@@ -268,4 +276,33 @@ public class PortalStatementLineDto
     public decimal Credit { get; set; }
     public decimal Balance { get; set; }
     public string Status { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// A transporter's tonnage-based commercial billing for a statement period: total net weight
+/// weighed, weighing count, and the tariff amount ALREADY computed and persisted at ticket-close
+/// time (Invoice.AmountDue for Immediate-billed weighings + CommercialTariffAccrual.ComputedAmountKes
+/// for Daily/Weekly/Monthly-billed ones) — see WeighingQueryHelpers.ComputeTransporterTonnageSummaryAsync.
+/// RateBasis/RateKes are populated only when this transporter has an active transporter-specific
+/// CommercialTariffRule contract override (which applies uniformly to every one of their weighings,
+/// unlike an org-wide bracket rule that can vary per vehicle) - null otherwise, rather than guessing
+/// a single rate when different weighings in the period may have matched different bracket rules.
+/// </summary>
+public class PortalTonnageSummaryDto
+{
+    /// <summary>
+    /// This section's own resolved EAT-calendar-day period — surfaced separately from
+    /// PortalStatementDto.From/To because those come from treasury's own date resolution (which
+    /// defaults to "all time" when unset), while this section defaults to the trailing 30 EAT days
+    /// (WeighingQueryHelpers.ResolveEatDayRange's convention) - the two can legitimately differ when
+    /// the caller doesn't pass explicit fromDate/toDate, so the UI must label them independently
+    /// rather than implying they cover the same window.
+    /// </summary>
+    public DateTime PeriodFrom { get; set; }
+    public DateTime PeriodTo { get; set; }
+    public long TotalNetWeightKg { get; set; }
+    public int WeighingCount { get; set; }
+    public decimal TariffAmountKes { get; set; }
+    public string? RateBasis { get; set; }
+    public decimal? RateKes { get; set; }
 }

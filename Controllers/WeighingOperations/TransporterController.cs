@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Authorization.Attributes;
+using TruLoad.Backend.Common;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Portal;
 using TruLoad.Backend.Middleware;
@@ -368,6 +369,16 @@ public class TransporterController : ControllerBase
         try
         {
             var stmt = await _treasuryService.GetCustomerStatementAsync(org.SsoTenantSlug, transporter.CrmContactId.Value, fromDate, toDate);
+
+            // Tonnage view uses OUR OWN EAT-calendar-day resolution of the same fromDate/toDate
+            // request params (WeighingQueryHelpers.ResolveEatDayRange - the same helper every other
+            // weighing endpoint uses), rather than treasury's echoed-back stmt.From/To, since
+            // treasury's date semantics aren't guaranteed to match this platform's EAT-day
+            // convention for WeighedAt (a true UTC instant).
+            var (tonnageFromUtc, tonnageToExclusive) = WeighingQueryHelpers.ResolveEatDayRange(fromDate, toDate);
+            var tonnageSummary = await WeighingQueryHelpers.ComputeTransporterTonnageSummaryAsync(
+                _dbContext, org.Id, transporter.Id, tonnageFromUtc, tonnageToExclusive, HttpContext.RequestAborted);
+
             return Ok(new PortalStatementDto
             {
                 IsLinked = true,
@@ -388,7 +399,8 @@ public class TransporterController : ControllerBase
                     Credit = l.Credit,
                     Balance = l.Balance,
                     Status = l.Status
-                }).ToList()
+                }).ToList(),
+                TonnageSummary = tonnageSummary
             });
         }
         catch (Exception ex)

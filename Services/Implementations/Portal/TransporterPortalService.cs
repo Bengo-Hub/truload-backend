@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System.IO;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using TruLoad.Backend.Common;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.Portal;
 using TruLoad.Backend.DTOs.Weighing;
@@ -1002,6 +1003,14 @@ public class TransporterPortalService : ITransporterPortalService
         var stmt = await _treasuryService.GetCustomerStatementAsync(
             org.SsoTenantSlug, transporter.CrmContactId.Value, fromDate, toDate);
 
+        // Same EAT-calendar-day resolution of fromDate/toDate as every other weighing endpoint
+        // (WeighingQueryHelpers.ResolveEatDayRange) - not treasury's echoed-back stmt.From/To,
+        // whose date semantics aren't guaranteed to match this platform's EAT-day convention for
+        // WeighedAt (a true UTC instant). Scoped to the same org resolved above for the AR statement.
+        var (tonnageFromUtc, tonnageToExclusive) = WeighingQueryHelpers.ResolveEatDayRange(fromDate, toDate);
+        var tonnageSummary = await WeighingQueryHelpers.ComputeTransporterTonnageSummaryAsync(
+            _dbContext, org.Id, transporter.Id, tonnageFromUtc, tonnageToExclusive);
+
         return new PortalStatementDto
         {
             IsLinked = true,
@@ -1022,7 +1031,8 @@ public class TransporterPortalService : ITransporterPortalService
                 Credit = l.Credit,
                 Balance = l.Balance,
                 Status = l.Status
-            }).ToList()
+            }).ToList(),
+            TonnageSummary = tonnageSummary
         };
     }
 

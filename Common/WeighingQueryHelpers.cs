@@ -1,3 +1,7 @@
+using Microsoft.EntityFrameworkCore;
+using TruLoad.Backend.Data;
+using TruLoad.Backend.DTOs.Portal;
+using TruLoad.Backend.Models.Financial;
 using TruLoad.Backend.Models.Weighing;
 
 namespace TruLoad.Backend.Common;
@@ -139,6 +143,72 @@ public static class WeighingQueryHelpers
               ?? [controlStatus];
 
         return query.Where(w => aliases.Contains(w.ControlStatus));
+    }
+
+    /// <summary>
+    /// Aggregates a transporter's tonnage-based commercial billing for a statement period — total
+    /// net weight weighed, weighing count, and the tariff amount ALREADY computed and persisted at
+    /// ticket-close time by <c>CommercialWeighingService</c> (<c>Invoice.AmountDue</c> for
+    /// Immediate-billed weighings, plus <c>CommercialTariffAccrual.ComputedAmountKes</c> for
+    /// Daily/Weekly/Monthly-billed ones not yet rolled into an invoice). Deliberately sums the
+    /// already-persisted amounts rather than re-deriving a rate from today's
+    /// <c>CommercialTariffRule</c> config - re-deriving could silently disagree with what was
+    /// actually invoiced if a rate changed since the weighing happened. Shared by
+    /// <c>TransporterController</c>'s commercial-ops statement and
+    /// <c>TransporterPortalService</c>'s self-service portal statement, both of which present this
+    /// alongside (not instead of) the existing treasury AR-ledger view.
+    /// </summary>
+    public static async Task<PortalTonnageSummaryDto> ComputeTransporterTonnageSummaryAsync(
+        TruLoadDbContext context, Guid organizationId, Guid transporterId,
+        DateTime fromUtc, DateTime toUtcExclusive, CancellationToken ct = default)
+    {
+        var weighings = await context.WeighingTransactions
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(wt => wt.OrganizationId == organizationId && wt.TransporterId == transporterId
+                && wt.WeighedAt >= fromUtc && wt.WeighedAt < toUtcExclusive && wt.DeletedAt == null)
+            .Select(wt => new { wt.Id, wt.NetWeightKg })
+            .ToListAsync(ct);
+
+        var weighingIds = weighings.Select(w => w.Id).ToList();
+
+        var invoiceRevenue = weighingIds.Count == 0 ? 0m : await context.Invoices
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(inv => inv.OrganizationId == organizationId && inv.InvoiceType == "commercial_weighing_fee"
+                && inv.WeighingId != null && weighingIds.Contains(inv.WeighingId.Value))
+            .SumAsync(inv => inv.AmountDue, ct);
+
+        var accrualRevenue = weighingIds.Count == 0 ? 0m : await context.CommercialTariffAccruals
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(acc => acc.OrganizationId == organizationId && weighingIds.Contains(acc.WeighingId))
+            .SumAsync(acc => acc.ComputedAmountKes, ct);
+
+        // Surface the applicable rate/basis ONLY when this transporter has an active
+        // transporter-specific contract override - that rule applies unconditionally to every one
+        // of their weighings (same top-priority match CommercialWeighingService.
+        // ResolveCommercialTariffAsync uses), unlike an org-wide bracket rule that can vary per
+        // vehicle/axle/weight, so it's the one case a single displayed rate is actually honest.
+        var now = DateTime.UtcNow;
+        var contractRule = await context.CommercialTariffRules
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(r => r.OrganizationId == organizationId && r.TransporterId == transporterId && r.IsActive
+                && r.EffectiveFrom <= now && (r.EffectiveTo == null || r.EffectiveTo >= now))
+            .OrderByDescending(r => r.EffectiveFrom)
+            .FirstOrDefaultAsync(ct);
+
+        return new PortalTonnageSummaryDto
+        {
+            PeriodFrom = fromUtc,
+            PeriodTo = toUtcExclusive.AddTicks(-1),
+            TotalNetWeightKg = weighings.Sum(w => (long)(w.NetWeightKg ?? 0)),
+            WeighingCount = weighings.Count,
+            TariffAmountKes = invoiceRevenue + accrualRevenue,
+            RateBasis = contractRule?.RateBasis,
+            RateKes = contractRule?.FeeKes
+        };
     }
 }
 
