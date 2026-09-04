@@ -446,6 +446,44 @@ public class ECitizenService : IECitizenService
         return $"{resultBaseUrl}{slugSegment}/payments/result?invoice_ref={Uri.EscapeDataString(invoiceNo)}&status={status}";
     }
 
+    /// <summary>
+    /// Builds the redirect target for the legacy/fallback GET payment-callback endpoint
+    /// (ECitizenWebhookController.HandleCallback). The primary path never reaches this: the
+    /// callBackURLOnSuccess/Failure/Timeout URLs sent to Pesaflow at checkout (CreatePesaflowInvoiceAsync,
+    /// via BuildResultPageUrl above) already point straight at the frontend result page. This exists
+    /// only for a Pesaflow merchant-portal-level default callback, if one is ever configured to point
+    /// here instead. Previously this controller did a bare relative Redirect($"/payments/result?...")
+    /// which stayed on the API host (truloadapi...) and 404'd — this resolves an absolute frontend URL
+    /// the same way the primary path does, including the org slug when the invoice can be resolved.
+    /// </summary>
+    public async Task<string> BuildFallbackResultRedirectAsync(string? invoiceRef, string? status, CancellationToken ct = default)
+    {
+        string? orgSlug = null;
+        if (!string.IsNullOrWhiteSpace(invoiceRef))
+        {
+            var invoice = await _context.Invoices
+                .Include(i => i.Organization)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.InvoiceNo == invoiceRef && i.DeletedAt == null, ct);
+            orgSlug = invoice?.Organization?.Code?.ToLowerInvariant();
+        }
+
+        var config = await _integrationConfigService.GetByProviderAsync(ProviderName, ct);
+        var resultBaseUrl = ResolveResultBaseUrl(null, config ?? new IntegrationConfigDto());
+        var url = BuildResultPageUrl(resultBaseUrl, orgSlug, invoiceRef ?? string.Empty, status ?? string.Empty);
+        if (!string.IsNullOrWhiteSpace(url))
+            return url;
+
+        // No AppBaseUrl configured at all on the ecitizen_pesaflow integration config — fall back to
+        // a relative redirect (better than throwing) but log loudly, since this will still 404 on the
+        // API host until AppBaseUrl is set.
+        _logger.LogWarning(
+            "Pesaflow fallback callback: no AppBaseUrl configured for {Provider}; redirecting relatively (invoice_ref={InvoiceRef})",
+            ProviderName, invoiceRef);
+        var slugSegment = string.IsNullOrWhiteSpace(orgSlug) ? string.Empty : $"/{orgSlug}";
+        return $"{slugSegment}/payments/result?invoice_ref={Uri.EscapeDataString(invoiceRef ?? string.Empty)}&status={Uri.EscapeDataString(status ?? string.Empty)}";
+    }
+
     /// Resolves the reference stored on a Pesaflow receipt: prefer the gateway-provided
     /// M-Pesa/bank payment reference, then the Pesaflow/eCitizen invoice number (e.g. AWAPGRVV),
     /// then any operator-supplied transaction reference. Ensures the receipt is never blank.

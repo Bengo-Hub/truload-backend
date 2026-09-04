@@ -56,20 +56,24 @@ public class ECitizenWebhookController : ControllerBase
     }
 
     /// <summary>
-    /// Payment callback endpoint. Pesaflow redirects the user here after payment.
-    /// Redirects to the frontend payment result page.
+    /// Legacy/fallback payment callback endpoint — the primary flow never reaches this (Pesaflow is
+    /// given an absolute frontend URL directly at checkout time, see CreatePesaflowInvoiceAsync).
+    /// Kept in case a Pesaflow merchant-portal-level default callback is ever pointed here instead.
+    /// Redirects to the frontend payment result page (absolute URL — a bare relative Redirect() here
+    /// previously stayed on this API host and 404'd, since Pesaflow drives the browser's top-level
+    /// window, not an in-app fetch).
     /// </summary>
     [HttpGet("api/v1/payments/callback/ecitizen-pesaflow")]
     [AllowAnonymous]
-    public IActionResult HandleCallback(
+    public async Task<IActionResult> HandleCallback(
         [FromQuery] string? invoice_ref,
-        [FromQuery] string? status)
+        [FromQuery] string? status,
+        CancellationToken ct)
     {
         _logger.LogInformation("Pesaflow callback: invoice_ref={InvoiceRef} status={Status}",
             invoice_ref, status);
 
-        // Redirect to frontend payment result page
-        var frontendUrl = $"/payments/result?invoice_ref={Uri.EscapeDataString(invoice_ref ?? "")}&status={Uri.EscapeDataString(status ?? "")}";
-        return Redirect(frontendUrl);
+        var redirectUrl = await _eCitizenService.BuildFallbackResultRedirectAsync(invoice_ref, status, ct);
+        return Redirect(redirectUrl);
     }
 }

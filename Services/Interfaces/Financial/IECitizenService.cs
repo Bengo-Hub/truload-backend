@@ -18,4 +18,13 @@ public interface IECitizenService
     Task<WebhookProcessingResult> ProcessWebhookNotificationAsync(PesaflowIpnPayload payload, CancellationToken ct = default);
     Task<int> ReconcileUnpaidInvoicesAsync(CancellationToken ct = default);
     Task<bool> ReconcileInvoiceAsync(Guid invoiceId, string? transactionReference, decimal? amountPaid, string? alternateReference = null, string? notes = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Builds the absolute frontend URL for the legacy/fallback GET payment-callback endpoint
+    /// (used only when Pesaflow doesn't honor the per-invoice callBackURLOnSuccess/Failure/Timeout
+    /// URLs already sent at checkout time — see CreatePesaflowInvoiceAsync/BuildResultPageUrl for
+    /// the primary path). Resolves the invoice's organisation from invoiceRef (when present) so the
+    /// result page loads with tenant context, same as the primary path.
+    /// </summary>
+    Task<string> BuildFallbackResultRedirectAsync(string? invoiceRef, string? status, CancellationToken ct = default);
 }
