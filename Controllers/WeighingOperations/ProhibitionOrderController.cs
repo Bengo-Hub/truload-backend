@@ -39,7 +39,8 @@ public class ProhibitionOrderController : ControllerBase
     /// </remarks>
     [HttpGet("{id}/pdf")]
     [HasAnyPermission("weighing.read", "case.read")]
-    [Produces("application/pdf")]
+    // No [Produces("application/pdf")] - see WeighingController.GetWeightTicketPdf's comment;
+    // it 406s any client whose Accept header doesn't explicitly include "application/pdf".
     [ProducesResponseType(typeof(FileResult), 200)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> GetPdf(Guid id)

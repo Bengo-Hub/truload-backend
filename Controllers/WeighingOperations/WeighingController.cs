@@ -757,7 +757,11 @@ public class WeighingController : ControllerBase
     // Surfaced/linked from the case register too, so case officers (case.read) can view the
     // weight ticket without also needing weighing.read.
     [HasAnyPermission("weighing.read", "case.read")]
-    [Produces("application/pdf")]
+    // No [Produces("application/pdf")] - it triggers ASP.NET Core's strict content-negotiation
+    // check and 406s any client whose Accept header doesn't explicitly include "application/pdf"
+    // (confirmed live 2026-09-05 - a plain API client got a 406 fetching this exact endpoint).
+    // File() below already sets the real response content-type; this attribute was only ever
+    // Swagger documentation, and an actively harmful one.
     [ProducesResponseType(typeof(FileResult), 200)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> GetWeightTicketPdf(Guid id)

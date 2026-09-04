@@ -365,7 +365,12 @@ public class CommercialWeighingController : ControllerBase
     /// </summary>
     [HttpGet("{id}/ticket/pdf")]
     [Authorize(Policy = "Permission:weighing.read")]
-    [Produces("application/pdf")]
+    // No [Produces("application/pdf")] - it triggers ASP.NET Core's strict content-negotiation
+    // check and 406s any client whose Accept header doesn't explicitly include "application/pdf"
+    // (confirmed live 2026-09-05 - a plain API client got a 406 fetching this exact endpoint,
+    // the last step of an otherwise-passing full commercial weighing session e2e test). File()
+    // below already sets the real response content-type; this attribute was only ever Swagger
+    // documentation, and an actively harmful one.
     [ProducesResponseType(typeof(FileContentResult), 200)]
     [ProducesResponseType(404)]
     [ProducesResponseType(409)]
@@ -410,7 +415,8 @@ public class CommercialWeighingController : ControllerBase
     /// </summary>
     [HttpGet("{id}/interim-ticket/pdf")]
     [Authorize(Policy = "Permission:weighing.read")]
-    [Produces("application/pdf")]
+    // No [Produces("application/pdf")] - see GetWeightTicketPdf's comment above; it 406s any
+    // client whose Accept header doesn't explicitly include "application/pdf".
     [ProducesResponseType(typeof(FileContentResult), 200)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> GetInterimTicketPdf(Guid id)
