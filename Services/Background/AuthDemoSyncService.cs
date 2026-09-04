@@ -15,20 +15,30 @@ namespace TruLoad.Backend.Services.Background;
 /// <summary>
 /// Syncs auth-api's codevertex-demo weighing-relevant personas
 /// (commercial.operator@/commercial.finance@/quarry.operator@/quarry.finance@/waste.operator@/
-/// waste.finance@demo.codevertexafrica.com) into their outlet-scoped local Organization/Station,
-/// so a prospect can practice/train on TruConnect against the platform-wide shared demo tenant
-/// without any risk of fake data landing on a real organization.
+/// waste.finance@demo.codevertexafrica.com, plus the commercial Manager/Supervisor/Auditor and
+/// enforcement Weighing Operator/Station Manager personas added alongside the ENF outlet — see
+/// <see cref="RoleMap"/>) into their outlet-scoped local Organization/Station, so a prospect can
+/// practice/train on TruConnect against the platform-wide shared demo tenant without any risk of
+/// fake data landing on a real organization.
 ///
 /// codevertex-demo hosts MULTIPLE TruLoad-relevant outlets today (auth-api's
 /// cmd/seed/seed_tenants.go outletsByTenant["codevertex-demo"]): the original generic
-/// "demo-commercial" outlet plus one per commercial vertical this platform's quarry prospect needs
-/// demoed ("demo-quarry", "demo-waste" — see Constants/CommercialVerticals.cs). Each gets its OWN
-/// local Organization + Station pair (see <see cref="OutletOrgMap"/> and
+/// "demo-commercial" outlet, one per commercial vertical this platform's quarry prospect needs
+/// demoed ("demo-quarry", "demo-waste" — see Constants/CommercialVerticals.cs), and one axle-load
+/// enforcement outlet ("demo-enforcement", code "ENF", use_case "axle_load_enforcement" —
+/// pre-existing in auth-api's seed, wired up here for the first time). Each non-primary outlet gets
+/// its OWN local Organization + Station pair (see <see cref="OutletOrgMap"/> and
 /// <see cref="EnsureOutletOrganizationsAsync"/>), replacing the old single-outlet assumption where
 /// every persona landed in the one static TRULOAD-DEMO/DEMO-WB-01 pair
 /// (Data/Seeders/UserManagement/UserManagementSeeder.cs) regardless of outlet. TRULOAD-DEMO stays
 /// the primary/fallback org (per the plan's explicit instruction not to remove it until this
 /// sync-based replacement is proven working end-to-end) and is still seeded there, not created here.
+/// Note ENF's <see cref="OutletOrgTarget.TenantType"/> is AxleLoadEnforcement, not
+/// CommercialWeighing like every other entry — <see cref="EnsureOutletOrganizationsAsync"/> reads it
+/// per-target rather than assuming CommercialWeighing for every non-primary outlet, and
+/// <see cref="OutletOrgTarget.PaymentGateway"/> is left null for ENF so the Organization model's own
+/// default ("ecitizen_pesaflow", the gateway enforcement fee payments actually use) applies instead
+/// of the commercial outlets' "treasury" value.
 ///
 /// Subscribes to the "auth" JetStream stream (subjects "auth.>") — the same stream and subjects
 /// hospital-api's own AuthEventHandler already consumes (see hospital-service/hospital-api/
@@ -58,11 +68,12 @@ namespace TruLoad.Backend.Services.Background;
 /// not "every tenant where our vertical applies", so it has no outlet-style secondary signal and
 /// must not guess):
 ///   1. Hard gate: the event's tenant_slug must be exactly "codevertex-demo".
-///   2. Role allowlist: exactly "commercial_weighing_operator" / "commercial_finance" — the two
-///      roles auth-api's cmd/seed/seed_users.go truloadDemoStaff actually publishes (confirmed by
-///      reading that file, not guessed). Ambiguous generic role names (admin/manager/etc.) are
-///      never accepted, since codevertex-demo hosts many other verticals' demo staff under the
-///      same tenant and role names are reused across them.
+///   2. Role allowlist: see <see cref="RoleMap"/> for the exact auth-api role strings accepted —
+///      all of them intentionally specific/prefixed (e.g. "enforcement_weighing_operator", never
+///      bare "operator"/"manager") to avoid exactly the ambiguous-generic-name trap
+///      [[hospital-demo-tenant-leak-and-fleet-backfill-cleanup-2026-08-30]] documents, since
+///      codevertex-demo hosts many other verticals' demo staff under the same tenant and generic
+///      role names are reused across them.
 ///
 /// auth.user.created/updated: find-or-update the SAME ApplicationUser row for this exact email
 /// (matched by email, never a second row for the same address), resolving org/station via
@@ -105,19 +116,38 @@ public class AuthDemoSyncService : BackgroundService
         // (Data/Seeders/UserManagement/UserManagementSeeder.cs) kept as the primary/fallback demo
         // org. Never created here (IsPrimary short-circuits creation — see
         // EnsureOutletOrganizationsAsync), only backfilled/repaired if it already exists.
-        [PrimaryOutletCode] = new OutletOrgTarget("TRULOAD-DEMO", "TruLoad Demo Weighbridge", "DEMO-WB-01", Vertical: null, IsPrimary: true),
-        ["QUARRY"] = new OutletOrgTarget("TRULOAD-DEMO-QUARRY", "Demo Quarry & Mining Weighbridge", "QUARRY-WB-01", CommercialVerticals.Quarry, IsPrimary: false),
-        ["WASTE"] = new OutletOrgTarget("TRULOAD-DEMO-WASTE", "Demo Waste Management Weighbridge", "WASTE-WB-01", CommercialVerticals.WasteManagement, IsPrimary: false),
+        [PrimaryOutletCode] = new OutletOrgTarget("TRULOAD-DEMO", "TruLoad Demo Weighbridge", "DEMO-WB-01", Vertical: null, IsPrimary: true, TenantType: TenantModules.TenantTypeCommercialWeighing, PaymentGateway: "treasury"),
+        ["QUARRY"] = new OutletOrgTarget("TRULOAD-DEMO-QUARRY", "Demo Quarry & Mining Weighbridge", "QUARRY-WB-01", CommercialVerticals.Quarry, IsPrimary: false, TenantType: TenantModules.TenantTypeCommercialWeighing, PaymentGateway: "treasury"),
+        ["WASTE"] = new OutletOrgTarget("TRULOAD-DEMO-WASTE", "Demo Waste Management Weighbridge", "WASTE-WB-01", CommercialVerticals.WasteManagement, IsPrimary: false, TenantType: TenantModules.TenantTypeCommercialWeighing, PaymentGateway: "treasury"),
+        // Axle-load enforcement outlet — auth-api's outlet name reused verbatim as the org name,
+        // same convention as QUARRY/WASTE above. No vertical (CommercialVerticals doesn't apply to
+        // enforcement); TenantType=AxleLoadEnforcement so module/report resolution matches every
+        // other enforcement org (KURA/KENHA/KERRA); PaymentGateway left null so the Organization
+        // model's own default ("ecitizen_pesaflow") applies, matching how real enforcement orgs are
+        // configured, rather than the commercial outlets' "treasury" value.
+        ["ENF"] = new OutletOrgTarget("TRULOAD-DEMO-ENF", "Demo Axle Load Enforcement Hub", "ENF-WB-01", Vertical: null, IsPrimary: false, TenantType: TenantModules.TenantTypeAxleLoadEnforcement, PaymentGateway: null),
     };
 
     // auth-api role string -> local TruLoad ApplicationRole.Name (Data/Seeders/RoleSeeder.cs).
-    // Only these two are demo-relevant for commercial weighing — see truloadDemoStaff in
+    // Only these are demo-relevant for weighing — see truloadDemoStaff in
     // auth-service/auth-api/cmd/seed/seed_users.go. Values confirmed verbatim from that file and
-    // from UserSeeder.cs's own FindByNameAsync/AddToRoleAsync calls, not guessed.
+    // from UserSeeder.cs's own FindByNameAsync/AddToRoleAsync calls, not guessed. Every key is
+    // deliberately prefixed/specific (never bare "operator"/"manager"/"auditor") to avoid the
+    // ambiguous-generic-name trap this file's own doc comments warn about.
     private static readonly Dictionary<string, string> RoleMap = new()
     {
+        // Commercial weighing — demo-commercial/demo-quarry/demo-waste outlets.
         ["commercial_weighing_operator"] = "Commercial Weighing Operator",
         ["commercial_finance"] = "Commercial Finance",
+        ["commercial_weighing_manager"] = "Commercial Weighing Manager",
+        ["commercial_weighing_supervisor"] = "Commercial Supervisor",
+        ["commercial_weighing_auditor"] = "Commercial Auditor",
+        // Axle-load enforcement — demo-enforcement (ENF) outlet. Deliberately only these 2 of the
+        // 5 enforcement roles: Weighing Operator can run a full enforcement weighing session
+        // end-to-end (initiate/capture/result), Station Manager covers the supervisory demo path —
+        // exhaustive enforcement-role coverage isn't needed for this initiative.
+        ["enforcement_weighing_operator"] = "Weighing Operator",
+        ["enforcement_station_manager"] = "Station Manager",
     };
 
     public AuthDemoSyncService(
@@ -236,10 +266,12 @@ public class AuthDemoSyncService : BackgroundService
     /// Get-or-creates the Organization + Station pair for every entry in <see cref="OutletOrgMap"/>.
     /// The primary entry (TRULOAD-DEMO) is never created here — it's UserManagementSeeder.cs's job
     /// — only backfilled if found with a stale/missing SsoTenantSlug. Every other entry is created
-    /// on first sight with TenantType=CommercialWeighing, vertical metadata via
-    /// OrganizationMetadataHelper.MergeVertical, and SsoTenantSlug="codevertex-demo" (the same slug
-    /// TRULOAD-DEMO already carries — see AuthController.SsoExchange's per-user disambiguation for
-    /// why multiple organisations safely sharing one slug is fine).
+    /// on first sight with its own <see cref="OutletOrgTarget.TenantType"/> (CommercialWeighing for
+    /// QUARRY/WASTE, AxleLoadEnforcement for ENF — read per-target, not assumed uniform), vertical
+    /// metadata via OrganizationMetadataHelper.MergeVertical when the target has one, and
+    /// SsoTenantSlug="codevertex-demo" (the same slug TRULOAD-DEMO already carries — see
+    /// AuthController.SsoExchange's per-user disambiguation for why multiple organisations safely
+    /// sharing one slug is fine).
     /// </summary>
     private async Task EnsureOutletOrganizationsAsync(CancellationToken ct)
     {
@@ -267,9 +299,8 @@ public class AuthDemoSyncService : BackgroundService
                     Code = target.OrgCode,
                     Name = target.OrgName,
                     OrgType = "Private",
-                    TenantType = TenantModules.TenantTypeCommercialWeighing,
+                    TenantType = target.TenantType,
                     SsoTenantSlug = DemoTenantSlug,
-                    PaymentGateway = "treasury",
                     IsDemo = true,
                     IsActive = true,
                     MetadataJson = target.Vertical is not null
@@ -278,6 +309,11 @@ public class AuthDemoSyncService : BackgroundService
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                 };
+                // Leave PaymentGateway at the Organization model's own default
+                // ("ecitizen_pesaflow") when the target doesn't specify one (ENF) rather than
+                // forcing every outlet org onto the commercial "treasury" value.
+                if (target.PaymentGateway is not null)
+                    org.PaymentGateway = target.PaymentGateway;
                 db.Organizations.Add(org);
                 await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Created outlet organization {OrgCode} ({Vertical}) for codevertex-demo outlet {OutletCode}",
@@ -535,6 +571,11 @@ public class AuthDemoSyncService : BackgroundService
         _logger.LogInformation("Deactivated demo user {Email} from auth.user.deleted event", email);
     }
 
-    /// <summary>One codevertex-demo TruLoad outlet's sync target — see <see cref="OutletOrgMap"/>.</summary>
-    private sealed record OutletOrgTarget(string OrgCode, string OrgName, string StationCode, string? Vertical, bool IsPrimary);
+    /// <summary>
+    /// One codevertex-demo TruLoad outlet's sync target — see <see cref="OutletOrgMap"/>.
+    /// TenantType and PaymentGateway are per-target (not assumed CommercialWeighing/"treasury" for
+    /// every non-primary entry) specifically so the ENF outlet can be AxleLoadEnforcement with the
+    /// model's own default payment gateway instead of silently inheriting commercial-outlet values.
+    /// </summary>
+    private sealed record OutletOrgTarget(string OrgCode, string OrgName, string StationCode, string? Vertical, bool IsPrimary, string TenantType, string? PaymentGateway = null);
 }
