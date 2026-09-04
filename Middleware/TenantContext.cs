@@ -335,7 +335,7 @@ public class TenantContextMiddleware
             }
             else
             {
-                // Regular user: fall back to default org (KURA)
+                // Regular user: fall back to default org (DefaultOrgCode, TRULOAD-DEMO)
                 var defaultOrg = await dbContext.Organizations
                     .AsNoTracking()
                     .FirstOrDefaultAsync(o => o.Code == DefaultOrgCode && o.IsActive);
