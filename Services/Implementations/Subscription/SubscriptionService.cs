@@ -25,10 +25,23 @@ public class SubscriptionService : ISubscriptionService
 
     public async Task<SubscriptionStatus> GetTenantSubscriptionAsync(string ssoTenantSlug, CancellationToken ct = default)
     {
-        var baseUrl = _configuration["SUBSCRIPTION_BASE_URL"]
-            ?? throw new InvalidOperationException("SUBSCRIPTION_BASE_URL is not configured");
-        var serviceJwt = _configuration["Subscriptions:ServiceJwt"]
-            ?? throw new InvalidOperationException("Subscriptions:ServiceJwt is not configured");
+        var baseUrl = _configuration["SUBSCRIPTION_BASE_URL"];
+        var serviceJwt = _configuration["Subscriptions:ServiceJwt"];
+
+        // Was: throw InvalidOperationException when either is missing - an unhandled 500 on every
+        // single commercial-mode request via SubscriptionEnforcementMiddleware (CommercialModeFilter
+        // runs this on EVERY request), confirmed live 2026-09-04: Stations/reports/top-transporters/
+        // tolerance-trend all 500'd with "Subscriptions:ServiceJwt is not configured" the moment a
+        // real commercial-mode session was tested end-to-end for the first time. GetFeaturesAsync
+        // below already treats a missing config the same way every other degraded-dependency path in
+        // this class does (fail open, log a warning) - this method just never got that same
+        // treatment. Matching it now: a misconfigured/absent subscriptions-api integration must never
+        // block commercial weighing itself.
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(serviceJwt))
+        {
+            _logger.LogWarning("Subscriptions API not configured — treating tenant {Slug} as ACTIVE", ssoTenantSlug);
+            return new SubscriptionStatus("ACTIVE", null, null);
+        }
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/v1/subscription/");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", serviceJwt);
