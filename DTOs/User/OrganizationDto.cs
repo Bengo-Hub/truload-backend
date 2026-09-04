@@ -50,6 +50,15 @@ public class CreateOrganizationRequest
     public string? OrgType { get; set; }
 
     /// <summary>
+    /// "CommercialWeighing" or "AxleLoadEnforcement" - null defaults to enforcement (back-compat).
+    /// The create form has sent this field since it was added, but it had nowhere to land until now
+    /// (this DTO had no matching property) - every org created via the UI silently stayed
+    /// enforcement-typed regardless of what the platform owner picked, only fixable afterward via
+    /// the separate module-access screen's PATCH .../modules endpoint.
+    /// </summary>
+    public string? TenantType { get; set; }
+
+    /// <summary>
     /// Optional commercial vertical/sub-use-case (e.g. "waste_management", "quarry" - see
     /// Constants.CommercialVerticals). Applied server-side at creation: an unrecognised value is
     /// silently ignored rather than rejected. Meaningful for CommercialWeighing tenants; harmless

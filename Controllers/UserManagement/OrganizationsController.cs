@@ -98,6 +98,7 @@ public class OrganizationsController : ControllerBase
             Code = request.Code,
             Name = request.Name,
             OrgType = NormalizeOrgType(request.OrgType) ?? "Private",
+            TenantType = NormalizeTenantType(request.TenantType),
             ContactEmail = request.ContactEmail,
             ContactPhone = request.ContactPhone,
             Website = request.Website,
