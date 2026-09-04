@@ -15,6 +15,26 @@ public class WeighingStatisticsDto
     public decimal AvgOverloadKg { get; set; }
     public long TotalNetWeightKg { get; set; }
     public int UniqueTransporters { get; set; }
+
+    /// <summary>
+    /// Computed commercial tariff-engine revenue for the selected range — NOT the same as
+    /// <see cref="TotalFeesKes"/> above (that field is summed from
+    /// <c>WeighingTransaction.TotalFeeKes</c>, which is only ever written by the ENFORCEMENT
+    /// compliance/overload fee calculation and is never touched by <c>CommercialWeighingService</c>,
+    /// so it is always zero for a commercial-only tenant). This field instead sums the real
+    /// <c>CommercialTariffRule</c>-resolved fee: <c>Invoice.AmountDue</c> for Immediate-billed
+    /// weighings, plus <c>CommercialTariffAccrual.ComputedAmountKes</c> for weighings whose matched
+    /// rule defers to Daily/Weekly/Monthly billing (money already earned by a weighing in this
+    /// range, even if not yet rolled into an invoice) — see <c>WeighingController.GetStatistics</c>.
+    /// </summary>
+    public decimal TariffRevenueKes { get; set; }
+
+    /// <summary>
+    /// Count of weighings in the range whose <c>ControlStatus</c> is <c>ToleranceExceeded</c>
+    /// (commercial weighing's discrepancy-between-declared-and-measured-weight flag) — paired with
+    /// <see cref="TotalWeighings"/> on the client to derive a tolerance-exception rate.
+    /// </summary>
+    public int ToleranceExceededCount { get; set; }
 }
 
 /// <summary>
@@ -40,6 +60,20 @@ public class TonnageTrendDto
     public DateTime PeriodStart { get; set; }
     public decimal TotalNetWeightKg { get; set; }
     public int TransactionCount { get; set; }
+}
+
+/// <summary>
+/// DTO for tolerance-exception-rate trend data points (commercial weighing) - one bucket per EAT
+/// calendar day, mirroring <see cref="ComplianceTrendDto"/>'s daily-GroupBy shape but for the
+/// commercial-only <c>ToleranceExceeded</c> control status (a declared-vs-measured-weight
+/// discrepancy) rather than the enforcement axle/overload statuses.
+/// </summary>
+public class ToleranceTrendDto
+{
+    public string Name { get; set; } = string.Empty;
+    public int TotalWeighings { get; set; }
+    public int ToleranceExceededCount { get; set; }
+    public decimal ToleranceExceptionRate { get; set; }
 }
 
 /// <summary>

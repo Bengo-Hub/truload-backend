@@ -977,6 +977,36 @@ public class WeighingController : ControllerBase
                     : 0m;
             }
 
+            // Commercial tariff-engine revenue and tolerance-exception count for the same range —
+            // computed unconditionally (independent of the MV-vs-direct-query branch above, since
+            // neither depends on weighingType/controlStatus and the MV has no columns for either).
+            // See WeighingStatisticsDto.TariffRevenueKes for why this can't just reuse totalFeesKes.
+            // NOTE: `@from` (not `from`) is required in the `where` clauses below — plain `from`
+            // is a contextual query-syntax keyword, and this method already has a local variable
+            // named `from` (from ResolveEatDayRange), which the parser otherwise misreads as the
+            // start of a nested query clause (CS1525) rather than a value reference.
+            var tariffRevenueKes = await (
+                from inv in _context.Invoices.AsNoTracking()
+                join wt in _context.WeighingTransactions.AsNoTracking() on inv.WeighingId equals wt.Id
+                where inv.InvoiceType == "commercial_weighing_fee"
+                    && wt.WeighedAt >= @from && wt.WeighedAt < toExclusive && wt.DeletedAt == null
+                    && (!effectiveStationId.HasValue || wt.StationId == effectiveStationId)
+                select inv.AmountDue
+            ).SumAsync(ct)
+            + await (
+                from acc in _context.CommercialTariffAccruals.AsNoTracking()
+                join wt in _context.WeighingTransactions.AsNoTracking() on acc.WeighingId equals wt.Id
+                where wt.WeighedAt >= @from && wt.WeighedAt < toExclusive && wt.DeletedAt == null
+                    && (!effectiveStationId.HasValue || wt.StationId == effectiveStationId)
+                select acc.ComputedAmountKes
+            ).SumAsync(ct);
+
+            var toleranceExceededCount = await _context.WeighingTransactions
+                .AsNoTracking()
+                .Where(wt => wt.WeighedAt >= from && wt.WeighedAt < toExclusive && wt.DeletedAt == null)
+                .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId)
+                .CountAsync(wt => wt.ToleranceExceeded, ct);
+
             return Ok(new WeighingStatisticsDto
             {
                 TotalWeighings = totalWeighings,
@@ -988,7 +1018,9 @@ public class WeighingController : ControllerBase
                 TotalFeesUsd = totalFeesUsd,
                 AvgOverloadKg = avgOverloadKg,
                 TotalNetWeightKg = totalNetWeightKg,
-                UniqueTransporters = uniqueTransporters
+                UniqueTransporters = uniqueTransporters,
+                TariffRevenueKes = tariffRevenueKes,
+                ToleranceExceededCount = toleranceExceededCount
             });
         }
         catch (Exception ex)
@@ -1106,6 +1138,60 @@ public class WeighingController : ControllerBase
         {
             _logger.LogError(ex, "Error getting tonnage trend");
             return StatusCode(500, "An error occurred while getting tonnage trend.");
+        }
+    }
+
+    /// <summary>
+    /// Gets tolerance-exception-rate trend data for commercial weighing charts, bucketed by EAT
+    /// calendar day - built for the "how often does declared weight disagree with measured weight
+    /// beyond the org's configured tolerance" business question, the commercial-only counterpart to
+    /// <see cref="GetComplianceTrend"/>'s enforcement compliant/overloaded/warning breakdown. Uses the
+    /// same SQL-translatable daily GroupBy pattern (day-only grain, no hour/week/month need here).
+    /// </summary>
+    [HttpGet("tolerance-trend")]
+    [Authorize(Policy = "Permission:weighing.read")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(List<ToleranceTrendDto>), 200)]
+    public async Task<IActionResult> GetToleranceTrend(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] Guid? stationId,
+        CancellationToken ct)
+    {
+        try
+        {
+            var isHqOrAdmin = User.FindFirst("is_hq_user")?.Value == "true" || User.IsInRole("Superuser") || User.IsInRole("System Admin");
+            var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
+            var (from, to) = WeighingQueryHelpers.ResolveEatDayRange(dateFrom, dateTo);
+
+            var trendData = await _context.WeighingTransactions
+                .AsNoTracking()
+                .Where(wt => wt.WeighedAt >= from && wt.WeighedAt < to && wt.DeletedAt == null)
+                .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId)
+                .GroupBy(wt => wt.WeighedAt.AddHours(3).Date)
+                .OrderBy(g => g.Key)
+                .Select(g => new
+                {
+                    Date = g.Key,
+                    Total = g.Count(),
+                    ToleranceExceeded = g.Count(t => t.ToleranceExceeded)
+                })
+                .ToListAsync(ct);
+
+            var trend = trendData.Select(d => new ToleranceTrendDto
+            {
+                Name = d.Date.ToString("MMM dd"),
+                TotalWeighings = d.Total,
+                ToleranceExceededCount = d.ToleranceExceeded,
+                ToleranceExceptionRate = d.Total > 0 ? Math.Round((decimal)d.ToleranceExceeded / d.Total * 100, 1) : 0
+            }).ToList();
+
+            return Ok(trend);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting tolerance trend");
+            return StatusCode(500, "An error occurred while getting tolerance trend.");
         }
     }
 
