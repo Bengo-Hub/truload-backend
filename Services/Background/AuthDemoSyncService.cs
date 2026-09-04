@@ -4,17 +4,31 @@ using Microsoft.EntityFrameworkCore;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
 using NATS.Client.JetStream.Models;
+using TruLoad.Backend.Common;
+using TruLoad.Backend.Constants;
 using TruLoad.Backend.Data;
+using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.Identity;
 
 namespace TruLoad.Backend.Services.Background;
 
 /// <summary>
 /// Syncs auth-api's codevertex-demo weighing-relevant personas
-/// (commercial.operator@demo.codevertexafrica.com, commercial.finance@demo.codevertexafrica.com)
-/// into the local TRULOAD-DEMO org / DEMO-WB-01 station, so a prospect can practice/train on
-/// TruConnect against the platform-wide shared demo tenant without any risk of fake data landing
-/// on a real organization.
+/// (commercial.operator@/commercial.finance@/quarry.operator@/quarry.finance@/waste.operator@/
+/// waste.finance@demo.codevertexafrica.com) into their outlet-scoped local Organization/Station,
+/// so a prospect can practice/train on TruConnect against the platform-wide shared demo tenant
+/// without any risk of fake data landing on a real organization.
+///
+/// codevertex-demo hosts MULTIPLE TruLoad-relevant outlets today (auth-api's
+/// cmd/seed/seed_tenants.go outletsByTenant["codevertex-demo"]): the original generic
+/// "demo-commercial" outlet plus one per commercial vertical this platform's quarry prospect needs
+/// demoed ("demo-quarry", "demo-waste" — see Constants/CommercialVerticals.cs). Each gets its OWN
+/// local Organization + Station pair (see <see cref="OutletOrgMap"/> and
+/// <see cref="EnsureOutletOrganizationsAsync"/>), replacing the old single-outlet assumption where
+/// every persona landed in the one static TRULOAD-DEMO/DEMO-WB-01 pair
+/// (Data/Seeders/UserManagement/UserManagementSeeder.cs) regardless of outlet. TRULOAD-DEMO stays
+/// the primary/fallback org (per the plan's explicit instruction not to remove it until this
+/// sync-based replacement is proven working end-to-end) and is still seeded there, not created here.
 ///
 /// Subscribes to the "auth" JetStream stream (subjects "auth.>") — the same stream and subjects
 /// hospital-api's own AuthEventHandler already consumes (see hospital-service/hospital-api/
@@ -22,6 +36,23 @@ namespace TruLoad.Backend.Services.Background;
 /// durable, ack-explicit consumer. This is an upgrade over SubscriptionCacheInvalidationService's
 /// fire-and-forget core-NATS pattern, justified because losing an identity-sync event here means
 /// a demo persona silently never appears, with no retry.
+///
+/// IMPORTANT — investigated but deliberately NOT built as a live auth.tenant.*/auth.outlet.*
+/// event subscription, despite that being this feature's original design intent: auth-api's seed
+/// path (cmd/seed/seed_tenants.go's seedOutletsForTenant) never publishes ANY auth.outlet.* event
+/// — only its live admin-API path (httpapi/handlers/outlet_handler.go) does. Confirmed against the
+/// architectural template this service mirrors: hospital-api's AuthEventHandler subscribes ONLY to
+/// auth.user.* subjects and resolves outlets via a lazy REST pull
+/// (tenantSyncer.SyncOutlets -> GET /api/v1/tenants/{slug}/outlets) on a local cache miss, not via
+/// any auth.outlet.* NATS event — proven by the just-shipped demo-chemist outlet (auth-api commit
+/// f3158f3), which added a brand-new seeded outlet with zero event publishing and it still became
+/// usable downstream. Building a NATS subscription for auth.outlet.* here would be exactly the
+/// "inert consumer nothing ever feeds" anti-pattern this same audit's root-cause finding flagged
+/// for IOwnershipCheckService. Instead, outlet-to-organization routing uses a small static map
+/// (<see cref="OutletOrgMap"/>, mirroring <see cref="RoleMap"/>'s already-proven "small curated
+/// demo mapping" shape) keyed by outlet_code — a human-readable field seed_users.go now adds to
+/// the auth.user.* payload specifically for this, avoiding any need to reverse-engineer auth-api's
+/// SHA1-based outlet UUIDs back into a slug.
 ///
 /// Filter (deliberately tighter than hospital's — this service is scoped to exactly ONE tenant,
 /// not "every tenant where our vertical applies", so it has no outlet-style secondary signal and
@@ -33,15 +64,19 @@ namespace TruLoad.Backend.Services.Background;
 ///      never accepted, since codevertex-demo hosts many other verticals' demo staff under the
 ///      same tenant and role names are reused across them.
 ///
-/// auth.user.created/updated: find-or-update the SAME ApplicationUser row UserSeeder.cs's
-/// SeedCommercialDemoStaffAsync already creates/repairs for this exact email (matched by email,
-/// never a second row for the same address), resolving org/station via .IgnoreQueryFilters()
-/// because a BackgroundService has no request-scoped ITenantContext (same pattern
-/// UserManagementSeeder.cs/UserSeeder.cs already use).
+/// auth.user.created/updated: find-or-update the SAME ApplicationUser row for this exact email
+/// (matched by email, never a second row for the same address), resolving org/station via
+/// .IgnoreQueryFilters() because a BackgroundService has no request-scoped ITenantContext (same
+/// pattern UserManagementSeeder.cs/UserSeeder.cs already use).
 ///
 /// auth.user.deleted: deactivates (LockoutEnd = MaxValue) rather than hard-deletes — unlike
 /// hospital-api's demo data, TruLoad has real FKs from users into weighing/case data that a
 /// hard-delete could violate.
+///
+/// SSO login note: multiple Organizations now share SsoTenantSlug="codevertex-demo" (TRULOAD-DEMO
+/// plus every outlet organization this service creates). AuthController.SsoExchange resolves the
+/// correct one per-user via ApplicationUser.OrganizationId (set here) rather than by slug alone —
+/// see that method's own doc comment for the full reasoning.
 /// </summary>
 public class AuthDemoSyncService : BackgroundService
 {
@@ -53,8 +88,27 @@ public class AuthDemoSyncService : BackgroundService
     private const string DurableName = "truload-auth-demo-sync";
     private const string FilterSubject = "auth.user.>";
     private const string DemoTenantSlug = "codevertex-demo";
-    private const string DemoOrgCode = "TRULOAD-DEMO";
-    private const string DemoStationCode = "DEMO-WB-01";
+
+    /// <summary>outlet_code used by personas that predate outlet scoping, or whose event omits it.</summary>
+    private const string PrimaryOutletCode = "COMM";
+
+    /// <summary>
+    /// One entry per TruLoad-relevant codevertex-demo outlet (auth-api's outletsByTenant
+    /// ["codevertex-demo"], outlet.code) -> the local Organization/Station it syncs to. A small
+    /// static map, not a live lookup — see the class doc comment for why. Add a new outlet here
+    /// (and to auth-api's seed) the next time a new vertical needs demoing; every resolution path
+    /// already falls back to PrimaryOutletCode for anything not listed, so this is purely additive.
+    /// </summary>
+    private static readonly Dictionary<string, OutletOrgTarget> OutletOrgMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // The original generic outlet — maps to the pre-existing TRULOAD-DEMO organisation
+        // (Data/Seeders/UserManagement/UserManagementSeeder.cs) kept as the primary/fallback demo
+        // org. Never created here (IsPrimary short-circuits creation — see
+        // EnsureOutletOrganizationsAsync), only backfilled/repaired if it already exists.
+        [PrimaryOutletCode] = new OutletOrgTarget("TRULOAD-DEMO", "TruLoad Demo Weighbridge", "DEMO-WB-01", Vertical: null, IsPrimary: true),
+        ["QUARRY"] = new OutletOrgTarget("TRULOAD-DEMO-QUARRY", "Demo Quarry & Mining Weighbridge", "QUARRY-WB-01", CommercialVerticals.Quarry, IsPrimary: false),
+        ["WASTE"] = new OutletOrgTarget("TRULOAD-DEMO-WASTE", "Demo Waste Management Weighbridge", "WASTE-WB-01", CommercialVerticals.WasteManagement, IsPrimary: false),
+    };
 
     // auth-api role string -> local TruLoad ApplicationRole.Name (Data/Seeders/RoleSeeder.cs).
     // Only these two are demo-relevant for commercial weighing — see truloadDemoStaff in
@@ -148,6 +202,19 @@ public class AuthDemoSyncService : BackgroundService
             return;
         }
 
+        // Ensure every mapped outlet's Organization/Station pair exists BEFORE consuming any
+        // message — so the very first event for a Quarry/Waste persona never races an org that
+        // isn't there yet. Also self-heals (backfills SsoTenantSlug/vertical metadata) on every
+        // restart, matching the idempotent-reseed convention used everywhere else in this codebase.
+        try
+        {
+            await EnsureOutletOrganizationsAsync(stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to ensure outlet organizations — continuing anyway, per-event sync will retry lookups");
+        }
+
         _logger.LogInformation("auth-demo sync active: stream={Stream} durable={Durable} filter={Filter}", StreamName, DurableName, FilterSubject);
 
         await foreach (var msg in consumer.ConsumeAsync<string>(cancellationToken: stoppingToken))
@@ -165,6 +232,108 @@ public class AuthDemoSyncService : BackgroundService
         }
     }
 
+    /// <summary>
+    /// Get-or-creates the Organization + Station pair for every entry in <see cref="OutletOrgMap"/>.
+    /// The primary entry (TRULOAD-DEMO) is never created here — it's UserManagementSeeder.cs's job
+    /// — only backfilled if found with a stale/missing SsoTenantSlug. Every other entry is created
+    /// on first sight with TenantType=CommercialWeighing, vertical metadata via
+    /// OrganizationMetadataHelper.MergeVertical, and SsoTenantSlug="codevertex-demo" (the same slug
+    /// TRULOAD-DEMO already carries — see AuthController.SsoExchange's per-user disambiguation for
+    /// why multiple organisations safely sharing one slug is fine).
+    /// </summary>
+    private async Task EnsureOutletOrganizationsAsync(CancellationToken ct)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
+
+        foreach (var (outletCode, target) in OutletOrgMap)
+        {
+            var org = await db.Organizations.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(o => o.Code == target.OrgCode, ct);
+
+            if (org is null)
+            {
+                if (target.IsPrimary)
+                {
+                    _logger.LogWarning(
+                        "Primary organization {OrgCode} not found — UserManagementSeeder should have created it; outlet sync for {OutletCode} cannot proceed until it exists",
+                        target.OrgCode, outletCode);
+                    continue;
+                }
+
+                org = new Organization
+                {
+                    Id = Guid.NewGuid(),
+                    Code = target.OrgCode,
+                    Name = target.OrgName,
+                    OrgType = "Private",
+                    TenantType = TenantModules.TenantTypeCommercialWeighing,
+                    SsoTenantSlug = DemoTenantSlug,
+                    PaymentGateway = "treasury",
+                    IsDemo = true,
+                    IsActive = true,
+                    MetadataJson = target.Vertical is not null
+                        ? OrganizationMetadataHelper.MergeVertical(null, target.Vertical)
+                        : null,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                };
+                db.Organizations.Add(org);
+                await db.SaveChangesAsync(ct);
+                _logger.LogInformation("Created outlet organization {OrgCode} ({Vertical}) for codevertex-demo outlet {OutletCode}",
+                    target.OrgCode, target.Vertical ?? "unclassified", outletCode);
+            }
+            else
+            {
+                var updated = false;
+                if (string.IsNullOrEmpty(org.SsoTenantSlug))
+                {
+                    org.SsoTenantSlug = DemoTenantSlug;
+                    updated = true;
+                }
+                if (target.Vertical is not null)
+                {
+                    var currentVertical = OrganizationMetadataHelper.GetVertical(org.MetadataJson);
+                    if (!string.Equals(currentVertical, target.Vertical, StringComparison.Ordinal))
+                    {
+                        org.MetadataJson = OrganizationMetadataHelper.MergeVertical(org.MetadataJson, target.Vertical);
+                        updated = true;
+                    }
+                }
+                if (updated)
+                {
+                    org.UpdatedAt = DateTime.UtcNow;
+                    await db.SaveChangesAsync(ct);
+                    _logger.LogInformation("Backfilled outlet organization {OrgCode} (SsoTenantSlug/vertical)", target.OrgCode);
+                }
+            }
+
+            if (target.IsPrimary)
+                continue; // Station (DEMO-WB-01) is UserManagementSeeder.cs's responsibility too.
+
+            var station = await db.Stations.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(s => s.Code == target.StationCode, ct);
+            if (station is null)
+            {
+                db.Stations.Add(new Station
+                {
+                    Id = Guid.NewGuid(),
+                    Code = target.StationCode,
+                    Name = $"{target.OrgName} Station 01",
+                    StationType = "weigh_bridge",
+                    OrganizationId = org.Id,
+                    IsDefault = true,
+                    IsHq = false,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                });
+                await db.SaveChangesAsync(ct);
+                _logger.LogInformation("Created station {StationCode} for organization {OrgCode}", target.StationCode, target.OrgCode);
+            }
+        }
+    }
+
     private async Task HandleAsync(string? payload, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(payload))
@@ -175,6 +344,7 @@ public class AuthDemoSyncService : BackgroundService
         string? authUserId = null;
         string? email = null;
         string? fullName = null;
+        string? outletCode = null;
         var roles = new List<string>();
 
         try
@@ -200,6 +370,13 @@ public class AuthDemoSyncService : BackgroundService
                     email = em.GetString();
                 if (p.TryGetProperty("full_name", out var fn))
                     fullName = fn.GetString();
+                // Human-readable outlet code (e.g. "QUARRY") — seed_users.go's
+                // seedTruLoadDemoStaff adds this specifically for outlet routing here. Absent for
+                // personas seeded before outlet scoping existed / any event that omits it, which
+                // HandleUpsertAsync treats as PrimaryOutletCode (today's existing single-org
+                // behaviour, unchanged).
+                if (p.TryGetProperty("outlet_code", out var oc) && oc.ValueKind == JsonValueKind.String)
+                    outletCode = oc.GetString();
                 if (p.TryGetProperty("roles", out var rolesEl) && rolesEl.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var r in rolesEl.EnumerateArray())
@@ -227,7 +404,7 @@ public class AuthDemoSyncService : BackgroundService
         {
             case "created":
             case "updated":
-                await HandleUpsertAsync(authUserId, email, fullName ?? email, roles, ct);
+                await HandleUpsertAsync(authUserId, email, fullName ?? email, roles, outletCode, ct);
                 break;
             case "deleted":
                 await HandleDeleteAsync(email, ct);
@@ -238,7 +415,7 @@ public class AuthDemoSyncService : BackgroundService
         }
     }
 
-    private async Task HandleUpsertAsync(string? authUserId, string email, string fullName, List<string> roles, CancellationToken ct)
+    private async Task HandleUpsertAsync(string? authUserId, string email, string fullName, List<string> roles, string? outletCode, CancellationToken ct)
     {
         // Hard gate #2: role allowlist — reject ambiguous/unmapped roles entirely rather than
         // guessing a mapping (this is exactly the class of leak
@@ -260,23 +437,27 @@ public class AuthDemoSyncService : BackgroundService
             return;
         }
 
+        var target = (outletCode is not null && OutletOrgMap.TryGetValue(outletCode, out var mappedTarget))
+            ? mappedTarget
+            : OutletOrgMap[PrimaryOutletCode];
+
         await using var scope = _scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
         var org = await db.Organizations.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(o => o.Code == DemoOrgCode, ct);
+            .FirstOrDefaultAsync(o => o.Code == target.OrgCode, ct);
         if (org is null)
         {
-            _logger.LogWarning("TRULOAD-DEMO organization not found — cannot sync {Email}", email);
+            _logger.LogWarning("Organization {OrgCode} not found — cannot sync {Email} (outlet_code={OutletCode})", target.OrgCode, email, outletCode);
             return;
         }
 
         var station = await db.Stations.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(s => s.Code == DemoStationCode, ct);
+            .FirstOrDefaultAsync(s => s.Code == target.StationCode, ct);
 
-        // Match the SAME row UserSeeder.cs's SeedCommercialDemoStaffAsync already creates/repairs
-        // for this exact email — find-or-update, never a second conflicting record.
+        // Match the SAME row this service already created/repaired for this exact email —
+        // find-or-update, never a second conflicting record.
         var user = await userManager.FindByEmailAsync(email);
         if (user is null)
         {
@@ -307,7 +488,7 @@ public class AuthDemoSyncService : BackgroundService
                     string.Join(", ", createResult.Errors.Select(e => e.Description)));
                 return;
             }
-            _logger.LogInformation("Created demo user {Email} from auth.user.{EventType} event", email, "created/updated");
+            _logger.LogInformation("Created demo user {Email} in organization {OrgCode} from auth.user.{EventType} event", email, target.OrgCode, "created/updated");
         }
         else
         {
@@ -353,4 +534,7 @@ public class AuthDemoSyncService : BackgroundService
         await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
         _logger.LogInformation("Deactivated demo user {Email} from auth.user.deleted event", email);
     }
+
+    /// <summary>One codevertex-demo TruLoad outlet's sync target — see <see cref="OutletOrgMap"/>.</summary>
+    private sealed record OutletOrgTarget(string OrgCode, string OrgName, string StationCode, string? Vertical, bool IsPrimary);
 }

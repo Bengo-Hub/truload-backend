@@ -89,4 +89,12 @@ public class OrganizationRepository : IOrganizationRepository
         return await _context.Organizations
             .FirstOrDefaultAsync(o => o.SsoTenantSlug == ssoTenantSlug && o.IsActive, cancellationToken);
     }
+
+    public async Task<List<Organization>> GetAllBySsoTenantSlugAsync(string ssoTenantSlug, CancellationToken cancellationToken = default)
+    {
+        return await _context.Organizations
+            .Where(o => o.SsoTenantSlug == ssoTenantSlug && o.IsActive)
+            .OrderBy(o => o.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
 }

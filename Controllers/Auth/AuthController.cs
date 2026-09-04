@@ -934,12 +934,38 @@ public class AuthController : ControllerBase
             if (string.IsNullOrWhiteSpace(tenantSlug))
                 return Unauthorized(new { message = "SSO token missing tenant_slug claim" });
 
-            org = await _organizationRepository.GetBySsoTenantSlugAsync(tenantSlug);
-            if (org == null)
+            // codevertex-demo now maps to MULTIPLE TruLoad organisations (TRULOAD-DEMO plus
+            // per-vertical outlet organisations like TRULOAD-DEMO-QUARRY/-WASTE, synced by
+            // AuthDemoSyncService — see its class doc comment) that all share this one SsoTenantSlug.
+            // The incoming SSO access token carries NO outlet/branch claim at all (confirmed by
+            // reading auth-api's oidc_handler.go token mint — outlet claims are only ever set by its
+            // separate POST /auth/select-outlet step, which truload's own SSO flow never calls), so
+            // the only reliable per-user disambiguation signal is the user's OWN already-resolved
+            // OrganizationId, set once by AuthDemoSyncService/JIT-provisioning at first sync/login and
+            // stable thereafter. Prefer that organisation when the user already exists and it's among
+            // this slug's candidates; a brand-new, never-before-seen email (no local row yet) falls
+            // through to the oldest candidate (index 0, ascending CreatedAt) as a single deterministic
+            // default — today that's always TRULOAD-DEMO, which predates every outlet organisation.
+            // When only one organisation carries this slug (every non-demo SSO tenant today, and the
+            // demo tenant before this feature), this resolves to the exact same single candidate as
+            // before — byte-identical behaviour for every existing tenant.
+            var slugCandidates = await _organizationRepository.GetAllBySsoTenantSlugAsync(tenantSlug);
+            if (slugCandidates.Count == 0)
             {
                 _logger.LogWarning("No organization found for SSO tenant slug {TenantSlug}", tenantSlug);
                 return NotFound(new { message = "No TruLoad organization mapped to this SSO tenant" });
             }
+
+            Organization? preferredOrg = null;
+            if (slugCandidates.Count > 1)
+            {
+                var existingUserForSlug = await _userManager.FindByEmailAsync(email);
+                if (existingUserForSlug != null)
+                {
+                    preferredOrg = slugCandidates.FirstOrDefault(o => o.Id == existingUserForSlug.OrganizationId);
+                }
+            }
+            org = preferredOrg ?? slugCandidates[0];
         }
 
         // 4. Find or JIT-provision user
