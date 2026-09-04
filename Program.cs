@@ -629,7 +629,15 @@ var app = builder.Build();
 // ── Startup database helpers ─────────────────────────────────────────────────
 //
 // Seeding version — increment this number to force a re-seed of ALL databases.
-const int SeedingVersion = 28;
+// Bumped 28->29: commit 8c3613b (2026-08-27) added a self-healing correction to
+// UserManagementSeeder that repoints TRULOAD-DEMO's SsoTenantSlug from the dead-end value
+// "truload" to the real auth-api tenant "codevertex-demo" — but SeedingVersion was never bumped
+// alongside it, so the fix has been dead code on every already-seeded environment since it was
+// written (the version gate at the top of SeedDatabaseAsync short-circuits before the seeder
+// pipeline runs). Confirmed live: SSO login into TRULOAD-DEMO was failing with auth-api's
+// "tenant not found" because the org's live SsoTenantSlug was still "truload". All seeders are
+// idempotent by design (DatabaseSeeder.cs) — this just lets the pipeline actually run again.
+const int SeedingVersion = 29;
 const string SeedingName = "InitialSeed";
 
 // Builds a direct-to-PostgreSQL connection string for migrations.
