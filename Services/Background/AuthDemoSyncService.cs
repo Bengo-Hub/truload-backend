@@ -19,7 +19,18 @@ namespace TruLoad.Backend.Services.Background;
 /// enforcement Weighing Operator/Station Manager personas added alongside the ENF outlet — see
 /// <see cref="RoleMap"/>) into their outlet-scoped local Organization/Station, so a prospect can
 /// practice/train on TruConnect against the platform-wide shared demo tenant without any risk of
-/// fake data landing on a real organization.
+/// fake data landing on a real organization. Also covers the tenant-wide
+/// admin@demo.codevertexafrica.com persona into the primary org (see
+/// <see cref="DemoTenantAdminEmail"/>) — not via RoleMap, since its role string is the bare,
+/// reusable "admin".
+///
+/// Every synced user's local password is set to the documented, non-secret demo convention
+/// (DemoStaff2024!/DemoAdmin2024! — see where <c>demoPassword</c> is resolved in
+/// <see cref="HandleUpsertAsync"/>) instead of a random, never-revealed value, and is self-healed
+/// back to that convention on every subsequent auth.user.updated event. This is what makes
+/// local-form login work at all for these accounts — SSO never hands truload-backend a plaintext
+/// password to mirror (the whole point of OAuth/OIDC is that the relying party never sees it), so
+/// this only works because these specific demo credentials are already public and documented.
 ///
 /// codevertex-demo hosts MULTIPLE TruLoad-relevant outlets today (auth-api's
 /// cmd/seed/seed_tenants.go outletsByTenant["codevertex-demo"]): the original generic
@@ -105,6 +116,19 @@ public class AuthDemoSyncService : BackgroundService
 
     /// <summary>outlet_code used by personas that predate outlet scoping, or whose event omits it.</summary>
     private const string PrimaryOutletCode = "COMM";
+
+    /// <summary>
+    /// codevertex-demo's tenant-wide admin (auth-api's cmd/seed/seed_users.go seedDemoTenantAdmin) —
+    /// carries the bare role string "admin" and no outlet_code (it's assigned to every POS outlet,
+    /// not a TruLoad one). Handled by an EXACT email match in <see cref="HandleUpsertAsync"/> rather
+    /// than adding "admin" to <see cref="RoleMap"/>, since a bare generic role name reopens exactly
+    /// the ambiguous-role leak this file's other doc comments warn about — any OTHER codevertex-demo
+    /// persona that happens to carry role "admin" is still rejected.
+    /// </summary>
+    private const string DemoTenantAdminEmail = "admin@demo.codevertexafrica.com";
+
+    /// <summary>Local role for <see cref="DemoTenantAdminEmail"/> — RoleSeeder.cs's SYSTEM_ADMIN.</summary>
+    private const string DemoTenantAdminRoleName = "System Admin";
 
     /// <summary>
     /// One entry per TruLoad-relevant codevertex-demo outlet (auth-api's outletsByTenant
@@ -460,13 +484,23 @@ public class AuthDemoSyncService : BackgroundService
         // guessing a mapping (this is exactly the class of leak
         // [[hospital-demo-tenant-leak-and-fleet-backfill-cleanup-2026-08-30]] documents for a
         // generic-role-name false positive).
+        var isTenantAdmin = string.Equals(email, DemoTenantAdminEmail, StringComparison.OrdinalIgnoreCase)
+            && roles.Contains("admin");
+
         string? localRoleName = null;
-        foreach (var r in roles)
+        if (isTenantAdmin)
         {
-            if (RoleMap.TryGetValue(r, out var mapped))
+            localRoleName = DemoTenantAdminRoleName;
+        }
+        else
+        {
+            foreach (var r in roles)
             {
-                localRoleName = mapped;
-                break;
+                if (RoleMap.TryGetValue(r, out var mapped))
+                {
+                    localRoleName = mapped;
+                    break;
+                }
             }
         }
         if (localRoleName is null)
@@ -476,9 +510,22 @@ public class AuthDemoSyncService : BackgroundService
             return;
         }
 
-        var target = (outletCode is not null && OutletOrgMap.TryGetValue(outletCode, out var mappedTarget))
-            ? mappedTarget
-            : OutletOrgMap[PrimaryOutletCode];
+        // The tenant admin has no TruLoad outlet_code (its event carries POS outlet ids instead) —
+        // always the primary org, never routed by outletCode.
+        var target = isTenantAdmin
+            ? OutletOrgMap[PrimaryOutletCode]
+            : (outletCode is not null && OutletOrgMap.TryGetValue(outletCode, out var mappedTarget))
+                ? mappedTarget
+                : OutletOrgMap[PrimaryOutletCode];
+
+        // Documented, non-secret demo password conventions (see e2e/helpers/ssoLogin.ts's own
+        // DEMO_STAFF_PASSWORD comment) — same env var names auth-api's seed_users.go reads, so one
+        // devops-k8s override controls both sides consistently. Used (instead of a random,
+        // never-revealed value) so local-form login works with the exact same credentials as SSO,
+        // per explicit request that SSO-synced demo/tenant users also get seamless local login.
+        var demoPassword = isTenantAdmin
+            ? (_configuration["SEED_DEMO_TENANT_ADMIN_PASSWORD"] ?? "DemoAdmin2024!")
+            : (_configuration["SEED_DEMO_STAFF_PASSWORD"] ?? "DemoStaff2024!");
 
         await using var scope = _scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
@@ -515,12 +562,7 @@ public class AuthDemoSyncService : BackgroundService
                 LockoutEnabled = true,
             };
 
-            // No usable credential arrives over the wire (production login for this account is
-            // via SSO, same as every other codevertex-demo persona) — a random value satisfies
-            // Identity's CreateAsync password-required contract without ever being a real,
-            // guessable local credential.
-            var randomPassword = "Sync!" + Guid.NewGuid().ToString("N") + "Aa1";
-            var createResult = await userManager.CreateAsync(user, randomPassword);
+            var createResult = await userManager.CreateAsync(user, demoPassword);
             if (!createResult.Succeeded)
             {
                 _logger.LogWarning("Failed to create demo user {Email}: {Errors}", email,
@@ -544,6 +586,22 @@ public class AuthDemoSyncService : BackgroundService
             }
             if (updated)
                 await userManager.UpdateAsync(user);
+
+            // Self-heal the local password to the documented demo convention on every event —
+            // covers accounts created before this fix (which got a random, never-revealed value)
+            // and any manual local change, so local-form login always works with the same
+            // publicly-documented demo credentials as SSO. Scoped entirely to codevertex-demo
+            // (hard gate #1 above), never a real tenant's users.
+            if (!await userManager.CheckPasswordAsync(user, demoPassword))
+            {
+                var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+                var resetResult = await userManager.ResetPasswordAsync(user, resetToken, demoPassword);
+                if (resetResult.Succeeded)
+                    _logger.LogInformation("Reset local password for demo user {Email} to the documented demo convention", email);
+                else
+                    _logger.LogWarning("Failed to reset local password for demo user {Email}: {Errors}", email,
+                        string.Join(", ", resetResult.Errors.Select(e => e.Description)));
+            }
         }
 
         // Idempotently re-sync the role assignment on every update — corrects a stale role the
