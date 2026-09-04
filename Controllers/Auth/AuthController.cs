@@ -917,19 +917,42 @@ public class AuthController : ControllerBase
         // this is the ONLY way to reach real enforcement orgs (KURA/KENHA/KERRA), which have no
         // SsoTenantSlug of their own (they aren't auth-api tenants). Falls back to the normal
         // SsoTenantSlug resolution if no TargetOrgCode is supplied (e.g. first-ever platform-owner
-        // login before they've picked an org). Non-platform-owner SSO users are UNCHANGED — always
-        // resolved strictly by SsoTenantSlug, TargetOrgCode is ignored for them.
+        // login before they've picked an org).
+        //
+        // A non-platform-owner may ALSO supply TargetOrgCode, but only to pick among organisations
+        // that already share their OWN token's tenant_slug (e.g. codevertex-demo's admin picking
+        // between its 4 outlet organisations, 2026-09-05) — verified AFTER resolving org-by-code,
+        // below, never trusted from the request alone. This can never cross into a foreign tenant's
+        // organisation: the target must carry the exact same SsoTenantSlug the caller's own SSO
+        // token already asserts, which auth-api (not the caller) controls. Every other SSO user
+        // (a single-org tenant, or no TargetOrgCode supplied) is unaffected — falls straight through
+        // to the existing slug-based resolution below, byte-identical to before this change.
         Organization? org = null;
-        if (isPlatformOwner && !string.IsNullOrWhiteSpace(request.TargetOrgCode))
+        if (!string.IsNullOrWhiteSpace(request.TargetOrgCode) && (isPlatformOwner || !string.IsNullOrWhiteSpace(tenantSlug)))
         {
             var codeTrimmed = request.TargetOrgCode.Trim();
-            org = await _organizationRepository.GetByCodeAsync(codeTrimmed)
+            var candidateOrg = await _organizationRepository.GetByCodeAsync(codeTrimmed)
                 ?? await _organizationRepository.GetByCodeAsync(codeTrimmed.ToUpperInvariant())
                 ?? await _organizationRepository.GetByCodeAsync(codeTrimmed.ToLowerInvariant());
-            if (org == null)
-                return NotFound(new { message = $"No TruLoad organisation with code '{request.TargetOrgCode}'" });
+            if (candidateOrg == null)
+            {
+                if (isPlatformOwner)
+                    return NotFound(new { message = $"No TruLoad organisation with code '{request.TargetOrgCode}'" });
+                // Non-platform-owner: an unresolvable code falls through to normal slug resolution
+                // rather than erroring, since this parameter is optional/best-effort for them.
+            }
+            else if (isPlatformOwner || string.Equals(candidateOrg.SsoTenantSlug, tenantSlug, StringComparison.OrdinalIgnoreCase))
+            {
+                org = candidateOrg;
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "SSO user {Email} (tenant_slug={TenantSlug}) requested TargetOrgCode {Code} belonging to a different tenant — ignoring, falling back to slug resolution",
+                    email, tenantSlug, request.TargetOrgCode);
+            }
         }
-        else
+        if (org == null)
         {
             if (string.IsNullOrWhiteSpace(tenantSlug))
                 return Unauthorized(new { message = "SSO token missing tenant_slug claim" });
@@ -1038,12 +1061,19 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Lists every TruLoad organisation for the platform-owner org picker shown on the SSO
-    /// callback page BEFORE a full truload session exists (the picker needs to run ahead of
-    /// sso-exchange so TargetOrgCode can be supplied on that call). Takes the raw SSO access
-    /// token directly (not a truload session token) and re-validates it via the same JWKS check
-    /// SsoExchange uses. Returns 403 for a non-platform-owner token — this is NOT a general
-    /// organisation-listing endpoint, only the platform-owner picker's pre-session bootstrap.
+    /// Lists TruLoad organisations for the pre-session org picker shown on the SSO callback page
+    /// BEFORE a full truload session exists (the picker needs to run ahead of sso-exchange so
+    /// TargetOrgCode can be supplied on that call). Takes the raw SSO access token directly (not a
+    /// truload session token) and re-validates it via the same JWKS check SsoExchange uses.
+    ///
+    /// A platform owner gets every organisation (unchanged behaviour — this is how KURA/KENHA/KERRA,
+    /// which have no SsoTenantSlug of their own, are ever reached at all). A non-platform-owner gets
+    /// only the organisations sharing their OWN token's tenant_slug (2026-09-05 — e.g. codevertex-demo's
+    /// admin picking between its 4 outlet organisations), mirroring SsoExchange's own
+    /// same-tenant-only TargetOrgCode acceptance — never another tenant's organisations. Returns an
+    /// empty list (not 403) for a non-platform-owner whose tenant has only one organisation, so the
+    /// frontend can treat "picker has &lt;2 options" as "skip the picker", same as before this feature
+    /// existed for every non-demo tenant.
     /// </summary>
     [HttpPost("sso-platform-organizations")]
     [AllowAnonymous]
@@ -1063,11 +1093,27 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Invalid or expired SSO token" });
         }
 
-        if (ssoPrincipal == null || ssoPrincipal.FindFirst("is_platform_owner")?.Value != "true")
-            return StatusCode(403, new { message = "Not a platform owner" });
+        if (ssoPrincipal == null)
+            return Unauthorized(new { message = "Invalid or expired SSO token" });
 
-        var orgs = await _organizationRepository.GetAllAsync(includeInactive: false);
-        return Ok(orgs
+        var isPlatformOwner = ssoPrincipal.FindFirst("is_platform_owner")?.Value == "true";
+        if (isPlatformOwner)
+        {
+            var allOrgs = await _organizationRepository.GetAllAsync(includeInactive: false);
+            return Ok(allOrgs
+                .OrderBy(o => o.TenantType).ThenBy(o => o.Name)
+                .Select(o => new { code = o.Code, name = o.Name, tenantType = o.TenantType }));
+        }
+
+        var tenantSlug = ssoPrincipal.FindFirst("tenant_slug")?.Value;
+        if (string.IsNullOrWhiteSpace(tenantSlug))
+            return Ok(Array.Empty<object>());
+
+        var tenantOrgs = await _organizationRepository.GetAllBySsoTenantSlugAsync(tenantSlug);
+        if (tenantOrgs.Count < 2)
+            return Ok(Array.Empty<object>());
+
+        return Ok(tenantOrgs
             .OrderBy(o => o.TenantType).ThenBy(o => o.Name)
             .Select(o => new { code = o.Code, name = o.Name, tenantType = o.TenantType }));
     }
