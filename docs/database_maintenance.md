@@ -55,3 +55,41 @@ Check if the pods are running and healthy:
 ```powershell
 kubectl get pods -n truload
 ```
+
+## Known Monitoring Gap: Silent Migration Failures and Inert Background Consumers
+
+Documented 2026-09-04 as a recommendation, not yet built. Two live incidents from the same
+initiative both proved the same thing: `kubectl get pods` and the app's own health check can say
+everything is fine while the database and background messaging are both silently wrong. Neither
+failure class has any alert or dashboard today.
+
+**Evidence 1 - a swallowed EF migration failure.** Migration
+`20260903113525_AddTariffRateBasisBillingPeriodAndAccrual` failed on every deploy with
+`must be owner of table commercial_tariff_rules`. EF applies migrations as one ordered batch, so
+this silently blocked every later migration and every seeder that runs after them. `Program.cs`
+catches the migration failure without aborting startup, so the pod reported healthy while
+`__EFMigrationsHistory` stayed frozen at an old migration - confirmed only by a direct,
+read-only `kubectl exec` query against the live database, not by any CI or health-check signal.
+
+**Evidence 2 - a NATS consumer that's configured but never subscribed.** `AuthDemoSyncService`
+never ran in production: the pod logs `NATS auth-demo sync disabled (Nats:Enabled=false)` because
+no environment override exists anywhere, so `appsettings.json`'s `false` default wins. The service
+was deployed, CI-green, and "done" by every pipeline signal for as long as that flag stayed
+unset - again, only a direct pod-log/env inspection surfaced it.
+
+**Recommendation.** Both would be closed by two small, checkable additions rather than a new
+subsystem:
+- **Migration-currency alert/panel**: compare the latest applied row in `__EFMigrationsHistory`
+  against the number of migration files under `Migrations/` in the repo (or against a build-time
+  constant recording the expected latest migration name); alert when they disagree for more than
+  one deploy cycle. This directly catches the "CI green, schema stale" failure mode Evidence 1
+  hit.
+- **Explicit consumer-subscription log line or metric**: on startup, `AuthDemoSyncService` (and
+  any similar background NATS consumer) should log or emit a metric explicitly stating whether it
+  actually subscribed, distinct from the existing "disabled by config" log line, so an operator
+  (or an alert rule) can tell "intentionally off" apart from "should be on but silently isn't
+  subscribed" at a glance.
+
+This is left as a documented recommendation rather than implemented here - it's a docs-only pass,
+and the concrete fix (an alert rule or a startup metric) belongs with whatever this project's
+alerting stack actually is, which this pass did not investigate.
