@@ -35,8 +35,14 @@ public abstract class BaseDocument
     /// </summary>
     public static string ResolveOrgLogo(string? orgLogoFile, bool isCommercial = false)
     {
-        // Try org-specific logo first
-        if (!string.IsNullOrEmpty(orgLogoFile))
+        // Try org-specific logo first. SVG is explicitly excluded: QuestPDF's Image() decodes via
+        // SkiaSharp, which cannot rasterize SVG at all — LoadLogo would hand it raw SVG bytes and
+        // crash the whole document with DocumentComposeException("Cannot decode the provided
+        // image"). Confirmed live: Organization.LogoUrl can be an .svg (branding assets are often
+        // authored as SVG for the web UI), so this isn't a hypothetical edge case — treat an SVG
+        // org logo the same as "no usable org logo" and fall through to the raster fallback below.
+        if (!string.IsNullOrEmpty(orgLogoFile) &&
+            !orgLogoFile.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
         {
             var orgPath = Path.Combine(ImagesBasePath, orgLogoFile);
             if (File.Exists(orgPath))
