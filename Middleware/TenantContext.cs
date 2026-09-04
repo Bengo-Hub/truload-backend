@@ -69,7 +69,7 @@ public class TenantContextMiddleware
     public const string StationIdHeader = "X-Station-ID";
 
     // Default organization code when no tenant can be resolved (for non-superusers without headers/claims)
-    public const string DefaultOrgCode = "TRULOAD-DEMO";
+    public const string DefaultOrgCode = "CODEVERTEX-DEMO";
 
     public TenantContextMiddleware(RequestDelegate next, ILogger<TenantContextMiddleware> logger)
     {
@@ -335,7 +335,7 @@ public class TenantContextMiddleware
             }
             else
             {
-                // Regular user: fall back to default org (DefaultOrgCode, TRULOAD-DEMO)
+                // Regular user: fall back to default org (DefaultOrgCode, CODEVERTEX-DEMO)
                 var defaultOrg = await dbContext.Organizations
                     .AsNoTracking()
                     .FirstOrDefaultAsync(o => o.Code == DefaultOrgCode && o.IsActive);

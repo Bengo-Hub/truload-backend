@@ -17,7 +17,7 @@ public interface IOrganizationRepository
     /// <summary>
     /// Returns EVERY active organisation sharing the given SSO tenant slug, ordered by
     /// <see cref="Organization.CreatedAt"/> ascending. codevertex-demo now maps to multiple
-    /// outlet-scoped organisations (TRULOAD-DEMO plus per-vertical outlets synced by
+    /// outlet-scoped organisations (CODEVERTEX-DEMO plus per-vertical outlets synced by
     /// AuthDemoSyncService) that all carry the same slug — callers that need to disambiguate
     /// between them (see <c>AuthController.SsoExchange</c>) use this instead of the single-result
     /// <see cref="GetBySsoTenantSlugAsync"/>, which is unordered and picks arbitrarily among

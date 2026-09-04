@@ -143,7 +143,7 @@ public class UserManagementSeeder
             new Organization
             {
                 Id = Guid.NewGuid(),
-                Code = "TRULOAD-DEMO",
+                Code = "CODEVERTEX-DEMO",
                 Name = "TruLoad Demo Weighbridge",
                 OrgType = "Private",
                 TenantType = "CommercialWeighing",
@@ -190,26 +190,26 @@ public class UserManagementSeeder
                     existing.SecondaryColor = org.SecondaryColor;
                     updated = true;
                 }
-                // Always correct the TRULOAD-DEMO logo from the stale SVG path to the PNG filename
+                // Always correct the CODEVERTEX-DEMO logo from the stale SVG path to the PNG filename
                 // (the PDF service resolves logos by filename from wwwroot/images/)
                 var logoNeedsUpdate = string.IsNullOrEmpty(existing.LogoUrl)
-                    || (org.Code == "TRULOAD-DEMO" && existing.LogoUrl != org.LogoUrl);
+                    || (org.Code == "CODEVERTEX-DEMO" && existing.LogoUrl != org.LogoUrl);
                 if (logoNeedsUpdate && !string.IsNullOrEmpty(org.LogoUrl))
                 {
                     existing.LogoUrl = org.LogoUrl;
                     updated = true;
                 }
                 var platformLogoNeedsUpdate = string.IsNullOrEmpty(existing.PlatformLogoUrl)
-                    || (org.Code == "TRULOAD-DEMO" && existing.PlatformLogoUrl != org.PlatformLogoUrl);
+                    || (org.Code == "CODEVERTEX-DEMO" && existing.PlatformLogoUrl != org.PlatformLogoUrl);
                 if (platformLogoNeedsUpdate && !string.IsNullOrEmpty(org.PlatformLogoUrl))
                 {
                     existing.PlatformLogoUrl = org.PlatformLogoUrl;
                     updated = true;
                 }
-                // Always correct TRULOAD-DEMO's SsoTenantSlug — a prior seed run set it to the
+                // Always correct CODEVERTEX-DEMO's SsoTenantSlug — a prior seed run set it to the
                 // dead-end value "truload" (no matching auth-api tenant), which broke SSO login
                 // into this org entirely.
-                if (org.Code == "TRULOAD-DEMO" && existing.SsoTenantSlug != org.SsoTenantSlug)
+                if (org.Code == "CODEVERTEX-DEMO" && existing.SsoTenantSlug != org.SsoTenantSlug)
                 {
                     existing.SsoTenantSlug = org.SsoTenantSlug;
                     updated = true;
@@ -387,8 +387,8 @@ public class UserManagementSeeder
             });
         }
 
-        // TRULOAD-DEMO station: demo commercial weighbridge (fixed platform scale)
-        var truloadDemo = await _context.Organizations.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Code == "TRULOAD-DEMO");
+        // CODEVERTEX-DEMO station: demo commercial weighbridge (fixed platform scale)
+        var truloadDemo = await _context.Organizations.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Code == "CODEVERTEX-DEMO");
         if (truloadDemo != null)
         {
             stations.Add(new Station

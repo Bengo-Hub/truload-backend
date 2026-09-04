@@ -117,7 +117,7 @@ public class SsoExchangeRequest
     public string AccessToken { get; set; } = string.Empty;
 
     /// <summary>
-    /// Organization.Code to log into, e.g. "KURA" or "TRULOAD-DEMO". Only honored when the SSO
+    /// Organization.Code to log into, e.g. "KURA" or "CODEVERTEX-DEMO". Only honored when the SSO
     /// token carries is_platform_owner — lets the Codevertex platform owner reach ANY TruLoad
     /// organisation (including real government tenants with no SsoTenantSlug of their own),
     /// bypassing the normal SsoTenantSlug-only resolution and cross-org block. Ignored for

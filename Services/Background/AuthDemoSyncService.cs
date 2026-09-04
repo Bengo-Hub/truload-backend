@@ -29,10 +29,13 @@ namespace TruLoad.Backend.Services.Background;
 /// pre-existing in auth-api's seed, wired up here for the first time). Each non-primary outlet gets
 /// its OWN local Organization + Station pair (see <see cref="OutletOrgMap"/> and
 /// <see cref="EnsureOutletOrganizationsAsync"/>), replacing the old single-outlet assumption where
-/// every persona landed in the one static TRULOAD-DEMO/DEMO-WB-01 pair
-/// (Data/Seeders/UserManagement/UserManagementSeeder.cs) regardless of outlet. TRULOAD-DEMO stays
+/// every persona landed in the one static CODEVERTEX-DEMO/DEMO-WB-01 pair
+/// (Data/Seeders/UserManagement/UserManagementSeeder.cs) regardless of outlet. CODEVERTEX-DEMO stays
 /// the primary/fallback org (per the plan's explicit instruction not to remove it until this
 /// sync-based replacement is proven working end-to-end) and is still seeded there, not created here.
+/// Renamed from TRULOAD-DEMO on 2026-09-05 (per explicit user decision) so the primary org's own
+/// Code — and therefore every URL the frontend derives from it — reads "codevertex-demo" throughout,
+/// matching the shared demo tenant's real name instead of a TruLoad-specific alias for it.
 /// Note ENF's <see cref="OutletOrgTarget.TenantType"/> is AxleLoadEnforcement, not
 /// CommercialWeighing like every other entry — <see cref="EnsureOutletOrganizationsAsync"/> reads it
 /// per-target rather than assuming CommercialWeighing for every non-primary outlet, and
@@ -84,7 +87,7 @@ namespace TruLoad.Backend.Services.Background;
 /// hospital-api's demo data, TruLoad has real FKs from users into weighing/case data that a
 /// hard-delete could violate.
 ///
-/// SSO login note: multiple Organizations now share SsoTenantSlug="codevertex-demo" (TRULOAD-DEMO
+/// SSO login note: multiple Organizations now share SsoTenantSlug="codevertex-demo" (CODEVERTEX-DEMO
 /// plus every outlet organization this service creates). AuthController.SsoExchange resolves the
 /// correct one per-user via ApplicationUser.OrganizationId (set here) rather than by slug alone —
 /// see that method's own doc comment for the full reasoning.
@@ -112,20 +115,20 @@ public class AuthDemoSyncService : BackgroundService
     /// </summary>
     private static readonly Dictionary<string, OutletOrgTarget> OutletOrgMap = new(StringComparer.OrdinalIgnoreCase)
     {
-        // The original generic outlet — maps to the pre-existing TRULOAD-DEMO organisation
+        // The original generic outlet — maps to the pre-existing CODEVERTEX-DEMO organisation
         // (Data/Seeders/UserManagement/UserManagementSeeder.cs) kept as the primary/fallback demo
         // org. Never created here (IsPrimary short-circuits creation — see
         // EnsureOutletOrganizationsAsync), only backfilled/repaired if it already exists.
-        [PrimaryOutletCode] = new OutletOrgTarget("TRULOAD-DEMO", "TruLoad Demo Weighbridge", "DEMO-WB-01", Vertical: null, IsPrimary: true, TenantType: TenantModules.TenantTypeCommercialWeighing, PaymentGateway: "treasury"),
-        ["QUARRY"] = new OutletOrgTarget("TRULOAD-DEMO-QUARRY", "Demo Quarry & Mining Weighbridge", "QUARRY-WB-01", CommercialVerticals.Quarry, IsPrimary: false, TenantType: TenantModules.TenantTypeCommercialWeighing, PaymentGateway: "treasury"),
-        ["WASTE"] = new OutletOrgTarget("TRULOAD-DEMO-WASTE", "Demo Waste Management Weighbridge", "WASTE-WB-01", CommercialVerticals.WasteManagement, IsPrimary: false, TenantType: TenantModules.TenantTypeCommercialWeighing, PaymentGateway: "treasury"),
+        [PrimaryOutletCode] = new OutletOrgTarget("CODEVERTEX-DEMO", "TruLoad Demo Weighbridge", "DEMO-WB-01", Vertical: null, IsPrimary: true, TenantType: TenantModules.TenantTypeCommercialWeighing, PaymentGateway: "treasury"),
+        ["QUARRY"] = new OutletOrgTarget("CODEVERTEX-DEMO-QUARRY", "Demo Quarry & Mining Weighbridge", "QUARRY-WB-01", CommercialVerticals.Quarry, IsPrimary: false, TenantType: TenantModules.TenantTypeCommercialWeighing, PaymentGateway: "treasury"),
+        ["WASTE"] = new OutletOrgTarget("CODEVERTEX-DEMO-WASTE", "Demo Waste Management Weighbridge", "WASTE-WB-01", CommercialVerticals.WasteManagement, IsPrimary: false, TenantType: TenantModules.TenantTypeCommercialWeighing, PaymentGateway: "treasury"),
         // Axle-load enforcement outlet — auth-api's outlet name reused verbatim as the org name,
         // same convention as QUARRY/WASTE above. No vertical (CommercialVerticals doesn't apply to
         // enforcement); TenantType=AxleLoadEnforcement so module/report resolution matches every
         // other enforcement org (KURA/KENHA/KERRA); PaymentGateway left null so the Organization
         // model's own default ("ecitizen_pesaflow") applies, matching how real enforcement orgs are
         // configured, rather than the commercial outlets' "treasury" value.
-        ["ENF"] = new OutletOrgTarget("TRULOAD-DEMO-ENF", "Demo Axle Load Enforcement Hub", "ENF-WB-01", Vertical: null, IsPrimary: false, TenantType: TenantModules.TenantTypeAxleLoadEnforcement, PaymentGateway: null),
+        ["ENF"] = new OutletOrgTarget("CODEVERTEX-DEMO-ENF", "Demo Axle Load Enforcement Hub", "ENF-WB-01", Vertical: null, IsPrimary: false, TenantType: TenantModules.TenantTypeAxleLoadEnforcement, PaymentGateway: null),
     };
 
     // auth-api role string -> local TruLoad ApplicationRole.Name (Data/Seeders/RoleSeeder.cs).
@@ -264,12 +267,12 @@ public class AuthDemoSyncService : BackgroundService
 
     /// <summary>
     /// Get-or-creates the Organization + Station pair for every entry in <see cref="OutletOrgMap"/>.
-    /// The primary entry (TRULOAD-DEMO) is never created here — it's UserManagementSeeder.cs's job
+    /// The primary entry (CODEVERTEX-DEMO) is never created here — it's UserManagementSeeder.cs's job
     /// — only backfilled if found with a stale/missing SsoTenantSlug. Every other entry is created
     /// on first sight with its own <see cref="OutletOrgTarget.TenantType"/> (CommercialWeighing for
     /// QUARRY/WASTE, AxleLoadEnforcement for ENF — read per-target, not assumed uniform), vertical
     /// metadata via OrganizationMetadataHelper.MergeVertical when the target has one, and
-    /// SsoTenantSlug="codevertex-demo" (the same slug TRULOAD-DEMO already carries — see
+    /// SsoTenantSlug="codevertex-demo" (the same slug CODEVERTEX-DEMO already carries — see
     /// AuthController.SsoExchange's per-user disambiguation for why multiple organisations safely
     /// sharing one slug is fine).
     /// </summary>

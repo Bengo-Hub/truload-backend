@@ -185,7 +185,7 @@ public class AuthController : ControllerBase
         var isSuperUser = roles.Contains("SUPERUSER", StringComparer.OrdinalIgnoreCase);
 
         // For superusers: resolve the requested org so their login response carries that org's context
-        // (e.g. admin@codevertexafrica.com logging into /truload-demo/ gets TRULOAD-DEMO data)
+        // (e.g. admin@codevertexafrica.com logging into /codevertex-demo/ gets CODEVERTEX-DEMO data)
         Organization? superuserContextOrg = null;
         if (isSuperUser && !string.IsNullOrWhiteSpace(request.OrganizationCode))
         {
@@ -934,8 +934,8 @@ public class AuthController : ControllerBase
             if (string.IsNullOrWhiteSpace(tenantSlug))
                 return Unauthorized(new { message = "SSO token missing tenant_slug claim" });
 
-            // codevertex-demo now maps to MULTIPLE TruLoad organisations (TRULOAD-DEMO plus
-            // per-vertical outlet organisations like TRULOAD-DEMO-QUARRY/-WASTE, synced by
+            // codevertex-demo now maps to MULTIPLE TruLoad organisations (CODEVERTEX-DEMO plus
+            // per-vertical outlet organisations like CODEVERTEX-DEMO-QUARRY/-WASTE, synced by
             // AuthDemoSyncService — see its class doc comment) that all share this one SsoTenantSlug.
             // The incoming SSO access token carries NO outlet/branch claim at all (confirmed by
             // reading auth-api's oidc_handler.go token mint — outlet claims are only ever set by its
@@ -945,7 +945,7 @@ public class AuthController : ControllerBase
             // stable thereafter. Prefer that organisation when the user already exists and it's among
             // this slug's candidates; a brand-new, never-before-seen email (no local row yet) falls
             // through to the oldest candidate (index 0, ascending CreatedAt) as a single deterministic
-            // default — today that's always TRULOAD-DEMO, which predates every outlet organisation.
+            // default — today that's always CODEVERTEX-DEMO, which predates every outlet organisation.
             // When only one organisation carries this slug (every non-demo SSO tenant today, and the
             // demo tenant before this feature), this resolves to the exact same single candidate as
             // before — byte-identical behaviour for every existing tenant.

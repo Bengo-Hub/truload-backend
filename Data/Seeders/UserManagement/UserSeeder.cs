@@ -39,7 +39,7 @@ public class UserSeeder
     // confirmed to have zero real references before deletion. The codevertex-demo convention that
     // replaced them (SeedCommercialDemoTenantAdminAsync/SeedCommercialDemoStaffAsync) was itself
     // retired 2026-09-03: Services/Background/AuthDemoSyncService.cs now consumes auth-api's
-    // "auth" NATS stream and is the sole source of truth for TRULOAD-DEMO's commercial-weighing
+    // "auth" NATS stream and is the sole source of truth for CODEVERTEX-DEMO's commercial-weighing
     // demo staff (commercial.operator@/commercial.finance@demo.codevertexafrica.com), so the two
     // local hand-maintained seed methods would only drift against it, not add anything it doesn't
     // already cover. NOTE: admin@demo.codevertexafrica.com (the demo tenant admin) is genuinely
@@ -318,7 +318,7 @@ public class UserSeeder
 
     /// <summary>
     /// Seeds the dedicated TruConnect demo/training service account
-    /// (middleware-demo@truconnect.local), linked to TRULOAD-DEMO org / DEMO-WB-01 station.
+    /// (middleware-demo@truconnect.local), linked to CODEVERTEX-DEMO org / DEMO-WB-01 station.
     /// Deliberately a SEPARATE account from SeedMiddlewareServiceUserAsync's
     /// middleware@truconnect.local (which stays linked to the live KURA org) — so a single
     /// TruConnect device can never be simultaneously "live" and "demo": Settings' Demo/Training
@@ -336,11 +336,11 @@ public class UserSeeder
 
         var truloadDemoOrg = await _context.Organizations
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(o => o.Code == "TRULOAD-DEMO");
+            .FirstOrDefaultAsync(o => o.Code == "CODEVERTEX-DEMO");
 
         if (truloadDemoOrg == null)
         {
-            Console.WriteLine("⚠ TRULOAD-DEMO organization not found, skipping middleware demo user seed");
+            Console.WriteLine("⚠ CODEVERTEX-DEMO organization not found, skipping middleware demo user seed");
             return;
         }
 
@@ -382,7 +382,7 @@ public class UserSeeder
                 return;
             }
 
-            Console.WriteLine($"✓ Seeded middleware demo service user: {middlewareDemoEmail} → TRULOAD-DEMO org with MIDDLEWARE_SERVICE role");
+            Console.WriteLine($"✓ Seeded middleware demo service user: {middlewareDemoEmail} → CODEVERTEX-DEMO org with MIDDLEWARE_SERVICE role");
             Console.WriteLine($"  Password: {DefaultPassword} (DEVELOPMENT ONLY - change in production!)");
         }
         else
@@ -401,7 +401,7 @@ public class UserSeeder
             if (updated)
             {
                 await _userManager.UpdateAsync(existingUser);
-                Console.WriteLine($"✓ Updated middleware demo user {middlewareDemoEmail}: linked to TRULOAD-DEMO org/station");
+                Console.WriteLine($"✓ Updated middleware demo user {middlewareDemoEmail}: linked to CODEVERTEX-DEMO org/station");
             }
             else
             {
