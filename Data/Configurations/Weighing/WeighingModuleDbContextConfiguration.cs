@@ -620,6 +620,20 @@ namespace TruLoad.Backend.Data.Configurations.Weighing
                 entity.HasIndex(e => new { e.WeighingId, e.AxleGrouping, e.AxleType }).HasDatabaseName("IX_weighing_axles_weighing_grouping_type");
             });
 
+            // WeighingCaptureEvent entity configuration - full weight-capture history (first weight,
+            // second weight, and any reweighs) for a commercial weighing transaction.
+            modelBuilder.Entity<WeighingCaptureEvent>(entity =>
+            {
+                entity.ToTable("weighing_capture_events", "weighing");
+
+                entity.HasOne(e => e.WeighingTransaction)
+                    .WithMany(t => t.WeighingCaptureEvents)
+                    .HasForeignKey(e => new { e.WeighingTransactionId, e.OrganizationId })
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.WeighingTransactionId, e.SequenceNo }).IsUnique();
+            });
+
             // Driver entity configuration
             modelBuilder.Entity<Driver>(entity =>
             {

@@ -139,7 +139,8 @@ public class CaptureFirstWeightRequest
 }
 
 /// <summary>
-/// Request to capture the second weight (second pass on the scale).
+/// Request to capture the next weight in sequence: the second weight (second pass on the scale),
+/// or a subsequent reweigh when the vehicle returns to adjust cargo before finalizing.
 /// </summary>
 public class CaptureSecondWeightRequest
 {
@@ -152,7 +153,7 @@ public class CaptureSecondWeightRequest
     public int WeightKg { get; set; }
 
     /// <summary>
-    /// Individual axle/deck weights for the second pass (optional).
+    /// Individual axle/deck weights for this pass (optional).
     /// </summary>
     public List<int>? AxleWeights { get; set; }
 
@@ -177,6 +178,32 @@ public class CaptureSecondWeightRequest
     /// </summary>
     [MaxLength(500)]
     public string? ManualEntryJustification { get; set; }
+
+    /// <summary>
+    /// When true (the default - preserves the original two-pass behavior with zero change), this
+    /// capture FINALIZES the transaction: mirrors into SecondWeightKg/Type/At, runs tolerance/tare-
+    /// anomaly checks, closes CaptureStatus to "captured", and creates the invoice. When false, the
+    /// weight is saved as a reweigh event (CaptureStatus becomes "awaiting_reweigh") and the
+    /// transaction stays open for the vehicle's next visit - no invoice yet. Requires
+    /// <see cref="ReweighReason"/> when false.
+    /// </summary>
+    public bool Finalize { get; set; } = true;
+
+    /// <summary>
+    /// Why a reweigh was needed, e.g. "over_limit_adjust_cargo", "confirm_weight_recheck". Required
+    /// when <see cref="Finalize"/> is false, or when <see cref="IsOverrideAttach"/> is true.
+    /// </summary>
+    [MaxLength(500)]
+    public string? ReweighReason { get; set; }
+
+    /// <summary>
+    /// True when staff explicitly picked this transaction from the resume picker/board OUTSIDE the
+    /// configured auto-match window (commercial.reweigh_match_window_minutes) rather than it being
+    /// auto-matched by plate. Requires the <c>manual_weight_override</c> permission and a non-empty
+    /// <see cref="ReweighReason"/> (enforced in the controller/service, same pattern as
+    /// <see cref="IsManualEntry"/>).
+    /// </summary>
+    public bool IsOverrideAttach { get; set; } = false;
 }
 
 /// <summary>
@@ -346,6 +373,11 @@ public class CommercialWeighingResultDto
     public Guid Id { get; set; }
     public string TicketNumber { get; set; } = string.Empty;
     public string ControlStatus { get; set; } = string.Empty;
+
+    /// <summary>See WeighingTransaction.CaptureStatus - notably "awaiting_reweigh" means this
+    /// transaction has an open reweigh cycle: the vehicle left again to adjust cargo and hasn't
+    /// been finalized/billed yet.</summary>
+    public string CaptureStatus { get; set; } = string.Empty;
     public string WeighingMode { get; set; } = "commercial";
     public string? WeighingScaleType { get; set; }
 
@@ -375,6 +407,22 @@ public class CommercialWeighingResultDto
     public int? SecondWeightKg { get; set; }
     public string? SecondWeightType { get; set; }
     public DateTime? SecondWeightAt { get; set; }
+
+    /// <summary>Timestamp of the most recent capture (first weight or latest reweigh) - drives the
+    /// resume-picker's auto-match window.</summary>
+    public DateTime? LastWeightCapturedAt { get; set; }
+
+    /// <summary>
+    /// Set only by GetPendingByPlateAsync: true when this candidate's LastWeightCapturedAt is within
+    /// the configured commercial.reweigh_match_window_minutes window (safe to auto-resume), false
+    /// when it's older (resuming requires the manual_weight_override permission + a reason, i.e.
+    /// IsOverrideAttach on the capture request). Null in every other context.
+    /// </summary>
+    public bool? IsWithinAutoWindow { get; set; }
+
+    /// <summary>Full weight-capture history: first weight, second weight, and any reweighs, in
+    /// sequence order. Empty unless the caller requested it via GetCommercialResultAsync.</summary>
+    public List<WeighingCaptureEventDto> CaptureEvents { get; set; } = new();
 
     public int? TareWeightKg { get; set; }
     public int? GrossWeightKg { get; set; }
@@ -460,6 +508,30 @@ public class CommercialAxleWeightDto
     public int AxleNumber { get; set; }
     public int WeightKg { get; set; }
     public string Pass { get; set; } = "first";
+}
+
+/// <summary>
+/// One entry in a commercial weighing transaction's full capture history (first weight, second
+/// weight, or a reweigh). See WeighingCaptureEvent.
+/// </summary>
+public class WeighingCaptureEventDto
+{
+    public Guid Id { get; set; }
+    public int SequenceNo { get; set; }
+
+    /// <summary>Null for the 1st/2nd weight; 1, 2, 3... for reweighs ("1st reweigh", "2nd reweigh"...).</summary>
+    public int? ReweighNo { get; set; }
+
+    /// <summary>Display label: "First Weight", "Second Weight", or "Reweigh #N".</summary>
+    public string Label { get; set; } = string.Empty;
+    public int WeightKg { get; set; }
+    public string WeightType { get; set; } = string.Empty;
+    public DateTime CapturedAt { get; set; }
+    public string CaptureSource { get; set; } = string.Empty;
+    public bool IsManualEntry { get; set; }
+    public bool IsFinalizingEvent { get; set; }
+    public string? ReweighReason { get; set; }
+    public string? CapturedByUserName { get; set; }
 }
 
 /// <summary>

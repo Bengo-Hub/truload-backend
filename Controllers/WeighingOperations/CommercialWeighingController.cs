@@ -179,10 +179,14 @@ public class CommercialWeighingController : ControllerBase
     }
 
     /// <summary>
-    /// Captures the second weight (second pass on the scale).
-    /// Auto-determines tare/gross and calculates net weight.
+    /// Captures the next weight in sequence: the second weight (second pass on the scale), or a
+    /// subsequent reweigh when the vehicle returns to adjust cargo before finalizing (request.Finalize
+    /// = false). Auto-determines tare/gross and calculates net weight. The "/reweigh" route is a
+    /// clearer alias for the exact same capability - staff use whichever the frontend surfaces for
+    /// the action being taken.
     /// </summary>
     [HttpPost("{id}/second-weight")]
+    [HttpPost("{id}/reweigh")]
     [Authorize(Policy = "Permission:weighing.create")]
     [Produces("application/json")]
     [ProducesResponseType(typeof(CommercialWeighingResultDto), 200)]
@@ -194,7 +198,7 @@ public class CommercialWeighingController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        if (request.IsManualEntry && !await HasManualWeightOverridePermissionAsync())
+        if ((request.IsManualEntry || request.IsOverrideAttach) && !await HasManualWeightOverridePermissionAsync())
             return Forbid();
 
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -996,21 +1000,22 @@ public class CommercialWeighingController : ControllerBase
     }
 
     /// <summary>
-    /// Finds open first-weight-only transactions for a specific vehicle plate within the configured time threshold.
-    /// Called by the capture screen when an operator enters a plate number, to detect vehicles that need a second
-    /// pass rather than starting a new transaction.
+    /// Finds every open transaction (first weight captured, or already mid-reweigh) for a specific
+    /// vehicle plate. Called by the capture screen's resume picker when an operator enters a plate
+    /// number, to detect a vehicle that needs a 2nd weight/reweigh rather than starting a new
+    /// transaction. Each result flags whether it's within the auto-match window via IsWithinAutoWindow.
     /// </summary>
     [HttpGet("pending-by-plate/{regNo}")]
     [Authorize(Policy = "Permission:weighing.read")]
     [ProducesResponseType(typeof(List<CommercialWeighingResultDto>), 200)]
-    public async Task<IActionResult> GetPendingByPlate(string regNo, [FromQuery] int? thresholdHours = null)
+    public async Task<IActionResult> GetPendingByPlate(string regNo, [FromQuery] int? windowMinutes = null)
     {
         if (string.IsNullOrWhiteSpace(regNo))
             return BadRequest(new { message = "regNo is required" });
 
         try
         {
-            var results = await _commercialWeighingService.GetPendingByPlateAsync(regNo, thresholdHours);
+            var results = await _commercialWeighingService.GetPendingByPlateAsync(regNo, windowMinutes);
             return Ok(results);
         }
         catch (Exception ex)

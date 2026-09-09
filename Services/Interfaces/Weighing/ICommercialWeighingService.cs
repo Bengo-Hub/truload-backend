@@ -136,12 +136,17 @@ public interface ICommercialWeighingService
     Task<List<CommercialWeighingResultDto>> GetPendingCommercialTransactionsAsync(Guid stationId);
 
     /// <summary>
-    /// Finds open first-weight-only transactions for a vehicle plate within the configured time threshold.
-    /// Used by the capture screen to detect vehicles that need a second pass rather than a new transaction.
-    /// When <paramref name="thresholdHours"/> is null, falls back to the configured
-    /// commercial.pending_weighing_threshold_hours setting (same setting used by StaleWeighingNotificationJob).
+    /// Finds every open transaction (first_weight_captured OR awaiting_reweigh) for a vehicle plate,
+    /// ordered most-recently-active first. Used by the capture screen's resume picker to detect a
+    /// vehicle that needs a 2nd weight or a reweigh rather than a new transaction. Each result's
+    /// <see cref="CommercialWeighingResultDto.IsWithinAutoWindow"/> flags whether it's within
+    /// <paramref name="windowMinutes"/> of its last capture (safe to auto-resume) or older (resuming
+    /// requires the manual_weight_override permission + IsOverrideAttach on the capture request).
+    /// When <paramref name="windowMinutes"/> is null, falls back to the configured
+    /// commercial.reweigh_match_window_minutes setting. Deliberately separate from the (much longer)
+    /// commercial.pending_weighing_threshold_hours setting StaleWeighingNotificationJob uses.
     /// </summary>
-    Task<List<CommercialWeighingResultDto>> GetPendingByPlateAsync(string vehicleRegNo, int? thresholdHours = null);
+    Task<List<CommercialWeighingResultDto>> GetPendingByPlateAsync(string vehicleRegNo, int? windowMinutes = null);
 
     // ============================================================================
     // Tare Anomaly Detection (Phase 7 MVP - drift vs. stored tare only)

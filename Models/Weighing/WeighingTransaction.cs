@@ -265,7 +265,12 @@ public class WeighingTransaction : TenantAwareEntity
     public string CaptureSource { get; set; } = "manual";
 
     /// <summary>
-    /// Capture status: auto (auto-weigh data only), captured (final weights submitted), not_weighed (vehicle left without capture)
+    /// Capture status. Enforcement values: auto (auto-weigh data only), captured (final weights
+    /// submitted), not_weighed (vehicle left without capture). Commercial two-pass/reweigh values:
+    /// pending (initiated, no weight yet), first_weight_captured (awaiting a 2nd weight or reweigh),
+    /// awaiting_reweigh (2nd weight or a reweigh captured WITHOUT finalizing - vehicle left again to
+    /// keep adjusting cargo, transaction stays open for another capture under the same original
+    /// transaction), captured (finalized and billed), voided.
     /// </summary>
     [MaxLength(50)]
     public string CaptureStatus { get; set; } = "captured";
@@ -290,7 +295,9 @@ public class WeighingTransaction : TenantAwareEntity
     public string WeighingMode { get; set; } = "enforcement";
 
     /// <summary>
-    /// First pass weight in kg (commercial two-pass weighing).
+    /// First pass weight in kg. Always mirrors WeighingCaptureEvent #1 - kept as a direct column
+    /// (rather than requiring a join) for backward compatibility with every existing PDF/report/
+    /// dashboard/CSV consumer.
     /// </summary>
     public int? FirstWeightKg { get; set; }
 
@@ -306,20 +313,34 @@ public class WeighingTransaction : TenantAwareEntity
     public DateTime? FirstWeightAt { get; set; }
 
     /// <summary>
-    /// Second pass weight in kg (commercial two-pass weighing).
+    /// The weight that FINALIZED (closed and billed) this transaction - mirrors whichever
+    /// WeighingCaptureEvent has IsFinalizingEvent = true. For a plain two-pass weighing this is
+    /// literally the second capture; when reweighs occurred first (the vehicle left to adjust cargo
+    /// and came back one or more times), this instead mirrors the LAST reweigh event, not event #2.
+    /// Kept as a direct column, same backward-compatibility reasoning as FirstWeightKg above -
+    /// existing consumers reading "the second weight" continue to see "the settled/closing weight."
+    /// Full history of every intermediate reweigh lives in WeighingCaptureEvents.
     /// </summary>
     public int? SecondWeightKg { get; set; }
 
     /// <summary>
-    /// Type of second weight: "tare" or "gross".
+    /// Type of the finalizing weight: "tare" or "gross". See SecondWeightKg for the semantic note.
     /// </summary>
     [MaxLength(10)]
     public string? SecondWeightType { get; set; }
 
     /// <summary>
-    /// Timestamp of second weight capture.
+    /// Timestamp of the finalizing weight capture. See SecondWeightKg for the semantic note.
     /// </summary>
     public DateTime? SecondWeightAt { get; set; }
+
+    /// <summary>
+    /// Timestamp of the MOST RECENT weight capture on this transaction (first weight, or the latest
+    /// reweigh) - used to match a returning vehicle to this open transaction within the configured
+    /// commercial.reweigh_match_window_minutes window, instead of always anchoring to the stale
+    /// original FirstWeightAt once one or more reweighs have already happened.
+    /// </summary>
+    public DateTime? LastWeightCapturedAt { get; set; }
 
     /// <summary>
     /// Resolved tare weight (from measurement, preset, or stored).
@@ -538,4 +559,10 @@ public class WeighingTransaction : TenantAwareEntity
 
     // One-to-Many relationship with Axle Weights
     public ICollection<WeighingAxle> WeighingAxles { get; set; } = new List<WeighingAxle>();
+
+    /// <summary>
+    /// Full weight-capture history for commercial weighing: first weight, second weight, and any
+    /// subsequent reweighs, all chained under this original transaction. See WeighingCaptureEvent.
+    /// </summary>
+    public ICollection<WeighingCaptureEvent> WeighingCaptureEvents { get; set; } = new List<WeighingCaptureEvent>();
 }

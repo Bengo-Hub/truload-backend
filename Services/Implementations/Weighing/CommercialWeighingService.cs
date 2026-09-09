@@ -33,7 +33,7 @@ public class CommercialWeighingService : ICommercialWeighingService
     private readonly IAuditLogRepository _auditLogRepository;
     private readonly ILogger<CommercialWeighingService> _logger;
 
-    private const int DefaultPendingWeighingThresholdHours = 8;
+    private const int DefaultReweighMatchWindowMinutes = 30;
     private const decimal DefaultTareDriftAnomalyThresholdPercent = 5m;
 
     // Phase 9: rapid tare-change detection defaults (configurable via ISettingsService, see
@@ -210,6 +210,7 @@ public class CommercialWeighingService : ICommercialWeighingService
         transaction.FirstWeightKg = request.WeightKg;
         transaction.FirstWeightType = request.WeightType;
         transaction.FirstWeightAt = DateTime.UtcNow;
+        transaction.LastWeightCapturedAt = transaction.FirstWeightAt;
         transaction.CaptureStatus = "first_weight_captured";
         transaction.UpdatedAt = DateTime.UtcNow;
 
@@ -221,6 +222,21 @@ public class CommercialWeighingService : ICommercialWeighingService
             var meta = MergeIndustryMetadata(transaction.IndustryMetadata, new { firstPassWeights = request.AxleWeights });
             transaction.IndustryMetadata = meta;
         }
+
+        _dbContext.WeighingCaptureEvents.Add(new WeighingCaptureEvent
+        {
+            WeighingTransactionId = transaction.Id,
+            OrganizationId = transaction.OrganizationId,
+            SequenceNo = 1,
+            WeightKg = request.WeightKg,
+            WeightType = request.WeightType,
+            CapturedAt = transaction.FirstWeightAt.Value,
+            CaptureSource = transaction.CaptureSource,
+            IsManualEntry = request.IsManualEntry,
+            ManualEntryJustification = request.ManualEntryJustification,
+            CapturedByUserId = userId,
+            IsFinalizingEvent = false,
+        });
 
         await _dbContext.SaveChangesAsync();
 
@@ -246,22 +262,58 @@ public class CommercialWeighingService : ICommercialWeighingService
 
         if (!transaction.FirstWeightKg.HasValue)
         {
-            throw new InvalidOperationException("First weight must be captured before capturing second weight.");
+            throw new InvalidOperationException("First weight must be captured before capturing a subsequent weight.");
         }
 
-        if (transaction.SecondWeightKg.HasValue)
+        if (transaction.CaptureStatus != "first_weight_captured" && transaction.CaptureStatus != "awaiting_reweigh")
         {
-            throw new InvalidOperationException("Second weight has already been captured for this transaction.");
+            throw new InvalidOperationException(
+                $"This transaction cannot accept a new weight capture (status: {transaction.CaptureStatus}).");
         }
 
-        // Auto-determine second weight type (opposite of first)
-        var secondWeightType = transaction.FirstWeightType == "tare" ? "gross" : "tare";
+        var isReweighCycle = transaction.CaptureStatus == "awaiting_reweigh";
+        var finalize = request.Finalize;
 
-        transaction.SecondWeightKg = request.WeightKg;
-        transaction.SecondWeightType = secondWeightType;
-        transaction.SecondWeightAt = DateTime.UtcNow;
+        if ((!finalize || request.IsOverrideAttach) && string.IsNullOrWhiteSpace(request.ReweighReason))
+        {
+            throw new InvalidOperationException(
+                "A reason is required when saving a weight without finalizing (Finalize=false), or when attaching to a transaction outside the auto-match window (IsOverrideAttach=true).");
+        }
 
-        // Resolve tare and gross
+        // Auto-determine this pass's weight type (opposite of first)
+        var eventWeightType = transaction.FirstWeightType == "tare" ? "gross" : "tare";
+        var capturedAt = DateTime.UtcNow;
+
+        var sequenceNo = await _dbContext.WeighingCaptureEvents
+            .Where(e => e.WeighingTransactionId == transaction.Id)
+            .CountAsync() + 1;
+        var reweighNo = sequenceNo > 2 ? sequenceNo - 2 : (int?)null;
+
+        // Apply manual-entry bookkeeping BEFORE snapshotting transaction.CaptureSource onto the event
+        // below, so a manually-entered reweigh is correctly tagged "Manual" on its own event record.
+        ApplyManualEntryIfRequested(transaction, request.IsManualEntry, request.ManualEntryJustification);
+
+        var captureEvent = new WeighingCaptureEvent
+        {
+            WeighingTransactionId = transaction.Id,
+            OrganizationId = transaction.OrganizationId,
+            SequenceNo = sequenceNo,
+            ReweighNo = reweighNo,
+            WeightKg = request.WeightKg,
+            WeightType = eventWeightType,
+            CapturedAt = capturedAt,
+            CaptureSource = transaction.CaptureSource,
+            IsManualEntry = request.IsManualEntry,
+            ManualEntryJustification = request.ManualEntryJustification,
+            CapturedByUserId = userId,
+            IsFinalizingEvent = finalize,
+            ReweighReason = request.ReweighReason,
+        };
+        _dbContext.WeighingCaptureEvents.Add(captureEvent);
+
+        // Resolve tare and gross from the first weight + this pass (the most recently captured pass
+        // always represents the vehicle's current/settled reading, whether it's the 2nd weight or the
+        // Nth reweigh)
         int tareWeightKg, grossWeightKg;
         if (transaction.FirstWeightType == "tare")
         {
@@ -277,16 +329,8 @@ public class CommercialWeighingService : ICommercialWeighingService
         transaction.TareWeightKg = tareWeightKg;
         transaction.GrossWeightKg = grossWeightKg;
         transaction.NetWeightKg = grossWeightKg - tareWeightKg;
-        transaction.TareSource = "measured";
         transaction.GvwMeasuredKg = grossWeightKg;
-
-        // Tare anomaly detection (Phase 7 drift + Phase 9 vehicle-class-range/rapid-change) - runs
-        // all three rules against this session's newly measured tare before RecordTareWeightAsync
-        // overwrites the vehicle's prior stored tare further below. Informational only - does not
-        // block completion (unlike ToleranceExceeded).
-        await FlagTareAnomalyIfDetectedAsync(transaction, tareWeightKg);
-
-        ApplyManualEntryIfRequested(transaction, request.IsManualEntry, request.ManualEntryJustification);
+        transaction.LastWeightCapturedAt = capturedAt;
 
         // Allow operator to provide/override expected net weight at capture time
         if (request.ExpectedNetWeightKg.HasValue)
@@ -298,53 +342,87 @@ public class CommercialWeighingService : ICommercialWeighingService
             transaction.WeightDiscrepancyKg = transaction.NetWeightKg.Value - transaction.ExpectedNetWeightKg.Value;
         }
 
-        // Check commercial tolerance
+        // Check commercial tolerance against the LATEST reading, whether finalizing or not - lets the
+        // operator see live "still over limit" feedback while still mid-reweigh.
         await CheckCommercialToleranceAsync(transaction);
 
-        transaction.ControlStatus = transaction.ToleranceExceeded ? "ToleranceExceeded" : "Complete";
-        transaction.CaptureStatus = "captured";
-        transaction.ProcessingTimeSeconds = (int)(DateTime.UtcNow - transaction.WeighedAt).TotalSeconds;
-        transaction.UpdatedAt = DateTime.UtcNow;
-
-        // Store per-deck/axle weights for second pass in IndustryMetadata JSON
+        // Store per-deck/axle weights for this pass in IndustryMetadata JSON
         if (request.AxleWeights != null && request.AxleWeights.Count > 0)
         {
-            var meta = MergeIndustryMetadata(transaction.IndustryMetadata, new { secondPassWeights = request.AxleWeights });
+            var metaKey = reweighNo.HasValue ? $"reweighPassWeights_{reweighNo}" : "secondPassWeights";
+            var meta = MergeIndustryMetadata(transaction.IndustryMetadata, new Dictionary<string, object?> { [metaKey] = request.AxleWeights });
             transaction.IndustryMetadata = meta;
         }
 
-        // Update vehicle tare if tare was measured in this session
-        await RecordTareWeightAsync(
-            transaction.VehicleId,
-            tareWeightKg,
-            transaction.StationId,
-            "measured",
-            $"Measured during commercial weighing {transaction.TicketNumber}",
-            recordedByUserId: transaction.WeighedByUserId);
+        if (finalize)
+        {
+            transaction.SecondWeightKg = request.WeightKg;
+            transaction.SecondWeightType = eventWeightType;
+            transaction.SecondWeightAt = capturedAt;
+            transaction.TareSource = "measured";
+
+            // Tare anomaly detection (Phase 7 drift + Phase 9 vehicle-class-range/rapid-change) - runs
+            // all three rules against this session's newly measured tare before RecordTareWeightAsync
+            // overwrites the vehicle's prior stored tare further below. Informational only - does not
+            // block completion (unlike ToleranceExceeded). Only run once, at finalize, so an
+            // intermediate reweigh (tare typically unchanged) doesn't re-flag the same drift repeatedly.
+            await FlagTareAnomalyIfDetectedAsync(transaction, tareWeightKg);
+
+            transaction.ControlStatus = transaction.ToleranceExceeded ? "ToleranceExceeded" : "Complete";
+            transaction.CaptureStatus = "captured";
+            transaction.ProcessingTimeSeconds = (int)(DateTime.UtcNow - transaction.WeighedAt).TotalSeconds;
+
+            // Update vehicle tare if tare was measured in this session
+            await RecordTareWeightAsync(
+                transaction.VehicleId,
+                tareWeightKg,
+                transaction.StationId,
+                "measured",
+                $"Measured during commercial weighing {transaction.TicketNumber}",
+                recordedByUserId: transaction.WeighedByUserId);
+        }
+        else
+        {
+            // Save & send back for reweigh: transaction stays open, no invoice yet. The vehicle will
+            // return (within the configured window, or via manual override) for another capture under
+            // this SAME original transaction.
+            transaction.ControlStatus = "AwaitingReweigh";
+            transaction.CaptureStatus = "awaiting_reweigh";
+        }
+
+        transaction.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync();
 
-        // Create commercial weighing invoice (idempotent)
-        await CreateCommercialInvoiceAsync(transaction);
+        if (finalize)
+        {
+            // Create commercial weighing invoice (idempotent)
+            await CreateCommercialInvoiceAsync(transaction);
+        }
 
+        var eventLabel = reweighNo.HasValue ? $"Reweigh #{reweighNo}" : "Second weight";
         _logger.LogInformation(
-            "Second weight captured for {TransactionId}: {WeightKg}kg ({WeightType}). Net={NetKg}kg",
-            transactionId, request.WeightKg, secondWeightType, transaction.NetWeightKg);
+            "{Label} captured for {TransactionId}: {WeightKg}kg ({WeightType}). Finalize={Finalize} Net={NetKg}kg",
+            eventLabel, transactionId, request.WeightKg, eventWeightType, finalize, transaction.NetWeightKg);
 
         await WriteAuditLogAsync(
-            "SECOND_WEIGHT_CAPTURED", "WeighingTransaction", transaction.Id, userId, transaction.OrganizationId,
-            oldValues: new { secondWeightKg = (int?)null, status = "first_weight_captured" },
+            finalize ? "SECOND_WEIGHT_CAPTURED" : "REWEIGH_CAPTURED", "WeighingTransaction", transaction.Id, userId, transaction.OrganizationId,
+            oldValues: new { status = isReweighCycle ? "awaiting_reweigh" : "first_weight_captured" },
             newValues: new
             {
-                secondWeightKg = request.WeightKg,
-                secondWeightType,
+                weightKg = request.WeightKg,
+                weightType = eventWeightType,
+                sequenceNo,
+                reweighNo,
                 tareWeightKg = transaction.TareWeightKg,
                 grossWeightKg = transaction.GrossWeightKg,
                 netWeightKg = transaction.NetWeightKg,
-                controlStatus = transaction.ControlStatus
+                controlStatus = transaction.ControlStatus,
+                finalize
             });
 
-        _ = SendCompletionNotificationsAsync(transaction);
+        if (finalize)
+            _ = SendCompletionNotificationsAsync(transaction);
 
         return transaction;
     }
@@ -441,14 +519,32 @@ public class CommercialWeighingService : ICommercialWeighingService
 
         var grossWeightKg = transaction.FirstWeightKg.Value;
 
+        var storedTareCapturedAt = DateTime.UtcNow;
         transaction.SecondWeightKg = tareWeightKg;
         transaction.SecondWeightType = "tare";
-        transaction.SecondWeightAt = DateTime.UtcNow;
+        transaction.SecondWeightAt = storedTareCapturedAt;
+        transaction.LastWeightCapturedAt = storedTareCapturedAt;
         transaction.TareWeightKg = tareWeightKg;
         transaction.GrossWeightKg = grossWeightKg;
         transaction.NetWeightKg = grossWeightKg - tareWeightKg;
         transaction.TareSource = tareSource;
         transaction.GvwMeasuredKg = grossWeightKg;
+
+        var storedTareSequenceNo = await _dbContext.WeighingCaptureEvents
+            .Where(e => e.WeighingTransactionId == transaction.Id)
+            .CountAsync() + 1;
+        _dbContext.WeighingCaptureEvents.Add(new WeighingCaptureEvent
+        {
+            WeighingTransactionId = transaction.Id,
+            OrganizationId = transaction.OrganizationId,
+            SequenceNo = storedTareSequenceNo,
+            WeightKg = tareWeightKg,
+            WeightType = "tare",
+            CapturedAt = storedTareCapturedAt,
+            CaptureSource = tareSource, // "stored" or "preset" - not read off the scale this pass
+            CapturedByUserId = userId,
+            IsFinalizingEvent = true,
+        });
 
         // Tare anomaly detection (Phase 7 MVP) - only meaningful for "preset" (a supervisor
         // asserting a NEW tare value via OverrideTareWeightKg). The "stored"/default-fallback
@@ -520,12 +616,14 @@ public class CommercialWeighingService : ICommercialWeighingService
             .Include(t => t.Origin)
             .Include(t => t.Destination)
             .Include(t => t.Cargo)
+            .Include(t => t.WeighingCaptureEvents.OrderBy(e => e.SequenceNo))
+                .ThenInclude(e => e.CapturedByUser)
             .FirstOrDefaultAsync(t => t.Id == transactionId);
 
         if (transaction == null)
             throw new KeyNotFoundException($"Weighing transaction {transactionId} not found");
 
-        var dto = MapToCommercialResultDto(transaction);
+        var dto = MapToCommercialResultDto(transaction, transaction.WeighingCaptureEvents);
 
         // Attach invoice data so the frontend can show payment status / open the treasury modal
         var invoice = await _dbContext.Invoices
@@ -965,21 +1063,21 @@ public class CommercialWeighingService : ICommercialWeighingService
                 t.OrganizationId == orgId &&
                 t.StationId == stationId &&
                 t.WeighingMode == "commercial" &&
-                t.CaptureStatus == "first_weight_captured" &&
+                (t.CaptureStatus == "first_weight_captured" || t.CaptureStatus == "awaiting_reweigh") &&
                 t.VoidedAt == null)
-            .OrderByDescending(t => t.FirstWeightAt)
+            .OrderByDescending(t => t.LastWeightCapturedAt ?? t.FirstWeightAt)
             .Take(20)
             .ToListAsync();
 
-        return transactions.Select(MapToCommercialResultDto).ToList();
+        return transactions.Select(t => MapToCommercialResultDto(t)).ToList();
     }
 
-    public async Task<List<CommercialWeighingResultDto>> GetPendingByPlateAsync(string vehicleRegNo, int? thresholdHours = null)
+    public async Task<List<CommercialWeighingResultDto>> GetPendingByPlateAsync(string vehicleRegNo, int? windowMinutes = null)
     {
         var orgId = _tenantContext.OrganizationId;
-        var effectiveThresholdHours = thresholdHours ?? await _settingsService.GetSettingValueAsync(
-            SettingKeys.CommercialPendingWeighingThresholdHours, DefaultPendingWeighingThresholdHours);
-        var cutoff = DateTime.UtcNow.AddHours(-effectiveThresholdHours);
+        var effectiveWindowMinutes = windowMinutes ?? await _settingsService.GetSettingValueAsync(
+            SettingKeys.CommercialReweighMatchWindowMinutes, DefaultReweighMatchWindowMinutes);
+        var cutoff = DateTime.UtcNow.AddMinutes(-effectiveWindowMinutes);
         var regNo = vehicleRegNo.Trim().ToUpperInvariant();
 
         var transactions = await _dbContext.WeighingTransactions
@@ -993,15 +1091,25 @@ public class CommercialWeighingService : ICommercialWeighingService
             .Where(t =>
                 t.OrganizationId == orgId &&
                 t.WeighingMode == "commercial" &&
-                t.CaptureStatus == "first_weight_captured" &&
+                (t.CaptureStatus == "first_weight_captured" || t.CaptureStatus == "awaiting_reweigh") &&
                 t.VoidedAt == null &&
-                t.Vehicle != null && t.Vehicle.RegNo == regNo &&
-                t.FirstWeightAt.HasValue && t.FirstWeightAt.Value >= cutoff)
-            .OrderByDescending(t => t.FirstWeightAt)
-            .Take(5)
+                t.Vehicle != null && t.Vehicle.RegNo == regNo)
+            .OrderByDescending(t => t.LastWeightCapturedAt ?? t.FirstWeightAt)
+            .Take(10)
             .ToListAsync();
 
-        return transactions.Select(MapToCommercialResultDto).ToList();
+        // Every open candidate is returned (not just those within the window) so staff can still see
+        // and, with the manual_weight_override permission, explicitly attach to an older one - the
+        // window only controls which candidates are safe to AUTO-resume without an override.
+        return transactions
+            .Select(t =>
+            {
+                var dto = MapToCommercialResultDto(t);
+                var lastActivity = t.LastWeightCapturedAt ?? t.FirstWeightAt;
+                dto.IsWithinAutoWindow = lastActivity.HasValue && lastActivity.Value >= cutoff;
+                return dto;
+            })
+            .ToList();
     }
 
     // ============================================================================
@@ -1887,15 +1995,18 @@ public class CommercialWeighingService : ICommercialWeighingService
         return (actualMoisturePercent, actualForeignMatterPercent, moistureDeductionKg, foreignMatterDeductionKg, appliedTypes);
     }
 
-    private static CommercialWeighingResultDto MapToCommercialResultDto(WeighingTransaction transaction)
+    private static CommercialWeighingResultDto MapToCommercialResultDto(
+        WeighingTransaction transaction,
+        IEnumerable<WeighingCaptureEvent>? events = null)
     {
         var qualityDeduction = ParseQualityDeductionMetadata(transaction.IndustryMetadata, transaction.QualityDeductionKg);
 
-        return new CommercialWeighingResultDto
+        var dto = new CommercialWeighingResultDto
         {
             Id = transaction.Id,
             TicketNumber = transaction.TicketNumber,
             ControlStatus = transaction.ControlStatus,
+            CaptureStatus = transaction.CaptureStatus,
             WeighingMode = transaction.WeighingMode,
             WeighingScaleType = transaction.WeighingScaleType,
 
@@ -1920,6 +2031,7 @@ public class CommercialWeighingService : ICommercialWeighingService
             SecondWeightKg = transaction.SecondWeightKg,
             SecondWeightType = transaction.SecondWeightType,
             SecondWeightAt = transaction.SecondWeightAt,
+            LastWeightCapturedAt = transaction.LastWeightCapturedAt,
 
             TareWeightKg = transaction.TareWeightKg,
             GrossWeightKg = transaction.GrossWeightKg,
@@ -1969,6 +2081,32 @@ public class CommercialWeighingService : ICommercialWeighingService
             VoidedAt = transaction.VoidedAt,
             VoidReason = transaction.VoidReason,
         };
+
+        if (events != null)
+        {
+            dto.CaptureEvents = events
+                .OrderBy(e => e.SequenceNo)
+                .Select(e => new WeighingCaptureEventDto
+                {
+                    Id = e.Id,
+                    SequenceNo = e.SequenceNo,
+                    ReweighNo = e.ReweighNo,
+                    Label = e.ReweighNo.HasValue
+                        ? $"Reweigh #{e.ReweighNo}"
+                        : e.SequenceNo == 1 ? "First Weight" : "Second Weight",
+                    WeightKg = e.WeightKg,
+                    WeightType = e.WeightType,
+                    CapturedAt = e.CapturedAt,
+                    CaptureSource = e.CaptureSource,
+                    IsManualEntry = e.IsManualEntry,
+                    IsFinalizingEvent = e.IsFinalizingEvent,
+                    ReweighReason = e.ReweighReason,
+                    CapturedByUserName = e.CapturedByUser?.FullName,
+                })
+                .ToList();
+        }
+
+        return dto;
     }
 
     private static string MergeIndustryMetadata(string? existingJson, object mergeData)

@@ -608,6 +608,21 @@ public class SystemConfigurationSeeder
             new ApplicationSettings
             {
                 Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.CommercialReweighMatchWindowMinutes,
+                SettingValue = "30",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryWeighing,
+                DisplayName = "Reweigh Auto-Match Window (minutes)",
+                Description = "Minutes since a vehicle's last weight capture within which a returning plate is auto-matched to its open transaction for a 2nd weight or reweigh, instead of requiring a manual override to attach it",
+                DefaultValue = "30",
+                IsEditable = true,
+                SortOrder = 8,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
                 SettingKey = SettingKeys.CommercialTareDriftAnomalyThresholdPercent,
                 SettingValue = "5",
                 SettingType = "Decimal",

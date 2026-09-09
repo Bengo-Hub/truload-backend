@@ -149,6 +149,7 @@ public class TruLoadDbContext : IdentityDbContext<ApplicationUser, ApplicationRo
     public DbSet<AxleFeeSchedule> AxleFeeSchedules { get; set; } = null!;
     public DbSet<WeighingAxle> WeighingAxles { get; set; } = null!;
     public DbSet<WeighingTransaction> WeighingTransactions { get; set; } = null!;
+    public DbSet<WeighingCaptureEvent> WeighingCaptureEvents { get; set; } = null!;
     public DbSet<ProhibitionOrder> ProhibitionOrders { get; set; } = null!;
     
     // ===== Vehicle & Permit Management =====

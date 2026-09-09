@@ -135,6 +135,12 @@ public static class SettingKeys
     /// within-tolerance overloads and auto-issue a special release).</summary>
     public const string WeighingCaseCaptureMode = "weighing.case_capture_mode";
     public const string CommercialPendingWeighingThresholdHours = "commercial.pending_weighing_threshold_hours";
+    /// <summary>Minutes since a vehicle's last weight capture within which a returning plate is
+    /// auto-matched to its open transaction for a 2nd weight/reweigh, instead of prompting for a
+    /// manual override. Deliberately separate from CommercialPendingWeighingThresholdHours, which
+    /// drives the (much longer) stale-transaction manager-alert window - the two are different
+    /// concerns with different natural timescales.</summary>
+    public const string CommercialReweighMatchWindowMinutes = "commercial.reweigh_match_window_minutes";
     /// <summary>Drift threshold (%) between a newly measured/asserted tare and a vehicle's prior
     /// stored tare before it's flagged as a tare anomaly for supervisor review (Phase 7 MVP).</summary>
     public const string CommercialTareDriftAnomalyThresholdPercent = "commercial.tare_drift_anomaly_threshold_percent";
