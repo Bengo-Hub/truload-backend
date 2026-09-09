@@ -334,6 +334,63 @@ public class TransporterPortalController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Lists this transporter's outstanding (on-account, unpaid) local invoices.
+    /// </summary>
+    [HttpGet("invoices/outstanding")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(List<PortalOutstandingInvoiceDto>), 200)]
+    public async Task<IActionResult> GetOutstandingInvoices()
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var result = await _portalService.GetOutstandingInvoicesAsync(userId.Value);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting portal outstanding invoices");
+            return StatusCode(500, "An error occurred while retrieving outstanding invoices.");
+        }
+    }
+
+    /// <summary>
+    /// Creates (or resumes) a payment intent so the transporter can pay a specific outstanding
+    /// invoice directly from the portal, closing the on-account settlement gap.
+    /// </summary>
+    [HttpPost("invoices/{invoiceId:guid}/pay")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(PortalPaymentIntentDto), 200)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(400)]
+    public async Task<IActionResult> PayOutstandingInvoice(Guid invoiceId)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized("User ID not found in claims");
+
+        try
+        {
+            var result = await _portalService.PayOutstandingInvoiceAsync(userId.Value, invoiceId);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating payment intent for outstanding invoice {InvoiceId}", invoiceId);
+            return StatusCode(500, "An error occurred while creating the payment.");
+        }
+    }
+
     [HttpGet("subscription")]
     [Produces("application/json")]
     [ProducesResponseType(typeof(PortalSubscriptionDto), 200)]

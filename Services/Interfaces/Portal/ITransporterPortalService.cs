@@ -36,6 +36,20 @@ public interface ITransporterPortalService
     Task<PortalStatementDto> GetStatementAsync(Guid userId, DateTime? fromDate, DateTime? toDate);
 
     /// <summary>
+    /// Lists this transporter's outstanding (on-account, unpaid) local invoices - the self-service
+    /// counterpart to GetStatementAsync's read-only AR view.
+    /// </summary>
+    Task<List<PortalOutstandingInvoiceDto>> GetOutstandingInvoicesAsync(Guid userId);
+
+    /// <summary>
+    /// Creates (or returns the existing pending) treasury payment intent for a specific outstanding
+    /// invoice belonging to this transporter. Throws KeyNotFoundException if the invoice doesn't
+    /// exist or doesn't belong to the caller's transporter record (ownership is enforced here, not
+    /// just at the DB query level, since portal endpoints are cross-tenant by design).
+    /// </summary>
+    Task<PortalPaymentIntentDto> PayOutstandingInvoiceAsync(Guid userId, Guid invoiceId);
+
+    /// <summary>
     /// Gets the transporter's vehicles.
     /// </summary>
     Task<List<PortalVehicleDto>> GetVehiclesAsync(Guid userId);

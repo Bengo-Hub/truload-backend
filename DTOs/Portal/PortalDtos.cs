@@ -245,6 +245,38 @@ public class PortalFeatureAccess
 /// has been created for this transporter's CrmContactId) is a distinct, non-error state from
 /// having a linked account with zero activity.
 /// </summary>
+/// <summary>
+/// One unpaid on-account invoice a transporter can pay directly from the portal - closes the gap
+/// where OnAccountBilling transporters could view their outstanding balance on the statement but
+/// had no self-service way to actually settle it (see CommercialWeighingService's own comment
+/// anticipating exactly this action).
+/// </summary>
+public class PortalOutstandingInvoiceDto
+{
+    public Guid Id { get; set; }
+    public string InvoiceNo { get; set; } = string.Empty;
+    public decimal AmountDue { get; set; }
+    public string Currency { get; set; } = "KES";
+    public DateTime GeneratedAt { get; set; }
+    public DateTime? DueDate { get; set; }
+    public string? StationName { get; set; }
+    public string? OrganizationName { get; set; }
+    /// <summary>True when a payment intent already exists and is still pending - the portal
+    /// should resume/show that intent's checkout rather than create a duplicate.</summary>
+    public bool HasPendingIntent { get; set; }
+}
+
+/// <summary>Result of creating (or resuming) a payment intent for a specific outstanding invoice.</summary>
+public class PortalPaymentIntentDto
+{
+    public Guid InvoiceId { get; set; }
+    public string IntentId { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public decimal AmountKes { get; set; }
+    public string? AuthorizationUrl { get; set; }
+    public string? CheckoutRequestId { get; set; }
+}
+
 public class PortalStatementDto
 {
     public bool IsLinked { get; set; }

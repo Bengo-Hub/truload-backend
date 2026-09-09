@@ -1370,6 +1370,33 @@ public class CommercialWeighingService : ICommercialWeighingService
             try
             {
                 var onAccount = transporter?.OnAccountBilling == true;
+
+                // Enforce Transporter.CreditLimitKes - previously stored but never checked anywhere.
+                // A transporter at/over their limit is switched to pay-now for THIS invoice instead
+                // of accruing further unbounded on-account debt. The weighing itself is never
+                // blocked (a physical operation shouldn't hinge on a billing dispute) - only which
+                // billing path this invoice takes.
+                if (onAccount && transporter != null && transporter.CreditLimitKes.HasValue)
+                {
+                    var outstandingKes = await _dbContext.Invoices
+                        .IgnoreQueryFilters()
+                        .Where(i => i.Status == "pending"
+                            && i.InvoiceType == "commercial_weighing_fee"
+                            && i.WeighingId != null
+                            && _dbContext.WeighingTransactions
+                                .IgnoreQueryFilters()
+                                .Any(w => w.Id == i.WeighingId && w.TransporterId == transporter.Id))
+                        .SumAsync(i => (decimal?)i.AmountDue) ?? 0m;
+
+                    if (outstandingKes + feeKes > transporter.CreditLimitKes.Value)
+                    {
+                        onAccount = false;
+                        _logger.LogWarning(
+                            "Transporter {TransporterId} would exceed credit limit ({Limit} KES, outstanding {Outstanding} KES, this invoice {Fee} KES) — forcing pay-now instead of on-account",
+                            transporter.Id, transporter.CreditLimitKes.Value, outstandingKes, feeKes);
+                    }
+                }
+
                 var dueDate = onAccount ? DateTime.UtcNow.AddDays(7) : DateTime.UtcNow;
 
                 var treasuryInvoice = await _treasuryService.CreateInvoiceAsync(

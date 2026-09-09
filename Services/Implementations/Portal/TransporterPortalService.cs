@@ -1036,6 +1036,153 @@ public class TransporterPortalService : ITransporterPortalService
         };
     }
 
+    public async Task<List<PortalOutstandingInvoiceDto>> GetOutstandingInvoicesAsync(Guid userId)
+    {
+        var transporter = await GetTransporterForUserAsync(userId);
+
+        var invoices = await _dbContext.Invoices
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(i => i.InvoiceType == "commercial_weighing_fee"
+                && i.Status == "pending"
+                && i.WeighingId != null
+                && _dbContext.WeighingTransactions
+                    .IgnoreQueryFilters()
+                    .Any(w => w.Id == i.WeighingId && w.TransporterId == transporter.Id))
+            .OrderBy(i => i.DueDate)
+            .ToListAsync();
+
+        if (invoices.Count == 0)
+            return new List<PortalOutstandingInvoiceDto>();
+
+        var weighingIds = invoices.Select(i => i.WeighingId!.Value).ToList();
+        var weighings = await _dbContext.WeighingTransactions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(w => weighingIds.Contains(w.Id))
+            .Select(w => new { w.Id, w.OrganizationId, w.StationId })
+            .ToListAsync();
+        var weighingLookup = weighings.ToDictionary(w => w.Id);
+
+        var orgIds = weighings.Select(w => w.OrganizationId).Distinct().ToList();
+        var orgLookup = await _dbContext.Organizations
+            .IgnoreQueryFilters().AsNoTracking()
+            .Where(o => orgIds.Contains(o.Id))
+            .ToDictionaryAsync(o => o.Id, o => o.Name);
+
+        var stationIds = weighings.Where(w => w.StationId.HasValue).Select(w => w.StationId!.Value).Distinct().ToList();
+        var stationLookup = await _dbContext.Stations
+            .IgnoreQueryFilters().AsNoTracking()
+            .Where(s => stationIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.Name);
+
+        return invoices.Select(i =>
+        {
+            weighingLookup.TryGetValue(i.WeighingId!.Value, out var w);
+            return new PortalOutstandingInvoiceDto
+            {
+                Id = i.Id,
+                InvoiceNo = i.InvoiceNo,
+                AmountDue = i.AmountDue,
+                Currency = i.Currency,
+                GeneratedAt = i.GeneratedAt,
+                DueDate = i.DueDate,
+                StationName = w?.StationId != null && stationLookup.TryGetValue(w.StationId.Value, out var sn) ? sn : null,
+                OrganizationName = w != null && orgLookup.TryGetValue(w.OrganizationId, out var on) ? on : null,
+                HasPendingIntent = !string.IsNullOrWhiteSpace(i.TreasuryIntentId)
+                    && !string.Equals(i.TreasuryIntentStatus, "failed", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(i.TreasuryIntentStatus, "cancelled", StringComparison.OrdinalIgnoreCase),
+            };
+        }).ToList();
+    }
+
+    public async Task<PortalPaymentIntentDto> PayOutstandingInvoiceAsync(Guid userId, Guid invoiceId)
+    {
+        var transporter = await GetTransporterForUserAsync(userId);
+
+        var invoice = await _dbContext.Invoices
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(i => i.Id == invoiceId);
+
+        if (invoice == null || invoice.WeighingId == null)
+            throw new KeyNotFoundException($"Invoice {invoiceId} not found.");
+
+        // Ownership check - portal endpoints are cross-tenant by design, so this must be enforced
+        // here rather than relying on the query alone.
+        var weighing = await _dbContext.WeighingTransactions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Id == invoice.WeighingId.Value);
+
+        if (weighing == null || weighing.TransporterId != transporter.Id)
+            throw new KeyNotFoundException($"Invoice {invoiceId} not found.");
+
+        if (invoice.Status != "pending")
+            throw new InvalidOperationException("This invoice is not outstanding.");
+
+        if (string.IsNullOrWhiteSpace(invoice.TreasuryInvoiceId))
+            throw new InvalidOperationException("This invoice has no linked treasury invoice to pay against.");
+
+        var org = await _dbContext.Organizations
+            .IgnoreQueryFilters().AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == weighing.OrganizationId);
+
+        if (org == null || string.IsNullOrWhiteSpace(org.SsoTenantSlug))
+            throw new InvalidOperationException("This invoice's organisation is not linked to treasury.");
+
+        // Same pay-portal URL convention CommercialWeighingController.GetCommercialResultAsync
+        // already builds for the weighing-capture flow's own Pay button - reused here so the
+        // portal's TreasuryCheckoutDialog gets the same working embed URL, not a guess.
+        var payPortalBase = _configuration["Treasury:PayPortalBaseUrl"] ?? "https://books.codevertexafrica.com/pay";
+        string PayPortalUrl(string intentId) => $"{payPortalBase}?intent_id={intentId}";
+
+        // Idempotent: reuse an existing non-terminal intent instead of creating a duplicate charge.
+        if (!string.IsNullOrWhiteSpace(invoice.TreasuryIntentId)
+            && !string.Equals(invoice.TreasuryIntentStatus, "failed", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(invoice.TreasuryIntentStatus, "cancelled", StringComparison.OrdinalIgnoreCase))
+        {
+            var existing = await _treasuryService.GetPaymentIntentAsync(org.SsoTenantSlug, invoice.TreasuryIntentId);
+            if (!string.Equals(existing.Status, "succeeded", StringComparison.OrdinalIgnoreCase))
+            {
+                return new PortalPaymentIntentDto
+                {
+                    InvoiceId = invoice.Id,
+                    IntentId = existing.IntentId,
+                    Status = existing.Status,
+                    AmountKes = existing.Amount,
+                    AuthorizationUrl = PayPortalUrl(existing.IntentId),
+                    CheckoutRequestId = existing.CheckoutRequestId
+                };
+            }
+        }
+
+        var intent = await _treasuryService.CreatePaymentIntentAsync(
+            org.SsoTenantSlug,
+            invoice.AmountDue,
+            invoice.TreasuryInvoiceId,
+            $"Payment for invoice {invoice.InvoiceNo}",
+            referenceType: "invoice");
+
+        invoice.TreasuryIntentId = intent.IntentId;
+        invoice.TreasuryIntentStatus = intent.Status;
+        invoice.UpdatedAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Portal payment intent created for outstanding invoice {InvoiceNo} (transporter {TransporterId}): {IntentId}",
+            invoice.InvoiceNo, transporter.Id, intent.IntentId);
+
+        return new PortalPaymentIntentDto
+        {
+            InvoiceId = invoice.Id,
+            IntentId = intent.IntentId,
+            Status = intent.Status,
+            AmountKes = intent.Amount,
+            AuthorizationUrl = PayPortalUrl(intent.IntentId),
+            CheckoutRequestId = intent.CheckoutRequestId
+        };
+    }
+
     // ── Private helpers ──
 
     private async Task<Models.Weighing.Transporter> GetTransporterForUserAsync(Guid userId)
