@@ -48,11 +48,23 @@ public interface ISubscriptionService
     /// <summary>Lists all available subscription plans (public endpoint — no tenant auth).</summary>
     Task<string> GetPlansJsonAsync(CancellationToken ct = default);
 
-    /// <summary>Gets billing info for the authenticated tenant. Forwards the user's SSO JWT.</summary>
+    /// <summary>
+    /// Gets billing info (payment method, invoice history) for the tenant. Still forwards the
+    /// user's SSO JWT to subscriptions-api - a known-broken path for truload specifically (see
+    /// GetSubscriptionJsonAsync's doc comment for why), left as a follow-up since it's a lower-
+    /// priority sub-feature than the plan catalog/current-plan display.
+    /// </summary>
     Task<string> GetBillingJsonAsync(string userJwt, CancellationToken ct = default);
 
-    /// <summary>Gets the current subscription for the authenticated tenant. Forwards the user's SSO JWT.</summary>
-    Task<string> GetSubscriptionJsonAsync(string userJwt, CancellationToken ct = default);
+    /// <summary>
+    /// Gets the current subscription for a commercial tenant via the same S2S path as
+    /// GetTenantSubscriptionAsync/GetFeaturesAsync (tenant resolved by slug, X-API-Key auth) -
+    /// NOT by forwarding the user's own JWT. truload-backend mints its own symmetric HS256 JWTs
+    /// (see truload-subscription-uniform-integration.md), which subscriptions-api's JWKS-based
+    /// validator can never verify, so forwarding it was never going to work regardless of
+    /// SUBSCRIPTION_BASE_URL/credentials being configured.
+    /// </summary>
+    Task<string> GetSubscriptionJsonAsync(string ssoTenantSlug, CancellationToken ct = default);
 
     /// <summary>Changes the subscription plan. Forwards the user's SSO JWT.</summary>
     Task<string> ChangePlanJsonAsync(string userJwt, string planCode, CancellationToken ct = default);

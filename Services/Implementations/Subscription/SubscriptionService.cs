@@ -23,74 +23,92 @@ public class SubscriptionService : ISubscriptionService
         _logger = logger;
     }
 
+    /// <summary>
+    /// Resolves a tenant's id/subscription-plan/status/expiry via auth-api's PUBLIC (no auth
+    /// required) tenant-by-slug endpoint. auth-api projects subscription status onto its own
+    /// tenant record (synced from subscriptions-api), so this single cheap call covers
+    /// GetTenantSubscriptionAsync entirely, and supplies the tenant id GetFeaturesAsync needs to
+    /// then call subscriptions-api directly for feature codes. Returns null on any failure/missing
+    /// config - callers decide their own fail-open behavior.
+    /// </summary>
+    private async Task<JsonElement?> ResolvePublicTenantAsync(string ssoTenantSlug, CancellationToken ct)
+    {
+        var authBaseUrl = _configuration["Auth:BaseUrl"];
+        if (string.IsNullOrWhiteSpace(authBaseUrl))
+            authBaseUrl = _configuration["Auth:SsoIssuer"]; // public HTTPS fallback for local dev
+
+        if (string.IsNullOrWhiteSpace(authBaseUrl))
+            return null;
+
+        try
+        {
+            var response = await _httpClient.GetAsync(
+                $"{authBaseUrl}/api/v1/tenants/by-slug/{Uri.EscapeDataString(ssoTenantSlug)}", ct);
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.Clone();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to resolve tenant {Slug} via auth-api", ssoTenantSlug);
+            return null;
+        }
+    }
+
     public async Task<SubscriptionStatus> GetTenantSubscriptionAsync(string ssoTenantSlug, CancellationToken ct = default)
     {
-        var baseUrl = _configuration["SUBSCRIPTION_BASE_URL"];
-        var serviceJwt = _configuration["Subscriptions:ServiceJwt"];
-
-        // Was: throw InvalidOperationException when either is missing - an unhandled 500 on every
-        // single commercial-mode request via SubscriptionEnforcementMiddleware (CommercialModeFilter
-        // runs this on EVERY request), confirmed live 2026-09-04: Stations/reports/top-transporters/
-        // tolerance-trend all 500'd with "Subscriptions:ServiceJwt is not configured" the moment a
-        // real commercial-mode session was tested end-to-end for the first time. GetFeaturesAsync
-        // below already treats a missing config the same way every other degraded-dependency path in
-        // this class does (fail open, log a warning) - this method just never got that same
-        // treatment. Matching it now: a misconfigured/absent subscriptions-api integration must never
-        // block commercial weighing itself.
-        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(serviceJwt))
+        var tenant = await ResolvePublicTenantAsync(ssoTenantSlug, ct);
+        if (tenant == null)
         {
-            _logger.LogWarning("Subscriptions API not configured — treating tenant {Slug} as ACTIVE", ssoTenantSlug);
+            // Fail open: a misconfigured/unreachable auth-api must never block commercial weighing.
+            _logger.LogWarning("Could not resolve tenant {Slug} via auth-api — treating as ACTIVE", ssoTenantSlug);
             return new SubscriptionStatus("ACTIVE", null, null);
         }
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/v1/subscription/");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", serviceJwt);
-        request.Headers.Add("X-Tenant-Slug", ssoTenantSlug);
-
-        var response = await _httpClient.SendAsync(request, ct);
-
-        if (response.StatusCode == HttpStatusCode.NotFound)
-            return new SubscriptionStatus("NONE", null, null);
-
-        var json = await response.Content.ReadAsStringAsync(ct);
-        if (!response.IsSuccessStatusCode)
-        {
-            _logger.LogWarning("Subscriptions API returned {Status} for tenant {Slug}: {Body}",
-                response.StatusCode, ssoTenantSlug, json);
-            // Fail open: return ACTIVE to not block user if subscriptions-api is degraded
-            return new SubscriptionStatus("ACTIVE", null, null);
-        }
-
-        using var doc = JsonDocument.Parse(json);
-        var root = doc.RootElement;
-        var status = root.TryGetProperty("status", out var s) ? s.GetString() ?? "NONE" : "NONE";
+        var root = tenant.Value;
+        var status = root.TryGetProperty("subscription_status", out var s) && s.ValueKind == JsonValueKind.String
+            ? s.GetString() ?? "NONE"
+            : "NONE";
         DateTime? expiresAt = null;
-        if (root.TryGetProperty("expires_at", out var exp) && exp.ValueKind != JsonValueKind.Null)
+        if (root.TryGetProperty("subscription_expires_at", out var exp) && exp.ValueKind == JsonValueKind.String
+            && DateTime.TryParse(exp.GetString(), out var dt))
         {
-            if (DateTime.TryParse(exp.GetString(), out var dt))
-                expiresAt = dt;
+            expiresAt = dt;
         }
-        var planName = root.TryGetProperty("plan_name", out var p) ? p.GetString() : null;
+        var planName = root.TryGetProperty("subscription_plan", out var p) && p.ValueKind == JsonValueKind.String
+            ? p.GetString()
+            : null;
 
         return new SubscriptionStatus(status, expiresAt, planName);
     }
 
     public async Task<SubscriptionFeatures> GetFeaturesAsync(string ssoTenantSlug, CancellationToken ct = default)
     {
-        var baseUrl = _configuration["SUBSCRIPTION_BASE_URL"];
-        var serviceJwt = _configuration["Subscriptions:ServiceJwt"];
-
-        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(serviceJwt))
+        var tenant = await ResolvePublicTenantAsync(ssoTenantSlug, ct);
+        if (tenant == null || !tenant.Value.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.String)
         {
-            _logger.LogWarning("Subscriptions API not configured — returning empty features for {Slug}", ssoTenantSlug);
-            return new SubscriptionFeatures("UNKNOWN", null, []);
+            _logger.LogWarning("Could not resolve tenant {Slug} — returning basic feature access", ssoTenantSlug);
+            return new SubscriptionFeatures("ACTIVE", null, ["portal_access", "ticket_download", "email_notifications"]);
+        }
+
+        var subscriptionsBaseUrl = _configuration["SUBSCRIPTION_BASE_URL"];
+        var internalServiceKey = _configuration["INTERNAL_SERVICE_KEY"];
+        if (string.IsNullOrWhiteSpace(subscriptionsBaseUrl) || string.IsNullOrWhiteSpace(internalServiceKey))
+        {
+            _logger.LogWarning("Subscriptions API/INTERNAL_SERVICE_KEY not configured — returning basic feature access for {Slug}", ssoTenantSlug);
+            return new SubscriptionFeatures("ACTIVE", null, ["portal_access", "ticket_download", "email_notifications"]);
         }
 
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/v1/features");
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", serviceJwt);
-            request.Headers.Add("X-Tenant-Slug", ssoTenantSlug);
+            var tenantId = idEl.GetString();
+            var request = new HttpRequestMessage(HttpMethod.Get,
+                $"{subscriptionsBaseUrl}/api/v1/tenants/{tenantId}/subscription?include_usage=false");
+            request.Headers.Add("X-API-Key", internalServiceKey);
 
             var response = await _httpClient.SendAsync(request, ct);
 
@@ -102,13 +120,15 @@ public class SubscriptionService : ISubscriptionService
             {
                 _logger.LogWarning("Subscriptions features API returned {Status} for {Slug}: {Body}",
                     response.StatusCode, ssoTenantSlug, json);
-                // Fail open with basic access
                 return new SubscriptionFeatures("ACTIVE", null, ["portal_access", "ticket_download", "email_notifications"]);
             }
 
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
+            // subscriptions-api's tenant-subscription response is snake_case (a different casing
+            // convention than the plans-module JSON, verified against subscriptions-api's own
+            // internal/clients response shape used by auth-api's proven-working caller).
             var status = root.TryGetProperty("status", out var s) ? s.GetString() ?? "NONE" : "NONE";
             var planCode = root.TryGetProperty("plan_code", out var pc) ? pc.GetString() : null;
 
@@ -174,22 +194,30 @@ public class SubscriptionService : ISubscriptionService
         }
     }
 
-    public async Task<string> GetSubscriptionJsonAsync(string userJwt, CancellationToken ct = default)
+    public async Task<string> GetSubscriptionJsonAsync(string ssoTenantSlug, CancellationToken ct = default)
     {
-        var baseUrl = _configuration["SUBSCRIPTION_BASE_URL"];
-        if (string.IsNullOrWhiteSpace(baseUrl))
+        var tenant = await ResolvePublicTenantAsync(ssoTenantSlug, ct);
+        if (tenant == null || !tenant.Value.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.String)
+            return "{}";
+
+        var subscriptionsBaseUrl = _configuration["SUBSCRIPTION_BASE_URL"];
+        var internalServiceKey = _configuration["INTERNAL_SERVICE_KEY"];
+        if (string.IsNullOrWhiteSpace(subscriptionsBaseUrl) || string.IsNullOrWhiteSpace(internalServiceKey))
             return "{}";
 
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/v1/subscription/");
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", userJwt);
+            var request = new HttpRequestMessage(HttpMethod.Get,
+                $"{subscriptionsBaseUrl}/api/v1/tenants/{idEl.GetString()}/subscription?include_usage=false");
+            request.Headers.Add("X-API-Key", internalServiceKey);
             var response = await _httpClient.SendAsync(request, ct);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+                return "{}";
             return await response.Content.ReadAsStringAsync(ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "GetSubscriptionJsonAsync failed");
+            _logger.LogError(ex, "GetSubscriptionJsonAsync failed for {Slug}", ssoTenantSlug);
             return "{}";
         }
     }
