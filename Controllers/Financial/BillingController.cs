@@ -63,9 +63,11 @@ public class BillingController : ControllerBase
     [HttpGet("api/v1/billing")]
     public async Task<IActionResult> GetBilling(CancellationToken ct)
     {
-        var jwt = ExtractBearerToken();
-        if (jwt == null) return Unauthorized();
-        var json = await _subscriptionService.GetBillingJsonAsync(jwt, ct);
+        var slug = await GetSsoTenantSlugAsync(ct);
+        if (string.IsNullOrWhiteSpace(slug))
+            return NotFound(new { message = "This organisation has no linked subscriptions-api tenant." });
+
+        var json = await _subscriptionService.GetBillingJsonAsync(slug, ct);
         return Content(json, "application/json");
     }
 

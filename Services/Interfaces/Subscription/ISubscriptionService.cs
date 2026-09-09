@@ -49,12 +49,11 @@ public interface ISubscriptionService
     Task<string> GetPlansJsonAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Gets billing info (payment method, invoice history) for the tenant. Still forwards the
-    /// user's SSO JWT to subscriptions-api - a known-broken path for truload specifically (see
-    /// GetSubscriptionJsonAsync's doc comment for why), left as a follow-up since it's a lower-
-    /// priority sub-feature than the plan catalog/current-plan display.
+    /// Gets billing info (payment method, invoice history) for a commercial tenant, resolved by
+    /// slug via the same S2S path as GetSubscriptionJsonAsync (X-API-Key + X-Tenant-ID header) -
+    /// not by forwarding the user's own JWT, for the same reason documented there.
     /// </summary>
-    Task<string> GetBillingJsonAsync(string userJwt, CancellationToken ct = default);
+    Task<string> GetBillingJsonAsync(string ssoTenantSlug, CancellationToken ct = default);
 
     /// <summary>
     /// Gets the current subscription for a commercial tenant via the same S2S path as

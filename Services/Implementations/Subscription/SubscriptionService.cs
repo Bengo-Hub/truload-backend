@@ -174,22 +174,34 @@ public class SubscriptionService : ISubscriptionService
         }
     }
 
-    public async Task<string> GetBillingJsonAsync(string userJwt, CancellationToken ct = default)
+    public async Task<string> GetBillingJsonAsync(string ssoTenantSlug, CancellationToken ct = default)
     {
-        var baseUrl = _configuration["SUBSCRIPTION_BASE_URL"];
-        if (string.IsNullOrWhiteSpace(baseUrl))
+        var tenant = await ResolvePublicTenantAsync(ssoTenantSlug, ct);
+        if (tenant == null || !tenant.Value.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.String)
+            return "{}";
+
+        var subscriptionsBaseUrl = _configuration["SUBSCRIPTION_BASE_URL"];
+        var internalServiceKey = _configuration["INTERNAL_SERVICE_KEY"];
+        if (string.IsNullOrWhiteSpace(subscriptionsBaseUrl) || string.IsNullOrWhiteSpace(internalServiceKey))
             return "{}";
 
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/v1/billing");
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", userJwt);
+            // GetBilling resolves its tenant via resolveTenantID(r): an X-API-Key caller is treated
+            // as a platform identity, for which the X-Tenant-ID header is the (optional-for-platform,
+            // but here always supplied) tenant selector - same mechanism as the tenant-subscription
+            // S2S route, just via a header instead of a path segment.
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{subscriptionsBaseUrl}/api/v1/billing");
+            request.Headers.Add("X-API-Key", internalServiceKey);
+            request.Headers.Add("X-Tenant-ID", idEl.GetString());
             var response = await _httpClient.SendAsync(request, ct);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+                return "{}";
             return await response.Content.ReadAsStringAsync(ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "GetBillingJsonAsync failed");
+            _logger.LogError(ex, "GetBillingJsonAsync failed for {Slug}", ssoTenantSlug);
             return "{}";
         }
     }
