@@ -310,6 +310,9 @@ public static class FinancialModuleDbContextConfiguration
             entity.Property(e => e.TransporterId)
                 .HasColumnName("transporter_id");
 
+            entity.Property(e => e.BilledToTransporterId)
+                .HasColumnName("billed_to_transporter_id");
+
             entity.Property(e => e.VehicleType)
                 .HasColumnName("vehicle_type")
                 .HasMaxLength(50);
@@ -380,11 +383,19 @@ public static class FinancialModuleDbContextConfiguration
                 .HasForeignKey(e => e.TransporterId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            entity.HasOne(e => e.BilledToTransporter)
+                .WithMany()
+                .HasForeignKey(e => e.BilledToTransporterId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             entity.HasIndex(e => e.OrganizationId)
                 .HasDatabaseName("idx_commercial_tariff_rules_organization_id");
 
             entity.HasIndex(e => e.TransporterId)
                 .HasDatabaseName("idx_commercial_tariff_rules_transporter_id");
+
+            entity.HasIndex(e => e.BilledToTransporterId)
+                .HasDatabaseName("idx_commercial_tariff_rules_billed_to_transporter_id");
 
             entity.HasCheckConstraint("chk_commercial_tariff_rule_fee",
                 "fee_kes >= 0");

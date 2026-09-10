@@ -19,6 +19,21 @@ public class CommercialTariffRule : TenantAwareEntity
     /// </summary>
     public Guid? TransporterId { get; set; }
 
+    /// <summary>
+    /// Optional billing override: when set, invoices this rule generates are billed to THIS
+    /// transporter/customer instead of whichever transporter is recorded on the weighing itself
+    /// (<see cref="Weighing.WeighingTransaction.TransporterId"/> - the vehicle operator). Use this
+    /// when a facility operates on behalf of a commissioning client distinct from the trucking
+    /// company physically hauling the material - e.g. a quarry contracted to extract/haul for a
+    /// client, where the client should receive one aggregated invoice regardless of which specific
+    /// hauler's trucks were weighed. Null (the default, and the overwhelming common case) means
+    /// "bill whoever the vehicle's own transporter is" - unchanged from the original behaviour.
+    /// Periodic accrual grouping (<see cref="CommercialTariffAccrual.TransporterId"/>) also keys off
+    /// this override so multiple different haulers' weighings correctly roll up into one invoice
+    /// for the same billed client.
+    /// </summary>
+    public Guid? BilledToTransporterId { get; set; }
+
     /// <summary>Optional vehicle type match (e.g. "Truck", "Trailer"). Null = any vehicle type.</summary>
     public string? VehicleType { get; set; }
 
@@ -55,11 +70,12 @@ public class CommercialTariffRule : TenantAwareEntity
 
     /// <summary>
     /// How often a matching weighing's fee is actually invoiced: "Immediate" (the original/default
-    /// behavior — one invoice per weighing, right when it completes) or "Daily"/"Weekly"/"Monthly"
-    /// (the fee is accrued into a <see cref="CommercialTariffAccrual"/> row instead, and
-    /// <c>CommercialPeriodicBillingJob</c> rolls up every accrual for the same org+transporter+period
-    /// into ONE invoice once that period has fully elapsed — e.g. a client who pays a transporter
-    /// monthly based on aggregated tonnage). <see cref="BillingPeriodValues"/> is the allow-list.
+    /// behavior — one invoice per weighing, right when it completes) or "Daily"/"Weekly"/"BiWeekly"/
+    /// "Monthly"/"Quarterly"/"Yearly" (the fee is accrued into a <see cref="CommercialTariffAccrual"/>
+    /// row instead, and <c>CommercialPeriodicBillingJob</c> rolls up every accrual for the same
+    /// org+transporter+period into ONE invoice once that period has fully elapsed — e.g. a client who
+    /// pays a transporter monthly based on aggregated tonnage). <see cref="BillingPeriodValues"/> is
+    /// the allow-list.
     /// </summary>
     public string BillingPeriod { get; set; } = BillingPeriodValues.Immediate;
 
@@ -72,8 +88,9 @@ public class CommercialTariffRule : TenantAwareEntity
     /// <summary>Display label for the setup UI (e.g. "Heavy trucks (5+ axles)", "Acme Transporters contract rate").</summary>
     public string? Label { get; set; }
 
-    // Navigation property
+    // Navigation properties
     public virtual Transporter? Transporter { get; set; }
+    public virtual Transporter? BilledToTransporter { get; set; }
 }
 
 /// <summary>Allow-listed values for <see cref="CommercialTariffRule.RateBasis"/>.</summary>
@@ -92,8 +109,11 @@ public static class BillingPeriodValues
     /// <summary>Invoice immediately when the weighing completes (original/default behavior).</summary>
     public const string Immediate = "Immediate";
     public const string Daily = "Daily";
-    public const string Weekly = "Weekly";
+        public const string Weekly = "Weekly";
+    public const string BiWeekly = "BiWeekly";
     public const string Monthly = "Monthly";
+    public const string Quarterly = "Quarterly";
+    public const string Yearly = "Yearly";
 
-    public static readonly string[] All = [Immediate, Daily, Weekly, Monthly];
+    public static readonly string[] All = [Immediate, Daily, Weekly, BiWeekly, Monthly, Quarterly, Yearly];
 }

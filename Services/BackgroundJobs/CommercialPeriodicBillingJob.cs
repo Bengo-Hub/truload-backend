@@ -5,12 +5,12 @@ namespace TruLoad.Backend.Services.BackgroundJobs;
 
 /// <summary>
 /// Hangfire recurring job that rolls up every commercial tariff accrual whose billing period
-/// (Daily/Weekly/Monthly) has fully elapsed into one invoice per org+transporter+period — the
-/// deferred-invoicing half of CommercialTariffRule.BillingPeriod (the other half, accruing at
-/// capture time, happens synchronously in CommercialWeighingService). Runs daily, which is
-/// sufficient for all three period grains (a closed Weekly/Monthly period just waits at most one
-/// extra day to be picked up — no tenant needs same-day invoicing for a period they've already
-/// agreed is weekly or monthly).
+/// (Daily/Weekly/BiWeekly/Monthly/Quarterly/Yearly) has fully elapsed into one invoice per
+/// org+transporter+period — the deferred-invoicing half of CommercialTariffRule.BillingPeriod (the
+/// other half, accruing at capture time, happens synchronously in CommercialWeighingService). Runs
+/// daily, which is sufficient for every period grain (a closed Weekly/Monthly/Quarterly/Yearly
+/// period just waits at most one extra day to be picked up — no tenant needs same-day invoicing for
+/// a period they've already agreed is longer than a day).
 /// </summary>
 public class CommercialPeriodicBillingJob
 {

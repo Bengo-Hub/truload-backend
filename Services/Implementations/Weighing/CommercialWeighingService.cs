@@ -1167,19 +1167,24 @@ public class CommercialWeighingService : ICommercialWeighingService
                 return;
             }
 
+            // Resolve who actually gets billed: normally the vehicle's own transporter, but a
+            // matched rule can override this to a distinct commissioning client (e.g. a quarry
+            // hauling on behalf of a client) via CommercialTariffRule.BilledToTransporterId.
+            var billedTo = await ResolveBilledPartyAsync(matchedRule, transporter);
+
             // A rule billed Daily/Weekly/Monthly doesn't invoice per-transaction at all — it accrues
-            // here, and CommercialPeriodicBillingJob rolls every accrual for the same org+transporter
-            // +period into ONE invoice once that period has fully elapsed.
+            // here, and CommercialPeriodicBillingJob rolls every accrual for the same org+billed
+            // party+period into ONE invoice once that period has fully elapsed.
             if (matchedRule != null && matchedRule.BillingPeriod != BillingPeriodValues.Immediate)
             {
-                await AccrueForPeriodicBillingAsync(transaction, org, transporter, matchedRule, feeKes);
+                await AccrueForPeriodicBillingAsync(transaction, org, billedTo, matchedRule, feeKes);
                 return;
             }
 
             var description = string.IsNullOrWhiteSpace(transaction.TicketNumber)
                 ? "Commercial weighing fee"
                 : $"Weighing fee — ticket {transaction.TicketNumber}";
-            await CreateAndSendCommercialInvoiceAsync(org, transporter, feeKes, transaction.Id, description, transaction.StationId);
+            await CreateAndSendCommercialInvoiceAsync(org, billedTo, feeKes, transaction.Id, description, transaction.StationId);
         }
         catch (Exception ex)
         {
@@ -1190,13 +1195,47 @@ public class CommercialWeighingService : ICommercialWeighingService
     }
 
     /// <summary>
+    /// Resolves which <see cref="Transporter"/> should actually be billed for a matched tariff rule:
+    /// <see cref="CommercialTariffRule.BilledToTransporterId"/> when the rule overrides it (e.g. a
+    /// quarry hauling on behalf of a commissioning client, billed regardless of which physical
+    /// truck/hauler was weighed), otherwise the vehicle's own transporter, unchanged. Falls back to
+    /// the vehicle's own transporter (logging a warning) if the configured billed-to transporter no
+    /// longer exists, so a stale/deleted reference never silently drops a whole invoice.
+    /// </summary>
+    private async Task<Transporter?> ResolveBilledPartyAsync(CommercialTariffRule? rule, Transporter? vehicleTransporter)
+    {
+        if (rule?.BilledToTransporterId == null) return vehicleTransporter;
+
+        var billedTo = await _dbContext.Transporters
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.Id == rule.BilledToTransporterId.Value);
+
+        if (billedTo == null)
+        {
+            _logger.LogWarning(
+                "CommercialTariffRule {RuleId} has BilledToTransporterId {BilledToId} but that transporter no longer exists — falling back to the vehicle's own transporter",
+                rule.Id, rule.BilledToTransporterId.Value);
+            return vehicleTransporter;
+        }
+
+        return billedTo;
+    }
+
+    /// <summary>
     /// Writes a pending <see cref="CommercialTariffAccrual"/> row for a weighing whose matched
-    /// tariff rule is billed Daily/Weekly/Monthly rather than Immediate. Idempotent on
-    /// <c>WeighingId</c> (the unique index also guards this, but checking first avoids a needless
-    /// constraint-violation exception on a retry/duplicate call).
+    /// tariff rule is billed on any non-Immediate period (Daily/Weekly/BiWeekly/Monthly/Quarterly/
+    /// Yearly — see <see cref="BillingPeriodValues"/>). <paramref name="billedTo"/> is already
+    /// resolved via <see cref="ResolveBilledPartyAsync"/> — stored in
+    /// <see cref="CommercialTariffAccrual.TransporterId"/> so <see
+    /// cref="ProcessPendingPeriodicBillingAsync"/>'s grouping rolls up multiple different physical
+    /// haulers' weighings into one invoice for the same billed client, when the rule sets
+    /// <see cref="CommercialTariffRule.BilledToTransporterId"/>. Idempotent on <c>WeighingId</c> (the
+    /// unique index also guards this, but checking first avoids a needless constraint-violation
+    /// exception on a retry/duplicate call).
     /// </summary>
     private async Task AccrueForPeriodicBillingAsync(
-        WeighingTransaction transaction, Organization org, Transporter? transporter,
+        WeighingTransaction transaction, Organization org, Transporter? billedTo,
         CommercialTariffRule rule, decimal feeKes)
     {
         var existing = await _dbContext.CommercialTariffAccruals
@@ -1213,7 +1252,7 @@ public class CommercialWeighingService : ICommercialWeighingService
             StationId = transaction.StationId,
             WeighingId = transaction.Id,
             TariffRuleId = rule.Id,
-            TransporterId = transporter?.Id,
+            TransporterId = billedTo?.Id,
             BillingPeriod = rule.BillingPeriod,
             PeriodKey = periodKey,
             NetWeightKg = transaction.NetWeightKg,
@@ -1228,10 +1267,14 @@ public class CommercialWeighingService : ICommercialWeighingService
     }
 
     /// <summary>
-    /// EAT-calendar period key for accrual grouping: "yyyy-MM-dd" (Daily), "yyyy-'W'ww" (Weekly,
-    /// ISO week), or "yyyy-MM" (Monthly) — mirrors how the rest of this platform resolves EAT day
-    /// boundaries (<c>WeighingQueryHelpers.ResolveEatDayRange</c>) rather than using the server's
-    /// raw UTC calendar, so "today"/"this week" mean the same real-world window everywhere.
+    /// EAT-calendar period key for accrual grouping: "yyyy-MM-dd" (Daily), "yyyy-'W'ww" (Weekly, ISO
+    /// week), "yyyy-'B'nn" (BiWeekly, pairs of ISO weeks), "yyyy-MM" (Monthly), "yyyy-'Q'n"
+    /// (Quarterly), or "yyyy" (Yearly) — mirrors how the rest of this platform resolves EAT day
+    /// boundaries (<c>WeighingQueryHelpers.ResolveEatDayRange</c>) rather than using the server's raw
+    /// UTC calendar, so "today"/"this week" mean the same real-world window everywhere. Each format
+    /// only needs to sort chronologically against keys of its OWN type — <see
+    /// cref="ProcessPendingPeriodicBillingAsync"/> only ever compares keys within the same
+    /// BillingPeriod group, never across period types.
     /// </summary>
     public static string ResolvePeriodKey(DateTime weighedAtUtc, string billingPeriod)
     {
@@ -1239,7 +1282,10 @@ public class CommercialWeighingService : ICommercialWeighingService
         return billingPeriod switch
         {
             BillingPeriodValues.Weekly => $"{eatLocal:yyyy}-W{ISOWeek.GetWeekOfYear(eatLocal):D2}",
+            BillingPeriodValues.BiWeekly => $"{eatLocal:yyyy}-B{((ISOWeek.GetWeekOfYear(eatLocal) - 1) / 2) + 1:D2}",
             BillingPeriodValues.Monthly => eatLocal.ToString("yyyy-MM"),
+            BillingPeriodValues.Quarterly => $"{eatLocal:yyyy}-Q{(eatLocal.Month - 1) / 3 + 1}",
+            BillingPeriodValues.Yearly => eatLocal.ToString("yyyy"),
             _ => eatLocal.ToString("yyyy-MM-dd"), // Daily (and any unrecognized value, fail-safe)
         };
     }

@@ -29,6 +29,7 @@ public class CommercialTariffService : ICommercialTariffService
         var rules = await _dbContext.CommercialTariffRules
             .AsNoTracking()
             .Include(r => r.Transporter)
+            .Include(r => r.BilledToTransporter)
             .Where(r => r.OrganizationId == orgId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(ct);
@@ -42,6 +43,7 @@ public class CommercialTariffService : ICommercialTariffService
         var rule = await _dbContext.CommercialTariffRules
             .AsNoTracking()
             .Include(r => r.Transporter)
+            .Include(r => r.BilledToTransporter)
             .FirstOrDefaultAsync(r => r.Id == id && r.OrganizationId == orgId, ct);
 
         return rule == null ? null : MapToDto(rule);
@@ -55,6 +57,7 @@ public class CommercialTariffService : ICommercialTariffService
         {
             OrganizationId = orgId,
             TransporterId = request.TransporterId,
+            BilledToTransporterId = request.BilledToTransporterId,
             VehicleType = request.VehicleType,
             AxleCountMin = request.AxleCountMin,
             AxleCountMax = request.AxleCountMax,
@@ -84,6 +87,7 @@ public class CommercialTariffService : ICommercialTariffService
         if (rule == null) return null;
 
         if (request.TransporterId.HasValue) rule.TransporterId = request.TransporterId;
+        if (request.BilledToTransporterId.HasValue) rule.BilledToTransporterId = request.BilledToTransporterId;
         if (request.VehicleType != null) rule.VehicleType = request.VehicleType;
         if (request.AxleCountMin.HasValue) rule.AxleCountMin = request.AxleCountMin;
         if (request.AxleCountMax.HasValue) rule.AxleCountMax = request.AxleCountMax;
@@ -120,6 +124,8 @@ public class CommercialTariffService : ICommercialTariffService
         Id = r.Id,
         TransporterId = r.TransporterId,
         TransporterName = r.Transporter?.Name,
+        BilledToTransporterId = r.BilledToTransporterId,
+        BilledToTransporterName = r.BilledToTransporter?.Name,
         VehicleType = r.VehicleType,
         AxleCountMin = r.AxleCountMin,
         AxleCountMax = r.AxleCountMax,
