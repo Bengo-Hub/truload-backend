@@ -313,6 +313,13 @@ public static class FinancialModuleDbContextConfiguration
             entity.Property(e => e.BilledToTransporterId)
                 .HasColumnName("billed_to_transporter_id");
 
+            entity.Property(e => e.CargoTypeId)
+                .HasColumnName("cargo_type_id");
+
+            entity.Property(e => e.MinimumChargeKes)
+                .HasColumnName("minimum_charge_kes")
+                .HasColumnType("decimal(18,2)");
+
             entity.Property(e => e.VehicleType)
                 .HasColumnName("vehicle_type")
                 .HasMaxLength(50);
@@ -388,6 +395,11 @@ public static class FinancialModuleDbContextConfiguration
                 .HasForeignKey(e => e.BilledToTransporterId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            entity.HasOne(e => e.CargoType)
+                .WithMany()
+                .HasForeignKey(e => e.CargoTypeId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             entity.HasIndex(e => e.OrganizationId)
                 .HasDatabaseName("idx_commercial_tariff_rules_organization_id");
 
@@ -397,8 +409,14 @@ public static class FinancialModuleDbContextConfiguration
             entity.HasIndex(e => e.BilledToTransporterId)
                 .HasDatabaseName("idx_commercial_tariff_rules_billed_to_transporter_id");
 
+            entity.HasIndex(e => e.CargoTypeId)
+                .HasDatabaseName("idx_commercial_tariff_rules_cargo_type_id");
+
             entity.HasCheckConstraint("chk_commercial_tariff_rule_fee",
                 "fee_kes >= 0");
+
+            entity.HasCheckConstraint("chk_commercial_tariff_rule_min_charge",
+                "minimum_charge_kes IS NULL OR minimum_charge_kes >= 0");
         });
 
         // ===== CommercialTariffAccrual Entity Configuration =====

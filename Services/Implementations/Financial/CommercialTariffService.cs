@@ -30,6 +30,7 @@ public class CommercialTariffService : ICommercialTariffService
             .AsNoTracking()
             .Include(r => r.Transporter)
             .Include(r => r.BilledToTransporter)
+            .Include(r => r.CargoType)
             .Where(r => r.OrganizationId == orgId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(ct);
@@ -44,6 +45,7 @@ public class CommercialTariffService : ICommercialTariffService
             .AsNoTracking()
             .Include(r => r.Transporter)
             .Include(r => r.BilledToTransporter)
+            .Include(r => r.CargoType)
             .FirstOrDefaultAsync(r => r.Id == id && r.OrganizationId == orgId, ct);
 
         return rule == null ? null : MapToDto(rule);
@@ -58,12 +60,14 @@ public class CommercialTariffService : ICommercialTariffService
             OrganizationId = orgId,
             TransporterId = request.TransporterId,
             BilledToTransporterId = request.BilledToTransporterId,
+            CargoTypeId = request.CargoTypeId,
             VehicleType = request.VehicleType,
             AxleCountMin = request.AxleCountMin,
             AxleCountMax = request.AxleCountMax,
             WeightBracketMinKg = request.WeightBracketMinKg,
             WeightBracketMaxKg = request.WeightBracketMaxKg,
             FeeKes = request.FeeKes,
+            MinimumChargeKes = request.MinimumChargeKes,
             RateBasis = string.IsNullOrWhiteSpace(request.RateBasis) ? RateBasisValues.PerTonne : request.RateBasis,
             BillingPeriod = string.IsNullOrWhiteSpace(request.BillingPeriod) ? BillingPeriodValues.Immediate : request.BillingPeriod,
             EffectiveFrom = request.EffectiveFrom ?? DateTime.UtcNow,
@@ -88,12 +92,14 @@ public class CommercialTariffService : ICommercialTariffService
 
         if (request.TransporterId.HasValue) rule.TransporterId = request.TransporterId;
         if (request.BilledToTransporterId.HasValue) rule.BilledToTransporterId = request.BilledToTransporterId;
+        if (request.CargoTypeId.HasValue) rule.CargoTypeId = request.CargoTypeId;
         if (request.VehicleType != null) rule.VehicleType = request.VehicleType;
         if (request.AxleCountMin.HasValue) rule.AxleCountMin = request.AxleCountMin;
         if (request.AxleCountMax.HasValue) rule.AxleCountMax = request.AxleCountMax;
         if (request.WeightBracketMinKg.HasValue) rule.WeightBracketMinKg = request.WeightBracketMinKg;
         if (request.WeightBracketMaxKg.HasValue) rule.WeightBracketMaxKg = request.WeightBracketMaxKg;
         if (request.FeeKes.HasValue) rule.FeeKes = request.FeeKes.Value;
+        if (request.MinimumChargeKes.HasValue) rule.MinimumChargeKes = request.MinimumChargeKes;
         if (!string.IsNullOrWhiteSpace(request.RateBasis)) rule.RateBasis = request.RateBasis;
         if (!string.IsNullOrWhiteSpace(request.BillingPeriod)) rule.BillingPeriod = request.BillingPeriod;
         if (request.EffectiveFrom.HasValue) rule.EffectiveFrom = request.EffectiveFrom.Value;
@@ -126,12 +132,15 @@ public class CommercialTariffService : ICommercialTariffService
         TransporterName = r.Transporter?.Name,
         BilledToTransporterId = r.BilledToTransporterId,
         BilledToTransporterName = r.BilledToTransporter?.Name,
+        CargoTypeId = r.CargoTypeId,
+        CargoTypeName = r.CargoType?.Name,
         VehicleType = r.VehicleType,
         AxleCountMin = r.AxleCountMin,
         AxleCountMax = r.AxleCountMax,
         WeightBracketMinKg = r.WeightBracketMinKg,
         WeightBracketMaxKg = r.WeightBracketMaxKg,
         FeeKes = r.FeeKes,
+        MinimumChargeKes = r.MinimumChargeKes,
         RateBasis = r.RateBasis,
         BillingPeriod = r.BillingPeriod,
         EffectiveFrom = r.EffectiveFrom,

@@ -16,6 +16,10 @@ public record CommercialTariffRuleDto
     /// own transporter (the default, unchanged behaviour).</summary>
     public Guid? BilledToTransporterId { get; init; }
     public string? BilledToTransporterName { get; init; }
+
+    /// <summary>Optional cargo/material type match — see <c>CommercialTariffRule.CargoTypeId</c>.</summary>
+    public Guid? CargoTypeId { get; init; }
+    public string? CargoTypeName { get; init; }
     public string? VehicleType { get; init; }
     public int? AxleCountMin { get; init; }
     public int? AxleCountMax { get; init; }
@@ -25,6 +29,10 @@ public record CommercialTariffRuleDto
 
     /// <summary>"PerTonne" (default), "PerKg", or "Flat" — see <c>RateBasisValues</c>.</summary>
     public string RateBasis { get; init; } = "PerTonne";
+
+    /// <summary>Optional minimum charge (KES) floor for PerTonne/PerKg rules — see
+    /// <c>CommercialTariffRule.MinimumChargeKes</c>.</summary>
+    public decimal? MinimumChargeKes { get; init; }
 
     /// <summary>"Immediate" (default — one invoice per weighing) or "Daily"/"Weekly"/"BiWeekly"/
     /// "Monthly"/"Quarterly"/"Yearly" (accrued and rolled into one invoice per period) — see
@@ -48,6 +56,9 @@ public record CreateCommercialTariffRuleRequest
 
     /// <summary>Optional billing override — see <c>CommercialTariffRule.BilledToTransporterId</c>.</summary>
     public Guid? BilledToTransporterId { get; init; }
+
+    /// <summary>Optional cargo/material type match — see <c>CommercialTariffRule.CargoTypeId</c>.</summary>
+    public Guid? CargoTypeId { get; init; }
     public string? VehicleType { get; init; }
     public int? AxleCountMin { get; init; }
     public int? AxleCountMax { get; init; }
@@ -61,6 +72,11 @@ public record CreateCommercialTariffRuleRequest
     /// <summary>"PerTonne" (default), "PerKg", or "Flat" — see <c>RateBasisValues</c>.</summary>
     [RegularExpression("^(Flat|PerTonne|PerKg)$", ErrorMessage = "RateBasis must be Flat, PerTonne, or PerKg.")]
     public string RateBasis { get; init; } = "PerTonne";
+
+    /// <summary>Optional minimum charge (KES) floor for PerTonne/PerKg rules — see
+    /// <c>CommercialTariffRule.MinimumChargeKes</c>.</summary>
+    [Range(0, double.MaxValue, ErrorMessage = "Minimum charge must be zero or greater")]
+    public decimal? MinimumChargeKes { get; init; }
 
     /// <summary>"Immediate" (default), "Daily", "Weekly", "BiWeekly", "Monthly", "Quarterly", or
     /// "Yearly" — see <c>BillingPeriodValues</c>.</summary>
@@ -81,6 +97,9 @@ public record UpdateCommercialTariffRuleRequest
 
     /// <summary>Optional billing override — see <c>CommercialTariffRule.BilledToTransporterId</c>.</summary>
     public Guid? BilledToTransporterId { get; init; }
+
+    /// <summary>Optional cargo/material type match — see <c>CommercialTariffRule.CargoTypeId</c>.</summary>
+    public Guid? CargoTypeId { get; init; }
     public string? VehicleType { get; init; }
     public int? AxleCountMin { get; init; }
     public int? AxleCountMax { get; init; }
@@ -91,6 +110,11 @@ public record UpdateCommercialTariffRuleRequest
     /// <summary>"PerTonne", "PerKg", or "Flat" — see <c>RateBasisValues</c>. Null = leave unchanged.</summary>
     [RegularExpression("^(Flat|PerTonne|PerKg)$", ErrorMessage = "RateBasis must be Flat, PerTonne, or PerKg.")]
     public string? RateBasis { get; init; }
+
+    /// <summary>Optional minimum charge (KES) floor for PerTonne/PerKg rules — see
+    /// <c>CommercialTariffRule.MinimumChargeKes</c>.</summary>
+    [Range(0, double.MaxValue, ErrorMessage = "Minimum charge must be zero or greater")]
+    public decimal? MinimumChargeKes { get; init; }
 
     /// <summary>"Immediate", "Daily", "Weekly", "BiWeekly", "Monthly", "Quarterly", or "Yearly" —
     /// see <c>BillingPeriodValues</c>. Null = leave unchanged.</summary>

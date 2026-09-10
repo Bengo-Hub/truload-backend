@@ -1528,11 +1528,15 @@ public class CommercialWeighingService : ICommercialWeighingService
     /// <summary>
     /// Resolves the fee (and which rule, if any, matched) for a completed commercial weighing
     /// session: most-specific matching active CommercialTariffRule wins (transporter-specific
-    /// contract rule > vehicle/axle/weight bracket rule > org-wide default), falling back to
-    /// Organization.CommercialWeighingFeeKes (a flat, Immediate-billed amount) when no rule matches
-    /// at all — so an org with zero tariff rules configured keeps working exactly as before. The
-    /// matched rule is returned alongside the fee so the caller can branch on its BillingPeriod
-    /// (Immediate vs accrue-for-periodic-billing).
+    /// contract rule > vehicle/axle/weight/cargo-type bracket rule > org-wide default), falling
+    /// back to Organization.CommercialWeighingFeeKes (a flat, Immediate-billed amount) when no rule
+    /// matches at all — so an org with zero tariff rules configured keeps working exactly as
+    /// before. Cargo type (<see cref="CommercialTariffRule.CargoTypeId"/>) narrows both contract
+    /// and bracket rules, letting a tenant price different materials differently (e.g. a quarry
+    /// charging more per tonne for ballast than sand, or a waste facility charging more for
+    /// hazardous than general waste) - a standard pattern in commercial quarry/waste weighbridge
+    /// billing. The matched rule is returned alongside the fee so the caller can branch on its
+    /// BillingPeriod (Immediate vs accrue-for-periodic-billing).
     /// </summary>
     private async Task<(decimal FeeKes, CommercialTariffRule? MatchedRule)> ResolveCommercialTariffAsync(
         WeighingTransaction transaction, Organization org, Transporter? transporter)
@@ -1548,14 +1552,22 @@ public class CommercialWeighingService : ICommercialWeighingService
 
         if (rules.Count == 0) return (org.CommercialWeighingFeeKes, null);
 
-        // 1. Transporter-specific contract rule takes priority over any bracket rule.
+        // 1. Transporter-specific contract rule takes priority over any bracket rule. A contract
+        // transporter can still be priced differently by cargo/material (e.g. hauling sand at one
+        // rate and ballast at another under the same contract) - among rules matching this
+        // transporter, one that also matches this weighing's cargo type wins over a cargo-agnostic
+        // contract rule.
         if (transporter != null)
         {
-            var contractRule = rules.FirstOrDefault(r => r.TransporterId == transporter.Id);
+            var contractRule = rules
+                .Where(r => r.TransporterId == transporter.Id)
+                .Where(r => r.CargoTypeId == null || r.CargoTypeId == transaction.CargoId)
+                .OrderByDescending(r => r.CargoTypeId != null ? 1 : 0)
+                .FirstOrDefault();
             if (contractRule != null) return (ApplyRateBasis(contractRule, transaction.NetWeightKg), contractRule);
         }
 
-        // 2. Org-wide bracket rule matching vehicle type / axle count / gross weight.
+        // 2. Org-wide bracket rule matching vehicle type / axle count / gross weight / cargo type.
         var vehicleType = transaction.Vehicle?.VehicleType;
         var grossWeightKg = transaction.GrossWeightKg;
         var axleCount = await _dbContext.WeighingAxles
@@ -1570,11 +1582,13 @@ public class CommercialWeighingService : ICommercialWeighingService
             .Where(r => r.AxleCountMax == null || axleCount <= r.AxleCountMax)
             .Where(r => r.WeightBracketMinKg == null || (grossWeightKg.HasValue && grossWeightKg >= r.WeightBracketMinKg))
             .Where(r => r.WeightBracketMaxKg == null || (grossWeightKg.HasValue && grossWeightKg <= r.WeightBracketMaxKg))
+            .Where(r => r.CargoTypeId == null || r.CargoTypeId == transaction.CargoId)
             // Prefer the rule matching on the most criteria (most specific wins over a wildcard).
             .OrderByDescending(r =>
                 (r.VehicleType != null ? 1 : 0) +
                 (r.AxleCountMin != null || r.AxleCountMax != null ? 1 : 0) +
-                (r.WeightBracketMinKg != null || r.WeightBracketMaxKg != null ? 1 : 0))
+                (r.WeightBracketMinKg != null || r.WeightBracketMaxKg != null ? 1 : 0) +
+                (r.CargoTypeId != null ? 1 : 0))
             .FirstOrDefault();
 
         return bracketRule != null
@@ -1585,20 +1599,30 @@ public class CommercialWeighingService : ICommercialWeighingService
     /// <summary>
     /// Applies a matched <see cref="CommercialTariffRule"/>'s RateBasis to its FeeKes: "Flat"
     /// returns FeeKes unchanged (the original behavior, still the default for every existing rule);
-    /// "PerTonne"/"PerKg" multiply FeeKes by the transaction's net weight. Falls back to the rule's
-    /// flat FeeKes (rather than charging zero) when net weight isn't captured yet — a rate-basis
-    /// rule should never silently produce a KES 0 invoice.
+    /// "PerTonne"/"PerKg" multiply FeeKes by the transaction's net weight, then floor the result at
+    /// <see cref="CommercialTariffRule.MinimumChargeKes"/> when set — a common real-world tipping-fee
+    /// pattern (e.g. a flat minimum for any load under a small threshold, then a per-tonne rate
+    /// above it) that a bare per-tonne/per-kg rate can't express on its own. Falls back to the
+    /// rule's flat FeeKes (rather than charging zero) when net weight isn't captured yet — a
+    /// rate-basis rule should never silently produce a KES 0 invoice.
     /// </summary>
     private static decimal ApplyRateBasis(CommercialTariffRule rule, int? netWeightKg)
     {
         if (!netWeightKg.HasValue || netWeightKg.Value <= 0) return rule.FeeKes;
 
-        return rule.RateBasis switch
+        var computed = rule.RateBasis switch
         {
             RateBasisValues.PerTonne => Math.Round(rule.FeeKes * netWeightKg.Value / 1000m, 2),
             RateBasisValues.PerKg => Math.Round(rule.FeeKes * netWeightKg.Value, 2),
             _ => rule.FeeKes,
         };
+
+        if (rule.RateBasis != RateBasisValues.Flat && rule.MinimumChargeKes.HasValue)
+        {
+            return Math.Max(computed, rule.MinimumChargeKes.Value);
+        }
+
+        return computed;
     }
 
     private async Task<WeighingTransaction> GetTransactionOrThrowAsync(Guid transactionId)

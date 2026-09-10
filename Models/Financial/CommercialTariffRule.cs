@@ -34,6 +34,25 @@ public class CommercialTariffRule : TenantAwareEntity
     /// </summary>
     public Guid? BilledToTransporterId { get; set; }
 
+    /// <summary>
+    /// Optional cargo/material type match (e.g. "Sand", "Ballast", "Hazardous Waste" — see
+    /// <see cref="CargoTypes"/>). Null = any cargo type. Participates in bracket-rule specificity
+    /// scoring the same way <see cref="VehicleType"/>/axle/weight do, and can also narrow a
+    /// transporter contract rule (e.g. a contract transporter hauling two different materials
+    /// under two different contracted rates) - real-world quarry/waste-management tenants
+    /// routinely price by material (sand vs. ballast; general vs. hazardous waste), confirmed
+    /// against how commercial quarry/waste weighbridge software prices in practice.
+    /// </summary>
+    public Guid? CargoTypeId { get; set; }
+
+    /// <summary>
+    /// Optional minimum charge (KES), applied as a floor when <see cref="RateBasis"/> is PerTonne
+    /// or PerKg - e.g. a waste facility charging a flat minimum for any load under a small
+    /// threshold, then a per-tonne rate above it (a common real-world tipping-fee pattern). Ignored
+    /// for Flat (<see cref="FeeKes"/> already IS the fixed charge). Null = no floor.
+    /// </summary>
+    public decimal? MinimumChargeKes { get; set; }
+
     /// <summary>Optional vehicle type match (e.g. "Truck", "Trailer"). Null = any vehicle type.</summary>
     public string? VehicleType { get; set; }
 
@@ -91,6 +110,7 @@ public class CommercialTariffRule : TenantAwareEntity
     // Navigation properties
     public virtual Transporter? Transporter { get; set; }
     public virtual Transporter? BilledToTransporter { get; set; }
+    public virtual CargoTypes? CargoType { get; set; }
 }
 
 /// <summary>Allow-listed values for <see cref="CommercialTariffRule.RateBasis"/>.</summary>
