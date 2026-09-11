@@ -354,6 +354,15 @@ public class AuthDemoSyncService : BackgroundService
                     org.SsoTenantSlug = DemoTenantSlug;
                     updated = true;
                 }
+                // Self-heal IsDemo, same as UserManagementSeeder.cs does for the primary
+                // CODEVERTEX-DEMO org - this create-path already sets IsDemo=true (line ~331
+                // below), but that only ever applied to a brand-new row; an outlet org created
+                // before this field existed would never get it retroactively without this.
+                if (!org.IsDemo)
+                {
+                    org.IsDemo = true;
+                    updated = true;
+                }
                 if (target.Vertical is not null)
                 {
                     var currentVertical = OrganizationMetadataHelper.GetVertical(org.MetadataJson);

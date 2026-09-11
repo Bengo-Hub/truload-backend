@@ -643,7 +643,15 @@ var app = builder.Build();
 // already without bumping this, confirmed live via a real TruConnect sync test still getting
 // 403 on GET /api/v1/acts/tolerances after that deploy (the new pod ran, but the version gate
 // skipped RolePermissionSeeder.SeedAsync entirely since the DB already recorded v29 as applied).
-const int SeedingVersion = 30;
+// Bumped 30->31: found via the SAME live TruConnect sync test, next layer down - GET
+// /api/v1/Stations 402'd with subscription_required/NONE for BOTH the correctly-permissioned
+// middleware-demo@truconnect.local service account and admin@demo.codevertexafrica.com, despite
+// SubscriptionEnforcementMiddleware having an explicit "demo orgs bypass subscription gating
+// entirely" check (org.IsDemo). Root cause: CODEVERTEX-DEMO's IsDemo column was never set to
+// true anywhere in the codebase (UserManagementSeeder.cs's org literal simply never included
+// it) - this bump ships that fix plus a self-heal for the already-existing live row (and the
+// same latent gap for ENFORCEMENT-DEMO/the AuthDemoSyncService-managed outlet orgs).
+const int SeedingVersion = 31;
 const string SeedingName = "InitialSeed";
 
 // Builds a direct-to-PostgreSQL connection string for migrations.

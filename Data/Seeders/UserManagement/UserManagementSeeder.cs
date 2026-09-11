@@ -123,6 +123,7 @@ public class UserManagementSeeder
                 Name = "TruLoad Demo Enforcement Agency",
                 OrgType = "Government",
                 TenantType = "AxleLoadEnforcement",
+                IsDemo = true,
                 ContactEmail = "demo@enforcement.truload.codevertexafrica.com",
                 ContactPhone = "+254700000030",
                 Address = "Nairobi, Kenya",
@@ -147,6 +148,7 @@ public class UserManagementSeeder
                 Name = "TruLoad Demo Weighbridge",
                 OrgType = "Private",
                 TenantType = "CommercialWeighing",
+                IsDemo = true,
                 SsoTenantSlug = "codevertex-demo",
                 PaymentGateway = "treasury",
                 CommercialWeighingFeeKes = 500m,
@@ -212,6 +214,20 @@ public class UserManagementSeeder
                 if (org.Code == "CODEVERTEX-DEMO" && existing.SsoTenantSlug != org.SsoTenantSlug)
                 {
                     existing.SsoTenantSlug = org.SsoTenantSlug;
+                    updated = true;
+                }
+                // Self-heal IsDemo for any org the seed data marks as demo (CODEVERTEX-DEMO,
+                // ENFORCEMENT-DEMO) - found live, 2026-09-11: neither org's IsDemo column was
+                // ever set to true (this field's own IsDemo=true was only just added above),
+                // which meant SubscriptionEnforcementMiddleware's explicit "demo orgs bypass
+                // subscription gating entirely" check (org.IsDemo) never actually fired for
+                // CODEVERTEX-DEMO - every commercial-mode demo/sales account (including
+                // TruConnect's own dedicated middleware-demo@truconnect.local service account)
+                // got a real HTTP 402 subscription_required on ordinary reads like GET
+                // /api/v1/Stations, confirmed via a live TruConnect sync test against production.
+                if (org.IsDemo && !existing.IsDemo)
+                {
+                    existing.IsDemo = true;
                     updated = true;
                 }
                 if (string.IsNullOrEmpty(existing.LoginPageImageUrl) && !string.IsNullOrEmpty(org.LoginPageImageUrl))
