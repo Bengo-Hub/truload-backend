@@ -198,9 +198,14 @@ public static class RolePermissionSeeder
         {
             "MIDDLEWARE_SERVICE", new List<string>
             {
-                // Limited permissions for TruConnect middleware autoweigh operations
+                // Limited permissions for TruConnect middleware autoweigh operations.
+                // config.read added for the 2026-09 offline-weighing redesign:
+                // ConfigSyncService.syncToleranceSettings() calls GET /api/v1/acts/tolerances
+                // (ActConfigurationController, requires config.read) to mirror ToleranceSetting
+                // rows locally for the offline compliance engine - TruConnect never called that
+                // route before, so this role never needed the permission until now.
                 "weighing.create", "weighing.read", "weighing.update", "weighing.webhook",
-                "vehicle.read", "driver.read", "transporter.read", "station.read"
+                "vehicle.read", "driver.read", "transporter.read", "station.read", "config.read"
             }
         },
 
