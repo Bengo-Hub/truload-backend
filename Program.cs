@@ -637,7 +637,13 @@ var app = builder.Build();
 // pipeline runs). Confirmed live: SSO login into CODEVERTEX-DEMO was failing with auth-api's
 // "tenant not found" because the org's live SsoTenantSlug was still "truload". All seeders are
 // idempotent by design (DatabaseSeeder.cs) — this just lets the pipeline actually run again.
-const int SeedingVersion = 29;
+// Bumped 29->30: same class of mistake, caught this time before it went stale. Commit
+// (RolePermissionSeeder.cs) added config.read to MIDDLEWARE_SERVICE for the 2026-09-11
+// offline-weighing redesign's ConfigSyncService.syncToleranceSettings() - deployed once
+// already without bumping this, confirmed live via a real TruConnect sync test still getting
+// 403 on GET /api/v1/acts/tolerances after that deploy (the new pod ran, but the version gate
+// skipped RolePermissionSeeder.SeedAsync entirely since the DB already recorded v29 as applied).
+const int SeedingVersion = 30;
 const string SeedingName = "InitialSeed";
 
 // Builds a direct-to-PostgreSQL connection string for migrations.
