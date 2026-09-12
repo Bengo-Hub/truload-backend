@@ -550,62 +550,104 @@ public class WeighingService : IWeighingService
         var gvwOverload = transaction.GvwMeasuredKg - transaction.GvwPermissibleKg;
         transaction.OverloadKg = Math.Max(0, gvwOverload);
 
-        // 7. Resolve applicable Act from settings (default: TRAFFIC_ACT)
-        string legalFramework;
-        if (transaction.ActId.HasValue)
+        // Commercial tenants only get axle-load compliance flagging if they've opted into a
+        // legal framework (Organization.SelectedLegalFramework) - TruLoad may be deployed
+        // outside Kenya/East Africa where neither Traffic Act nor EAC applies, so the default
+        // for a commercial tenant is "none configured", not TRAFFIC_ACT. When none is
+        // configured, skip Act resolution and the enforcement tolerance engine entirely - the
+        // GVW/per-axle measured and permissible weights from steps 5-6 are still recorded, the
+        // ticket just never calculates or flags a compliance decision on top of them. This is
+        // separate from CommercialToleranceSetting's own net-weight-discrepancy tolerance
+        // (declared vs measured cargo weight), which still applies via CommercialWeighingService
+        // regardless of this field.
+        var commercialHasNoFramework = isCommercialMode && string.IsNullOrWhiteSpace(org?.SelectedLegalFramework);
+
+        if (commercialHasNoFramework)
         {
-            var existingAct = await _dbContext.ActDefinitions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(a => a.Id == transaction.ActId.Value);
-            legalFramework = existingAct?.Code ?? "TRAFFIC_ACT";
+            transaction.ActId = null;
+            transaction.IsCompliant = true;
+            transaction.ControlStatus = "NotEvaluated";
+            transaction.ToleranceApplied = false;
+            transaction.GvwToleranceKg = 0;
+            transaction.GvwToleranceDisplay = null;
+            transaction.AxleToleranceDisplay = null;
+            transaction.OperationalAllowanceUsed = 0;
+            transaction.IsSentToYard = false;
+            transaction.ViolationReason = string.Empty;
+            transaction.TotalFeeUsd = 0;
+            transaction.TotalFeeKes = 0;
+            await _weighingRepository.UpdateTransactionAsync(transaction);
         }
         else
         {
-            var defaultActSetting = await _dbContext.ApplicationSettings
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.SettingKey == "compliance.default_act_code");
-            legalFramework = defaultActSetting?.SettingValue ?? "TRAFFIC_ACT";
-            var resolvedAct = await _dbContext.ActDefinitions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(a => a.Code == legalFramework);
-            if (resolvedAct != null)
-                transaction.ActId = resolvedAct.Id;
-        }
-
-        // CRITICAL: Persist GvwPermissibleKg, per-axle PermissibleWeightKg, and ActId
-        // to DB BEFORE delegating to AxleGroupAggregationService which re-fetches
-        // the transaction via AsNoTracking(). Without this save, the aggregation
-        // service reads stale data (GvwPermissibleKg=0) causing wrong overload/fees.
-        await _weighingRepository.UpdateTransactionAsync(transaction);
-
-        // 8. Delegate all compliance and tolerance calculation to the unified service
-        var complianceResult = await _axleGroupAggregationService.CalculateComplianceAsync(transaction.Id);
-
-        // 9. Map results back to transaction for persistence
-        transaction.IsCompliant = complianceResult.IsCompliant;
-        transaction.ControlStatus = complianceResult.OverallStatus;
-        transaction.OverloadKg = (int)complianceResult.GvwOverloadKg;
-        transaction.TotalFeeUsd = complianceResult.TotalFeeUsd;
-        transaction.TotalFeeKes = complianceResult.TotalFeeKes;
-        transaction.ViolationReason = string.Join("; ", complianceResult.ViolationReasons);
-        
-        transaction.GvwToleranceKg = complianceResult.GvwToleranceKg;
-        transaction.GvwToleranceDisplay = complianceResult.GvwToleranceDisplay;
-        transaction.AxleToleranceDisplay = complianceResult.AxleToleranceDisplay;
-        transaction.OperationalAllowanceUsed = complianceResult.OperationalAllowanceUsed;
-        transaction.IsSentToYard = complianceResult.ShouldSendToYard;
-        transaction.ToleranceApplied = complianceResult.GvwToleranceKg > 0 || complianceResult.GroupResults.Any(g => g.ToleranceKg > 0);
-
-        // Populate AxleType on each axle from group results (for ticket display)
-        foreach (var groupResult in complianceResult.GroupResults)
-        {
-            foreach (var axleDetail in groupResult.Axles)
+            // 7. Resolve applicable Act: a commercial tenant that HAS opted in always uses its
+            // own selected framework (never the enforcement-wide default, and never a stale
+            // per-transaction ActId from a prior run); enforcement tenants keep today's
+            // per-transaction-then-default-setting resolution (default: TRAFFIC_ACT).
+            string legalFramework;
+            if (isCommercialMode)
             {
-                var axle = transaction.WeighingAxles.FirstOrDefault(a => a.AxleNumber == axleDetail.AxleNumber);
-                if (axle != null && string.IsNullOrEmpty(axle.AxleType))
+                legalFramework = org!.SelectedLegalFramework!;
+                var commercialAct = await _dbContext.ActDefinitions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.Code == legalFramework);
+                transaction.ActId = commercialAct?.Id;
+            }
+            else if (transaction.ActId.HasValue)
+            {
+                var existingAct = await _dbContext.ActDefinitions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.Id == transaction.ActId.Value);
+                legalFramework = existingAct?.Code ?? "TRAFFIC_ACT";
+            }
+            else
+            {
+                var defaultActSetting = await _dbContext.ApplicationSettings
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.SettingKey == "compliance.default_act_code");
+                legalFramework = defaultActSetting?.SettingValue ?? "TRAFFIC_ACT";
+                var resolvedAct = await _dbContext.ActDefinitions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.Code == legalFramework);
+                if (resolvedAct != null)
+                    transaction.ActId = resolvedAct.Id;
+            }
+
+            // CRITICAL: Persist GvwPermissibleKg, per-axle PermissibleWeightKg, and ActId
+            // to DB BEFORE delegating to AxleGroupAggregationService which re-fetches
+            // the transaction via AsNoTracking(). Without this save, the aggregation
+            // service reads stale data (GvwPermissibleKg=0) causing wrong overload/fees.
+            await _weighingRepository.UpdateTransactionAsync(transaction);
+
+            // 8. Delegate all compliance and tolerance calculation to the unified service
+            var complianceResult = await _axleGroupAggregationService.CalculateComplianceAsync(transaction.Id);
+
+            // 9. Map results back to transaction for persistence
+            transaction.IsCompliant = complianceResult.IsCompliant;
+            transaction.ControlStatus = complianceResult.OverallStatus;
+            transaction.OverloadKg = (int)complianceResult.GvwOverloadKg;
+            transaction.TotalFeeUsd = complianceResult.TotalFeeUsd;
+            transaction.TotalFeeKes = complianceResult.TotalFeeKes;
+            transaction.ViolationReason = string.Join("; ", complianceResult.ViolationReasons);
+
+            transaction.GvwToleranceKg = complianceResult.GvwToleranceKg;
+            transaction.GvwToleranceDisplay = complianceResult.GvwToleranceDisplay;
+            transaction.AxleToleranceDisplay = complianceResult.AxleToleranceDisplay;
+            transaction.OperationalAllowanceUsed = complianceResult.OperationalAllowanceUsed;
+            transaction.IsSentToYard = complianceResult.ShouldSendToYard;
+            transaction.ToleranceApplied = complianceResult.GvwToleranceKg > 0 || complianceResult.GroupResults.Any(g => g.ToleranceKg > 0);
+
+            // Populate AxleType on each axle from group results (for ticket display)
+            foreach (var groupResult in complianceResult.GroupResults)
+            {
+                foreach (var axleDetail in groupResult.Axles)
                 {
-                    axle.AxleType = groupResult.AxleType;
-                    axle.AxleGrouping = groupResult.GroupLabel;
+                    var axle = transaction.WeighingAxles.FirstOrDefault(a => a.AxleNumber == axleDetail.AxleNumber);
+                    if (axle != null && string.IsNullOrEmpty(axle.AxleType))
+                    {
+                        axle.AxleType = groupResult.AxleType;
+                        axle.AxleGrouping = groupResult.GroupLabel;
+                    }
                 }
             }
         }

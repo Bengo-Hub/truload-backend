@@ -41,6 +41,8 @@ public class OrganizationDto
     public int TareGracePeriodDays { get; set; }
     public string? PaymentGateway { get; set; }
     public string? WeighingBusinessModel { get; set; }
+    /// <summary>Optional Act ("TRAFFIC_ACT"/"EAC") a commercial tenant has opted into for axle-load pre-compliance checks. Null = none configured - tickets record weight only.</summary>
+    public string? SelectedLegalFramework { get; set; }
 }
 
 public class CreateOrganizationRequest
@@ -136,6 +138,11 @@ public class UpdateCommercialSettingsRequest
     public int? TareGracePeriodDays { get; set; }
     /// <summary>Business model: "ThirdPartyWeighbridge" or "FacilityOwnedScale".</summary>
     public string? WeighingBusinessModel { get; set; }
+    /// <summary>
+    /// Optional Act to opt into for axle-load pre-compliance checks: "TRAFFIC_ACT", "EAC", or
+    /// "" (empty string) to explicitly clear back to none. Omit (null) to leave unchanged.
+    /// </summary>
+    public string? SelectedLegalFramework { get; set; }
 }
 
 /// <summary>

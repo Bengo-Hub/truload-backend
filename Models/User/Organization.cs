@@ -105,6 +105,21 @@ public class Organization
     public decimal CommercialWeighingFeeKes { get; set; } = 500m;
 
     /// <summary>
+    /// Optional legal framework ("TRAFFIC_ACT" or "EAC") a CommercialWeighing tenant has opted
+    /// into for axle-load pre-compliance checks - e.g. a transporter who wants to know, before
+    /// hitting an enforcement weighbridge, whether their load would pass under that Act's axle
+    /// group tolerances. Null (the default) means the tenant has not configured one: weighing
+    /// tickets then record weights only and never calculate or flag legal compliance, since
+    /// TruLoad may be deployed outside Kenya/East Africa where neither Act applies. This is
+    /// completely separate from CommercialToleranceSetting's own net-weight
+    /// discrepancy tolerance (declared-vs-measured cargo weight), which every commercial tenant
+    /// already has regardless of this field. Ignored for AxleLoadEnforcement tenants, which
+    /// always resolve their Act from the "compliance.default_act_code" system setting instead.
+    /// See WeighingService.CalculateComplianceAsync and CommercialModeFilter.
+    /// </summary>
+    public string? SelectedLegalFramework { get; set; }
+
+    /// <summary>
     /// Org-level default tare expiry in days for commercial weighing.
     /// Vehicles without an explicit TareExpiryDays inherit this value.
     /// Null = no expiry enforced (tares never expire). Default 90 days.

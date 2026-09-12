@@ -258,10 +258,25 @@ public class OrganizationsController : ControllerBase
                 return BadRequest(new { message = "WeighingBusinessModel must be 'ThirdPartyWeighbridge' or 'FacilityOwnedScale'." });
             org.WeighingBusinessModel = request.WeighingBusinessModel;
         }
+        if (request.SelectedLegalFramework != null)
+        {
+            var trimmed = request.SelectedLegalFramework.Trim();
+            if (trimmed.Length == 0)
+            {
+                org.SelectedLegalFramework = null; // explicit clear back to "none"
+            }
+            else
+            {
+                var validFrameworks = new[] { "TRAFFIC_ACT", "EAC" };
+                if (!validFrameworks.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
+                    return BadRequest(new { message = "SelectedLegalFramework must be 'TRAFFIC_ACT', 'EAC', or empty to clear." });
+                org.SelectedLegalFramework = trimmed.ToUpperInvariant();
+            }
+        }
 
         var updated = await _organizationRepository.UpdateAsync(org, cancellationToken);
-        _logger.LogInformation("Commercial settings updated for org {OrgId}: fee={Fee}, tareExpiry={Expiry}, graceDays={Grace}, model={Model}",
-            orgId, org.CommercialWeighingFeeKes, org.DefaultTareExpiryDays, org.TareGracePeriodDays, org.WeighingBusinessModel);
+        _logger.LogInformation("Commercial settings updated for org {OrgId}: fee={Fee}, tareExpiry={Expiry}, graceDays={Grace}, model={Model}, act={Act}",
+            orgId, org.CommercialWeighingFeeKes, org.DefaultTareExpiryDays, org.TareGracePeriodDays, org.WeighingBusinessModel, org.SelectedLegalFramework);
         return Ok(MapToDto(updated));
     }
 
@@ -342,6 +357,7 @@ public class OrganizationsController : ControllerBase
             TareGracePeriodDays = isCommercial ? org.TareGracePeriodDays : 0,
             PaymentGateway = isCommercial ? org.PaymentGateway : null,
             WeighingBusinessModel = isCommercial ? org.WeighingBusinessModel : null,
+            SelectedLegalFramework = isCommercial ? org.SelectedLegalFramework : null,
         };
     }
 

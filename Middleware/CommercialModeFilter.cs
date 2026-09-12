@@ -5,9 +5,16 @@ namespace TruLoad.Backend.Middleware;
 
 /// <summary>
 /// Action filter that blocks enforcement-only API routes for CommercialWeighing tenants.
-/// Commercial tenants may not access cases, prosecution, yard, demerit, acts, axle fee
-/// schedules, prohibition orders, or special releases.
-/// Superusers bypass this check.
+/// Commercial tenants may not access cases, prosecution, yard, demerit, axle fee schedules,
+/// prohibition orders, or special releases.
+///
+/// `/api/v1/acts` is a special case, not a blanket block: a commercial tenant may optionally
+/// opt into a legal framework (Organization.SelectedLegalFramework) for an axle-load
+/// pre-compliance check - e.g. a transporter confirming their load would pass an enforcement
+/// weighbridge's Traffic Act/EAC tolerances before they get there. That requires READ access
+/// to the Act catalogue and tolerance settings even before a framework is chosen (to populate
+/// the picker), so only the enforcement-administrative sub-routes and every write are blocked
+/// for commercial tenants; see IsRestrictedActsRequest. Superusers bypass this check entirely.
 /// </summary>
 public class CommercialModeFilter : IMiddleware
 {
@@ -23,7 +30,19 @@ public class CommercialModeFilter : IMiddleware
         "/api/v1/axle-fee-schedules",
         "/api/v1/prohibition",
         "/api/v1/special-releases",
-        "/api/v1/acts",
+    ];
+
+    /// <summary>
+    /// `/api/v1/acts` sub-routes that stay enforcement-only even for a commercial tenant that
+    /// has opted into a legal framework: violation fee schedules and demerit points have no
+    /// meaning for a commercial pre-compliance check (no fees/demerits are ever charged from
+    /// it), so there is no case for exposing them.
+    /// </summary>
+    private static readonly string[] RestrictedActsReadSubPaths =
+    [
+        "/api/v1/acts/fee-schedules",
+        "/api/v1/acts/axle-type-fees",
+        "/api/v1/acts/demerit-points",
     ];
 
     private readonly TruLoadDbContext _dbContext;
@@ -38,7 +57,7 @@ public class CommercialModeFilter : IMiddleware
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
         // Only enforce for authenticated, non-superuser requests on restricted paths
-        if (IsRestrictedPath(context.Request.Path))
+        if (IsRestrictedPath(context.Request.Path) || IsRestrictedActsRequest(context.Request.Path, context.Request.Method))
         {
             var user = context.User;
             if (user?.Identity?.IsAuthenticated == true &&
@@ -77,6 +96,32 @@ public class CommercialModeFilter : IMiddleware
         foreach (var prefix in RestrictedPrefixes)
         {
             if (value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Fine-grained acts gate: any write under /api/v1/acts (editing the enforcement Act
+    /// catalogue/tolerance policy, or the org-wide default Act) stays enforcement-only - a
+    /// commercial tenant picks its own opt-in framework via
+    /// PATCH /api/v1/organizations/current/commercial-settings instead, never these routes.
+    /// Reads are open EXCEPT the enforcement-billing-specific sub-paths in
+    /// RestrictedActsReadSubPaths (fee schedules, demerit points), which a commercial
+    /// pre-compliance check has no use for.
+    /// </summary>
+    private static bool IsRestrictedActsRequest(PathString path, string method)
+    {
+        var value = path.Value ?? string.Empty;
+        if (!value.StartsWith("/api/v1/acts", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (!HttpMethods.IsGet(method))
+            return true;
+
+        foreach (var sub in RestrictedActsReadSubPaths)
+        {
+            if (value.StartsWith(sub, StringComparison.OrdinalIgnoreCase))
                 return true;
         }
         return false;
