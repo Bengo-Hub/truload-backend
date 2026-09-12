@@ -55,8 +55,13 @@ public class AxleConfigurationRepository : IAxleConfigurationRepository
             query = query.Where(ac => ac.AxleWeightReferences.Any());
         }
 
+        // Standard axle configurations (2A, 3A, ...) surface before derived/custom ones
+        // of the same axle count, so pickers list the common cases first (user request,
+        // 2026-09-12) - previously interleaved alphabetically by AxleCode with no regard
+        // for IsStandard at all.
         var result = await query
-            .OrderBy(ac => ac.AxleNumber)
+            .OrderByDescending(ac => ac.IsStandard)
+            .ThenBy(ac => ac.AxleNumber)
             .ThenBy(ac => ac.AxleCode)
             .ToListAsync(cancellationToken);
 
