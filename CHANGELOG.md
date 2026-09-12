@@ -5,6 +5,23 @@ All notable changes to TruLoad Backend will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0](https://github.com/Bengo-Hub/truload-backend/compare/v1.3.0...v1.4.0) (2026-09-12)
+
+
+### Features
+
+* **billing:** price tariff rules by cargo type, support a minimum charge floor ([6580096](https://github.com/Bengo-Hub/truload-backend/commit/658009609e52ae67dce777700c18e79c868ed56f))
+* **billing:** support billing a client distinct from the vehicle's transporter ([cfe4861](https://github.com/Bengo-Hub/truload-backend/commit/cfe48610d8e539dc7b7ccfeca65a9bfbf374689c))
+
+
+### Bug Fixes
+
+* **billing:** resolve GetBillingJsonAsync via SSO tenant slug, not user JWT ([d19a9a8](https://github.com/Bengo-Hub/truload-backend/commit/d19a9a8d22e48dfba79f3bc3bee5aba9ec55ccf0))
+* **rbac:** bump SeedingVersion so the config.read grant actually applies ([0bd82f0](https://github.com/Bengo-Hub/truload-backend/commit/0bd82f0bdda2be783e5da0f8810d8a1f9849d366))
+* **rbac:** grant MIDDLEWARE_SERVICE role config.read for tolerance settings sync ([b84bdbe](https://github.com/Bengo-Hub/truload-backend/commit/b84bdbeef34b1561e7a2d948c5645663a7afe68a))
+* **seed:** self-heal SelectedLegalFramework on the CommercialWeighing demo orgs ([1079781](https://github.com/Bengo-Hub/truload-backend/commit/1079781b1aa426139859a2be632681bf9b9b3197))
+* **subscription:** flag CODEVERTEX-DEMO and sibling demo orgs IsDemo=true ([ff2694b](https://github.com/Bengo-Hub/truload-backend/commit/ff2694b721957e9249aef3c2c129b8d0457fdbc4))
+
 ## [1.3.0](https://github.com/Bengo-Hub/truload-backend/compare/v1.2.0...v1.3.0) (2026-07-26)
 
 
