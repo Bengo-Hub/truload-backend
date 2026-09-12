@@ -651,7 +651,14 @@ var app = builder.Build();
 // true anywhere in the codebase (UserManagementSeeder.cs's org literal simply never included
 // it) - this bump ships that fix plus a self-heal for the already-existing live row (and the
 // same latent gap for ENFORCEMENT-DEMO/the AuthDemoSyncService-managed outlet orgs).
-const int SeedingVersion = 31;
+//
+// Bumped 31->32 (2026-09-12): none of the CommercialWeighing demo orgs (CODEVERTEX-DEMO,
+// -QUARRY, -WASTE) ever had SelectedLegalFramework set, found live via TruConnect's own
+// commercial capture screen - picking a multi-axle configuration had no effect (the N-axle
+// pre-compliance capture path requires this org setting to be non-null), which looked
+// exactly like a stuck/broken capture flow to an operator with no explanation shown. Self-
+// heals all three to TRAFFIC_ACT (Kenya-based demos, matching the seeded tolerance data).
+const int SeedingVersion = 32;
 const string SeedingName = "InitialSeed";
 
 // Builds a direct-to-PostgreSQL connection string for migrations.

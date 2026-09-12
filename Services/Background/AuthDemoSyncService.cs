@@ -333,6 +333,11 @@ public class AuthDemoSyncService : BackgroundService
                     MetadataJson = target.Vertical is not null
                         ? OrganizationMetadataHelper.MergeVertical(null, target.Vertical)
                         : null,
+                    // Kenya-based demo outlets, matching the seeded TRAFFIC_ACT tolerance settings -
+                    // same reasoning as UserManagementSeeder's primary CODEVERTEX-DEMO org (2026-09-12).
+                    SelectedLegalFramework = target.TenantType == TenantModules.TenantTypeCommercialWeighing
+                        ? "TRAFFIC_ACT"
+                        : null,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                 };
@@ -361,6 +366,15 @@ public class AuthDemoSyncService : BackgroundService
                 if (!org.IsDemo)
                 {
                     org.IsDemo = true;
+                    updated = true;
+                }
+                // Self-heal SelectedLegalFramework the same way (2026-09-12) - an outlet org
+                // created before this field existed would never get it retroactively otherwise,
+                // leaving the N-axle commercial pre-compliance capture path permanently inert.
+                if (target.TenantType == TenantModules.TenantTypeCommercialWeighing
+                    && string.IsNullOrEmpty(org.SelectedLegalFramework))
+                {
+                    org.SelectedLegalFramework = "TRAFFIC_ACT";
                     updated = true;
                 }
                 if (target.Vertical is not null)

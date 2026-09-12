@@ -150,6 +150,13 @@ public class UserManagementSeeder
                 TenantType = "CommercialWeighing",
                 IsDemo = true,
                 SsoTenantSlug = "codevertex-demo",
+                // Kenya-based demo, matching the seeded TRAFFIC_ACT tolerance settings - lets the
+                // N-axle commercial pre-compliance capture (TruConnect + WeighingService.
+                // CalculateComplianceAsync) actually activate for this org instead of silently
+                // staying a single-reading tare/gross/net-only visit (found live 2026-09-12: this
+                // was never set on ANY commercial demo org, so picking a multi-axle config in
+                // TruConnect's commercial mode had no effect and looked like a stuck capture flow).
+                SelectedLegalFramework = "TRAFFIC_ACT",
                 PaymentGateway = "treasury",
                 CommercialWeighingFeeKes = 500m,
                 EnabledModulesJson = "[\"dashboard\",\"weighing\",\"reporting\",\"users\",\"shifts\",\"technical\",\"financial_invoices\",\"financial_receipts\",\"setup_weighing_metadata\",\"setup_settings\",\"setup_system_config\",\"setup_security\",\"setup_notifications\",\"tare_register\",\"setup_tolerance\",\"billing\"]",
@@ -228,6 +235,17 @@ public class UserManagementSeeder
                 if (org.IsDemo && !existing.IsDemo)
                 {
                     existing.IsDemo = true;
+                    updated = true;
+                }
+                // Self-heal SelectedLegalFramework the same way - found live 2026-09-12: never set
+                // on the already-existing CODEVERTEX-DEMO row (the seed literal above only helps a
+                // brand-new environment), so the N-axle commercial pre-compliance capture path
+                // stayed permanently inert for this org regardless of which axle config an operator
+                // picked in TruConnect's commercial mode.
+                if (org.Code == "CODEVERTEX-DEMO" && !string.IsNullOrEmpty(org.SelectedLegalFramework)
+                    && string.IsNullOrEmpty(existing.SelectedLegalFramework))
+                {
+                    existing.SelectedLegalFramework = org.SelectedLegalFramework;
                     updated = true;
                 }
                 if (string.IsNullOrEmpty(existing.LoginPageImageUrl) && !string.IsNullOrEmpty(org.LoginPageImageUrl))
