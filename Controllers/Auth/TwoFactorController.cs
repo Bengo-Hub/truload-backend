@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.DTOs.Auth;
@@ -164,6 +165,7 @@ public class TwoFactorController : ControllerBase
     /// <summary>
     /// Verify a 2FA code (used during login when 2FA is enabled).
     /// </summary>
+    [EnableRateLimiting("auth")]
     [HttpPost("verify")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]

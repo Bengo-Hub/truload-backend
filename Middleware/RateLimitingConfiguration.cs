@@ -9,7 +9,12 @@ namespace TruLoad.Backend.Middleware;
 /// All limits are read from RateLimitSettings singleton (populated from DB at startup,
 /// refreshable via admin endpoint without restart).
 ///
-/// Policy summary (per user, defaults shown):
+/// Every policy is partitioned: per user (JWT "sub") when authenticated, otherwise per client
+/// IP. Before 2026-10 the named policies were one bucket shared by every user of the system and
+/// the limiter ran before authentication, so all traffic shared the 30/min anonymous bucket.
+/// Limits are per pod (in-process state); ingress-nginx and Cloudflare are the outer layers.
+///
+/// Policy summary (per user or per IP, defaults shown):
 ///   Global (authenticated): 600/min  - baseline for all endpoints
 ///   Global (anonymous):      30/min  - stricter for unauthenticated
 ///   "dashboard":            800/min  - statistics/trend/analytics endpoints
@@ -18,7 +23,7 @@ namespace TruLoad.Backend.Middleware;
 ///   "api":                  200/min  - general API endpoints
 ///   "search":               120/min  - search/list endpoints
 ///   "reports":               30/5min - heavy operations (PDF, exports)
-///   "auth":                  10/5min - login/token endpoints (brute-force protection)
+///   "auth":                  10/5min - login, 2FA and password endpoints, per IP
 /// </summary>
 public static class RateLimitingConfiguration
 {
@@ -31,99 +36,33 @@ public static class RateLimitingConfiguration
     {
         services.AddRateLimiter(options =>
         {
-            // Global default policy - per-user partitioning
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
             {
+                // Probes and the SignalR socket are not API calls.
+                var path = httpContext.Request.Path;
+                if (path.StartsWithSegments("/health") || path.StartsWithSegments("/hubs"))
+                    return RateLimitPartition.GetNoLimiter("exempt");
+
                 var settings = httpContext.RequestServices.GetRequiredService<RateLimitSettings>();
-                var userId = httpContext.User.Identity?.IsAuthenticated == true
-                    ? httpContext.User.FindFirst("sub")?.Value ?? "anonymous"
-                    : "anonymous";
-
-                if (userId == "anonymous")
-                {
-                    return RateLimitPartition.GetFixedWindowLimiter(
-                        partitionKey: "anonymous",
-                        factory: _ => new FixedWindowRateLimiterOptions
-                        {
-                            PermitLimit = settings.GlobalAnonymousPermit,
-                            Window = TimeSpan.FromMinutes(1),
-                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                            QueueLimit = 5
-                        });
-                }
-
-                return RateLimitPartition.GetFixedWindowLimiter(
-                    partitionKey: userId,
-                    factory: _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = settings.GlobalAuthenticatedPermit,
-                        Window = TimeSpan.FromMinutes(settings.GlobalAuthenticatedWindowMinutes),
-                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                        QueueLimit = 30
-                    });
+                var user = UserId(httpContext);
+                return user == null
+                    ? Fixed("anon:" + ClientIp(httpContext), settings.GlobalAnonymousPermit, 1, 5)
+                    : Fixed("user:" + user, settings.GlobalAuthenticatedPermit, settings.GlobalAuthenticatedWindowMinutes, 30);
             });
 
-            // Dashboard statistics/trend endpoints
-            options.AddFixedWindowLimiter("dashboard", opts =>
-            {
-                opts.PermitLimit = 800;
-                opts.Window = TimeSpan.FromMinutes(1);
-                opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                opts.QueueLimit = 40;
-            });
+            AddPolicy(options, "dashboard", s => s.DashboardPermit, _ => 1, 40);
+            AddPolicy(options, "api", s => s.ApiPermit, _ => 1, 15);
+            AddPolicy(options, "weighing", s => s.WeighingPermit, _ => 1, 30);
+            AddPolicy(options, "autoweigh", s => s.AutoweighPermit, _ => 1, 50);
+            AddPolicy(options, "reports", s => s.ReportsPermit, _ => 5, 5);
+            AddPolicy(options, "search", s => s.SearchPermit, _ => 1, 15);
 
-            // API policy - general API endpoints
-            options.AddFixedWindowLimiter("api", opts =>
+            // Credential endpoints: always per client IP (the caller is not signed in yet), no
+            // queueing, so guessing passwords or 2FA codes is slow from any one address.
+            options.AddPolicy("auth", httpContext =>
             {
-                opts.PermitLimit = 200;
-                opts.Window = TimeSpan.FromMinutes(1);
-                opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                opts.QueueLimit = 15;
-            });
-
-            // Weighing operations
-            options.AddFixedWindowLimiter("weighing", opts =>
-            {
-                opts.PermitLimit = 600;
-                opts.Window = TimeSpan.FromMinutes(1);
-                opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                opts.QueueLimit = 30;
-            });
-
-            // Autoweigh/webhook - machine-to-machine traffic
-            options.AddFixedWindowLimiter("autoweigh", opts =>
-            {
-                opts.PermitLimit = 1000;
-                opts.Window = TimeSpan.FromMinutes(1);
-                opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                opts.QueueLimit = 50;
-            });
-
-            // Authentication endpoints - strict limits for brute-force protection
-            options.AddFixedWindowLimiter("auth", opts =>
-            {
-                opts.PermitLimit = 10;
-                opts.Window = TimeSpan.FromMinutes(5);
-                opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                opts.QueueLimit = 2;
-            });
-
-            // Heavy operations (reports, exports, PDF generation)
-            options.AddFixedWindowLimiter("reports", opts =>
-            {
-                opts.PermitLimit = 30;
-                opts.Window = TimeSpan.FromMinutes(5);
-                opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                opts.QueueLimit = 5;
-            });
-
-            // Search endpoints
-            options.AddFixedWindowLimiter("search", opts =>
-            {
-                opts.PermitLimit = 120;
-                opts.Window = TimeSpan.FromMinutes(1);
-                opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                opts.QueueLimit = 15;
+                var s = httpContext.RequestServices.GetRequiredService<RateLimitSettings>();
+                return Fixed("auth:" + ClientIp(httpContext), s.AuthPermit, s.AuthWindowMinutes, 0);
             });
 
             // Rejection response
@@ -135,7 +74,7 @@ public static class RateLimitingConfiguration
                 if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfterValue))
                 {
                     retryAfter = retryAfterValue;
-                    context.HttpContext.Response.Headers.RetryAfter = retryAfterValue.TotalSeconds.ToString();
+                    context.HttpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfterValue.TotalSeconds)).ToString();
                 }
 
                 await context.HttpContext.Response.WriteAsJsonAsync(new
@@ -148,6 +87,50 @@ public static class RateLimitingConfiguration
         });
 
         return services;
+    }
+
+    private static void AddPolicy(RateLimiterOptions options, string name,
+        Func<RateLimitSettings, int> permit, Func<RateLimitSettings, int> windowMinutes, int queue)
+    {
+        options.AddPolicy(name, httpContext =>
+        {
+            var s = httpContext.RequestServices.GetRequiredService<RateLimitSettings>();
+            var user = UserId(httpContext);
+            var key = name + ":" + (user != null ? "user:" + user : "ip:" + ClientIp(httpContext));
+            return Fixed(key, permit(s), windowMinutes(s), queue);
+        });
+    }
+
+    // The limit is part of the partition key, so values reloaded from settings apply right away
+    // instead of only to callers never seen before (idle partitions are dropped by the runtime).
+    private static RateLimitPartition<string> Fixed(string key, int permit, int windowMinutes, int queue) =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: key + "|" + permit + "/" + windowMinutes,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = Math.Max(1, permit),
+                Window = TimeSpan.FromMinutes(Math.Max(1, windowMinutes)),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = queue
+            });
+
+    private static string? UserId(HttpContext httpContext) =>
+        httpContext.User.Identity?.IsAuthenticated == true
+            ? httpContext.User.FindFirst("sub")?.Value
+              ?? httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            : null;
+
+    /// <summary>
+    /// Client IP for anonymous partitions. ingress-nginx sets X-Real-IP from Cloudflare's
+    /// CF-Connecting-IP, which the client cannot forge; the first X-Forwarded-For hop can be
+    /// forged and is never used.
+    /// </summary>
+    internal static string ClientIp(HttpContext httpContext)
+    {
+        var real = httpContext.Request.Headers["X-Real-IP"].ToString();
+        if (!string.IsNullOrWhiteSpace(real))
+            return real.Trim();
+        return httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
     }
 
     /// <summary>
@@ -188,7 +171,7 @@ public static class RateLimitingConfiguration
 
     /// <summary>
     /// Applies rate limiting middleware to the request pipeline.
-    /// Should be called after UseRouting() and before UseAuthentication().
+    /// Must run after UseAuthentication() so policies can partition by the signed-in user.
     /// </summary>
     public static IApplicationBuilder UseTruLoadRateLimiting(this IApplicationBuilder app)
     {

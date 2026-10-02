@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -77,6 +78,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Register a new user account.
     /// </summary>
+    [EnableRateLimiting("auth")]
     [HttpPost("register")]
     [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
@@ -149,6 +151,7 @@ public class AuthController : ControllerBase
     /// - Refresh token for token renewal
     /// - User profile with roles and permissions array
     /// </remarks>
+    [EnableRateLimiting("auth")]
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -402,6 +405,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Complete login by verifying 2FA code after receiving a challenge token.
     /// </summary>
+    [EnableRateLimiting("auth")]
     [HttpPost("login/2fa-verify")]
     [AllowAnonymous]
     public async Task<IActionResult> LoginVerify2FA([FromBody] LoginVerify2FARequest request)
@@ -533,6 +537,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Request password reset email.
     /// </summary>
+    [EnableRateLimiting("auth")]
     [HttpPost("forgot-password")]
     [AllowAnonymous]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
@@ -591,6 +596,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Reset password using token from email.
     /// </summary>
+    [EnableRateLimiting("auth")]
     [HttpPost("reset-password")]
     [AllowAnonymous]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
@@ -636,6 +642,7 @@ public class AuthController : ControllerBase
     /// Change expired password (public). Called when login returns passwordExpired and changePasswordToken.
     /// User must set a new password meeting policy before they can log in again.
     /// </summary>
+    [EnableRateLimiting("auth")]
     [HttpPost("change-expired-password")]
     [AllowAnonymous]
     public async Task<IActionResult> ChangeExpiredPassword([FromBody] ChangeExpiredPasswordRequest request)
@@ -878,6 +885,7 @@ public class AuthController : ControllerBase
     /// Exchanges an SSO access token (from auth-api) for a short-lived truload SSO exchange token.
     /// JIT-provisions the user if not found. Does not issue a full session — returns requiresStationSelection=true.
     /// </summary>
+    [EnableRateLimiting("auth")]
     [HttpPost("sso-exchange")]
     [AllowAnonymous]
     public async Task<IActionResult> SsoExchange([FromBody] SsoExchangeRequest request)

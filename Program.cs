@@ -942,10 +942,10 @@ app.UseExceptionHandler(errorApp =>
 
 
 
-// Rate Limiting - after CORS, before authentication
-app.UseTruLoadRateLimiting();
-
 app.UseAuthentication();
+
+// Rate Limiting - after authentication, so limits partition by user (anonymous: by client IP)
+app.UseTruLoadRateLimiting();
 
 // Tenant context middleware - resolves org/station from headers/claims/default
 // Must be after authentication (needs user claims) and before authorization

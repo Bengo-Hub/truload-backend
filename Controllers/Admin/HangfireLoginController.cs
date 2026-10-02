@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -71,6 +72,7 @@ public class HangfireLoginController : ControllerBase
         return Content(html, "text/html");
     }
 
+    [EnableRateLimiting("auth")]
     [HttpPost("/hangfire/login")]
     [Consumes("application/x-www-form-urlencoded")]
     public async Task<IActionResult> LoginPost(
