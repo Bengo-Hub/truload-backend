@@ -1324,6 +1324,16 @@ public class WeighingService : IWeighingService
                 _logger.LogInformation(
                     "Found frontend-created transaction {TransactionId} for autoweigh sync",
                     transaction.Id);
+
+                // TruConnect queues preliminary sends while offline, so one can arrive after the
+                // operator's final capture. Final weights are never overwritten by it.
+                if (!request.IsFinalCapture && transaction.CaptureStatus is not ("pending" or "auto"))
+                {
+                    _logger.LogInformation(
+                        "Ignoring preliminary autoweigh for transaction {TransactionId} with CaptureStatus={CaptureStatus}",
+                        transaction.Id, transaction.CaptureStatus);
+                    return MapToAutoweighResult(transaction, vehicleFound: true);
+                }
             }
             else
             {
@@ -1468,10 +1478,18 @@ public class WeighingService : IWeighingService
         }
         else
         {
-            // Update existing auto-weigh record for final capture
-            transaction.CaptureStatus = "captured";
-            transaction.ProcessingTimeSeconds = (int)(DateTime.UtcNow - transaction.WeighedAt).TotalSeconds;
-            transaction.CaptureSource = request.CaptureSource ?? "frontend";
+            // A preliminary send stays "auto" until the operator's final capture
+            if (request.IsFinalCapture)
+            {
+                transaction.CaptureStatus = "captured";
+                transaction.ProcessingTimeSeconds = (int)(DateTime.UtcNow - transaction.WeighedAt).TotalSeconds;
+                transaction.CaptureSource = request.CaptureSource ?? "frontend";
+            }
+            else
+            {
+                transaction.CaptureStatus = "auto";
+                transaction.CaptureSource = request.CaptureSource ?? "auto";
+            }
             transaction.SyncAt = DateTime.UtcNow;
 
             // Update vehicle if provided

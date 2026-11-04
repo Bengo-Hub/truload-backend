@@ -356,4 +356,73 @@ public class WeighingServiceTests
         result.IsCompliant.Should().BeFalse(); // Still strict non-compliant
         result.IsSentToYard.Should().BeFalse(); // But released
     }
+
+    private AutoweighCaptureRequest PreliminaryAutoweigh(Guid stationId, Guid transactionId, Guid vehicleId) => new()
+    {
+        StationId = stationId,
+        VehicleRegNumber = "KDA 123X",
+        VehicleId = vehicleId,
+        IsFinalCapture = false,
+        CaptureSource = "auto",
+        WeighingTransactionId = transactionId,
+        Axles = new List<WeighingAxleCaptureDto>
+        {
+            new() { AxleNumber = 1, MeasuredWeightKg = 6000 },
+            new() { AxleNumber = 2, MeasuredWeightKg = 8000 }
+        }
+    };
+
+    [Fact]
+    public async Task ProcessAutoweighAsync_Preliminary_OnPendingTransaction_MarksAutoNotCaptured()
+    {
+        var stationId = Guid.NewGuid();
+        var vehicleId = Guid.NewGuid();
+        var transaction = new WeighingTransaction
+        {
+            Id = Guid.NewGuid(),
+            StationId = stationId,
+            VehicleId = vehicleId,
+            VehicleRegNumber = "KDA 123X",
+            TicketNumber = "T-1",
+            CaptureStatus = "pending",
+            CaptureSource = "frontend",
+            WeighedAt = DateTime.UtcNow
+        };
+        _mockWeighingRepository.Setup(r => r.GetTransactionByIdAsync(transaction.Id)).ReturnsAsync(transaction);
+        _mockVehicleRepository.Setup(r => r.GetByIdAsync(vehicleId)).ReturnsAsync(new Vehicle { Id = vehicleId, RegNo = "KDA 123X" });
+
+        await _service.ProcessAutoweighAsync(PreliminaryAutoweigh(stationId, transaction.Id, vehicleId), Guid.NewGuid());
+
+        transaction.CaptureStatus.Should().Be("auto");
+        transaction.CaptureSource.Should().Be("auto");
+        transaction.AutoweighGvwKg.Should().Be(14000);
+    }
+
+    [Fact]
+    public async Task ProcessAutoweighAsync_Preliminary_ArrivingAfterFinalCapture_ChangesNothing()
+    {
+        var stationId = Guid.NewGuid();
+        var vehicleId = Guid.NewGuid();
+        var transaction = new WeighingTransaction
+        {
+            Id = Guid.NewGuid(),
+            StationId = stationId,
+            VehicleId = vehicleId,
+            VehicleRegNumber = "KDA 123X",
+            TicketNumber = "T-2",
+            CaptureStatus = "captured",
+            CaptureSource = "frontend",
+            GvwMeasuredKg = 15000,
+            WeighedAt = DateTime.UtcNow
+        };
+        _mockWeighingRepository.Setup(r => r.GetTransactionByIdAsync(transaction.Id)).ReturnsAsync(transaction);
+        _mockVehicleRepository.Setup(r => r.GetByIdAsync(vehicleId)).ReturnsAsync(new Vehicle { Id = vehicleId, RegNo = "KDA 123X" });
+
+        await _service.ProcessAutoweighAsync(PreliminaryAutoweigh(stationId, transaction.Id, vehicleId), Guid.NewGuid());
+
+        transaction.CaptureStatus.Should().Be("captured");
+        transaction.CaptureSource.Should().Be("frontend");
+        transaction.GvwMeasuredKg.Should().Be(15000);
+        _mockWeighingRepository.Verify(r => r.DeleteAxlesByTransactionIdAsync(transaction.Id), Times.Never);
+    }
 }
