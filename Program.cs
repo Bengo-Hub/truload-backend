@@ -658,7 +658,9 @@ var app = builder.Build();
 // pre-compliance capture path requires this org setting to be non-null), which looked
 // exactly like a stuck/broken capture flow to an operator with no explanation shown. Self-
 // heals all three to TRAFFIC_ACT (Kenya-based demos, matching the seeded tolerance data).
-const int SeedingVersion = 32;
+// v33: WEIGHING_OPERATOR gained config.read, station.read, weighing.read and weighing.webhook
+// so operators can sign in to TruConnect with their own TruLoad account.
+const int SeedingVersion = 33;
 const string SeedingName = "InitialSeed";
 
 // Builds a direct-to-PostgreSQL connection string for migrations.

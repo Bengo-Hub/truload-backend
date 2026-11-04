@@ -8,6 +8,7 @@ using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
 using TruLoad.Backend.Services.Implementations.Weighing;
 using TruLoad.Backend.Services.Interfaces.Weighing;
+using TruLoad.Backend.DTOs.CaseManagement;
 using TruLoad.Backend.DTOs.Weighing;
 using Xunit;
 using TruLoad.Backend.Services.Interfaces.Infrastructure;
@@ -424,5 +425,97 @@ public class WeighingServiceTests
         transaction.CaptureSource.Should().Be("frontend");
         transaction.GvwMeasuredKg.Should().Be(15000);
         _mockWeighingRepository.Verify(r => r.DeleteAxlesByTransactionIdAsync(transaction.Id), Times.Never);
+    }
+
+    private WeighingTransaction WeighingWithResult(string captureStatus, string overallStatus)
+    {
+        var configId = Guid.NewGuid();
+        var isCompliant = overallStatus != "Overloaded";
+        var transaction = new WeighingTransaction
+        {
+            Id = Guid.NewGuid(),
+            ControlStatus = "Pending",
+            CaptureStatus = captureStatus,
+            WeighedByUserId = Guid.NewGuid(),
+            VehicleRegNumber = "KDA 123X",
+            WeighingAxles = new List<WeighingAxle>
+            {
+                new WeighingAxle { AxleNumber = 1, MeasuredWeightKg = 12000, AxleConfigurationId = configId }
+            }
+        };
+        _mockWeighingRepository.Setup(r => r.GetTransactionByIdAsync(transaction.Id)).ReturnsAsync(transaction);
+        _mockAxleConfigurationRepository
+            .Setup(r => r.GetByIdAsync(configId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AxleConfiguration
+            {
+                Id = configId,
+                GvwPermissibleKg = 10000,
+                AxleWeightReferences = new List<AxleWeightReference>
+                {
+                    new AxleWeightReference { AxlePosition = 1, AxleLegalWeightKg = 10000 }
+                }
+            });
+        _mockAxleGroupAggregationService
+            .Setup(s => s.CalculateComplianceAsync(transaction.Id))
+            .ReturnsAsync(new WeighingComplianceResultDto
+            {
+                IsCompliant = isCompliant,
+                OverallStatus = overallStatus,
+                GvwMeasuredKg = 12000,
+                GvwPermissibleKg = 10000,
+                GvwOverloadKg = isCompliant ? 0 : 2000,
+                ShouldSendToYard = !isCompliant,
+                GroupResults = [],
+                ViolationReasons = isCompliant ? [] : ["GVW Overload: 2000kg"]
+            });
+        _mockCaseRegisterService
+            .Setup(s => s.CreateCaseFromWeighingAsync(transaction.Id, It.IsAny<Guid>()))
+            .ReturnsAsync(new CaseRegisterDto { Id = Guid.NewGuid(), CaseNo = "CASE-1" });
+        return transaction;
+    }
+
+    [Fact]
+    public async Task CalculateComplianceAsync_AutoRecord_StoresResultButHoldsEnforcementActions()
+    {
+        var transaction = WeighingWithResult("auto", "Overloaded");
+
+        var result = await _service.CalculateComplianceAsync(transaction.Id);
+
+        result.ControlStatus.Should().Be("Overloaded");
+        result.OverloadKg.Should().Be(2000);
+        _mockWeighingRepository.Verify(r => r.UpdateTransactionAsync(transaction), Times.AtLeastOnce);
+        _mockCaseRegisterService.Verify(s => s.CreateCaseFromWeighingAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
+        _mockProhibitionRepository.Verify(r => r.GetByWeighingIdAsync(It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CalculateComplianceAsync_CapturedRecord_TriggersEnforcementActions()
+    {
+        var transaction = WeighingWithResult("captured", "Overloaded");
+
+        await _service.CalculateComplianceAsync(transaction.Id);
+
+        _mockCaseRegisterService.Verify(s => s.CreateCaseFromWeighingAsync(transaction.Id, It.IsAny<Guid>()), Times.AtLeastOnce);
+        _mockProhibitionRepository.Verify(r => r.GetByWeighingIdAsync(transaction.Id), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task CalculateComplianceAsync_AutoRecord_HoldsManualTagCheck()
+    {
+        var transaction = WeighingWithResult("auto", "Compliant");
+
+        await _service.CalculateComplianceAsync(transaction.Id);
+
+        _mockVehicleTagService.Verify(s => s.CheckVehicleTagsAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CalculateComplianceAsync_CapturedRecord_ChecksManualTags()
+    {
+        var transaction = WeighingWithResult("captured", "Compliant");
+
+        await _service.CalculateComplianceAsync(transaction.Id);
+
+        _mockVehicleTagService.Verify(s => s.CheckVehicleTagsAsync("KDA 123X"), Times.Once);
     }
 }

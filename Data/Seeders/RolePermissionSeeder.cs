@@ -153,7 +153,10 @@ public static class RolePermissionSeeder
         {
             "WEIGHING_OPERATOR", new List<string>
             {
-                // Weighing operations plus basic yard/tag for workflow
+                // Weighing operations plus basic yard/tag for workflow.
+                // config.read, station.read, weighing.read and weighing.webhook let an operator
+                // sign in to TruConnect, which syncs setup data and posts auto records as that user.
+                "config.read", "station.read", "weighing.read", "weighing.webhook",
                 "weighing.create", "weighing.read_own", "weighing.scale_test", "weighing.audit",
                 "weighing.send_to_yard", "weighing.export",
                 "technical.read", "technical.scale_test",

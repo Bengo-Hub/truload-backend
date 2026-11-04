@@ -652,9 +652,13 @@ public class WeighingService : IWeighingService
             }
         }
 
+        // An auto record is preliminary: its weights and result are saved, but enforcement actions
+        // wait for the operator's final capture, which runs this calculation again.
+        var isPreliminary = transaction.CaptureStatus == "auto";
+
         // 10. Handle Prosecution/Cases and Yard Entry if not compliant (Enforcement Mode)
         // Per FRD B.1: Auto-trigger Case Register + Yard Entry + Prohibition on overload
-        if (!isCommercialMode && !transaction.IsCompliant && transaction.ControlStatus == "Overloaded")
+        if (!isPreliminary && !isCommercialMode && !transaction.IsCompliant && transaction.ControlStatus == "Overloaded")
         {
             try
             {
@@ -722,7 +726,7 @@ public class WeighingService : IWeighingService
         // 9. MANUAL TAG ENFORCEMENT: Check for open manual KeNHA tags on weight-compliant vehicles
         // Per FRD A.2: Manual tags from KeNHA can bar vehicle from exiting even if weight-compliant
         // Commercial tenants have no KeNHA tag enforcement
-        if (!isCommercialMode && transaction.ControlStatus is "Compliant" or "Warning")
+        if (!isPreliminary && !isCommercialMode && transaction.ControlStatus is "Compliant" or "Warning")
         {
             try
             {
@@ -767,6 +771,11 @@ public class WeighingService : IWeighingService
         if (isCommercialMode && org != null)
         {
             await CreateCommercialWeighingInvoiceAsync(transaction, org);
+            return transaction;
+        }
+
+        if (isPreliminary)
+        {
             return transaction;
         }
 
