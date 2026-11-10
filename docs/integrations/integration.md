@@ -14,6 +14,7 @@ This document provides detailed integration information for external services an
 3. [Vector Database (pgvector) Integration](#vector-database-pgvector-integration)
 4. [ONNX Runtime Integration](#onnx-runtime-integration)
 5. [TruConnect Microservice Integration](#truconnect-microservice-integration)
+6. [Customer Identity (MarketFlow CRM via Treasury)](#customer-identity-marketflow-crm-via-treasury)
 6. [eCitizen Payment Gateway Integration](#ecitizen-payment-gateway-integration)
 7. [Third-Party API Integrations](#third-party-api-integrations)
 
@@ -606,6 +607,16 @@ No bound switching
 - **WebSocket disconnect**: Auto-reconnect with exponential backoff
 - **Invalid data**: Log error, skip message, continue
 - **Simulation mode**: TruConnect can run without physical scales
+
+---
+
+## Customer Identity (MarketFlow CRM via Treasury)
+
+MarketFlow owns customer identity. TruLoad never calls the CRM directly. When a transporter is created, `TransporterController` calls `TreasuryService.ResolveCustomerAsync(tenantSlug, name, email, phone)`, which posts to treasury-api `POST /api/v1/s2s/{tenantSlug}/ar/customers/sync-crm` with the S2S key. Treasury finds or creates the CRM contact and the AR customer and returns the id, which TruLoad keeps on the transporter.
+
+- The call gives up after 4 seconds. Creating a transporter never waits on treasury, and a failure leaves the id empty.
+- The invoice backfill fills a missing id later.
+- A refusal from the CRM (400 or 422) is returned to the user as treasury's message, shortened so it does not echo the email or phone.
 
 ---
 
