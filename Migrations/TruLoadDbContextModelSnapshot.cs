@@ -7516,6 +7516,10 @@ namespace TruLoad.Backend.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("compliant_count");
 
+                    b.Property<long>("LegalCount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("legal_count");
+
                     b.Property<decimal?>("MaxOverload")
                         .HasColumnType("numeric")
                         .HasColumnName("max_overload");
@@ -7548,6 +7552,10 @@ namespace TruLoad.Backend.Migrations
                     b.Property<decimal?>("TotalFeesCollected")
                         .HasColumnType("numeric")
                         .HasColumnName("total_fees_collected");
+
+                    b.Property<decimal?>("TotalFeesKes")
+                        .HasColumnType("numeric")
+                        .HasColumnName("total_fees_kes");
 
                     b.Property<long>("TotalWeighings")
                         .HasColumnType("bigint")

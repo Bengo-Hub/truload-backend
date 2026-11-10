@@ -234,6 +234,10 @@ public class MvDailyWeighingStats : ITenantAware
     public long CompliantCount { get; set; }
     public long NonCompliantCount { get; set; }
 
+    /// <summary>ControlStatus is Compliant, the live query's meaning of legal. <see cref="CompliantCount"/>
+    /// is the IsCompliant flag, which can be set on other statuses.</summary>
+    public long LegalCount { get; set; }
+
     /// <summary>Axle-group-only violations (GVW compliant) - distinct from <see cref="OverloadedCount"/>.</summary>
     public long WarningCount { get; set; }
 
@@ -245,7 +249,9 @@ public class MvDailyWeighingStats : ITenantAware
     public decimal? AvgGvwMeasured { get; set; }
     public decimal? AvgOverload { get; set; }
     public decimal? MaxOverload { get; set; }
+    /// <summary>Sum of total_fee_usd, in USD.</summary>
     public decimal? TotalFeesCollected { get; set; }
+    public decimal? TotalFeesKes { get; set; }
     public long UniqueVehicles { get; set; }
     public long UniqueTransporters { get; set; }
 }

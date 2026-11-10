@@ -205,6 +205,10 @@ public class WeighingRepository : IWeighingRepository
             var recentSince = DateTime.UtcNow.AddHours(-24);
             query = query.Where(t => t.WeighedAt >= recentSince);
         }
+        else if (string.Equals(state, "AwaitingCapture", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(t => t.CaptureStatus == "auto");
+        }
 
         if (!string.IsNullOrWhiteSpace(axleConfiguration))
             query = query.Where(t => t.Vehicle != null && t.Vehicle.AxleConfiguration != null
@@ -308,13 +312,17 @@ public class WeighingRepository : IWeighingRepository
             .FirstOrDefaultAsync();
     }
 
+    // How long an auto record can wait for its vehicle's final capture. A rolling window, because a
+    // calendar day would split a weighing that crosses midnight.
+    private const int AutoRecordMatchWindowHours = 12;
+
     public async Task<WeighingTransaction?> GetLatestAutoweighByVehicleAsync(
         string vehicleRegNumber,
         Guid stationId,
         string? bound = null)
     {
         var normalizedRegNumber = vehicleRegNumber.ToUpperInvariant().Trim();
-        var today = DateTime.UtcNow.Date;
+        var since = DateTime.UtcNow.AddHours(-AutoRecordMatchWindowHours);
 
         var query = _context.WeighingTransactions
             .AsNoTracking()
@@ -322,7 +330,7 @@ public class WeighingRepository : IWeighingRepository
             .Where(t => t.VehicleRegNumber.ToUpper() == normalizedRegNumber)
             .Where(t => t.StationId == stationId)
             .Where(t => t.CaptureStatus == "auto")
-            .Where(t => t.WeighedAt >= today); // Only look at today's transactions
+            .Where(t => t.WeighedAt >= since);
 
         if (!string.IsNullOrEmpty(bound))
         {
@@ -339,12 +347,12 @@ public class WeighingRepository : IWeighingRepository
         Guid stationId,
         Guid? excludeTransactionId = null)
     {
-        var today = DateTime.UtcNow.Date;
+        var since = DateTime.UtcNow.AddHours(-AutoRecordMatchWindowHours);
 
         var query = _context.WeighingTransactions
             .Where(t => t.StationId == stationId)
             .Where(t => t.CaptureStatus == "auto")
-            .Where(t => t.WeighedAt >= today);
+            .Where(t => t.WeighedAt >= since);
 
         if (!string.IsNullOrEmpty(vehicleRegNumber))
         {

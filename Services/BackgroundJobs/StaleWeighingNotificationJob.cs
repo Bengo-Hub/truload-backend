@@ -9,6 +9,8 @@ namespace TruLoad.Backend.Services.BackgroundJobs;
 /// <summary>
 /// Hangfire recurring job that detects commercial weighing transactions stuck at first-weight-only
 /// for longer than the configured threshold and emails the station manager(s).
+/// Also alerts the operator and station managers about overloaded auto records with no final capture,
+/// because enforcement actions wait for that capture.
 /// Runs every 30 minutes. Prevents duplicate alerts via StaleAlertSentAt flag.
 /// </summary>
 public class StaleWeighingNotificationJob
@@ -17,6 +19,8 @@ public class StaleWeighingNotificationJob
     private readonly ILogger<StaleWeighingNotificationJob> _logger;
 
     private const int DefaultThresholdHours = 8;
+    private const int DefaultAutoRecordAlertMinutes = 60;
+    private const int AutoRecordAlertLookbackDays = 7;
 
     public StaleWeighingNotificationJob(
         IServiceScopeFactory scopeFactory,
@@ -34,6 +38,8 @@ public class StaleWeighingNotificationJob
         var db = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
         var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
         var settingsService = scope.ServiceProvider.GetRequiredService<ISettingsService>();
+
+        await AlertUnfinishedAutoRecordsAsync(db, notificationService, settingsService, ct);
 
         var thresholdHours = await settingsService.GetSettingValueAsync(
             SettingKeys.CommercialPendingWeighingThresholdHours, DefaultThresholdHours, ct);
@@ -162,5 +168,70 @@ public class StaleWeighingNotificationJob
         }
 
         _logger.LogInformation("[StaleWeighingNotificationJob] Stale weighing check complete");
+    }
+
+    private async Task AlertUnfinishedAutoRecordsAsync(
+        TruLoadDbContext db,
+        INotificationService notificationService,
+        ISettingsService settingsService,
+        CancellationToken ct)
+    {
+        var alertMinutes = await settingsService.GetSettingValueAsync(
+            SettingKeys.WeighingAutoRecordAlertMinutes, DefaultAutoRecordAlertMinutes, ct);
+        var cutoff = DateTime.UtcNow.AddMinutes(-alertMinutes);
+        var oldest = DateTime.UtcNow.AddDays(-AutoRecordAlertLookbackDays);
+
+        var records = await db.WeighingTransactions
+            .Where(t =>
+                t.CaptureStatus == "auto" &&
+                t.ControlStatus == "Overloaded" &&
+                t.DeletedAt == null &&
+                t.StaleAlertSentAt == null &&
+                t.WeighedAt <= cutoff &&
+                t.WeighedAt >= oldest)
+            .ToListAsync(ct);
+
+        foreach (var record in records)
+        {
+            try
+            {
+                var recipients = await db.Users
+                    .AsNoTracking()
+                    .Where(u =>
+                        u.OrganizationId == record.OrganizationId &&
+                        u.StationId == record.StationId &&
+                        u.DeletedAt == null &&
+                        db.UserRoles
+                            .Join(db.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, r.Name })
+                            .Any(x => x.UserId == u.Id && x.Name == "Station Manager"))
+                    .Select(u => u.Id)
+                    .ToListAsync(ct);
+                if (record.WeighedByUserId != Guid.Empty) recipients.Add(record.WeighedByUserId);
+
+                if (recipients.Count == 0)
+                {
+                    _logger.LogWarning("[StaleWeighingNotificationJob] Nobody to alert about auto record {Id}", record.Id);
+                    continue;
+                }
+
+                foreach (var userId in recipients.Distinct())
+                {
+                    await notificationService.SendInternalNotificationAsync(
+                        userId,
+                        "Overloaded Vehicle Awaiting Final Capture",
+                        $"Vehicle {record.VehicleRegNumber} was auto-weighed {record.OverloadKg} kg over but has no final capture, so no case has been created.",
+                        "warning",
+                        $"/weighing/transactions/{record.Id}",
+                        ct);
+                }
+
+                record.StaleAlertSentAt = DateTime.UtcNow;
+                await db.SaveChangesAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[StaleWeighingNotificationJob] Failed to alert about auto record {Id}", record.Id);
+            }
+        }
     }
 }

@@ -283,7 +283,8 @@ public class TransporterPortalService : ITransporterPortalService
                 LastTareWeighedAt = v.LastTareWeighedAt,
                 TotalWeighings = _dbContext.WeighingTransactions
                     .IgnoreQueryFilters()
-                    .Count(w => w.VehicleId == v.Id && w.TransporterId == transporter.Id),
+                    .Count(w => w.VehicleId == v.Id && w.TransporterId == transporter.Id &&
+                                w.WeighingMode == "commercial" && w.CaptureStatus == "captured" && w.DeletedAt == null),
                 LastWeighedAt = _dbContext.WeighingTransactions
                     .IgnoreQueryFilters()
                     .Where(w => w.VehicleId == v.Id && w.TransporterId == transporter.Id)
@@ -371,7 +372,8 @@ public class TransporterPortalService : ITransporterPortalService
                 LicenseExpiryDate = d.LicenseExpiryDate,
                 TotalTrips = _dbContext.WeighingTransactions
                     .IgnoreQueryFilters()
-                    .Count(w => w.DriverId == d.Id && w.TransporterId == transporter.Id)
+                    .Count(w => w.DriverId == d.Id && w.TransporterId == transporter.Id &&
+                                w.WeighingMode == "commercial" && w.CaptureStatus == "captured" && w.DeletedAt == null)
             })
             .ToListAsync();
 

@@ -680,6 +680,21 @@ public class SystemConfigurationSeeder
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             },
+            new ApplicationSettings
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = SettingKeys.WeighingAutoRecordAlertMinutes,
+                SettingValue = "60",
+                SettingType = "Integer",
+                Category = SettingKeys.CategoryWeighing,
+                DisplayName = "Unfinished Auto Record Alert (minutes)",
+                Description = "Minutes an overloaded auto-weigh record can wait for its final capture before the operator and station managers are alerted. No case is created until the final capture.",
+                DefaultValue = "60",
+                IsEditable = true,
+                SortOrder = 5,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
 
             // Financial Settings
             new ApplicationSettings

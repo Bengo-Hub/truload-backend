@@ -54,6 +54,17 @@ public static class WeighingQueryHelpers
     };
 
     /// <summary>
+    /// The EAT calendar date of a UTC instant, which is what <c>mv_daily_weighing_stats.weighing_date</c>
+    /// holds. Taking <c>.Date</c> of a UTC instant instead gives the previous day for the first
+    /// 3 EAT hours, and the start of every range from <see cref="ResolveEatDayRange"/> is one of those.
+    /// </summary>
+    public static DateTime ToEatDate(DateTime utc) => utc.Add(EatOffset).Date;
+
+    /// <summary>The UTC instant at which the current EAT calendar day started.</summary>
+    public static DateTime CurrentEatDayStartUtc() =>
+        DateTime.SpecifyKind(ToEatDate(DateTime.UtcNow), DateTimeKind.Utc) - EatOffset;
+
+    /// <summary>
     /// Resolves a `[fromUtc, toUtcExclusive)` instant range from date-only (or full) inputs,
     /// treating them as Nairobi-local (EAT) calendar days - "12 Aug" means the real EAT day, not a
     /// UTC day wearing an EAT label. Previously every call site did

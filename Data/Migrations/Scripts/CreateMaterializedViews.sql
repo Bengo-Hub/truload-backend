@@ -37,6 +37,7 @@ SELECT
     -- was a confirmed dashboard-stats bug (2026-08-12 audit) - these two columns let the controller
     -- report the true Legal/Warning/Overloaded breakdown from the MV instead of deriving
     -- warning_count by subtraction (which silently collapsed to ~0).
+    COUNT(*) FILTER (WHERE wt.control_status = 'Compliant') AS legal_count,
     COUNT(*) FILTER (WHERE wt.control_status = 'Warning') AS warning_count,
     COUNT(*) FILTER (WHERE wt.control_status = 'Overloaded') AS overloaded_count,
     COUNT(*) FILTER (WHERE wt."IsSentToYard" = TRUE) AS sent_to_yard_count,
@@ -44,10 +45,14 @@ SELECT
     AVG(wt.overload_kg) FILTER (WHERE wt.overload_kg > 0) AS avg_overload,
     MAX(wt.overload_kg) AS max_overload,
     SUM(wt.total_fee_usd) AS total_fees_collected,
+    SUM(wt."TotalFeeKes") AS total_fees_kes,
     COUNT(DISTINCT wt.vehicle_id) AS unique_vehicles,
     COUNT(DISTINCT wt.transporter_id) AS unique_transporters
 FROM weighing_transactions wt
 INNER JOIN stations s ON s."Id" = wt.station_id
+-- Finished weighings only, matching the reports. auto, not_weighed, pending and voided records
+-- and deleted records are not weighings the dashboard should count.
+WHERE wt."DeletedAt" IS NULL AND wt."CaptureStatus" = 'captured'
 GROUP BY wt.organization_id, wt.station_id, s.name, DATE(wt.weighed_at + INTERVAL '3 hours');
 
 -- Create indexes for fast lookups

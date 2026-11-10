@@ -135,6 +135,9 @@ public static class SettingKeys
     /// within-tolerance overloads and auto-issue a special release).</summary>
     public const string WeighingCaseCaptureMode = "weighing.case_capture_mode";
     public const string CommercialPendingWeighingThresholdHours = "commercial.pending_weighing_threshold_hours";
+    /// <summary>Minutes an overloaded auto record can wait for its final capture before the station is
+    /// alerted. Enforcement actions wait for that capture, so nothing else flags the vehicle.</summary>
+    public const string WeighingAutoRecordAlertMinutes = "weighing.auto_record_alert_minutes";
     /// <summary>Minutes since a vehicle's last weight capture within which a returning plate is
     /// auto-matched to its open transaction for a 2nd weight/reweigh, instead of prompting for a
     /// manual override. Deliberately separate from CommercialPendingWeighingThresholdHours, which
