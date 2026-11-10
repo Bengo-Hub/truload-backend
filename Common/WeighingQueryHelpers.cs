@@ -30,9 +30,16 @@ public static class WeighingQueryHelpers
     /// endpoints instead group via a SQL-translatable <c>.AddHours(3).Date</c> LINQ GroupBy, which
     /// can't express week/month buckets safely, hence this separate in-memory helper.
     /// </summary>
-    public static DateTime BucketEatStart(DateTime weighedAtUtc, TonnageTrendGranularity granularity)
+    public static DateTime BucketEatStart(DateTime weighedAtUtc, TonnageTrendGranularity granularity) =>
+        BucketFromEatLocal(weighedAtUtc.Add(EatOffset), granularity);
+
+    /// <summary>
+    /// The bucket start for an instant that is already EAT-local (for example an hourly or daily
+    /// key that SQL grouped on <c>WeighedAt + 3 h</c>). One rule for both paths, so pre-grouped
+    /// SQL sums fold into exactly the same buckets as row-by-row bucketing.
+    /// </summary>
+    public static DateTime BucketFromEatLocal(DateTime eatLocal, TonnageTrendGranularity granularity)
     {
-        var eatLocal = weighedAtUtc.Add(EatOffset);
         return granularity switch
         {
             TonnageTrendGranularity.Hour => new DateTime(eatLocal.Year, eatLocal.Month, eatLocal.Day, eatLocal.Hour, 0, 0, DateTimeKind.Unspecified),
@@ -42,6 +49,20 @@ public static class WeighingQueryHelpers
             _ => eatLocal.Date,
         };
     }
+
+    /// <summary>
+    /// Net weight and count per EAT hour (when <paramref name="byHour"/>) or per EAT day, summed in
+    /// SQL. The tonnage trend folds these partial sums into its buckets with
+    /// <see cref="BucketFromEatLocal"/>, so at most 24 rows per day reach memory.
+    /// </summary>
+    public static IQueryable<TonnagePartial> TonnagePartials(IQueryable<WeighingTransaction> query, bool byHour) =>
+        byHour
+            ? query
+                .GroupBy(wt => new { Day = wt.WeighedAt.AddHours(3).Date, Hour = wt.WeighedAt.AddHours(3).Hour })
+                .Select(g => new TonnagePartial(g.Key.Day, g.Key.Hour, g.Sum(wt => (long)(wt.NetWeightKg ?? 0)), g.Count()))
+            : query
+                .GroupBy(wt => wt.WeighedAt.AddHours(3).Date)
+                .Select(g => new TonnagePartial(g.Key, 0, g.Sum(wt => (long)(wt.NetWeightKg ?? 0)), g.Count()));
 
     /// <summary>Display label for a <see cref="BucketEatStart"/> result, per granularity.</summary>
     public static string FormatBucketLabel(DateTime bucketStart, TonnageTrendGranularity granularity) => granularity switch
@@ -228,6 +249,13 @@ public static class WeighingQueryHelpers
 /// need raised by commercial (quarry/waste-treatment) tenants who bill their own downstream client
 /// off periodic tonnage rollups.
 /// </summary>
+/// <summary>One SQL-summed slice of the tonnage trend: an EAT day (and hour, for hourly trends).</summary>
+public sealed record TonnagePartial(DateTime EatDay, int EatHour, long NetWeightKg, int Count)
+{
+    /// <summary>The EAT-local start of this slice.</summary>
+    public DateTime EatLocal => EatDay.AddHours(EatHour);
+}
+
 public enum TonnageTrendGranularity
 {
     Hour,

@@ -898,15 +898,13 @@ public class WeighingController : ControllerBase
                 overloadedCount = await q.CountAsync(wt => wt.ControlStatus == "Overloaded", ct);
                 warningCount = await q.CountAsync(wt => wt.ControlStatus == "Warning", ct);
                 complianceRate = totalWeighings > 0 ? Math.Round((decimal)legalCount / totalWeighings * 100, 1) : 0;
-                var directRows = await q.Select(wt => new { wt.TotalFeeKes, wt.TotalFeeUsd, wt.OverloadKg, wt.NetWeightKg }).ToListAsync(ct);
-                totalFeesKes = directRows.Sum(r => r.TotalFeeKes);
-                totalFeesUsd = directRows.Sum(r => r.TotalFeeUsd);
-                totalNetWeightKg = directRows.Sum(r => (long)(r.NetWeightKg ?? 0));
+                // Sums and the average run in SQL (they used to load every matching row to sum in memory).
+                totalFeesKes = await q.SumAsync(wt => (decimal?)wt.TotalFeeKes, ct) ?? 0;
+                totalFeesUsd = await q.SumAsync(wt => (decimal?)wt.TotalFeeUsd, ct) ?? 0;
+                totalNetWeightKg = await q.SumAsync(wt => (long?)(wt.NetWeightKg ?? 0), ct) ?? 0;
                 uniqueTransporters = await q.Where(wt => wt.TransporterId != null).Select(wt => wt.TransporterId).Distinct().CountAsync(ct);
-                var overloadedRows = directRows.Where(r => r.OverloadKg > 0).ToList();
-                avgOverloadKg = overloadedRows.Any()
-                    ? Math.Round((decimal)overloadedRows.Average(r => (double)r.OverloadKg), 0)
-                    : 0;
+                var avgOverload = await q.Where(wt => wt.OverloadKg > 0).AverageAsync(wt => (double?)wt.OverloadKg, ct);
+                avgOverloadKg = avgOverload.HasValue ? Math.Round((decimal)avgOverload.Value, 0) : 0;
             }
             else
             {
@@ -1125,23 +1123,28 @@ public class WeighingController : ControllerBase
             var effectiveStationId = (stationId == null && isHqOrAdmin) ? null : (stationId ?? _tenantContext.StationId);
             var (from, toExclusive) = WeighingQueryHelpers.ResolveEatDayRange(dateFrom, dateTo);
 
-            var rows = await _context.WeighingTransactions
+            var baseQuery = _context.WeighingTransactions
                 .AsNoTracking()
                 .Where(wt => wt.WeighedAt >= from && wt.WeighedAt < toExclusive && wt.DeletedAt == null && wt.CaptureStatus == "captured")
                 .Where(wt => !effectiveStationId.HasValue || wt.StationId == effectiveStationId)
-                .Where(wt => !transporterId.HasValue || wt.TransporterId == transporterId)
-                .Select(wt => new { wt.WeighedAt, wt.NetWeightKg })
+                .Where(wt => !transporterId.HasValue || wt.TransporterId == transporterId);
+
+            // SQL sums per EAT hour (hourly trend) or EAT day (the rest), so at most 24 rows a day
+            // reach memory instead of every weighing. Week and month buckets are then folded from
+            // these partial sums with the same rule as before (BucketFromEatLocal).
+            var partials = await WeighingQueryHelpers
+                .TonnagePartials(baseQuery, byHour: granularity == TonnageTrendGranularity.Hour)
                 .ToListAsync(ct);
 
-            var trend = rows
-                .GroupBy(r => WeighingQueryHelpers.BucketEatStart(r.WeighedAt, granularity))
+            var trend = partials
+                .GroupBy(p => WeighingQueryHelpers.BucketFromEatLocal(p.EatLocal, granularity))
                 .OrderBy(g => g.Key)
                 .Select(g => new TonnageTrendDto
                 {
                     Name = WeighingQueryHelpers.FormatBucketLabel(g.Key, granularity),
                     PeriodStart = g.Key,
-                    TotalNetWeightKg = g.Sum(r => r.NetWeightKg ?? 0),
-                    TransactionCount = g.Count(),
+                    TotalNetWeightKg = g.Sum(p => p.NetWeightKg),
+                    TransactionCount = g.Sum(p => p.Count),
                 })
                 .ToList();
 
