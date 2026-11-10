@@ -33,6 +33,9 @@ public class TransporterController : ControllerBase
     private readonly ILogger<TransporterController> _logger;
     private static readonly Random _rnd = new();
 
+    /// <summary>Longest transporter creation waits on treasury to link the CRM contact.</summary>
+    public TimeSpan CrmLinkTimeout { get; set; } = TimeSpan.FromSeconds(4);
+
     public TransporterController(
         ITransporterRepository repository,
         INotificationService notificationService,
@@ -73,6 +76,48 @@ public class TransporterController : ControllerBase
         }
 
         return $"{slug}-{Guid.NewGuid().ToString("N")[..8]}";
+    }
+
+    /// <summary>
+    /// Asks treasury to file this transporter in the CRM and returns the CRM customer id, or null
+    /// when the tenant does not bill through treasury, the transporter has no email or phone, or
+    /// treasury cannot be reached. Never throws.
+    /// </summary>
+    private async Task<Guid?> TryResolveCrmContactIdAsync(Transporter transporter)
+    {
+        var email = string.IsNullOrWhiteSpace(transporter.Email) ? null : transporter.Email.Trim();
+        var phone = string.IsNullOrWhiteSpace(transporter.Phone) ? null : transporter.Phone.Trim();
+        if (email == null && phone == null)
+            return null;
+
+        try
+        {
+            var org = await _dbContext.Organizations
+                .AsNoTracking()
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(o => o.Id == _tenantContext.OrganizationId);
+            if (org == null || org.PaymentGateway != "treasury" || string.IsNullOrWhiteSpace(org.SsoTenantSlug))
+                return null;
+
+            // Bound the wait so a slow treasury cannot hold transporter creation.
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(
+                HttpContext?.RequestAborted ?? CancellationToken.None);
+            cts.CancelAfter(CrmLinkTimeout);
+
+            var customer = await _treasuryService.ResolveCustomerAsync(
+                org.SsoTenantSlug, transporter.Name.Trim(), email, phone, cts.Token);
+            return Guid.TryParse(customer.CrmCustomerId, out var crmId) ? crmId : null;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("CRM link for transporter {Code} timed out or was cancelled; the first invoice will link it", transporter.Code);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not link transporter {Code} to the CRM at creation; the first invoice will link it", transporter.Code);
+            return null;
+        }
     }
 
     /// <summary>
@@ -178,6 +223,11 @@ public class TransporterController : ControllerBase
             if (existing != null)
                 return Conflict(new { Message = $"Transporter with code {transporter.Code} already exists" });
         }
+
+        // File the transporter in the platform CRM now so it carries a CrmContactId from the start.
+        // Best effort: any failure leaves the id null and the first invoice backfills it.
+        if (transporter.CrmContactId == null)
+            transporter.CrmContactId = await TryResolveCrmContactIdAsync(transporter);
 
         try
         {

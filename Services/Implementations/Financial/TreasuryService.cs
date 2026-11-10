@@ -234,6 +234,50 @@ public class TreasuryService : ITreasuryService
         }
     }
 
+    public async Task<TreasuryCustomerResult> ResolveCustomerAsync(
+        string tenantSlug,
+        string name,
+        string? email,
+        string? phone,
+        CancellationToken ct = default)
+    {
+        var (apiKey, baseUrl) = await ResolveConfigAsync(ct);
+
+        var body = new
+        {
+            customer_name = name,
+            email,
+            phone
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Post,
+            $"{baseUrl}/api/v1/s2s/{tenantSlug}/ar/customers/sync-crm")
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(body, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull }),
+                Encoding.UTF8,
+                "application/json")
+        };
+        request.Headers.Add("X-API-Key", apiKey);
+
+        var response = await _httpClient.SendAsync(request, ct);
+        var json = await response.Content.ReadAsStringAsync(ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            // Keep the body short: CRM messages can echo the email or phone back.
+            var shortBody = json.Length > 200 ? json[..200] + "..." : json;
+            _logger.LogError("Treasury ResolveCustomer failed ({Status}): {Body}", response.StatusCode, shortBody);
+            throw new HttpRequestException($"Treasury API error {response.StatusCode}: {shortBody}");
+        }
+
+        var result = JsonSerializer.Deserialize<TreasuryCustomerResponse>(json, _jsonOptions);
+        if (result == null || string.IsNullOrWhiteSpace(result.CrmCustomerId))
+            throw new InvalidOperationException("Treasury returned no crm_customer_id");
+
+        return new TreasuryCustomerResult(result.CrmCustomerId);
+    }
+
     public async Task<CustomerStatement> GetCustomerStatementAsync(
         string tenantSlug,
         Guid crmContactId,
@@ -355,6 +399,12 @@ public class TreasuryService : ITreasuryService
         [JsonPropertyName("invoice_number")]
         public string InvoiceNumber { get; set; } = string.Empty;
 
+        [JsonPropertyName("crm_customer_id")]
+        public string? CrmCustomerId { get; set; }
+    }
+
+    private sealed class TreasuryCustomerResponse
+    {
         [JsonPropertyName("crm_customer_id")]
         public string? CrmCustomerId { get; set; }
     }
