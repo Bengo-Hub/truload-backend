@@ -312,3 +312,25 @@ CREATE INDEX idx_payment_callbacks_payment_ref ON payment_callbacks(payment_refe
 - [ ] Code review approved
 - [ ] Deployed to staging
 - [ ] Production deployment
+
+---
+
+## Update 2026-11-10: unfinished auto records and dashboard figures
+
+**Unfinished overloaded auto records (StaleWeighingNotificationJob)**
+- Enforcement waits for a final capture, so an overloaded auto record that never gets one would never become a case.
+- The job, which runs every 30 minutes, now alerts the operator and the station's managers once about each such record. It fires after `weighing.auto_record_alert_minutes` (default 60; seeded in SeedingVersion 34) and looks back up to 7 days.
+- Each record is marked through `StaleAlertSentAt`, so no new column is needed.
+- The tickets filter has a matching "Awaiting Final Capture" state.
+- Auto records match their final capture within a rolling 12 hour window rather than the UTC day. A final capture just after 03:00 EAT now finds the auto record from before it.
+
+**Dashboard figures** (commit 418a745)
+- Statistics, trends, tonnage and type figures count finished (`captured`), non-deleted weighings only, like the reports.
+- Day bounds use EAT dates. "Today" no longer includes yesterday, and weighings from 00:00 to 03:00 EAT no longer drop out.
+- `mv_daily_weighing_stats` (migration `FixDailyStatsCapturedAndKesFees`):
+  - counts finished weighings only;
+  - adds `legal_count` (ControlStatus Compliant) and `total_fees_kes`;
+  - no longer has its USD total added to KES fees.
+- The portal's vehicle weighing and driver trip totals count finished commercial records only.
+
+**Build hygiene** (commit 05f2c18): the backend builds with 0 warnings, and 264 tests pass.
