@@ -117,7 +117,7 @@ public class VersionService : IVersionService
             : trimmed;
     }
 
-    private string GetAssemblyVersion()
+    private string? GetAssemblyVersion()
     {
         try
         {
@@ -138,7 +138,7 @@ public class VersionService : IVersionService
         return null;
     }
 
-    private string GetGitTagVersion()
+    private string? GetGitTagVersion()
     {
         try
         {

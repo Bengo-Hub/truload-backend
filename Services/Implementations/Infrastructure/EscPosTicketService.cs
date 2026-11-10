@@ -29,7 +29,7 @@ public class EscPosTicketService : IEscPosTicketService
         {
             organizationName = await _context.Stations
                 .Where(s => s.Id == stationId)
-                .Select(s => s.Organization.Name)
+                .Select(s => s.Organization!.Name)
                 .FirstOrDefaultAsync();
         }
 

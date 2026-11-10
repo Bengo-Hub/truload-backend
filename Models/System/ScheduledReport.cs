@@ -55,7 +55,7 @@ public class ScheduledReport : BaseEntity
     [MaxLength(500)]
     public string? LastRunError { get; set; }
 
-    public bool IsActive { get; set; } = true;
+    public new bool IsActive { get; set; } = true;
 
     [NotMapped]
     public List<string> Recipients

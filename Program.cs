@@ -727,7 +727,12 @@ async Task SeedDatabaseAsync(string migCs, string dbLabel)
     .AddEntityFrameworkStores<TruLoadDbContext>()
     .AddDefaultTokenProviders();
 
+    // ASP0000 warns about building a second copy of the APP's singletons. This is a separate,
+    // purpose-built ServiceCollection for the seeder (see the comment above), disposed right
+    // after seeding, so no app singleton is duplicated.
+#pragma warning disable ASP0000
     await using var sp = services.BuildServiceProvider();
+#pragma warning restore ASP0000
     using var scope = sp.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<TruLoadDbContext>();
 

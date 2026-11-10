@@ -24,7 +24,7 @@ public class HardwareHealthLog : TenantAwareEntity
 
     [Required]
     [Column("station_id")]
-    public Guid StationId { get; set; }
+    public new Guid StationId { get; set; } // required here, unlike TenantAwareEntity's optional StationId
 
     [Column("ip_address")]
     [StringLength(45)] // IPv6 max length
@@ -62,7 +62,7 @@ public class HardwareHealthLog : TenantAwareEntity
 
     // Navigation property
     [ForeignKey("StationId")]
-    public virtual Station? Station { get; set; }
+    public new virtual Station? Station { get; set; }
 }
 
 /// <summary>
@@ -84,7 +84,7 @@ public class WeighbridgeHardware : TenantAwareEntity
 
     [Required]
     [Column("station_id")]
-    public Guid StationId { get; set; }
+    public new Guid StationId { get; set; } // required here, unlike TenantAwareEntity's optional StationId
 
     [Column("ip_address")]
     [StringLength(45)]
@@ -127,5 +127,5 @@ public class WeighbridgeHardware : TenantAwareEntity
 
     // Navigation property
     [ForeignKey("StationId")]
-    public virtual Station? Station { get; set; }
+    public new virtual Station? Station { get; set; }
 }

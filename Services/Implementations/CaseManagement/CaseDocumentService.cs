@@ -259,7 +259,7 @@ public class CaseDocumentService : ICaseDocumentService
             {
                 Id = subfile.Id,
                 DocumentType = "Subfile",
-                DisplayName = subfile.SubfileName,
+                DisplayName = subfile.SubfileName ?? string.Empty,
                 DownloadUrl = subfile.FileUrl ?? string.Empty,
                 CreatedAt = subfile.CreatedAt
             });

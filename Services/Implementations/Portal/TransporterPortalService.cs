@@ -861,9 +861,10 @@ public class TransporterPortalService : ITransporterPortalService
             .CountAsync(v => v.TransporterId == transporter.Id && v.IsActive, cancellationToken);
 
         int rowIndex = 1;
-        while (!reader.EndOfStream)
+        // ReadLineAsync returns null at the end of the stream; EndOfStream would block synchronously.
+        string? line;
+        while ((line = await reader.ReadLineAsync(cancellationToken)) != null)
         {
-            var line = await reader.ReadLineAsync(cancellationToken);
             rowIndex++;
 
             if (string.IsNullOrWhiteSpace(line)) continue;

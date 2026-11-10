@@ -11,9 +11,11 @@ public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
     public bool Authorize(DashboardContext context)
     {
         var httpContext = context.GetHttpContext();
+        // No HTTP context means no user to check: deny rather than dereference null.
+        if (httpContext == null) return false;
 
         // If unauthenticated: redirect to app login page instead of returning 401
-        var identity = httpContext?.User?.Identity;
+        var identity = httpContext.User?.Identity;
         if (identity == null || !identity.IsAuthenticated)
         {
             var returnUrl = httpContext.Request?.Path + httpContext.Request?.QueryString;

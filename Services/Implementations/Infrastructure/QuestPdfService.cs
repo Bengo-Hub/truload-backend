@@ -40,7 +40,7 @@ public class QuestPdfService : IPdfService
             var org = await _context.Stations
                 .Where(s => s.Id == transaction.StationId)
                 .Select(s => new {
-                    s.Organization.Name,
+                    s.Organization!.Name,
                     s.Organization.TenantType,
                     s.Organization.LogoUrl,
                     s.Organization.PrimaryColor,
@@ -107,7 +107,7 @@ public class QuestPdfService : IPdfService
             var orgInfo = await _context.Stations
                 .Where(s => s.Id == stationId)
                 .Select(s => new {
-                    s.Organization.Name,
+                    s.Organization!.Name,
                     s.Organization.LogoUrl,
                     s.Organization.PrimaryColor,
                     s.Organization.SecondaryColor
@@ -194,7 +194,7 @@ public class QuestPdfService : IPdfService
                 orgLogoFile = await ResolveOrgLogoFromStationAsync(reweighing.StationId.Value);
                 certOrgName = await _context.Stations
                     .Where(s => s.Id == reweighing.StationId.Value)
-                    .Select(s => s.Organization.Name)
+                    .Select(s => s.Organization!.Name)
                     .FirstOrDefaultAsync();
             }
 
@@ -229,7 +229,7 @@ public class QuestPdfService : IPdfService
                 var org = await _context.Stations
                     .Where(s => s.Id == stationId.Value)
                     .Select(s => new {
-                        s.Organization.Name,
+                        s.Organization!.Name,
                         s.Organization.LogoUrl,
                         s.Organization.StreetAddress,
                         s.Organization.PoBox,
@@ -426,7 +426,7 @@ public class QuestPdfService : IPdfService
                 .Where(s => s.Id == stationId.Value)
                 .Select(s => new
                 {
-                    s.Organization.Name,
+                    s.Organization!.Name,
                     s.Organization.LogoUrl,
                     s.Organization.StreetAddress,
                     s.Organization.PoBox,
@@ -513,7 +513,7 @@ public class QuestPdfService : IPdfService
                 .Where(s => s.Id == stationId.Value)
                 .Select(s => new
                 {
-                    s.Organization.Name,
+                    s.Organization!.Name,
                     s.Organization.LogoUrl,
                     s.Organization.StreetAddress,
                     s.Organization.PoBox,
@@ -563,7 +563,7 @@ public class QuestPdfService : IPdfService
 
         var logoUrl = await _context.Stations
             .Where(s => s.Id == stationId)
-            .Select(s => s.Organization.LogoUrl)
+            .Select(s => s.Organization!.LogoUrl)
             .FirstOrDefaultAsync();
 
         return !string.IsNullOrEmpty(logoUrl) ? Path.GetFileName(logoUrl) : null;

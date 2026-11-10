@@ -12,7 +12,7 @@ namespace TruLoad.Backend.Models.Notifications;
 public class UserNotification : TenantAwareEntity
 {
     [Key]
-    public Guid Id { get; set; }
+    public new Guid Id { get; set; }
 
     [Required]
     public Guid UserId { get; set; }

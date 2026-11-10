@@ -89,7 +89,8 @@ public class RoadsRepository : IRoadsRepository
     {
         return await _context.RoadCounties
             .Where(rc => rc.CountyId == countyId)
-            .Select(rc => rc.Road)
+            // Translated to a SQL join, so the nullable navigation is never dereferenced in memory.
+            .Select(rc => rc.Road!)
             .Where(r => r.IsActive && r.DeletedAt == null)
             .OrderBy(r => r.Name)
             .Distinct()
