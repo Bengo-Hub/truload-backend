@@ -1455,6 +1455,9 @@ public class CommercialWeighingService : ICommercialWeighingService
                         ReferenceType: "weighing",
                         DueDate: dueDate,
                         CustomerId: transporter?.CrmContactId?.ToString(),
+                        // The CRM contact TruLoad already knows: treasury links the invoice to it
+                        // directly instead of looking the contact up again (owner 2026-11-14).
+                        CrmCustomerId: transporter?.CrmContactId?.ToString(),
                         CustomerName: transporter?.Name,
                         CustomerEmail: transporter?.Email,
                         CustomerPhone: transporter?.Phone));

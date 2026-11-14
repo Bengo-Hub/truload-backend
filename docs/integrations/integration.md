@@ -610,13 +610,16 @@ No bound switching
 
 ---
 
-## Customer Identity (MarketFlow CRM via Treasury)
+## Customer Identity (MarketFlow CRM)
 
-MarketFlow owns customer identity. TruLoad never calls the CRM directly. When a transporter is created, `TransporterController` calls `TreasuryService.ResolveCustomerAsync(tenantSlug, name, email, phone)`, which posts to treasury-api `POST /api/v1/s2s/{tenantSlug}/ar/customers/sync-crm` with the S2S key. Treasury finds or creates the CRM contact and the AR customer and returns the id, which TruLoad keeps on the transporter.
+MarketFlow owns customer identity, and TruLoad files customers with it directly. When a transporter is created for a tenant that bills through treasury, `TransporterController` calls `CrmService.ResolveCustomerAsync(tenantSlug, name, email, phone)`. It looks up the auth-api tenant UUID for the slug (`GET {Auth:BaseUrl}/api/v1/tenants/by-slug/{slug}`, cached for an hour), then posts to marketflow-api `POST {MARKETFLOW_API_URL}/api/v1/internal/contacts/upsert` with `X-API-Key: INTERNAL_SERVICE_KEY` and `{tenant_id, phone, email, first_name, last_name}`. MarketFlow finds the contact by email, then phone, or creates it, and returns its id, which TruLoad keeps on the transporter as `CrmContactId`.
 
-- The call gives up after 4 seconds. Creating a transporter never waits on treasury, and a failure leaves the id empty.
-- The invoice backfill fills a missing id later.
-- A refusal from the CRM (400 or 422) is returned to the user as treasury's message, shortened so it does not echo the email or phone.
+- The name is split into first word and the rest, the same way treasury splits it.
+- `MARKETFLOW_API_URL` defaults to `http://marketflow-api.marketflow.svc.cluster.local:4000`.
+- The call gives up after 4 seconds. Creating a transporter never waits on the CRM, and a failure leaves the id empty.
+- The invoice backfill fills a missing id later: treasury links each new invoice to its CRM contact when it is created, and TruLoad copies that id onto the transporter.
+- Failures are logged with the HTTP status and MarketFlow's error code only, never the response message, so the email or phone is not echoed into logs.
+- Treasury's own `sync-crm` endpoint is no longer used by TruLoad. Its back-link of the contact id onto older treasury invoices and quotations is not needed here, since TruLoad's invoices are linked when treasury creates them.
 
 ---
 

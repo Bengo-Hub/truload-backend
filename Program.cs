@@ -518,6 +518,10 @@ builder.Services.AddHttpClient<IECitizenService, ECitizenService>(c =>
 builder.Services.AddHttpClient<ITreasuryService, TreasuryService>(c =>
     c.Timeout = TimeSpan.FromSeconds(30));
 
+// MarketFlow CRM integration: files transporters as CRM contacts (commercial tenants)
+builder.Services.AddHttpClient<ICrmService, CrmService>(c =>
+    c.Timeout = TimeSpan.FromSeconds(15));
+
 // Subscriptions-api integration (commercial tenants)
 builder.Services.AddHttpClient<ISubscriptionService, SubscriptionService>(c =>
     c.Timeout = TimeSpan.FromSeconds(15));

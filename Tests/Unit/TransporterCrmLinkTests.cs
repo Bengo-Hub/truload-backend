@@ -11,20 +11,21 @@ using TruLoad.Backend.Models;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
 using TruLoad.Backend.Services.Interfaces.Financial;
+using TruLoad.Backend.Services.Interfaces.Integration;
 using TruLoad.Backend.Services.Interfaces.Shared;
 using Xunit;
 
 namespace Truload.Backend.Tests.Unit;
 
 /// <summary>
-/// A new transporter is filed in the CRM through treasury when it is created, and creation
-/// never depends on treasury being reachable.
+/// A new transporter is filed in the MarketFlow CRM when it is created, and creation never
+/// depends on the CRM being reachable.
 /// </summary>
 public class TransporterCrmLinkTests
 {
     private const string TenantSlug = "acme-weigh";
 
-    private static (TransporterController controller, Mock<ITreasuryService> treasury, Mock<ITransporterRepository> repo)
+    private static (TransporterController controller, Mock<ICrmService> crm, Mock<ITransporterRepository> repo)
         Build(string paymentGateway = "treasury", string? slug = TenantSlug)
     {
         var orgId = Guid.NewGuid();
@@ -48,18 +49,19 @@ public class TransporterCrmLinkTests
         repo.Setup(r => r.CreateAsync(It.IsAny<Transporter>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Transporter t, CancellationToken _) => t);
 
-        var treasury = new Mock<ITreasuryService>();
+        var crm = new Mock<ICrmService>();
         var tenant = Mock.Of<ITenantContext>(t => t.OrganizationId == orgId);
 
         var controller = new TransporterController(
             repo.Object,
             Mock.Of<INotificationService>(),
-            treasury.Object,
+            Mock.Of<ITreasuryService>(),
+            crm.Object,
             db,
             tenant,
             new ConfigurationBuilder().Build(),
             NullLogger<TransporterController>.Instance);
-        return (controller, treasury, repo);
+        return (controller, crm, repo);
     }
 
     private static Transporter NewTransporter() => new()
@@ -71,13 +73,13 @@ public class TransporterCrmLinkTests
     };
 
     [Fact]
-    public async Task Create_SetsCrmContactIdFromTreasuryAnswer()
+    public async Task Create_SetsCrmContactIdFromCrmAnswer()
     {
-        var (controller, treasury, _) = Build();
+        var (controller, crm, _) = Build();
         var crmId = Guid.NewGuid();
-        treasury.Setup(t => t.ResolveCustomerAsync(
+        crm.Setup(c => c.ResolveCustomerAsync(
                 TenantSlug, "Kimani Haulage", "ops@kimani.example", "+254712345678", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new TreasuryCustomerResult(crmId.ToString()));
+            .ReturnsAsync(new CrmContactResult(crmId.ToString()));
 
         var result = await controller.Create(NewTransporter());
 
@@ -86,12 +88,12 @@ public class TransporterCrmLinkTests
     }
 
     [Fact]
-    public async Task Create_WhenTreasuryIsDown_StillCreatesWithNullCrmContactId()
+    public async Task Create_WhenCrmIsDown_StillCreatesWithNullCrmContactId()
     {
-        var (controller, treasury, repo) = Build();
-        treasury.Setup(t => t.ResolveCustomerAsync(
+        var (controller, crm, repo) = Build();
+        crm.Setup(c => c.ResolveCustomerAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new HttpRequestException("treasury unreachable"));
+            .ThrowsAsync(new HttpRequestException("marketflow unreachable"));
 
         var result = await controller.Create(NewTransporter());
 
@@ -101,9 +103,9 @@ public class TransporterCrmLinkTests
     }
 
     [Fact]
-    public async Task Create_WithNoEmailOrPhone_DoesNotCallTreasury()
+    public async Task Create_WithNoEmailOrPhone_DoesNotCallCrm()
     {
-        var (controller, treasury, _) = Build();
+        var (controller, crm, _) = Build();
         var transporter = NewTransporter();
         transporter.Email = null;
         transporter.Phone = "  ";
@@ -112,22 +114,22 @@ public class TransporterCrmLinkTests
 
         result.Should().BeOfType<CreatedAtActionResult>()
             .Which.Value.Should().BeOfType<Transporter>().Which.CrmContactId.Should().BeNull();
-        treasury.Verify(t => t.ResolveCustomerAsync(
+        crm.Verify(c => c.ResolveCustomerAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task Create_WhenTreasuryIsSlow_GivesUpAndCreates()
+    public async Task Create_WhenCrmIsSlow_GivesUpAndCreates()
     {
-        var (controller, treasury, _) = Build();
+        var (controller, crm, _) = Build();
         controller.CrmLinkTimeout = TimeSpan.FromMilliseconds(100);
-        treasury.Setup(t => t.ResolveCustomerAsync(
+        crm.Setup(c => c.ResolveCustomerAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .Returns(async (string _, string _, string? _, string? _, CancellationToken ct) =>
             {
                 await Task.Delay(TimeSpan.FromSeconds(30), ct);
-                return new TreasuryCustomerResult(Guid.NewGuid().ToString());
+                return new CrmContactResult(Guid.NewGuid().ToString());
             });
 
         var watch = System.Diagnostics.Stopwatch.StartNew();
@@ -140,14 +142,14 @@ public class TransporterCrmLinkTests
     }
 
     [Fact]
-    public async Task Create_ForNonTreasuryTenant_DoesNotCallTreasury()
+    public async Task Create_ForNonTreasuryTenant_DoesNotCallCrm()
     {
-        var (controller, treasury, _) = Build(paymentGateway: "ecitizen_pesaflow", slug: null);
+        var (controller, crm, _) = Build(paymentGateway: "ecitizen_pesaflow", slug: null);
 
         var result = await controller.Create(NewTransporter());
 
         result.Should().BeOfType<CreatedAtActionResult>();
-        treasury.Verify(t => t.ResolveCustomerAsync(
+        crm.Verify(c => c.ResolveCustomerAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }

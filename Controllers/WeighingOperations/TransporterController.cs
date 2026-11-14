@@ -10,6 +10,7 @@ using TruLoad.Backend.Middleware;
 using TruLoad.Backend.Models.Weighing;
 using TruLoad.Backend.Repositories.Weighing.Interfaces;
 using TruLoad.Backend.Services.Interfaces.Financial;
+using TruLoad.Backend.Services.Interfaces.Integration;
 using TruLoad.Backend.Services.Interfaces.Shared;
 
 namespace TruLoad.Backend.Controllers.WeighingOperations;
@@ -27,19 +28,21 @@ public class TransporterController : ControllerBase
     private readonly ITransporterRepository _repository;
     private readonly INotificationService _notificationService;
     private readonly ITreasuryService _treasuryService;
+    private readonly ICrmService _crmService;
     private readonly TruLoadDbContext _dbContext;
     private readonly ITenantContext _tenantContext;
     private readonly IConfiguration _configuration;
     private readonly ILogger<TransporterController> _logger;
     private static readonly Random _rnd = new();
 
-    /// <summary>Longest transporter creation waits on treasury to link the CRM contact.</summary>
+    /// <summary>Longest transporter creation waits on the CRM to link the contact.</summary>
     public TimeSpan CrmLinkTimeout { get; set; } = TimeSpan.FromSeconds(4);
 
     public TransporterController(
         ITransporterRepository repository,
         INotificationService notificationService,
         ITreasuryService treasuryService,
+        ICrmService crmService,
         TruLoadDbContext dbContext,
         ITenantContext tenantContext,
         IConfiguration configuration,
@@ -48,6 +51,7 @@ public class TransporterController : ControllerBase
         _repository = repository;
         _notificationService = notificationService;
         _treasuryService = treasuryService;
+        _crmService = crmService;
         _dbContext = dbContext;
         _tenantContext = tenantContext;
         _configuration = configuration;
@@ -79,9 +83,9 @@ public class TransporterController : ControllerBase
     }
 
     /// <summary>
-    /// Asks treasury to file this transporter in the CRM and returns the CRM customer id, or null
-    /// when the tenant does not bill through treasury, the transporter has no email or phone, or
-    /// treasury cannot be reached. Never throws.
+    /// Files this transporter in the MarketFlow CRM and returns the CRM contact id, or null when
+    /// the tenant does not bill through treasury, the transporter has no email or phone, or the
+    /// CRM cannot be reached. Never throws.
     /// </summary>
     private async Task<Guid?> TryResolveCrmContactIdAsync(Transporter transporter)
     {
@@ -99,14 +103,14 @@ public class TransporterController : ControllerBase
             if (org == null || org.PaymentGateway != "treasury" || string.IsNullOrWhiteSpace(org.SsoTenantSlug))
                 return null;
 
-            // Bound the wait so a slow treasury cannot hold transporter creation.
+            // Bound the wait so a slow CRM cannot hold transporter creation.
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(
                 HttpContext?.RequestAborted ?? CancellationToken.None);
             cts.CancelAfter(CrmLinkTimeout);
 
-            var customer = await _treasuryService.ResolveCustomerAsync(
+            var contact = await _crmService.ResolveCustomerAsync(
                 org.SsoTenantSlug, transporter.Name.Trim(), email, phone, cts.Token);
-            return Guid.TryParse(customer.CrmCustomerId, out var crmId) ? crmId : null;
+            return Guid.TryParse(contact.ContactId, out var crmId) ? crmId : null;
         }
         catch (OperationCanceledException)
         {

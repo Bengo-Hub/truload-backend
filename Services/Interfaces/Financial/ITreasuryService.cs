@@ -13,11 +13,6 @@ public record PaymentIntentResult(
 );
 
 /// <summary>
-/// The CRM customer treasury-api filed (or found) for a name plus email or phone.
-/// </summary>
-public record TreasuryCustomerResult(string CrmCustomerId);
-
-/// <summary>
 /// Result of creating a treasury-api Invoice.
 /// </summary>
 public record TreasuryInvoiceResult(
@@ -133,18 +128,6 @@ public interface ITreasuryService
         decimal amountKes,
         string method,
         string? reference = null,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Files a customer in the CRM through treasury-api (deduped by email or phone) and returns
-    /// the CRM customer id. Treasury needs the name plus at least one of email or phone. Throws
-    /// on any failure, so callers that can carry on without the link must catch.
-    /// </summary>
-    Task<TreasuryCustomerResult> ResolveCustomerAsync(
-        string tenantSlug,
-        string name,
-        string? email,
-        string? phone,
         CancellationToken ct = default);
 
     /// <summary>
