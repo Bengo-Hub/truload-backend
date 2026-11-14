@@ -5,6 +5,35 @@ All notable changes to TruLoad Backend will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0](https://github.com/Bengo-Hub/truload-backend/compare/v1.3.0...v1.4.0) (2026-11-14)
+
+
+### Features
+
+* **billing:** price tariff rules by cargo type, support a minimum charge floor ([6580096](https://github.com/Bengo-Hub/truload-backend/commit/658009609e52ae67dce777700c18e79c868ed56f))
+* **billing:** support billing a client distinct from the vehicle's transporter ([cfe4861](https://github.com/Bengo-Hub/truload-backend/commit/cfe48610d8e539dc7b7ccfeca65a9bfbf374689c))
+* **crm:** file transporters in the CRM directly; send crm_customer_id on invoices (S2-8 M-10) ([3e24c18](https://github.com/Bengo-Hub/truload-backend/commit/3e24c183c944a583a84c65258610249613fc1aa2))
+* **transporters:** link a new transporter to its CRM contact at creation ([9a5a464](https://github.com/Bengo-Hub/truload-backend/commit/9a5a4641339b43c803d7988c6742c16c5ead34a6))
+
+
+### Bug Fixes
+
+* **billing:** resolve GetBillingJsonAsync via SSO tenant slug, not user JWT ([d19a9a8](https://github.com/Bengo-Hub/truload-backend/commit/d19a9a8d22e48dfba79f3bc3bee5aba9ec55ccf0))
+* **deps:** pin System.Security.Cryptography.Pkcs 10.0.15 over the vulnerable transitive 9.0.0 ([acb9d8d](https://github.com/Bengo-Hub/truload-backend/commit/acb9d8dbb77bea8fe374d8355ef422d9400f3310))
+* **ratelimit:** partition every policy per user or client IP, apply auth limits ([db68107](https://github.com/Bengo-Hub/truload-backend/commit/db68107170a71883eec0328df6a3716d63634ff1))
+* **rbac:** bump SeedingVersion so the config.read grant actually applies ([0bd82f0](https://github.com/Bengo-Hub/truload-backend/commit/0bd82f0bdda2be783e5da0f8810d8a1f9849d366))
+* **rbac:** grant MIDDLEWARE_SERVICE role config.read for tolerance settings sync ([b84bdbe](https://github.com/Bengo-Hub/truload-backend/commit/b84bdbeef34b1561e7a2d948c5645663a7afe68a))
+* **seed:** self-heal SelectedLegalFramework on the CommercialWeighing demo orgs ([1079781](https://github.com/Bengo-Hub/truload-backend/commit/1079781b1aa426139859a2be632681bf9b9b3197))
+* **stats:** dashboard counts finished weighings on EAT days; alert unfinished overloaded auto records ([418a745](https://github.com/Bengo-Hub/truload-backend/commit/418a74572523bb62274735fd1b126376d0a51459))
+* **subscription:** flag CODEVERTEX-DEMO and sibling demo orgs IsDemo=true ([ff2694b](https://github.com/Bengo-Hub/truload-backend/commit/ff2694b721957e9249aef3c2c129b8d0457fdbc4))
+* **weighing:** hold enforcement actions until final capture ([8cff5cc](https://github.com/Bengo-Hub/truload-backend/commit/8cff5cc2df4e3cff1d94e651d39add5c2020d892))
+* **weighing:** keep a preliminary autoweigh as auto until the final capture ([cc55e38](https://github.com/Bengo-Hub/truload-backend/commit/cc55e38517bf959b4ed33ca4da810b2c633acc7e))
+
+
+### Performance Improvements
+
+* **stats:** dashboard direct mode and tonnage trend sum in SQL (finding 10) ([802be1a](https://github.com/Bengo-Hub/truload-backend/commit/802be1ab960061d5f845d6ae1c0172080cab2a7c))
+
 ## [1.3.0](https://github.com/Bengo-Hub/truload-backend/compare/v1.2.0...v1.3.0) (2026-07-26)
 
 
