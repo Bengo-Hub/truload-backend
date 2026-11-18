@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.System;
@@ -9,9 +10,22 @@ namespace TruLoad.Backend.Services.Implementations.System;
 
 /// <summary>
 /// Implementation of IBackupService using pg_dump/pg_restore for PostgreSQL.
+///
+/// Where backups live:
+/// - With a backup destination (an administrator-configured remote, or by default the platform's
+///   private R2 bucket from OBJECT_STORAGE_*), the destination is the only durable copy.
+///   pg_dump writes to the local staging directory (<c>backup.storage_path</c>, an emptyDir in
+///   production), the file is uploaded and the local copy is deleted. If the upload fails the
+///   newest dump stays in staging and is uploaded on the next successful run. Download, validate
+///   and restore fetch the file back from the destination.
+/// - Without any destination (local development), files stay in the storage path and the
+///   retention job prunes them there, as before; each run logs a warning.
 /// </summary>
 public class BackupService : IBackupService
 {
+    private static readonly Regex BackupNamePattern =
+        new(@"^truload_backup_[a-z]+_\d{8}_\d{6}\.(sql|dump)$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     private readonly TruLoadDbContext _context;
     private readonly ISettingsService _settingsService;
     private readonly IConfiguration _configuration;
@@ -36,11 +50,11 @@ public class BackupService : IBackupService
     {
         var settings = await _settingsService.GetBackupSettingsAsync(ct);
 
-        // Get storage path and check for existing backups
         var storagePath = await GetStoragePathAsync(ct);
-        var backupFiles = GetBackupFiles(storagePath);
+        var remote = await _rcloneMirror.ResolveRemoteAsync(ct);
+        var backups = await ListAllAsync(storagePath, remote, ct);
 
-        var lastBackup = backupFiles.OrderByDescending(f => f.CreationTime).FirstOrDefault();
+        var lastBackup = backups.OrderByDescending(b => b.CreatedAt).FirstOrDefault();
 
         // Calculate next scheduled backup based on cron expression
         DateTime? nextScheduled = null;
@@ -52,31 +66,22 @@ public class BackupService : IBackupService
         return new BackupSystemStatusDto(
             IsEnabled: settings.Enabled,
             ScheduleCron: settings.ScheduleCron ?? "0 2 * * *",
-            StoragePath: storagePath,
+            StoragePath: remote != null ? Describe(remote) : storagePath,
             BackupPgDumpPath: await GetPgDumpPathAsync(ct),
             RetentionDays: settings.RetentionDays,
-            LastBackupAt: lastBackup?.CreationTime,
+            LastBackupAt: lastBackup?.CreatedAt,
             NextScheduledBackup: nextScheduled,
-            TotalBackupsCount: backupFiles.Count,
-            TotalStorageUsedBytes: backupFiles.Sum(f => f.Length)
+            TotalBackupsCount: backups.Count,
+            TotalStorageUsedBytes: backups.Sum(b => b.FileSizeBytes)
         );
     }
 
     public async Task<BackupListResponse> ListBackupsAsync(CancellationToken ct = default)
     {
         var storagePath = await GetStoragePathAsync(ct);
-        var backupFiles = GetBackupFiles(storagePath);
-
-        var backups = backupFiles
-            .OrderByDescending(f => f.CreationTime)
-            .Select(f => new BackupInfoDto(
-                FileName: f.Name,
-                FilePath: f.FullName,
-                FileSizeBytes: f.Length,
-                CreatedAt: f.CreationTimeUtc,
-                BackupType: DetermineBackupType(f.Name),
-                Description: null
-            ))
+        var remote = await _rcloneMirror.ResolveRemoteAsync(ct);
+        var backups = (await ListAllAsync(storagePath, remote, ct))
+            .OrderByDescending(b => b.CreatedAt)
             .ToList();
 
         return new BackupListResponse(
@@ -92,6 +97,7 @@ public class BackupService : IBackupService
         {
             var storagePath = await GetStoragePathAsync(ct);
             EnsureDirectoryExists(storagePath);
+            var remote = await _rcloneMirror.ResolveRemoteAsync(ct);
 
             var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
             var backupType = request.BackupType.ToLowerInvariant();
@@ -107,6 +113,7 @@ public class BackupService : IBackupService
 
             if (!success)
             {
+                TryDelete(filePath);
                 return new CreateBackupResponse(
                     Success: false,
                     FileName: null,
@@ -116,22 +123,48 @@ public class BackupService : IBackupService
                 );
             }
 
-            var fileInfo = new FileInfo(filePath);
+            var size = new FileInfo(filePath).Length;
+            _logger.LogInformation("Backup created by user {UserId}: {FileName} ({Size} bytes)", userId, fileName, size);
 
-            _logger.LogInformation("Backup created by user {UserId}: {FileName} ({Size} bytes)",
-                userId, fileName, fileInfo.Length);
+            if (remote == null)
+            {
+                _logger.LogWarning(
+                    "No backup destination is configured and platform object storage is not available; " +
+                    "backup {FileName} is kept on local disk only at {StoragePath}", fileName, storagePath);
+                return new CreateBackupResponse(
+                    Success: true,
+                    FileName: fileName,
+                    FilePath: filePath,
+                    FileSizeBytes: size,
+                    Message: "Backup created on local disk only (no backup destination is configured)."
+                );
+            }
 
-            // Best-effort mirror to the configured remote destination. The local
-            // StoragePath copy above is the durable primary + fallback, so a mirror
-            // failure never fails the backup.
-            await _rcloneMirror.MirrorAsync(filePath, fileName, ct);
+            if (!await _rcloneMirror.MirrorAsync(filePath, fileName, ct))
+            {
+                // Keep this dump for the next run to upload, but only the newest one so a run of
+                // failures can never fill the staging volume.
+                PruneLocal(storagePath, keep: fileName);
+                _logger.LogError("Backup {FileName} could not be uploaded to {Destination}; it stays in local staging until the next successful run",
+                    fileName, Describe(remote));
+                return new CreateBackupResponse(
+                    Success: false,
+                    FileName: fileName,
+                    FilePath: filePath,
+                    FileSizeBytes: size,
+                    Message: "Backup was created but the upload to the backup destination failed. Check server logs."
+                );
+            }
+
+            TryDelete(filePath);
+            await UploadLeftoversAsync(storagePath, ct);
 
             return new CreateBackupResponse(
                 Success: true,
                 FileName: fileName,
-                FilePath: filePath,
-                FileSizeBytes: fileInfo.Length,
-                Message: "Backup created successfully."
+                FilePath: $"{Describe(remote)}/{fileName}",
+                FileSizeBytes: size,
+                Message: "Backup created and stored at the backup destination."
             );
         }
         catch (Exception ex)
@@ -151,28 +184,32 @@ public class BackupService : IBackupService
     {
         try
         {
+            if (!IsBackupName(fileName))
+            {
+                _logger.LogWarning("Rejected backup delete for an invalid file name: {FileName}", fileName);
+                return false;
+            }
+
             var storagePath = await GetStoragePathAsync(ct);
-            var filePath = Path.Combine(storagePath, fileName);
-
-            // Security: ensure the file is in the backup directory
-            var fullPath = Path.GetFullPath(filePath);
-            var fullStoragePath = Path.GetFullPath(storagePath);
-
-            if (!fullPath.StartsWith(fullStoragePath))
+            var localPath = Path.Combine(storagePath, fileName);
+            var deleted = false;
+            if (File.Exists(localPath))
             {
-                _logger.LogWarning("Attempted path traversal attack: {FilePath}", fileName);
-                return false;
+                File.Delete(localPath);
+                deleted = true;
             }
 
-            if (!File.Exists(fullPath))
+            var remote = await _rcloneMirror.ResolveRemoteAsync(ct);
+            if (remote != null && await _rcloneMirror.DeleteAsync(remote, fileName, ct))
             {
-                return false;
+                deleted = true;
             }
 
-            File.Delete(fullPath);
-
-            _logger.LogInformation("Backup deleted by user {UserId}: {FileName}", userId, fileName);
-            return true;
+            if (deleted)
+            {
+                _logger.LogInformation("Backup deleted by user {UserId}: {FileName}", userId, fileName);
+            }
+            return deleted;
         }
         catch (Exception ex)
         {
@@ -185,25 +222,16 @@ public class BackupService : IBackupService
     {
         try
         {
-            var storagePath = await GetStoragePathAsync(ct);
-            var filePath = Path.Combine(storagePath, fileName);
-
-            // Security: ensure the file is in the backup directory
-            var fullPath = Path.GetFullPath(filePath);
-            var fullStoragePath = Path.GetFullPath(storagePath);
-
-            if (!fullPath.StartsWith(fullStoragePath))
-            {
-                _logger.LogWarning("Attempted path traversal attack: {FilePath}", fileName);
-                return null;
-            }
-
-            if (!File.Exists(fullPath))
+            var fetched = await FetchAsync(fileName, ct);
+            if (fetched == null)
             {
                 return null;
             }
 
-            var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var (path, temporary) = fetched.Value;
+            // A copy fetched from the destination is removed as soon as the response stream closes.
+            var options = temporary ? FileOptions.DeleteOnClose | FileOptions.Asynchronous : FileOptions.Asynchronous;
+            Stream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete, 81920, options);
             return (stream, fileName, "application/sql");
         }
         catch (Exception ex)
@@ -215,25 +243,20 @@ public class BackupService : IBackupService
 
     public async Task<bool> ValidateBackupAsync(string fileName, CancellationToken ct = default)
     {
-        var storagePath = await GetStoragePathAsync(ct);
-        var filePath = Path.Combine(storagePath, fileName);
-
-        if (!File.Exists(filePath))
+        var fetched = await FetchAsync(fileName, ct);
+        if (fetched == null)
         {
             return false;
         }
 
-        // Basic validation: check file has content and starts with PostgreSQL comment
+        var (path, temporary) = fetched.Value;
         try
         {
-            using var reader = new StreamReader(filePath);
-            var firstLine = await reader.ReadLineAsync(ct);
-            return !string.IsNullOrEmpty(firstLine) &&
-                   (firstLine.StartsWith("--") || firstLine.StartsWith("/*"));
+            return await ValidateFileAsync(path, ct);
         }
-        catch
+        finally
         {
-            return false;
+            if (temporary) TryDelete(path);
         }
     }
 
@@ -243,16 +266,10 @@ public class BackupService : IBackupService
         _logger.LogWarning("Restore operation initiated by user {UserId} from backup {FileName}",
             userId, request.FileName);
 
+        string? temporaryPath = null;
         try
         {
-            var storagePath = await GetStoragePathAsync(ct);
-            var filePath = Path.Combine(storagePath, request.FileName);
-
-            // Security: ensure the file is in the backup directory
-            var fullPath = Path.GetFullPath(filePath);
-            var fullStoragePath = Path.GetFullPath(storagePath);
-
-            if (!fullPath.StartsWith(fullStoragePath))
+            if (!IsBackupName(request.FileName))
             {
                 return new RestoreBackupResponse(
                     Success: false,
@@ -262,7 +279,8 @@ public class BackupService : IBackupService
                 );
             }
 
-            if (!File.Exists(fullPath))
+            var fetched = await FetchAsync(request.FileName, ct);
+            if (fetched == null)
             {
                 return new RestoreBackupResponse(
                     Success: false,
@@ -272,8 +290,11 @@ public class BackupService : IBackupService
                 );
             }
 
+            var (fullPath, temporary) = fetched.Value;
+            if (temporary) temporaryPath = fullPath;
+
             // Validate backup before restore
-            if (!await ValidateBackupAsync(request.FileName, ct))
+            if (!await ValidateFileAsync(fullPath, ct))
             {
                 return new RestoreBackupResponse(
                     Success: false,
@@ -320,6 +341,10 @@ public class BackupService : IBackupService
                 RestoredAt: null
             );
         }
+        finally
+        {
+            if (temporaryPath != null) TryDelete(temporaryPath);
+        }
     }
 
     public async Task<bool> UpdateSettingsAsync(UpdateBackupSettingsRequest request, Guid userId, CancellationToken ct = default)
@@ -345,6 +370,159 @@ public class BackupService : IBackupService
             return false;
         }
     }
+
+    // -- destination helpers ----------------------------------------------------
+
+    private static bool IsBackupName(string? fileName) =>
+        !string.IsNullOrEmpty(fileName) && BackupNamePattern.IsMatch(fileName);
+
+    /// <summary>Where backups go, for display and logs. Never contains credentials.</summary>
+    private static string Describe(ResolvedBackupDestination remote)
+    {
+        var path = remote.RemotePath.Trim('/');
+        if (remote.Params.TryGetValue("bucket", out var bucket) && !string.IsNullOrWhiteSpace(bucket))
+        {
+            path = string.IsNullOrEmpty(path) ? bucket.Trim('/') : $"{bucket.Trim('/')}/{path}";
+        }
+        var label = remote.IsPlatformDefault ? "r2" : remote.Type;
+        return $"{label}:{path}";
+    }
+
+    /// <summary>
+    /// Backups at the destination plus any dump still waiting in local staging (a failed upload),
+    /// or only the local files when there is no destination.
+    /// </summary>
+    private async Task<List<BackupInfoDto>> ListAllAsync(string storagePath, ResolvedBackupDestination? remote, CancellationToken ct)
+    {
+        var result = new Dictionary<string, BackupInfoDto>(StringComparer.Ordinal);
+
+        if (remote != null)
+        {
+            var remoteFiles = await _rcloneMirror.ListAsync(remote, ct);
+            if (remoteFiles == null)
+            {
+                _logger.LogWarning("Could not list backups at {Destination}; showing local staging only", Describe(remote));
+            }
+            else
+            {
+                var location = Describe(remote);
+                foreach (var f in remoteFiles.Where(f => IsBackupName(f.Name)))
+                {
+                    result[f.Name] = new BackupInfoDto(
+                        FileName: f.Name,
+                        FilePath: $"{location}/{f.Name}",
+                        FileSizeBytes: f.Size,
+                        CreatedAt: f.ModifiedUtc,
+                        BackupType: DetermineBackupType(f.Name),
+                        Description: null);
+                }
+            }
+        }
+
+        foreach (var f in GetBackupFiles(storagePath).Where(f => IsBackupName(f.Name)))
+        {
+            result.TryAdd(f.Name, new BackupInfoDto(
+                FileName: f.Name,
+                FilePath: f.FullName,
+                FileSizeBytes: f.Length,
+                CreatedAt: f.CreationTimeUtc,
+                BackupType: DetermineBackupType(f.Name),
+                Description: remote != null ? "Waiting in local staging for upload" : null));
+        }
+
+        return result.Values.ToList();
+    }
+
+    /// <summary>
+    /// Returns a local path for the backup: the staging copy when one exists, otherwise a
+    /// temporary download from the destination (Temporary = true; the caller deletes it).
+    /// Null when the name is invalid or the file is in neither place.
+    /// </summary>
+    private async Task<(string Path, bool Temporary)?> FetchAsync(string fileName, CancellationToken ct)
+    {
+        if (!IsBackupName(fileName))
+        {
+            _logger.LogWarning("Rejected backup access for an invalid file name: {FileName}", fileName);
+            return null;
+        }
+
+        var storagePath = await GetStoragePathAsync(ct);
+        var localPath = Path.Combine(storagePath, fileName);
+        if (File.Exists(localPath))
+        {
+            return (localPath, false);
+        }
+
+        var remote = await _rcloneMirror.ResolveRemoteAsync(ct);
+        if (remote == null)
+        {
+            return null;
+        }
+
+        EnsureDirectoryExists(storagePath);
+        // Dot-prefixed so it never shows up as a backup in the staging listing.
+        var temporaryPath = Path.Combine(storagePath, $".download-{Guid.NewGuid():N}-{fileName}");
+        if (await _rcloneMirror.DownloadAsync(remote, fileName, temporaryPath, ct))
+        {
+            return (temporaryPath, true);
+        }
+
+        TryDelete(temporaryPath);
+        return null;
+    }
+
+    /// <summary>Uploads dumps left in staging by an earlier failed upload, removing each one that lands.</summary>
+    private async Task UploadLeftoversAsync(string storagePath, CancellationToken ct)
+    {
+        foreach (var f in GetBackupFiles(storagePath).Where(f => IsBackupName(f.Name)))
+        {
+            if (await _rcloneMirror.MirrorAsync(f.FullName, f.Name, ct))
+            {
+                TryDelete(f.FullName);
+                _logger.LogInformation("Uploaded backup {FileName} left in staging by an earlier run", f.Name);
+            }
+        }
+    }
+
+    /// <summary>Removes every staged dump except <paramref name="keep"/>.</summary>
+    private void PruneLocal(string storagePath, string keep)
+    {
+        foreach (var f in GetBackupFiles(storagePath).Where(f => f.Name != keep))
+        {
+            _logger.LogWarning("Dropping older staged backup {FileName}; only the newest is kept while uploads fail", f.Name);
+            TryDelete(f.FullName);
+        }
+    }
+
+    private void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not delete local file {Path}", path);
+        }
+    }
+
+    private static async Task<bool> ValidateFileAsync(string path, CancellationToken ct)
+    {
+        // Basic validation: check file has content and starts with PostgreSQL comment
+        try
+        {
+            using var reader = new StreamReader(path);
+            var firstLine = await reader.ReadLineAsync(ct);
+            return !string.IsNullOrEmpty(firstLine) &&
+                   (firstLine.StartsWith("--") || firstLine.StartsWith("/*"));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // -- settings and process helpers -------------------------------------------
 
     /// <summary>
     /// Update an existing setting or create it if it doesn't exist.
@@ -390,8 +568,8 @@ public class BackupService : IBackupService
 
     private async Task<string> GetPgDumpPathAsync(CancellationToken ct)
     {
-        var defaultPath = OperatingSystem.IsWindows() 
-            ? @"C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" 
+        var defaultPath = OperatingSystem.IsWindows()
+            ? @"C:\Program Files\PostgreSQL\17\bin\pg_dump.exe"
             : "pg_dump";
 
         return await _settingsService.GetSettingValueAsync(
@@ -402,8 +580,8 @@ public class BackupService : IBackupService
 
     private async Task<string> GetPsqlPathAsync(CancellationToken ct)
     {
-        var defaultPath = OperatingSystem.IsWindows() 
-            ? @"C:\Program Files\PostgreSQL\17\bin\psql.exe" 
+        var defaultPath = OperatingSystem.IsWindows()
+            ? @"C:\Program Files\PostgreSQL\17\bin\psql.exe"
             : "psql";
 
         // We use the same directory as pg_dump for psql by default

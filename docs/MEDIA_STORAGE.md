@@ -1,69 +1,50 @@
-# Media storage (organisation branding)
+# Media storage (organisation branding and files)
 
-Uploaded files (tenant platform logo, organisation logo, login page image) are stored on the backend.
+Uploaded branding images (tenant platform logo, organisation logo, login page image) and files
+saved through `IBlobStorageService` are kept in the platform's private R2 bucket, the same object
+storage every Codevertex service uses (devops-k8s `docs/object-storage.md`).
+
+## Keys and URLs
+
+| What | Object key | URL stored and returned |
+| --- | --- | --- |
+| Branding upload (`POST /api/v1/media/upload`) | `truload/media/<folder>/<uuid>.<ext>` | `/media/<folder>/<uuid>.<ext>` |
+| `IBlobStorageService.SaveAsync` | `truload/files/<folder>/<uuid>.<ext>` | relative path `<folder>/<uuid>.<ext>` |
+
+The URL did not change with the move to object storage: `/media/...` is still what the database
+and the frontend hold (`getMediaUrl` in truload-frontend prefixes it with the API origin). The
+backend streams `/media/<path>` from the key `truload/media/<path>`. The bucket stays private:
+objects are only ever read through the API. Branding images appear on the login page, so this
+route needs no sign-in, as the old static files did. Images bundled with the app (`/images/...`,
+`/technical/...`) are served from `wwwroot` as before.
 
 ## Configuration
 
-- **Development**: Files are stored under `wwwroot/media` (relative to content root). No extra config.
-- **Production**: Use a persistent volume so uploads survive pod restarts.
+Object storage is switched on by the `OBJECT_STORAGE_*` variables from the namespace's shared
+`object-storage` Secret (`objectStorage.enabled: true` in the Helm values):
+`OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_ACCESS_KEY_ID`, `OBJECT_STORAGE_SECRET_ACCESS_KEY`,
+`OBJECT_STORAGE_REGION` and `OBJECT_STORAGE_PRIVATE_BUCKET`. No bucket name or credential is in
+code or appsettings.
 
-### Environment
+Without them (local development) uploads go to `Media:StoragePath` or `MEDIA_STORAGE_PATH`
+(default `wwwroot/media`) and are served from there. A file still present on local disk is always
+served first; anything else under `/media` is read from the bucket.
 
-Set one of:
+## Moving local files to the bucket
 
-- **`MEDIA_STORAGE_PATH`** (env): Absolute path where uploads are stored (e.g. `/mnt/tuload-backend-media`).
-- **`Media:StoragePath`** (appsettings / config): Same as above.
-
-### Production (K8s / devops-k8s)
-
-1. **Create a PVC** (e.g. `tuload-backend-media`) in the cluster and mount it into the backend deployment at a path such as `/mnt/tuload-backend-media`.
-2. **Set env** on the backend deployment:
-   - `MEDIA_STORAGE_PATH=/mnt/tuload-backend-media`
-3. In **build.sh** / **deploy.yml** (or in devops-k8s `apps/truload-backend/values.yaml`), add the volume and volumeMount for the backend pod, and the env var above.
-
-Example (Helm values):
-
-```yaml
-# apps/truload-backend/values.yaml (in devops-k8s)
-env:
-  - name: MEDIA_STORAGE_PATH
-    value: /mnt/tuload-backend-media
-volumeMounts:
-  - name: media
-    mountPath: /mnt/tuload-backend-media
-volumes:
-  - name: media
-    persistentVolumeClaim:
-      claimName: truload-backend-media
+```sh
+dotnet truload-backend.dll migrate-media            # report only
+dotnet truload-backend.dll migrate-media --apply    # upload
 ```
 
-The backend serves uploaded files at **`/media/*`**. Ensure ingress/proxy allows access to `/media` if the frontend loads images from the API origin.
+It reads `/app/uploads` and the media path (or the directories given after the flags), uploads each
+file to `truload/media/<path relative to that directory>`, skips objects that already exist with
+the same size, and ends with a count and size check. It exits 0 only when every local file has a
+matching object, so it is safe to run again. It does not start the web host.
 
-## Production permissions (avoid upload permission errors)
+## History
 
-The container runs as non-root user **appuser (uid 1001)**. Mounted volumes must be writable by this user.
-
-**Option A – Recommended: use Pod securityContext `fsGroup`** so the volume is writable by the process:
-
-```yaml
-securityContext:
-  runAsUser: 1001
-  runAsGroup: 1001
-  fsGroup: 1001
-```
-
-**Option B – Init container to fix ownership** (if the volume is created with root ownership):
-
-```yaml
-initContainers:
-  - name: fix-media-permissions
-    image: busybox
-    command: ["sh", "-c", "chown -R 1001:1001 /mnt/tuload-backend-media"]
-    volumeMounts:
-      - name: media
-        mountPath: /mnt/tuload-backend-media
-```
-
-**Option C – PVC with correct storageClass** so the provisioned volume is created with mode `0777` or ownership that allows uid 1001 to write (depends on your storage driver).
-
-At startup the app checks that the media directory exists and is writable; if not, it logs a warning and uploads will fail until permissions are fixed.
+Until November 2026 production mounted the PVC `truload-backend-media` (10Gi) at `/app/uploads`,
+but uploads were actually written to `wwwroot/media` inside the container and lost on every
+restart. On 2026-11-18 the PVC held no files and no row in the `truload` or `kuraweigh` database
+referenced a `/media/` URL, so there was nothing to move. The PVC was removed that day.

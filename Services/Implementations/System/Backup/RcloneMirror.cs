@@ -1,15 +1,16 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using TruLoad.Backend.DTOs.System;
 using TruLoad.Backend.Services.Interfaces.System;
 
 namespace TruLoad.Backend.Services.Implementations.System.Backup;
 
 /// <summary>
-/// Mirrors locally-written pg_dump backup files to an operator-configured remote
-/// destination via the rclone CLI. Mirroring is BEST-EFFORT: the local StoragePath
-/// copy is always the durable primary + fallback, so a remote failure never fails a
-/// backup.
+/// Uploads, lists, downloads and deletes pg_dump backup files at the backup destination
+/// through the rclone CLI. The destination is the one an administrator configured, or the
+/// platform's private R2 bucket when none is (see BackupDestinationStore.ResolveAsync).
+/// BackupService decides what happens to the local staging copy.
 ///
 /// Credentials are passed to rclone exclusively via ephemeral RCLONE_CONFIG_* process
 /// environment variables (nothing is written to a persistent rclone config file) and
@@ -22,7 +23,7 @@ public sealed class RcloneMirror : IRcloneMirror
     private const string RemoteName = "truloadbkp";
     private const string EnvPrefix = "RCLONE_CONFIG_TRULOADBKP_";
 
-    private static readonly TimeSpan MirrorTimeout = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan TransferTimeout = TimeSpan.FromMinutes(20);
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ObscureTimeout = TimeSpan.FromSeconds(5);
 
@@ -35,29 +36,26 @@ public sealed class RcloneMirror : IRcloneMirror
         _logger = logger;
     }
 
-    public async Task MirrorAsync(string localFilePath, string objectName, CancellationToken ct = default)
+    public async Task<ResolvedBackupDestination?> ResolveRemoteAsync(CancellationToken ct = default)
     {
-        ResolvedBackupDestination dest;
         try
         {
-            dest = await _store.ResolveAsync(ct);
+            var dest = await _store.ResolveAsync(ct);
+            return dest.IsRemote ? dest : null;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Could not resolve backup destination; skipping remote mirror (local copy retained)");
-            return;
+            _logger.LogWarning(ex, "Could not resolve the backup destination; treating backups as local only");
+            return null;
         }
+    }
 
-        if (!dest.IsRemote)
+    public async Task<bool> MirrorAsync(string localFilePath, string objectName, CancellationToken ct = default)
+    {
+        var dest = await ResolveRemoteAsync(ct);
+        if (dest == null)
         {
-            return; // local-only or disabled: nothing to mirror, not an error.
-        }
-
-        var bin = ResolveRcloneBin();
-        if (bin == null)
-        {
-            _logger.LogWarning("rclone binary not found; skipping remote backup mirror (type={Type}, local copy retained)", dest.Type);
-            return;
+            return false; // local-only or disabled: nothing to upload to.
         }
 
         var target = $"{RemoteName}:{BuildRemotePath(dest, objectName)}";
@@ -65,19 +63,108 @@ public sealed class RcloneMirror : IRcloneMirror
 
         try
         {
-            var (exit, stderr) = await RunAsync(bin, args, BuildEnv(dest), MirrorTimeout, ct);
+            var (exit, stderr, _) = await RunAsync(ResolveRcloneBin(), args, BuildEnv(dest), TransferTimeout, ct);
             if (exit != 0)
             {
-                _logger.LogWarning("Backup remote mirror failed (type={Type}, object={Object}); local copy retained as fallback: {Error}",
+                _logger.LogWarning("Backup upload failed (type={Type}, object={Object}): {Error}",
                     dest.Type, objectName, Sanitize(stderr, dest));
-                return;
+                return false;
             }
-            _logger.LogInformation("Backup mirrored to remote destination (type={Type}, object={Object})", dest.Type, objectName);
+            _logger.LogInformation("Backup uploaded to destination (type={Type}, platform default={Platform}, object={Object})",
+                dest.Type, dest.IsPlatformDefault, objectName);
+            return true;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning("Backup remote mirror error (type={Type}); local copy retained: {Error}", dest.Type, ex.Message);
+            _logger.LogWarning("Backup upload error (type={Type}): {Error}", dest.Type, Sanitize(ex.Message, dest));
+            return false;
         }
+    }
+
+    public async Task<IReadOnlyList<RemoteBackupFile>?> ListAsync(ResolvedBackupDestination destination, CancellationToken ct = default)
+    {
+        var target = $"{RemoteName}:{BuildRemotePath(destination, string.Empty)}";
+        var args = WithBaseFlags("lsjson", "--files-only", "--no-mimetype", target);
+        try
+        {
+            var (exit, stderr, stdout) = await RunAsync(ResolveRcloneBin(), args, BuildEnv(destination), TestTimeout, ct);
+            if (exit != 0)
+            {
+                // An empty prefix on a bucket store reads as "directory not found".
+                if (stderr.Contains("directory not found", StringComparison.OrdinalIgnoreCase))
+                    return Array.Empty<RemoteBackupFile>();
+                _logger.LogWarning("Listing backups at the destination failed (type={Type}): {Error}",
+                    destination.Type, Sanitize(stderr, destination));
+                return null;
+            }
+
+            var items = JsonSerializer.Deserialize<List<LsJsonItem>>(stdout, LsJsonOptions) ?? new List<LsJsonItem>();
+            return items
+                .Where(i => !i.IsDir && !string.IsNullOrEmpty(i.Name))
+                .Select(i => new RemoteBackupFile(i.Name!, i.Size, i.ModTime.UtcDateTime))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Listing backups at the destination failed (type={Type}): {Error}",
+                destination.Type, Sanitize(ex.Message, destination));
+            return null;
+        }
+    }
+
+    public async Task<bool> DownloadAsync(ResolvedBackupDestination destination, string objectName, string localFilePath, CancellationToken ct = default)
+    {
+        var source = $"{RemoteName}:{BuildRemotePath(destination, objectName)}";
+        var args = WithBaseFlags("copyto", source, localFilePath);
+        try
+        {
+            var (exit, stderr, _) = await RunAsync(ResolveRcloneBin(), args, BuildEnv(destination), TransferTimeout, ct);
+            if (exit != 0)
+            {
+                _logger.LogWarning("Backup download failed (type={Type}, object={Object}): {Error}",
+                    destination.Type, objectName, Sanitize(stderr, destination));
+                return false;
+            }
+            return File.Exists(localFilePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Backup download error (type={Type}): {Error}", destination.Type, Sanitize(ex.Message, destination));
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteAsync(ResolvedBackupDestination destination, string objectName, CancellationToken ct = default)
+    {
+        var target = $"{RemoteName}:{BuildRemotePath(destination, objectName)}";
+        var args = WithBaseFlags("deletefile", target);
+        try
+        {
+            var (exit, stderr, _) = await RunAsync(ResolveRcloneBin(), args, BuildEnv(destination), TestTimeout, ct);
+            if (exit != 0)
+            {
+                _logger.LogWarning("Deleting backup at the destination failed (type={Type}, object={Object}): {Error}",
+                    destination.Type, objectName, Sanitize(stderr, destination));
+                return false;
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Deleting backup at the destination failed (type={Type}): {Error}",
+                destination.Type, Sanitize(ex.Message, destination));
+            return false;
+        }
+    }
+
+    private static readonly JsonSerializerOptions LsJsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    private sealed class LsJsonItem
+    {
+        public string? Name { get; set; }
+        public long Size { get; set; }
+        public DateTimeOffset ModTime { get; set; }
+        public bool IsDir { get; set; }
     }
 
     public async Task<BackupDestinationTestResult> TestConnectionAsync(ResolvedBackupDestination destination, CancellationToken ct = default)
@@ -98,7 +185,7 @@ public sealed class RcloneMirror : IRcloneMirror
 
         try
         {
-            var (exit, stderr) = await RunAsync(bin, args, BuildEnv(destination), TestTimeout, ct);
+            var (exit, stderr, _) = await RunAsync(bin, args, BuildEnv(destination), TestTimeout, ct);
             return exit == 0
                 ? new BackupDestinationTestResult(true, "Connection OK.")
                 : new BackupDestinationTestResult(false, Sanitize(stderr, destination));
@@ -148,6 +235,13 @@ public sealed class RcloneMirror : IRcloneMirror
                 Set("secret_access_key", P("secret_access_key"));
                 Set("region", P("region"));
                 Set("endpoint", P("endpoint"));
+                // Never try to create the bucket: scoped R2/S3 keys usually lack that right and
+                // the bucket already exists.
+                Set("no_check_bucket", "true");
+                // The image's rclone (Debian 1.60) follows each upload with a HEAD that R2 answers
+                // with 501 Not Implemented, so the copy reports failure although the object landed.
+                // The upload still carries Content-MD5, so the integrity check is kept.
+                Set("no_head", "true");
                 break;
             case "onedrive":
                 Set("token", P("token"));
@@ -198,6 +292,7 @@ public sealed class RcloneMirror : IRcloneMirror
             prefix = string.IsNullOrEmpty(prefix) ? TrimSlashes(bucket) : $"{TrimSlashes(bucket)}/{prefix}";
         }
         var obj = objectName.TrimStart('/');
+        if (obj.Length == 0) return prefix;
         return string.IsNullOrEmpty(prefix) ? obj : $"{prefix}/{obj}";
     }
 
@@ -227,7 +322,7 @@ public sealed class RcloneMirror : IRcloneMirror
 
     // -- process plumbing -----------------------------------------------------
 
-    private static string? ResolveRcloneBin()
+    private static string ResolveRcloneBin()
     {
         var bin = Environment.GetEnvironmentVariable("RCLONE_BIN");
         if (string.IsNullOrWhiteSpace(bin)) bin = "rclone";
@@ -235,7 +330,7 @@ public sealed class RcloneMirror : IRcloneMirror
         return bin;
     }
 
-    private static async Task<(int Exit, string Stderr)> RunAsync(string bin, string[] args, Dictionary<string, string>? extraEnv, TimeSpan timeout, CancellationToken ct)
+    private static async Task<(int Exit, string Stderr, string Stdout)> RunAsync(string bin, string[] args, Dictionary<string, string>? extraEnv, TimeSpan timeout, CancellationToken ct)
     {
         using var proc = new Process();
         proc.StartInfo.FileName = bin;
@@ -250,8 +345,9 @@ public sealed class RcloneMirror : IRcloneMirror
         }
 
         var stderr = new StringBuilder();
+        var stdout = new StringBuilder();
         proc.ErrorDataReceived += (_, e) => { if (e.Data != null) stderr.AppendLine(e.Data); };
-        proc.OutputDataReceived += (_, _) => { };
+        proc.OutputDataReceived += (_, e) => { if (e.Data != null) stdout.AppendLine(e.Data); };
 
         proc.Start();
         proc.BeginErrorReadLine();
@@ -266,9 +362,10 @@ public sealed class RcloneMirror : IRcloneMirror
         catch (OperationCanceledException)
         {
             try { if (!proc.HasExited) proc.Kill(true); } catch { /* ignore */ }
-            return (124, "rclone timed out");
+            return (124, "rclone timed out", string.Empty);
         }
-        return (proc.ExitCode, stderr.ToString());
+        // WaitForExitAsync returns once the redirected streams reach EOF, so both buffers are complete.
+        return (proc.ExitCode, stderr.ToString(), stdout.ToString());
     }
 
     private static (int Exit, string Stderr, string Stdout) RunCapture(string bin, string[] args, Dictionary<string, string>? extraEnv, TimeSpan timeout)

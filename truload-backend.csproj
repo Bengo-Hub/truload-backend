@@ -31,6 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="4.0.104.5" />
     <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="Cronos" Version="0.8.4" />
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.23" />

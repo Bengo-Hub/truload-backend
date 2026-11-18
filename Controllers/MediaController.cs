@@ -1,12 +1,17 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruLoad.Backend.Authorization.Attributes;
+using Microsoft.AspNetCore.StaticFiles;
 using TruLoad.Backend.Configuration;
+using TruLoad.Backend.Services.Interfaces.Infrastructure;
 
 namespace TruLoad.Backend.Controllers;
 
 /// <summary>
-/// File upload for organisation branding (logos, login page image). Files are stored in configurable media path (production: tuload-backend-media).
+/// File upload for organisation branding (logos, login page image). With platform object storage
+/// configured (production) files go to the private R2 bucket under truload/media/{folder}/{file} and
+/// are streamed back at /media/{folder}/{file}; otherwise they are written to the local media path.
+/// The returned URL is the same in both cases.
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
@@ -21,15 +26,19 @@ public class MediaController : ControllerBase
 
     private readonly IWebHostEnvironment _env;
     private readonly MediaUploadOptions _options;
+    private readonly IObjectStorage _objectStorage;
     private readonly ILogger<MediaController> _logger;
+    private static readonly FileExtensionContentTypeProvider ContentTypes = new();
 
     public MediaController(
         IWebHostEnvironment env,
         Microsoft.Extensions.Options.IOptions<MediaUploadOptions> options,
+        IObjectStorage objectStorage,
         ILogger<MediaController> logger)
     {
         _env = env;
         _options = options.Value;
+        _objectStorage = objectStorage;
         _logger = logger;
     }
 
@@ -66,9 +75,31 @@ public class MediaController : ControllerBase
         if (string.IsNullOrEmpty(ext) || !_options.AllowedImageExtensions.Contains(ext))
             return BadRequest(new { message = "Invalid file type. Allowed: " + string.Join(", ", _options.AllowedImageExtensions) });
 
-        var basePath = GetResolvedStoragePath();
         var safeFolder = string.Join("_", folder.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
         if (string.IsNullOrEmpty(safeFolder)) safeFolder = "uploads";
+
+        if (_objectStorage.IsConfigured)
+        {
+            var objectName = $"{Guid.NewGuid():N}{ext}";
+            if (!ContentTypes.TryGetContentType(objectName, out var contentType)) contentType = "application/octet-stream";
+            try
+            {
+                await using var buffer = new MemoryStream();
+                await file.CopyToAsync(buffer, cancellationToken);
+                buffer.Position = 0;
+                await _objectStorage.PutAsync(ObjectStorageOptions.MediaKey($"{safeFolder}/{objectName}"), buffer, contentType, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to store media upload in object storage: {Folder}/{File}", safeFolder, objectName);
+                return StatusCode(500, new { message = "Failed to save file" });
+            }
+            var objectUrl = $"/media/{safeFolder}/{objectName}";
+            _logger.LogInformation("Media uploaded to object storage: {UrlPath}", objectUrl);
+            return Ok(new { url = objectUrl });
+        }
+
+        var basePath = GetResolvedStoragePath();
         var dir = Path.Combine(basePath, safeFolder);
         try
         {

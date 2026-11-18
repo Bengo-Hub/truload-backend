@@ -67,9 +67,22 @@ using TruLoad.Backend.Services.Implementations.Reporting.Modules;
 using TruLoad.Backend.DTOs.Analytics;
 using TruLoad.Backend.DTOs.Integration;
 using TruLoad.Backend.Configuration;
+using TruLoad.Backend.Infrastructure.Storage;
 
 // Set QuestPDF License
 QuestPDF.Settings.License = LicenseType.Community;
+
+// One-off maintenance command: move local media files to object storage, then exit
+// (see Infrastructure/Storage/MediaMigrationCommand.cs). Runs before the web host is built.
+if (args.Length > 0 && args[0] == TruLoad.Backend.Infrastructure.Storage.MediaMigrationCommand.Name)
+{
+    var commandConfig = new ConfigurationBuilder()
+        .SetBasePath(AppContext.BaseDirectory)
+        .AddJsonFile("appsettings.json", optional: true)
+        .AddEnvironmentVariables()
+        .Build();
+    Environment.Exit(await TruLoad.Backend.Infrastructure.Storage.MediaMigrationCommand.RunAsync(args[1..], commandConfig));
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -442,7 +455,13 @@ builder.Services.AddScoped<IVehicleMakesRepository, VehicleMakesRepository>();
 // Infrastructure services (File Storage with SHA-256 checksums)
 builder.Services.AddScoped<IPdfService, QuestPdfService>();
 builder.Services.AddScoped<IEscPosTicketService, EscPosTicketService>();
-builder.Services.AddScoped<IBlobStorageService, LocalBlobStorageService>();
+// Platform object storage (R2 private bucket, OBJECT_STORAGE_* env). When it is configured,
+// files go there; without it (local development) they stay on local disk.
+builder.Services.AddSingleton<IObjectStorage, S3ObjectStorage>();
+if (ObjectStorageOptions.FromConfiguration(builder.Configuration).IsConfigured)
+    builder.Services.AddScoped<IBlobStorageService, ObjectStorageBlobStorageService>();
+else
+    builder.Services.AddScoped<IBlobStorageService, LocalBlobStorageService>();
 
 // Notification Service Configuration
 builder.Services.Configure<NotificationServiceOptions>(
@@ -903,6 +922,9 @@ if (Directory.Exists(mediaPath))
         RequestPath = "/media"
     });
 }
+// Anything under /media not on local disk is streamed from the private R2 bucket when
+// OBJECT_STORAGE_* is set (production). No-op otherwise.
+app.UseObjectStorageMedia();
 
 // Swagger (all environments for now; restrict to dev/staging later)
 app.UseSwagger();

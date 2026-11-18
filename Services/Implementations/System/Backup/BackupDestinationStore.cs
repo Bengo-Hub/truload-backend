@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using TruLoad.Backend.Configuration;
 using TruLoad.Backend.Data;
 using TruLoad.Backend.DTOs.System;
 using TruLoad.Backend.Infrastructure.Security;
@@ -21,6 +22,7 @@ public class BackupDestinationStore : IBackupDestinationStore
     private readonly TruLoadDbContext _context;
     private readonly ISettingsService _settingsService;
     private readonly IEncryptionService _encryption;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<BackupDestinationStore> _logger;
 
     private static readonly JsonSerializerOptions JsonOpts = new()
@@ -41,11 +43,13 @@ public class BackupDestinationStore : IBackupDestinationStore
         TruLoadDbContext context,
         ISettingsService settingsService,
         IEncryptionService encryption,
+        IConfiguration configuration,
         ILogger<BackupDestinationStore> logger)
     {
         _context = context;
         _settingsService = settingsService;
         _encryption = encryption;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -68,7 +72,48 @@ public class BackupDestinationStore : IBackupDestinationStore
         {
             resolved[k] = DecryptIfSecret(k, v);
         }
-        return new ResolvedBackupDestination(stored.Type, stored.Enabled, stored.RemotePath, resolved);
+        var destination = new ResolvedBackupDestination(stored.Type, stored.Enabled, stored.RemotePath, resolved);
+        if (destination.IsRemote) return destination;
+
+        // No destination chosen by an administrator: use the platform's private R2 bucket
+        // (OBJECT_STORAGE_* from the namespace's object-storage Secret) when it is available,
+        // under truload/backups/{database}. Credentials stay in the environment, never in the DB.
+        return PlatformDefault() ?? destination;
+    }
+
+    private ResolvedBackupDestination? PlatformDefault()
+    {
+        var storage = ObjectStorageOptions.FromConfiguration(_configuration);
+        if (!storage.IsConfigured) return null;
+
+        var database = "truload";
+        try
+        {
+            var cs = _configuration.GetConnectionString("DefaultConnection");
+            if (!string.IsNullOrWhiteSpace(cs))
+            {
+                var name = new Npgsql.NpgsqlConnectionStringBuilder(cs).Database;
+                if (!string.IsNullOrWhiteSpace(name)) database = name;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not read the database name for the backup prefix; using {Database}", database);
+        }
+
+        var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["provider"] = "Cloudflare",
+            ["endpoint"] = storage.Endpoint,
+            ["region"] = storage.Region,
+            ["access_key_id"] = storage.AccessKeyId,
+            ["secret_access_key"] = storage.SecretAccessKey,
+            ["bucket"] = storage.PrivateBucket,
+        };
+        return new ResolvedBackupDestination("s3", true, ObjectStorageOptions.BackupPrefix(database), parameters)
+        {
+            IsPlatformDefault = true
+        };
     }
 
     public async Task<ResolvedBackupDestination> ResolveFromRequestAsync(UpdateBackupDestinationRequest request, CancellationToken ct = default)

@@ -76,6 +76,76 @@ public class BackupServiceTests : IAsyncLifetime
         status.RetentionDays.Should().Be(30);
     }
 
+    private static ResolvedBackupDestination R2Destination() =>
+        new("s3", true, "truload/backups/truload",
+            new Dictionary<string, string> { ["bucket"] = "private-bucket" })
+        { IsPlatformDefault = true };
+
+    private string UseTempStoragePath()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "truload-backup-tests-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        _settingsServiceMock.Setup(s => s.GetSettingValueAsync(SettingKeys.BackupStoragePath, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(dir);
+        return dir;
+    }
+
+    [Fact]
+    public async Task ListBackupsAsync_WithDestination_ListsRemoteBackupsOnly()
+    {
+        UseTempStoragePath();
+        var remote = R2Destination();
+        _rcloneMirrorMock.Setup(m => m.ResolveRemoteAsync(It.IsAny<CancellationToken>())).ReturnsAsync(remote);
+        _rcloneMirrorMock.Setup(m => m.ListAsync(remote, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<RemoteBackupFile>
+            {
+                new("truload_backup_full_20261117_020003.sql", 100, new DateTime(2026, 11, 17, 2, 0, 3, DateTimeKind.Utc)),
+                new("notes.txt", 5, DateTime.UtcNow),
+            });
+
+        var result = await _backupService.ListBackupsAsync();
+
+        result.TotalCount.Should().Be(1);
+        result.Backups[0].FileName.Should().Be("truload_backup_full_20261117_020003.sql");
+        result.Backups[0].FilePath.Should().Be("r2:private-bucket/truload/backups/truload/truload_backup_full_20261117_020003.sql");
+    }
+
+    [Fact]
+    public async Task DeleteBackupAsync_RejectsNamesOutsideTheBackupPattern()
+    {
+        UseTempStoragePath();
+        _rcloneMirrorMock.Setup(m => m.ResolveRemoteAsync(It.IsAny<CancellationToken>())).ReturnsAsync(R2Destination());
+
+        var deleted = await _backupService.DeleteBackupAsync("../../etc/passwd", Guid.NewGuid());
+
+        deleted.Should().BeFalse();
+        _rcloneMirrorMock.Verify(m => m.DeleteAsync(It.IsAny<ResolvedBackupDestination>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DownloadBackupAsync_FetchesFromDestinationAndRemovesTheTemporaryCopy()
+    {
+        var dir = UseTempStoragePath();
+        const string name = "truload_backup_full_20261117_020003.sql";
+        var remote = R2Destination();
+        _rcloneMirrorMock.Setup(m => m.ResolveRemoteAsync(It.IsAny<CancellationToken>())).ReturnsAsync(remote);
+        _rcloneMirrorMock.Setup(m => m.DownloadAsync(remote, name, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns((ResolvedBackupDestination _, string _, string local, CancellationToken _) =>
+            {
+                File.WriteAllText(local, "-- PostgreSQL database dump\n");
+                return Task.FromResult(true);
+            });
+
+        var result = await _backupService.DownloadBackupAsync(name);
+
+        result.Should().NotBeNull();
+        using (var reader = new StreamReader(result!.Value.Stream))
+        {
+            (await reader.ReadLineAsync()).Should().Be("-- PostgreSQL database dump");
+        }
+        Directory.GetFiles(dir).Should().BeEmpty();
+    }
+
     [Fact]
     public async Task UpdateSettingsAsync_ShouldUpdateSettings()
     {
